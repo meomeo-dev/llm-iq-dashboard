@@ -61,18 +61,70 @@ flowchart TB
 
 ---
 
-## 3. 冷热数据分层（Hot/Cold Tiering）策略
+## 3. 冷热数据分层（Hot/Cold Tiering）与确定性切换策略
 
-数据按生命周期与访问频率划分为**热数据层**与**冷归档层**：
+### 3.1 核心痛点：为什么必须实施严格的冷热物理隔离？
+在长时间持续自动化评测（如每整点自动运行一轮）的场景下，若无冷热数据物理隔离，系统将面临严重的技术债：
+* **本地文件系统遍历性能坍塌**：看板服务端（`store.ts` 与 `/api/runs`）每次初始化或接收到 SSE 刷新通知时，需通过 `fs.readdir` 扫描 `data/runs/` 目录并逐个解析 `run.json`。若持续累积超过数千轮，单次全量 I/O 与 JSON 结构体重建耗时将从数毫秒飙升至数秒，导致看板卡顿与 Node.js 内存堆膨胀；
+* **前端 DOM 与时间线计算开销失控**：一次性向浏览器传递跨越数月的上万个强度槽位数据，会导致虚拟滚动与瀑布流计算帧率严重下跌。
 
-| 数据分层 | 存储载体 | 保留周期 | 存储格式与内容 | 核心职责 |
-| :--- | :--- | :--- | :--- | :--- |
-| **热数据层<br/>(Hot Tier)** | 本地磁盘 `data/runs/`<br/>看板前端内存缓存 | 近 **3 ~ 7 天**<br/>(受 `retentionDays` 管辖) | 包含完整中间产物：<br/>• `run.json`<br/>• `*.svg` 矢量成果<br/>• `*.txt` 原始终端转录流 | 保证本地开发与日常看板秒级响应，避免因历史数据过大导致前端 DOM 卡顿与内存泄漏。 |
-| **冷归档层<br/>(Cold Tier)** | 独立仓库 `llm-iq-data` | **永久全量保存**<br/>(只追加，永不删除) | 严格脱敏纯净产物：<br/>• `run.json`<br/>• `*.svg` 矢量成果<br/>• `index.json` 索引大纲 | 作为不可磨灭的学术/工程评测基准数据湖，支持跨月度、跨年度大模型智商演进对比与论文永久出处引用。 |
+因此，**服务端使用的必须且永远是“受限热数据”，全量历史“只存放在 GitHub 的 `xumetide-dev/llm-iq-data` 仓库中”**。
 
-### 历史下钻（On-Demand Historical Drilldown）
-* **日常状态**：在线看板首屏仅拉取最近 7 天的热数据，确保任何设备秒开；
-* **查阅历史**：日历组件高亮展示历史上所有存在评测数据的天数；当用户在日历中点击历史上某一天时（如 `?day=2026-08-15`），前端**按需单次拉取**指定日期的 JSON 目录与 SVG，既支持查阅完整历史，又完全不破坏常态渲染性能。
+---
+
+### 3.2 存储分层与分区结构对比
+
+| 存储维度 | 本地生产端：热数据层 (Hot Partition) | GitHub 数据湖：冷归档层 (Cold Archive) |
+| :--- | :--- | :--- |
+| **存储载体** | 本地磁盘 `data/runs/<runId>/` | 独立公开仓库 `xumetide-dev/llm-iq-data` |
+| **保留窗口** | **严格限制在近 N 天（默认 3 ~ 7 天）** | **永久追加保存（Append-Only，永不删除）** |
+| **分区拓扑** | 扁平时间戳目录（最大容纳 ~100-200 个 runId） | 时序多级分区树：`runs/YYYY/MM/DD/<runId>/` |
+| **I/O 复杂度** | 目录项恒定 $\le 200$，扫描开销为常数时间 $O(1)$ | 单目录项 $\le 48$，规避 GitHub 网页与 Git 树卡顿 |
+| **内容完整度** | 包含用于本地复盘的中间态 `.txt` 转录 | 仅保留脱敏后的 `run.json` 与 `*.svg` 成果 |
+| **核心用途** | 支撑本地开发调试、即时对比与近期待办 | 支撑长期学术引用、历史智商演进曲线分析 |
+
+---
+
+### 3.3 四步闭环冷热流转与淘汰生命周期
+
+为了保证“数据不丢、热区不膨胀、淘汰有据”，设计如下**四步闭环淘汰管线**：
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Runner as 本地执行引擎 (Runner)
+    participant HotDir as 本地热数据区 (data/runs/)
+    participant Hook as 同步与归档Hook (Sync Hook)
+    participant ColdRepo as GitHub 数据湖 (llm-iq-data)
+    participant Guard as 本地热区守卫 (Retention Guard)
+
+    Runner->>HotDir: 1. 评测完成，落盘 runId/ (写入 run.json, svg, txt)
+    Note over HotDir: 此时为全新热数据，本地看板立即可见
+    Runner->>Hook: 2. 触发归档 Hook
+    Hook->>Hook: 提取并脱敏 run.json + *.svg，写入 runs/YYYY/MM/DD/
+    Hook->>ColdRepo: Git Push 推送至远端数据仓库并更新 index.json
+    ColdRepo-->>Hook: 3. 远端响应写入成功 (ACK 确认)
+    Hook->>HotDir: 将该 runId 标记为已归档 (synced)
+    Guard->>HotDir: 4. 执行例行巡检：检查超过 retentionDays (如 7 天) 的历史目录
+    alt 超过 7 天 且 已完成归档 (synced)
+        Guard->>HotDir: 安全物理擦除 (rm -rf)，释放本地磁盘与 I/O 扫描开销
+    else 超过 7 天 但 尚未归档 (网络中断或未推完)
+        Guard->>HotDir: 【安全熔断】保留不删，等待下一次联网重试！
+    end
+```
+
+1. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
+2. **脱敏归档（Sanitize & Archive）**：同步脚本按 `YYYY/MM/DD/<runId>` 规则增量提交至 `llm-iq-data`；
+3. **安全确认（Safety Verification Gate）**：只有确认 `git push` 到 GitHub 成功后，该轮才被授予“可淘汰凭证”；
+4. **热区安全修剪（Hot Eviction）**：本地调度器巡检超过保留期（如 7 天）的历史目录，**仅对已确认同步的轮次执行物理删除**。若遇本地断网或 GitHub API 故障，未同步的目录将被**安全熔断保护**，绝不会因过期而被误删导致数据永久丢失。
+
+---
+
+### 3.4 历史数据按需下钻（On-Demand Cold Lookup）
+对于部署在 Vercel 上的在线看板：
+* **常态加载**：前端仅从 `llm-iq-data` 的根目录 `index.json` 中拉取最近 7 天的精简索引，瞬时完成渲染；
+* **历史追溯**：日历组件解析 `index.json` 中的历史日期存在标记；当访客点击历史上某一天时（如 `2026-06-15`），前端**按需单次直接加载**对应日期目录 `runs/2026/06/15/` 的数据，既实现了“任意历史无限期可查”，又杜绝了一次性将冷数据塞满浏览器内存。
+
 
 ---
 
