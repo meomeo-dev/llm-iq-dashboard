@@ -1,0 +1,176 @@
+/* ---------- 筛选：两级菜单（左列维度，右侧复选清单）与弹窗面板响应式 ---------- */
+
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  width: 440px;
+}
+
+.filter-panel-head-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-panel-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.filter-panel-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.filter-panel-close-btn:hover {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.filter-panel-content {
+  display: grid;
+  grid-template-columns: 136px minmax(240px, 1fr);
+  gap: 6px;
+  min-height: 0;
+}
+
+.filter-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 6px;
+  border-right: 1px solid var(--border);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.filter-group[aria-selected="true"] {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.filter-group-arrow {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.filter-items {
+  max-height: min(60vh, 420px);
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ---------- 移动端适配：筛选面板与日期面板居中安全模态 ---------- */
+
+.day-panel-head-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.day-panel-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.day-panel-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.day-panel-close-btn:hover {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .filter-panel-head-bar,
+  .day-panel-head-bar {
+    display: flex;
+  }
+
+  .menu-panel.filter-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    z-index: 100;
+    width: min(440px, calc(100vw - 20px));
+    max-height: min(540px, 85vh);
+    padding: 10px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+    border-radius: 12px;
+  }
+
+  .filter-panel-content {
+    grid-template-columns: 120px minmax(0, 1fr);
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .menu-panel.day-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    z-index: 100;
+    width: min(320px, calc(100vw - 20px));
+    padding: 10px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .filter-panel-content {
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 4px;
+  }
+  .filter-group {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+}

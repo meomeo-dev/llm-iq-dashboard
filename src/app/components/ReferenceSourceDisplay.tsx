@@ -1,4 +1,5 @@
 import React from "react";
+import { parseReferenceSource } from "./dashboard/reference-source";
 
 interface ReferenceSourceDisplayProps {
   readonly source: string;
@@ -17,35 +18,29 @@ export function ReferenceSourceDisplay({
   source,
   className = "source-link",
 }: ReferenceSourceDisplayProps) {
-  const trimmed = source.trim();
-  if (!trimmed) return null;
+  const parsed = parseReferenceSource(source);
 
-  // 1. 如果本身是合法的绝对 HTTP/HTTPS URL
-  if (/^https?:\/\//i.test(trimmed)) {
+  if (parsed.kind === "empty") return null;
+
+  if (parsed.kind === "url") {
     return (
-      <a href={trimmed} target="_blank" rel="noopener noreferrer" className={className}>
-        {trimmed} ↗
+      <a href={parsed.url} target="_blank" rel="noopener noreferrer" className={className}>
+        {parsed.url} ↗
       </a>
     );
   }
 
-  // 2. 如果包含 DOI（如 10.1126/science.1214081）或包含嵌入式 URL
-  const doiMatch = trimmed.match(/10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+/);
-  const urlMatch = trimmed.match(/https?:\/\/[^\s,;"<>]+/i);
-
-  const targetUrl = urlMatch ? urlMatch[0] : (doiMatch ? `https://doi.org/${doiMatch[0]}` : null);
-
-  if (targetUrl) {
+  if (parsed.kind === "citation_with_link") {
     return (
       <span className="source-citation-wrap" style={{ wordBreak: "break-word" }}>
-        <span className="source-citation-text">{trimmed}</span>
+        <span className="source-citation-text">{parsed.text}</span>
         <a
-          href={targetUrl}
+          href={parsed.url}
           target="_blank"
           rel="noopener noreferrer"
           className={`${className} source-ext-link`}
           style={{ marginLeft: "8px", display: "inline-flex", alignItems: "center", gap: "2px", fontWeight: "600" }}
-          title={`在新标签页打开权威出处：${targetUrl}`}
+          title={`在新标签页打开权威出处：${parsed.url}`}
         >
           [权威文献 ↗]
         </a>
@@ -53,6 +48,5 @@ export function ReferenceSourceDisplay({
     );
   }
 
-  // 3. 纯文本文献引文，不渲染为 <a> 标签，防止浏览器相对路径跳转自身站内
-  return <span className="source-citation-text">{trimmed}</span>;
+  return <span className="source-citation-text">{parsed.text}</span>;
 }

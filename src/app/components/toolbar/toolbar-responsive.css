@@ -1,0 +1,91 @@
+/* 窄屏响应式规则 */
+@media (max-width: 1080px) {
+  .brand-title {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .toolbar-stack.clock {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    min-height: 48px;
+    padding: 7px 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .toolbar-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .brand {
+    order: unset;
+    margin-right: 0;
+  }
+
+  .menus {
+    order: unset;
+    display: flex;
+    gap: 4px;
+  }
+
+  .toolbar-utils {
+    order: unset;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .toolbar-center {
+    order: unset;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .toolbar-center > .menu {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toolbar-center > .menu > .menu-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .toolbar-center > .auto-run {
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toolbar-center > .auto-run .auto-run-switch {
+    width: 100%;
+    justify-content: center;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-hi);
+  }
+
+  .toolbar-stack.stats {
+    display: none;
+  }
+}

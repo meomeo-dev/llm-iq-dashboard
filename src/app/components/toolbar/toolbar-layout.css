@@ -1,0 +1,80 @@
+/* 顶部单行工具栏基础布局与区域 */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+/* ---------- 品牌 ---------- */
+
+.toolbar-top-row {
+  display: contents;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 10px;
+  margin-right: 4px;
+  order: 1;
+}
+
+.menus {
+  order: 2;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* ---------- 区域布局：桌面为单行，移动端转为双行 ---------- */
+
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  order: 3;
+  margin-left: auto;
+}
+
+.toolbar-utils {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  order: 4;
+}

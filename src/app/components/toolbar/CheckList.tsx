@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  invertHidden,
+  isAllShown,
+  showAllHidden,
+  toggleHidden,
+} from "./check-list-ops";
+
 export interface CheckItem {
   value: string;
   label: string;
@@ -21,23 +28,11 @@ interface CheckListProps {
  */
 export function CheckList({ items, hidden, onChange }: CheckListProps) {
   const values = items.map((item) => item.value);
-  const allShown = values.every((value) => !hidden.has(value));
+  const allShown = isAllShown(hidden, values);
 
-  const showAll = (): void => onChange(new Set([...hidden].filter((value) => !values.includes(value))));
-  const invert = (): void => {
-    const next = new Set(hidden);
-    for (const value of values) {
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-    }
-    onChange(next);
-  };
-  const toggle = (value: string): void => {
-    const next = new Set(hidden);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    onChange(next);
-  };
+  const showAll = (): void => onChange(showAllHidden(hidden, values));
+  const invert = (): void => onChange(invertHidden(hidden, values));
+  const toggle = (value: string): void => onChange(toggleHidden(hidden, value));
 
   return (
     <>

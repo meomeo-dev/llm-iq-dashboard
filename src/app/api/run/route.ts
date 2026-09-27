@@ -24,6 +24,7 @@ import { enqueueRequest, waitForRequest } from "@/core/requests";
 import { narrowConfig, scheduledRound, type RunSelection } from "@/core/run-selection";
 import { executeRun } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
+import { parseRunRequestBody } from "./run-request";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +114,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   let selection: RunSelection | null;
   try {
     const full = loadConfig(configPath());
-    selection = await readSelection(request);
+    selection = parseRunRequestBody(await request.text());
     // 不带选择（配置页“立即执行”）按定时任务的范围跑整轮
     config = selection === null ? scheduledRound(full) : narrowConfig(full, selection);
   } catch (cause) {
@@ -140,34 +141,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
   }
 
-  // 进度文件写好后才返回 202，前端随即读取进度时必能读到这一轮；开跑前抛错返回 500
-  const started = new Promise<string>((resolve, reject) => {
-    void executeRun(config, {
-      trigger: "manual",
-      candidateOverrides: selection?.candidateOverrides,
-      log: (message) => console.log(message),
-      onStarted: resolve,
-    })
-      .catch((cause: unknown) => {
-        console.error(`手动执行失败：${describe(cause)}`);
-        reject(cause);
-      })
-      .finally(() => {
-        holder[FLAG] = false;
-      });
+  return startLocalRun(config, selection, { deviceId, ip }, () => {
+    holder[FLAG] = false;
   });
-  try {
-    const runId = await started;
-    const calls = config.targets.length * config.run.promptIds.length;
-    await audit({ action: "run", outcome: "ok", deviceId, ip, detail: `${runId} ${calls} 次调用` });
-    return NextResponse.json({ started: true, runId, calls }, { status: 202 });
-  } catch (cause) {
-    await audit({ action: "run", outcome: "error", deviceId, ip, detail: describe(cause) });
-    return NextResponse.json({ error: describe(cause) }, { status: 500 });
-  }
 }
 
-async function startViaRunner(selection: RunSelection | null, who: { deviceId: string; ip: string | null }): Promise<NextResponse> {
+async function startViaRunner(
+  selection: RunSelection | null,
+  who: { deviceId: string; ip: string | null },
+): Promise<NextResponse> {
   const queued = await enqueueRequest("run", selection);
   const settled = await waitForRequest(queued.id, RUNNER_START_TIMEOUT_MS);
   if (settled?.state === "done" && settled.result?.runId !== undefined) {
@@ -183,31 +165,31 @@ async function startViaRunner(selection: RunSelection | null, who: { deviceId: s
   return NextResponse.json({ error }, { status: settled?.state === "failed" ? 409 : 503 });
 }
 
-async function readSelection(request: Request): Promise<RunSelection | null> {
-  const text = await request.text();
-  if (text.trim() === "") return null;
-  const body = JSON.parse(text) as Partial<RunSelection>;
-  if (!isStringArray(body.targetIds) || !isStringArray(body.promptIds)) {
-    throw new Error("请求体须为 { targetIds: string[], promptIds: string[] }");
+async function startLocalRun(
+  config: AppConfig, selection: RunSelection | null,
+  who: { deviceId: string; ip: string | null }, onFinished: () => void,
+): Promise<NextResponse> {
+  // 进度文件写好后才返回 202，前端随即读取进度时必能读到这一轮；开跑前抛错返回 500
+  const started = new Promise<string>((resolve, reject) => {
+    void executeRun(config, {
+      trigger: "manual", candidateOverrides: selection?.candidateOverrides,
+      log: (message) => console.log(message), onStarted: resolve,
+    })
+      .catch((cause: unknown) => {
+        console.error(`手动执行失败：${describe(cause)}`);
+        reject(cause);
+      })
+      .finally(onFinished);
+  });
+  try {
+    const runId = await started;
+    const calls = config.targets.length * config.run.promptIds.length;
+    await audit({ action: "run", outcome: "ok", deviceId: who.deviceId, ip: who.ip, detail: `${runId} ${calls} 次调用` });
+    return NextResponse.json({ started: true, runId, calls }, { status: 202 });
+  } catch (cause) {
+    await audit({ action: "run", outcome: "error", deviceId: who.deviceId, ip: who.ip, detail: describe(cause) });
+    return NextResponse.json({ error: describe(cause) }, { status: 500 });
   }
-  let candidateOverrides: Record<string, string> | undefined;
-  if (body.candidateOverrides && typeof body.candidateOverrides === "object") {
-    candidateOverrides = {};
-    for (const [k, v] of Object.entries(body.candidateOverrides)) {
-      if (typeof v === "string" && v.trim() !== "") {
-        candidateOverrides[k] = v.trim();
-      }
-    }
-  }
-  return {
-    targetIds: body.targetIds,
-    promptIds: body.promptIds,
-    ...(candidateOverrides !== undefined ? { candidateOverrides } : {}),
-  };
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function describe(cause: unknown): string {

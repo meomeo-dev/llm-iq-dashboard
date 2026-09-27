@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { CheckList, type CheckItem } from "./CheckList";
+import { countFilteredGroups } from "./filter-badge";
 import type { FilterKey, HiddenFilters } from "./filters";
+import { FilterTabs } from "./FilterTabs";
 import { Menu } from "../menu/Menu";
 
 export interface FilterGroup {
@@ -27,7 +29,7 @@ interface FilterMenuProps {
 export function FilterMenu({ groups, hidden, onHidden, open, onToggle, onClose }: FilterMenuProps) {
   const [activeKey, setActiveKey] = useState<FilterKey>("cli");
   const active = groups.find((group) => group.key === activeKey) ?? groups[0];
-  const filteredCount = groups.filter((group) => badge(group.items, hidden[group.key]).filtered).length;
+  const filteredCount = countFilteredGroups(groups, hidden);
 
   return (
     <Menu
@@ -45,28 +47,7 @@ export function FilterMenu({ groups, hidden, onHidden, open, onToggle, onClose }
         </button>
       </div>
       <div className="filter-panel-content">
-        <div className="filter-groups" role="tablist" aria-label="筛选维度">
-          {groups.map((group) => {
-            const groupBadge = badge(group.items, hidden[group.key]);
-            return (
-              <button
-                key={group.key}
-                type="button"
-                role="tab"
-                aria-selected={group.key === active?.key}
-                className="filter-group"
-                onClick={() => setActiveKey(group.key)}
-                onPointerEnter={() => setActiveKey(group.key)}
-              >
-                <span>{group.label}</span>
-                <span className={groupBadge.filtered ? "menu-badge filtered" : "menu-badge"}>{groupBadge.text}</span>
-                <span className="filter-group-arrow" aria-hidden="true">
-                  ›
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <FilterTabs groups={groups} activeKey={active?.key ?? "cli"} hidden={hidden} onSelectKey={setActiveKey} />
         {active !== undefined && (
           <div className="filter-items" role="tabpanel">
             <CheckList
@@ -79,14 +60,4 @@ export function FilterMenu({ groups, hidden, onHidden, open, onToggle, onClose }
       </div>
     </Menu>
   );
-}
-
-/**
- * 部分筛掉时显示 “3/5”，否则显示总数。只数当天列出的取值：隐藏集合可能含别的日子
- * 才有的取值，不能用它的大小相减。
- */
-function badge(items: readonly CheckItem[], hidden: ReadonlySet<string>): { text: string; filtered: boolean } {
-  const total = items.length;
-  const shown = items.filter((item) => !hidden.has(item.value)).length;
-  return shown === total ? { text: String(total), filtered: false } : { text: `${shown}/${total}`, filtered: true };
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useMenuDismiss } from "./use-menu-dismiss";
 
 export interface MenuProps {
   label: React.ReactNode;
@@ -21,21 +22,7 @@ export interface MenuProps {
 export function Menu(props: MenuProps) {
   const { label, align = "left", badge, panelClassName, buttonClassName, open, onToggle, onClose, children } = props;
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent): void => {
-      if (root.current !== null && !root.current.contains(event.target as Node)) onClose();
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, onClose]);
+  useMenuDismiss(open, root, onClose);
 
   return (
     <div className="menu" ref={root}>

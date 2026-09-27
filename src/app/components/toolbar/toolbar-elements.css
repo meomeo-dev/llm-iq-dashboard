@@ -1,0 +1,130 @@
+/* 每家 CLI 一个纹理图标（棋盘 / 斜纹 / 圆点），不占用语义色 */
+.cli-mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--surface-hi);
+}
+
+.cli-agy {
+  background-image:
+    linear-gradient(45deg, var(--text-faint) 25%, transparent 25%, transparent 75%, var(--text-faint) 75%),
+    linear-gradient(45deg, var(--text-faint) 25%, transparent 25%, transparent 75%, var(--text-faint) 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 3px 3px;
+}
+
+.cli-codex {
+  background-image: repeating-linear-gradient(135deg, var(--text-faint) 0 1.5px, transparent 1.5px 4.5px);
+}
+
+.cli-claude {
+  background-image: radial-gradient(var(--text-faint) 1px, transparent 1.1px);
+  background-size: 4.5px 4.5px;
+}
+
+/* 两行小字的堆叠块：上行为值，下行为说明。.stack 已被配置页占用 */
+.toolbar-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.stack-main {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 17px;
+}
+
+.stack-sub {
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.stats {
+  align-items: flex-end;
+}
+
+/* 用 flex 避免块级外壳按继承的 1.55 行高撑高行盒 */
+.toolbar-stack > .menu {
+  display: flex;
+}
+
+/* 时钟叠时区：上行点击回到现在，下行为时区菜单 */
+.clock {
+  align-items: flex-end;
+}
+
+.clock-now {
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.clock-now:hover {
+  background: var(--surface-hi);
+}
+
+/* 行高与 .stack-main 相同，使相邻堆叠块的行齐平 */
+.clock-time {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 17px;
+  letter-spacing: 0.02em;
+}
+
+/* 双类选择器：menu.css 在本文件之后载入，同级选择器会被覆盖 */
+.menu-button.menu-button-small {
+  gap: 4px;
+  padding: 0 6px;
+  border-width: 0;
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.menu-button.menu-button-small .caret {
+  width: 5px;
+  height: 5px;
+}
+
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-dim);
+}
+
+.icon-link:hover {
+  border-color: var(--border);
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.badge-readonly {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  user-select: none;
+}
