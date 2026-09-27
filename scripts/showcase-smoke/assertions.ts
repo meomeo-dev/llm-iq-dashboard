@@ -64,6 +64,22 @@ export async function assertBlockedRunPost(baseUrl: string): Promise<void> {
   assert.equal(res.status, 403, `只读模式应拦截写请求为 403，实际: ${res.status}`);
 }
 
+/** 断言只读远程模式下 GET /api/data-repo 阻断为 403 */
+export async function assertBlockedDataRepoGet(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo`);
+  assert.equal(res.status, 403, `只读模式应拦截 GET /api/data-repo 为 403，实际: ${res.status}`);
+}
+
+/** 断言只读远程模式下 POST /api/data-repo/sync 阻断为 403 */
+export async function assertBlockedDataRepoSyncPost(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo/sync`, {
+    method: "POST",
+    headers: { "x-pelican-action": "1" },
+    body: JSON.stringify({ mode: "dry-run" }),
+  });
+  assert.equal(res.status, 403, `只读模式应拦截 POST /api/data-repo/sync 为 403，实际: ${res.status}`);
+}
+
 /** 断言配对页面入口返回 404 */
 export async function assertPairPage404(baseUrl: string): Promise<void> {
   const res = await fetch(`${baseUrl}/pair`);
@@ -106,6 +122,14 @@ export function buildAssertionSteps(baseUrl: string): AssertionStep[] {
     {
       name: "写操作阻断 POST /api/run (返回 403 Forbidden)",
       run: () => assertBlockedRunPost(baseUrl),
+    },
+    {
+      name: "数据仓状态接口阻断 GET /api/data-repo (返回 403 Forbidden)",
+      run: () => assertBlockedDataRepoGet(baseUrl),
+    },
+    {
+      name: "数据仓同步动作阻断 POST /api/data-repo/sync (返回 403 Forbidden)",
+      run: () => assertBlockedDataRepoSyncPost(baseUrl),
     },
     {
       name: "所有者配对页面入口 GET /pair (返回 404 Not Found)",

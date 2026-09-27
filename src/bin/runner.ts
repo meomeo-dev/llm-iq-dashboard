@@ -6,6 +6,7 @@
  * 请求 + 写心跳。看板容器不装 CLI、不挂凭据卷，靠这里代办。
  */
 
+import { existsSync } from "node:fs";
 import { refreshCatalog, readCachedCatalog } from "../capabilities/catalog";
 import { checkAndRecord } from "../capabilities/readiness-cache";
 import { readAutoRunSwitch, recordSchedulerProcess } from "../core/auto-run";
@@ -17,6 +18,22 @@ import { narrowConfig, scheduledRound } from "../core/run-selection";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
+import { inspectGitRepo } from "../core/sync/data-repo-git";
+import type {
+  SyncActionMode,
+  SyncActionResult,
+} from "../core/sync/data-repo-panel-types";
+import {
+  getRawDataRepoPath,
+  readDataRepoManifest,
+  saveLastAction,
+} from "../core/sync/data-repo-status";
+import {
+  confirmPublished,
+  syncDataRepo,
+  type ConfirmPublishedReport,
+  type SyncReport,
+} from "../core/sync/sync-orchestrator";
 
 const REQUEST_POLL_MS = 1000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
@@ -94,7 +111,119 @@ async function handle(request: RunnerRequest): Promise<void> {
     case "run":
       await startRun(request, full);
       return;
+    case "data-repo-status":
+      await handleDataRepoStatus(request, full);
+      return;
+    case "sync-data":
+      await handleSyncData(request, full);
+      return;
   }
+}
+
+async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Promise<void> {
+  if (!full.dataRepo) {
+    await completeRequest(request.id, {
+      statusResult: { repo: null, manifest: null },
+    });
+    return;
+  }
+  const repoPath = full.dataRepo.path;
+  if (!existsSync(repoPath)) {
+    await completeRequest(request.id, {
+      statusResult: { repo: null, manifest: null },
+    });
+    return;
+  }
+  const gitInfo = await inspectGitRepo(repoPath);
+  const rawPath = getRawDataRepoPath(full, configPath());
+  const repo = { path: rawPath, ...gitInfo };
+  const manifest = await readDataRepoManifest(repoPath);
+  await completeRequest(request.id, {
+    statusResult: { repo, manifest },
+  });
+}
+
+async function executeSyncAction(
+  mode: SyncActionMode,
+  repoPath: string,
+): Promise<SyncReport | ConfirmPublishedReport> {
+  if (mode === "dry-run") {
+    return syncDataRepo({ repoPath, dryRun: true });
+  }
+  if (mode === "export") {
+    return syncDataRepo({ repoPath, dryRun: false, push: false });
+  }
+  if (mode === "confirm") {
+    return confirmPublished({ repoPath, dryRun: false });
+  }
+  throw new Error(`不支持的同步模式: ${mode}`);
+}
+
+async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<void> {
+  const action = request.syncAction;
+  const startedAt = new Date().toISOString();
+  if (!action) {
+    await failRequest(request.id, "缺少 syncAction 请求体");
+    return;
+  }
+  if (action.mode === "push") {
+    const res: SyncActionResult = {
+      mode: "push",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      ok: false,
+      report: null,
+      executedBy: "runner",
+      error: "容器内无推送凭据，请在宿主机推送",
+    };
+    await saveLastAction(res);
+    await completeRequest(request.id, { syncResult: res });
+    return;
+  }
+  if (!full.dataRepo) {
+    const res: SyncActionResult = {
+      mode: action.mode,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      ok: false,
+      report: null,
+      executedBy: "runner",
+      error: "数据仓未配置",
+    };
+    await saveLastAction(res);
+    await completeRequest(request.id, { syncResult: res });
+    return;
+  }
+  await performRunnerSync(request.id, action.mode, full.dataRepo.path, startedAt);
+}
+
+async function performRunnerSync(
+  requestId: string,
+  mode: SyncActionMode,
+  repoPath: string,
+  startedAt: string,
+): Promise<void> {
+  let ok = true;
+  let report: SyncReport | ConfirmPublishedReport | null = null;
+  let error: string | null = null;
+  try {
+    report = await executeSyncAction(mode, repoPath);
+  } catch (cause) {
+    ok = false;
+    error = describe(cause);
+    log(`执行同步动作 ${mode} 失败：${error}`);
+  }
+  const result: SyncActionResult = {
+    mode,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    ok,
+    report,
+    executedBy: "runner",
+    error,
+  };
+  await saveLastAction(result);
+  await completeRequest(requestId, { syncResult: result });
 }
 
 async function startRun(request: RunnerRequest, full: AppConfig): Promise<void> {

@@ -13,13 +13,23 @@ import { readCachedCatalog } from "../capabilities/catalog";
 import type { CapabilitySnapshot } from "../capabilities/types";
 import { dataRoot } from "./paths";
 import type { RunSelection } from "./run-selection";
+import type {
+  DataRepoStatus,
+  SyncActionRequest,
+  SyncActionResult,
+} from "./sync/data-repo-panel-types";
 
 const REQUESTS_DIR = "requests";
 const POLL_MS = 250;
 /** 处理完的请求文件保留这么久，便于排查 */
 const KEEP_FINISHED_MS = 60 * 60 * 1000;
 
-export type RequestKind = "run" | "check-readiness" | "probe-capabilities";
+export type RequestKind =
+  | "run"
+  | "check-readiness"
+  | "probe-capabilities"
+  | "sync-data"
+  | "data-repo-status";
 export type RequestState = "pending" | "claimed" | "done" | "failed";
 
 export interface RunnerRequest {
@@ -31,12 +41,25 @@ export interface RunnerRequest {
   finishedAt: string | null;
   /** kind 为 run 时的范围；null 表示按配置跑整轮 */
   selection: RunSelection | null;
-  /** done：发起一轮时为 runId 与调用数；failed：原因 */
-  result: { runId?: string; calls?: number; error?: string } | null;
+  /** kind 为 sync-data 时的动作载荷 */
+  syncAction?: SyncActionRequest | null;
+  /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；failed：原因 */
+  result: {
+    runId?: string;
+    calls?: number;
+    error?: string;
+    syncResult?: SyncActionResult;
+    statusResult?: {
+      repo: DataRepoStatus["repo"];
+      manifest: DataRepoStatus["manifest"];
+    };
+  } | null;
 }
 
 /** 探测约需十几秒（agy 列模型要联网） */
 const PROBE_TIMEOUT_MS = 90_000;
+/** 执行器代答数据仓状态默认等待时间（毫秒） */
+const DATA_REPO_STATUS_TIMEOUT_MS = 10_000;
 
 /** 让执行器重新探测能力目录，完成后读回缓存；执行器不在或失败时为 null */
 export async function probeViaRunner(): Promise<CapabilitySnapshot | null> {
@@ -44,11 +67,45 @@ export async function probeViaRunner(): Promise<CapabilitySnapshot | null> {
   return settled?.state === "done" ? readCachedCatalog() : null;
 }
 
+/** 让执行器代答数据仓状态；超时或失败返回 null */
+export async function requestRunnerDataRepoStatus(
+  timeoutMs: number = DATA_REPO_STATUS_TIMEOUT_MS,
+): Promise<{
+  repo: DataRepoStatus["repo"];
+  manifest: DataRepoStatus["manifest"];
+} | null> {
+  const req = await enqueueRequest("data-repo-status");
+  const settled = await waitForRequest(req.id, timeoutMs);
+  return settled?.state === "done" ? (settled.result?.statusResult ?? null) : null;
+}
+
 export function requestsDir(): string {
   return join(dataRoot(), REQUESTS_DIR);
 }
 
-export async function enqueueRequest(kind: RequestKind, selection: RunSelection | null = null, now: Date = new Date()): Promise<RunnerRequest> {
+export interface EnqueuePayload {
+  selection?: RunSelection | null;
+  syncAction?: SyncActionRequest | null;
+}
+
+export async function enqueueRequest(
+  kind: RequestKind,
+  payload: RunSelection | EnqueuePayload | null = null,
+  now: Date = new Date(),
+): Promise<RunnerRequest> {
+  let selection: RunSelection | null = null;
+  let syncAction: SyncActionRequest | null = null;
+
+  if (payload !== null) {
+    if ("syncAction" in payload || ("selection" in payload && payload.selection !== undefined)) {
+      const p = payload as EnqueuePayload;
+      selection = p.selection ?? null;
+      syncAction = p.syncAction ?? null;
+    } else {
+      selection = payload as RunSelection;
+    }
+  }
+
   const request: RunnerRequest = {
     id: `${now.toISOString().replace(/[-:.]/g, "")}-${randomBytes(4).toString("hex")}`,
     kind,
@@ -57,6 +114,7 @@ export async function enqueueRequest(kind: RequestKind, selection: RunSelection 
     claimedAt: null,
     finishedAt: null,
     selection,
+    ...(syncAction !== null ? { syncAction } : {}),
     result: null,
   };
   await mkdir(requestsDir(), { recursive: true });

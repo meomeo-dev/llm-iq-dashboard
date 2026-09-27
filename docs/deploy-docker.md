@@ -118,6 +118,9 @@ PELICAN_PORT=3100 docker compose up -d
      docker compose exec runner pnpm sync:data --confirm-published
      ```
 - **修剪守卫关系**：过期轮次修剪（`retention.days`）严格以台账 `published` 状态为准，未确认发布的轮次由守卫安全熔断保留，防止网络异常导致成果丢失。若宿主机未挂载 `/data-repo` 或目录不是 Git 仓库，runner 仅记录一行日志并跳过自动同步，评测轮次照常完成。
+- **所有者看板「数据仓」面板动作（ACR-010）**：所有者在看板 `/config` 页可直接查看数据仓状态。在分容器部署下：
+  - **可用动作**：演练（dry-run）、脱敏导出（export）与发布确认（confirm），经 `data/requests/` 通道由 runner 执行；
+  - **推送限制**：容器内无推送凭据，面板触发 push 会直接返回 409（提示“容器内无推送凭据，请在宿主机推送”）；推送须在宿主机终端执行 `git -C ../llm-iq-data push`，随后在面板点击「发布确认」更新台账。
 
 ## 升级与登录态
 

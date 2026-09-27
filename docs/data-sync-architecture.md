@@ -134,7 +134,8 @@ sequenceDiagram
 5. **发布确认模式（Confirm Published）与宿主机/容器分工**：
    - **容器安全凭据隔离**：容器内不存放任何 GitHub Token 或 SSH 凭据，runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；
    - **宿主机人工发布**：推送操作由宿主机操作者使用自身凭据在宿主机终端执行 `git -C ../llm-iq-data push` 完成，确保公开数据发布经过人工确认；
-   - **发布确认回填**：执行 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓的匿名 `git fetch` 拉取远端引用，基于 `git merge-base --is-ancestor` 校验提交是否已被远端上游分支包含；若已包含，则将台账中对应轮次安全转换为 `status: published` 并记录 `publishedAt`；此模式不导出、不提交、不推送，与 `--push` 互斥，fetch 失败或无上游分支时报错中止且台账不变。
+   - **发布确认回填**：执行 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓的匿名 `git fetch` 拉取远端引用，基于 `git merge-base --is-ancestor` 校验提交是否已被远端上游分支包含；若已包含，则将台账中对应轮次安全转换为 `status: published` 并记录 `publishedAt`；此模式不导出、不提交、不推送，与 `--push` 互斥，fetch 失败或无上游分支时报错中止且台账不变；
+   - **网页同步面板与请求通道（ACR-010）**：所有者看板 `/config` 页新增数据仓面板，支持网页端直接查看健康状态、执行演练（dry-run）、脱敏导出（export）、发布确认（confirm）与带二次确认的推送（push）；分容器部署下经 `data/requests/` 通道由 runner 代办，容器内禁推，须在宿主机推送。
 
 
 ---
@@ -253,4 +254,9 @@ xumetide-dev/llm-iq-data/
 3. **执行引擎与修剪守护**：
    * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
    * `src/core/retention.ts`：仅对台账确认为 `published` 的过期轮次执行物理删除，未发布轮次安全熔断保留。
+4. **所有者看板网页入口与 API（ACR-010）**：
+   * `GET /api/data-repo`：所有者聚合查询数据仓工作副本健康度、清单、台账与本地未同步轮次；
+   * `POST /api/data-repo/sync`：所有者触发同步动作，支持 dry-run / export / confirm / push 模式，带并发互斥锁与 push 二次提交确认；
+   * 分容器部署下经 `data/requests/` 请求通道由执行器代答与执行导出，容器内禁推兜底；
+   * `/config` 页提供可视化同步面板、被拦截轮次清单与弹窗二次确认推送。
 
