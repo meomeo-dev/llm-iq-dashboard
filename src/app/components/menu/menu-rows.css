@@ -1,0 +1,149 @@
+/* 复选 / 单选行与批量操作、导出菜单 */
+
+.menu-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-row:hover {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.menu-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-row-count {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 复选行：隐藏原生复选框，由 .checkbox 绘制 */
+.menu-row input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.checkbox {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 4px;
+}
+
+.menu-row input:checked ~ .checkbox {
+  border-color: var(--accent);
+  background:
+    linear-gradient(-45deg, transparent 47%, #fff 47%, #fff 56%, transparent 56%) 5px 1px / 5px 7px no-repeat,
+    linear-gradient(45deg, transparent 63%, #fff 63%, #fff 72%, transparent 72%) 2px 4px / 5px 7px no-repeat,
+    var(--accent);
+}
+
+.menu-row input:checked ~ .menu-row-name {
+  color: var(--text);
+}
+
+.menu-panel.align-right {
+  right: 0;
+  left: auto;
+}
+
+/* 复选清单顶部的批量操作 */
+.check-bulk {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.check-bulk button {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.check-bulk button:hover:not(:disabled) {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.check-bulk button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 单选行（时区） */
+.radio {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 50%;
+}
+
+.menu-row[aria-checked="true"] .radio {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 3.5px var(--surface);
+  background: var(--accent);
+}
+
+.menu-row[aria-checked="true"] .menu-row-name {
+  color: var(--text);
+}
+
+.zone-id {
+  margin-left: 4px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* 导出菜单：生成中禁用，失败原因显示在面板底部 */
+.menu-row:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.export-error {
+  max-width: 280px;
+  margin: 6px 8px 2px;
+  color: var(--err);
+  font-size: 12px;
+}
+
+.menu-panel.export-panel {
+  min-width: 240px;
+}
+
+@media (max-width: 640px) {
+  .menu-panel.export-panel {
+    right: 0;
+    max-width: calc(100vw - 20px);
+  }
+}
