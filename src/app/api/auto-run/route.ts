@@ -9,9 +9,6 @@ import { NextResponse } from "next/server";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwnerAction } from "@/core/auth/guard";
 import { describeAutoRun, writeAutoRunSwitch } from "@/core/auto-run";
-import { loadConfig } from "@/core/config";
-import { applyConfigPatch } from "@/core/config-writer";
-import { configPath } from "@/core/paths";
 import { launchSchedulerIfNeeded } from "@/core/scheduler-launcher";
 
 export const dynamic = "force-dynamic";
@@ -41,14 +38,6 @@ export async function PUT(request: Request): Promise<NextResponse> {
   try {
     await writeAutoRunSwitch(enabled);
     await audit({ action: "auto-run", outcome: "ok", deviceId: guard.owner.deviceId, ip: clientIp(request), detail: enabled ? "on" : "off" });
-
-    // 开启自动调度时若配置中被停用，自动同步开启，消除状态割裂
-    if (enabled) {
-      const cfg = loadConfig(configPath());
-      if (!cfg.schedule.enabled) {
-        await applyConfigPatch(configPath(), { schedule: { ...cfg.schedule, enabled: true } });
-      }
-    }
 
     const launchedPid = await launchSchedulerIfNeeded();
     const state = await describeAutoRun();

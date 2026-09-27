@@ -9,8 +9,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { readAutoRunSwitch, readLiveScheduler } from "./auto-run";
-import { loadConfig } from "./config";
-import { configPath, dataRoot } from "./paths";
+import { dataRoot } from "./paths";
 import { externalRunner } from "./runner-link";
 
 /** 调度器启动到登记 pid 需要一两秒，冷却期内不重复拉起 */
@@ -45,14 +44,15 @@ export function launchScheduler(now: number = Date.now()): number | null {
 }
 
 /**
- * 自动任务开启、配置启用调度且没有存活的调度器时拉起一个，返回新 pid；否则返回 null。
+ * 自动任务开启且没有存活的调度器时拉起一个，返回新 pid；否则返回 null。
+ * 不看配置里有没有节奏：调度器常驻并随配置热更新，之后补上节奏也能生效。
  * 拨开开关与看板启动时调用，后者用于补上机器或容器重启后缺失的调度器。
  */
 export async function launchSchedulerIfNeeded(): Promise<number | null> {
   // 分容器部署：调度器在执行器容器里常驻，看板不拉起
   if (externalRunner()) return null;
   const { enabled } = await readAutoRunSwitch();
-  if (!enabled || !loadConfig(configPath()).schedule.enabled) return null;
+  if (!enabled) return null;
   if ((await readLiveScheduler()) !== null) return null;
   return launchScheduler();
 }

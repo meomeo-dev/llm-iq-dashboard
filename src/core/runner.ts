@@ -64,7 +64,10 @@ export async function executeRun(
   if (config.retention.days !== null) await pruneExpiredRuns(config.retention.days, log, startedAt);
 
   const catalog = await loadCatalog(config, options.refreshCapabilities === true, log);
-  const prompts = await renderAll(config, startedAt, log, options.candidateOverrides);
+  const prompts = await renderAll(config, startedAt, log, {
+    trigger: options.trigger,
+    candidateOverrides: options.candidateOverrides,
+  });
   const jobs = buildJobs(config, prompts, catalog, log);
 
   const lanes = groupIntoLanes(jobs);

@@ -67,7 +67,7 @@ export function AutoRunToggle({ timeZone }: { timeZone: string }) {
 function subline(state: AutoRunView | null, timeZone: string): string {
   if (state === null) return "读取中…";
   if (!state.enabled) return "已暂停";
-  if (!state.schedule.enabled) return "规则未启用";
+  if (state.schedule.cron === null && state.schedule.intervalMinutes === null) return "未设节奏";
   if (state.schedulerPid === null) return "调度器未运行";
   if (state.nextRunAt !== null) return `下次 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`;
   return `每 ${state.schedule.intervalMinutes} 分钟`;
@@ -75,6 +75,9 @@ function subline(state: AutoRunView | null, timeZone: string): string {
 
 function describeSchedule(state: AutoRunView | null): string {
   if (state === null) return "自动任务";
+  if (state.schedule.cron === null && state.schedule.intervalMinutes === null) {
+    return "自动任务：配置里没有定时节奏，到点不会触发。在配置页设置 cron 或固定间隔后生效。";
+  }
   const rhythm = state.schedule.cron !== null ? `cron ${state.schedule.cron}` : `每 ${state.schedule.intervalMinutes} 分钟`;
   const zone = state.schedule.timezone !== null ? `（${state.schedule.timezone}）` : "";
   const scheduler = state.schedulerPid !== null ? `调度器 pid ${state.schedulerPid}` : "调度器未运行";

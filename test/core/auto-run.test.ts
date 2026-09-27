@@ -52,11 +52,11 @@ test("调度器登记只在进程活着时算数", async () => {
 test("开关关着时，到点的触发被跳过、不发起执行", async () => {
   await writeAutoRunSwitch(false);
   const config = {
-    schedule: { enabled: true, cron: null, intervalMinutes: 600, timezone: null, runOnStart: true },
+    schedule: { cron: null, intervalMinutes: 600, timezone: null, runOnStart: true },
   } as AppConfig;
   const logs: string[] = [];
   const skipped = new Promise<void>((resolve) => {
-    const handle = startScheduler(config, (message) => {
+    const handle = startScheduler(() => config, (message) => {
       logs.push(message);
       if (message.includes("跳过")) {
         handle.stop();

@@ -10,6 +10,7 @@
  *
  * 轮换周期（rotation）为 `day` 时同一天各轮共用一组取值，为 `run` 时每轮都换。
  * 当前周期的取值与游标一起落盘，重启或中断后重跑沿用同一组取值。
+ * 落不落盘由调用方按 RotationLedger 决定：只预览的一次不推进游标、不确立周期取值。
  */
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -32,6 +33,19 @@ export interface RotationConfig {
   period: RotationPeriod;
   /** 按哪个时区划分“一天”（IANA 时区名） */
   timeZone: string;
+}
+
+/**
+ * 本次取值是否记入轮换状态。advance：落盘，推进游标并确立本周期取值；
+ * preview：同样算出下一格给本次使用，但不落盘，轮换序列不受这一次影响。
+ */
+export type RotationLedger = "advance" | "preview";
+
+/** 一次取值所需的轮换上下文 */
+export interface RotationDraw {
+  rotation: RotationConfig;
+  now: Date;
+  ledger: RotationLedger;
 }
 
 /** 一次渲染的产物：最终文本 + 本次每个变量的取值 */
@@ -70,13 +84,13 @@ export async function renderPrompt(
   promptId: string,
   template: string,
   variables: readonly VariableSpec[],
-  rotation: RotationConfig,
-  now: Date,
+  draw: RotationDraw,
 ): Promise<RenderedPrompt> {
   if (variables.length === 0) {
     return { promptId, text: template, bindings: {} };
   }
 
+  const { rotation, now, ledger } = draw;
   const state = await readState();
   const periodKey = rotationKey(rotation, now);
   const kept = state.periods[promptId];
@@ -90,7 +104,7 @@ export async function renderPrompt(
   }
 
   state.periods[promptId] = { periodKey, bindings, pickedAt: now.toISOString() };
-  await writeState(state);
+  if (ledger === "advance") await writeState(state);
   return { promptId, text: substitute(template, bindings), bindings };
 }
 
@@ -104,10 +118,10 @@ const CANDIDATE_KEY = "candidate";
 export async function pickCandidate(
   promptId: string,
   candidateIds: readonly string[],
-  rotation: RotationConfig,
-  now: Date,
+  draw: RotationDraw,
 ): Promise<string> {
   if (candidateIds.length === 0) throw new Error(`提示词 ${promptId} 的候选集为空`);
+  const { rotation, now, ledger } = draw;
   const state = await readState();
   const periodKey = rotationKey(rotation, now);
   const kept = state.periods[promptId];
@@ -118,7 +132,7 @@ export async function pickCandidate(
       : drawFromBag(`${promptId}:${CANDIDATE_KEY}`, candidateIds, state);
 
   state.periods[promptId] = { periodKey, bindings: { [CANDIDATE_KEY]: picked }, pickedAt: now.toISOString() };
-  await writeState(state);
+  if (ledger === "advance") await writeState(state);
   return picked;
 }
 

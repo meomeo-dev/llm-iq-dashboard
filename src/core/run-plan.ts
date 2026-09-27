@@ -8,7 +8,15 @@ import type { RunProgress } from "./progress";
 import { resolvePrompt, type PromptCandidate, type PromptSpec } from "./prompt";
 import type { Logger } from "./runner";
 import { EFFORT_LEVELS, foldEffort, type CliKind, type EffortLevel, type RunRecord, type Target } from "./types";
-import { pickCandidate, renderPrompt, rotationKey, type RenderedPrompt, type RotationConfig } from "./variables";
+import {
+  pickCandidate,
+  renderPrompt,
+  rotationKey,
+  type RenderedPrompt,
+  type RotationConfig,
+  type RotationDraw,
+  type RotationLedger,
+} from "./variables";
 import {
   // 重命名以免与 Job 解构出的同名字段互相遮蔽
   effortAdjustable as isEffortAdjustable,
@@ -54,28 +62,44 @@ export async function loadCatalog(
   return refreshCatalog(config.customModels);
 }
 
+/**
+ * 手动轮次在“每轮一换”下只预览下一格：定时序列靠游标保证 N 轮内覆盖全部取值，
+ * 手动插队记账会让它跳格。“每天一换”照常记账：当天首轮确立取值，同日其余轮次
+ * （定时或手动）都沿用它，游标每天只进一格，与谁先跑无关。
+ */
+export function rotationLedgerFor(trigger: RunRecord["trigger"], rotation: RotationConfig): RotationLedger {
+  return trigger === "manual" && rotation.period === "run" ? "preview" : "advance";
+}
+
+export interface RenderOptions {
+  trigger: RunRecord["trigger"];
+  /** 单次执行时手动指定候选题目的映射（promptId -> candidateId） */
+  candidateOverrides?: Readonly<Record<string, string>>;
+}
+
 export async function renderAll(
   config: AppConfig,
   now: Date,
   log: Logger,
-  candidateOverrides?: Readonly<Record<string, string>>,
+  options: RenderOptions,
 ): Promise<RenderedPrompt[]> {
   const rendered: RenderedPrompt[] = [];
   const { rotation } = config.run;
   const period = rotationKey(rotation, now);
+  const draw: RotationDraw = { rotation, now, ledger: rotationLedgerFor(options.trigger, rotation) };
 
   for (const promptId of config.run.promptIds) {
     const spec = resolvePrompt(promptId, config.customPrompts);
-    const overrideCandidateId = candidateOverrides?.[spec.id];
+    const overrideCandidateId = options.candidateOverrides?.[spec.id];
     const result =
       spec.candidates.length > 0
-        ? await renderCandidate(spec, rotation, now, overrideCandidateId)
-        : await renderPrompt(spec.id, spec.template, spec.variables, rotation, now);
+        ? await renderCandidate(spec, draw, overrideCandidateId)
+        : await renderPrompt(spec.id, spec.template, spec.variables, draw);
     if (Object.keys(result.bindings).length > 0) {
       const scope = overrideCandidateId
         ? "单次指定"
         : period === null
-          ? "本轮"
+          ? draw.ledger === "preview" ? "本轮（预览，不推进轮换）" : "本轮"
           : `${period}（${rotation.timeZone}）`;
       log(`提示词 ${spec.id} ${scope}取值：${formatBindings(result.bindings)}`);
     }
@@ -90,8 +114,7 @@ const CANDIDATE_BADGE = "回目";
 /** 候选集条目：单次指定时直接使用；未指定时按轮换周期抽一条，逐字发送该条的完整文本 */
 async function renderCandidate(
   spec: PromptSpec,
-  rotation: RotationConfig,
-  now: Date,
+  draw: RotationDraw,
   overrideCandidateId?: string,
 ): Promise<RenderedPrompt> {
   let candidate: PromptCandidate | undefined;
@@ -104,8 +127,7 @@ async function renderCandidate(
     const pickedId = await pickCandidate(
       spec.id,
       spec.candidates.map((candidate) => candidate.id),
-      rotation,
-      now,
+      draw,
     );
     candidate = spec.candidates.find((item) => item.id === pickedId);
     if (candidate === undefined) throw new Error(`提示词 ${spec.id} 抽中了不存在的候选 ${pickedId}`);

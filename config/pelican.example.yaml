@@ -8,9 +8,9 @@
 # 某家 CLI 没装或没登录时，每轮开始前的预检会拦下它的调用，看板上给出安装或登录
 # 命令；不打算用的 CLI 直接删掉对应的 targets 项即可。`pnpm preflight` 可随时自查。
 
+# schedule 只定节奏；到点是否执行由看板工具栏的“自动任务”开关决定。
+# cron 与 intervalMinutes 都不写即不定时。改动无需重启调度器。
 schedule:
-  enabled: true
-
   # cron 与 intervalMinutes 二选一，cron 优先。五段式：分 时 日 月 周。
   # 起步为每天 9 点一轮。自动任务默认关闭，在看板工具栏上打开“自动任务”后才会
   # 按这个节奏跑（没有调度器在运行时看板会拉起一个）。

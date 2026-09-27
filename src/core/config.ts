@@ -3,6 +3,7 @@
  * adapters/ 与 store.ts。校验尽早失败（fail fast），启动时一次报出全部问题。
  */
 
+import { Cron } from "croner";
 import { constants, copyFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -20,14 +21,25 @@ import type { RotationConfig } from "./variables";
 import type { BudgetConfig } from "./budget";
 import { applyCeiling, readCeiling } from "./ceiling";
 
+/**
+ * 定时任务的节奏。只描述“何时触发”；到点是否真的执行由看板的“自动任务”开关
+ * （auto-run.json）决定，两者不重叠。cron 与 intervalMinutes 都为 null 即不定时。
+ */
 export interface ScheduleConfig {
-  enabled: boolean;
   /** cron 表达式与 intervalMinutes 二选一，cron 优先 */
   cron: string | null;
   intervalMinutes: number | null;
   timezone: string | null;
-  /** 调度器启动时是否立刻先跑一轮 */
+  /** 调度器启动时是否立刻先跑一轮；须同时设置节奏 */
   runOnStart: boolean;
+}
+
+/** 节奏本身，不含启动行为；调度器据此判断是否要重建定时器 */
+export type ScheduleRhythm = Pick<ScheduleConfig, "cron" | "intervalMinutes" | "timezone">;
+
+/** 是否设置了定时节奏；两者皆空即不定时 */
+export function hasRhythm(schedule: Pick<ScheduleConfig, "cron" | "intervalMinutes">): boolean {
+  return schedule.cron !== null || schedule.intervalMinutes !== null;
 }
 
 export interface RunConfig {
@@ -147,21 +159,34 @@ function parseSchedule(raw: unknown, errors: string[]): ScheduleConfig {
   const node = asRecord(raw) ?? {};
   const cron = optionalString(node.cron);
   const intervalMinutes = optionalNumber(node.intervalMinutes);
-  const enabled = node.enabled !== false;
+  const runOnStart = node.runOnStart === true;
 
-  if (enabled && cron === null && intervalMinutes === null) {
-    errors.push("schedule 已启用，但 cron 与 intervalMinutes 都未设置");
+  // 开关只有一个（看板的“自动任务”），配置里再写一个会让两处状态互相矛盾
+  if ("enabled" in node) {
+    errors.push(
+      "schedule.enabled 不是配置项：到点是否执行由看板的“自动任务”开关决定，" +
+        "请删除这一行；不要定时就同时删掉 cron 与 intervalMinutes",
+    );
   }
   if (intervalMinutes !== null && intervalMinutes <= 0) {
     errors.push(`schedule.intervalMinutes 必须为正数，当前为 ${intervalMinutes}`);
   }
-  return {
-    enabled,
-    cron,
-    intervalMinutes,
-    timezone: optionalString(node.timezone),
-    runOnStart: node.runOnStart === true,
-  };
+  const timezone = optionalString(node.timezone);
+  // 调度器随配置热更新节奏，写坏的 cron 须在保存时拦下，而不是到重建定时器时才报。
+  // croner 构造时只校验表达式，时区要到推算下一次触发时才校验，故两步都做
+  if (cron !== null) {
+    try {
+      const probe = new Cron(cron, { paused: true, ...(timezone !== null ? { timezone } : {}) });
+      probe.nextRun();
+      probe.stop();
+    } catch (cause) {
+      errors.push(`schedule.cron 或 timezone 无效：${cause instanceof Error ? cause.message : String(cause)}`);
+    }
+  }
+  if (runOnStart && cron === null && intervalMinutes === null) {
+    errors.push("schedule.runOnStart 需要同时设置 cron 或 intervalMinutes");
+  }
+  return { cron, intervalMinutes, timezone, runOnStart };
 }
 
 /** 不写 retention 时全部保留；删除历史不可逆，须显式开启 */

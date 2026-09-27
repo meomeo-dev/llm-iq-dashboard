@@ -1,7 +1,7 @@
 /**
  * 自动任务的运行态开关与调度器进程登记，文件位于产物目录，看板与调度器共同读写。
  *
- * 配置里的 schedule 决定节奏，这里决定此刻是否允许自动执行，看板上拨动即生效。
+ * 配置里的 schedule 只决定节奏，这里是唯一的开关：此刻是否允许自动执行，看板上拨动即生效。
  * - auto-run.json：开关。文件不存在即关闭：自动任务消耗 CLI 配额，须由人明确打开。
  * - scheduler.json：常驻调度器的 pid，看板据此判断是否需要拉起。
  */
@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { loadConfig, type ScheduleConfig } from "./config";
+import { loadConfig, type ScheduleRhythm } from "./config";
 import { configPath, dataRoot } from "./paths";
 import { isProcessAlive, processStartMark } from "./process-identity";
 import { externalRunner, readFreshHeartbeat } from "./runner-link";
@@ -71,13 +71,13 @@ export interface AutoRunView {
   updatedAt: string | null;
   /** 活着的调度器 pid；null 表示没有调度器在跑 */
   schedulerPid: number | null;
-  /** 配置里的调度节奏；schedule.enabled 为 false 时开关打开也不会跑 */
-  schedule: Pick<ScheduleConfig, "enabled" | "cron" | "intervalMinutes" | "timezone">;
+  /** 配置里的调度节奏；cron 与 intervalMinutes 皆空即不定时，开关打开也不会跑 */
+  schedule: ScheduleRhythm;
   /** 按 cron 推算的下一个触发点；间隔调度或未配置时为 null */
   nextRunAt: string | null;
 }
 
-function loadScheduleSafely(): Pick<ScheduleConfig, "enabled" | "cron" | "intervalMinutes" | "timezone"> {
+function loadScheduleSafely(): ScheduleRhythm {
   try {
     return loadConfig(configPath()).schedule;
   } catch {
@@ -87,7 +87,6 @@ function loadScheduleSafely(): Pick<ScheduleConfig, "enabled" | "cron" | "interv
       const s = (parsed && typeof parsed === "object" ? parsed.schedule : null) as Record<string, unknown> | null;
       if (s && typeof s === "object") {
         return {
-          enabled: s.enabled !== false,
           cron: typeof s.cron === "string" ? s.cron : null,
           intervalMinutes: typeof s.intervalMinutes === "number" ? s.intervalMinutes : null,
           timezone: typeof s.timezone === "string" ? s.timezone : null,
@@ -96,7 +95,7 @@ function loadScheduleSafely(): Pick<ScheduleConfig, "enabled" | "cron" | "interv
     } catch {
       // 忽略文件解析错误，返回安全默认值
     }
-    return { enabled: false, cron: null, intervalMinutes: null, timezone: null };
+    return { cron: null, intervalMinutes: null, timezone: null };
   }
 }
 
@@ -109,7 +108,6 @@ export async function describeAutoRun(now: Date = new Date()): Promise<AutoRunVi
     updatedAt: toggle.updatedAt,
     schedulerPid: scheduler?.pid ?? null,
     schedule: {
-      enabled: schedule.enabled,
       cron: schedule.cron,
       intervalMinutes: schedule.intervalMinutes,
       timezone: schedule.timezone,
@@ -118,8 +116,8 @@ export async function describeAutoRun(now: Date = new Date()): Promise<AutoRunVi
   };
 }
 
-function nextCronRun(schedule: Pick<ScheduleConfig, "enabled" | "cron" | "timezone">, now: Date): string | null {
-  if (!schedule.enabled || schedule.cron === null) return null;
+function nextCronRun(schedule: ScheduleRhythm, now: Date): string | null {
+  if (schedule.cron === null) return null;
   const timezone = schedule.timezone !== null ? { timezone: schedule.timezone } : {};
   try {
     const job = new Cron(schedule.cron, { paused: true, ...timezone });

@@ -43,7 +43,8 @@ async function main(): Promise<void> {
 
   const { enabled } = await readAutoRunSwitch();
   log(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);
-  const scheduler = startScheduler(config, log);
+  // 调度器每个触发点重读配置，看板改的定时目标、题目与节奏无需重启执行器
+  const scheduler = startScheduler(() => loadConfig(configPath()), log);
 
   setInterval(() => void pruneRequests().catch(() => {}), PRUNE_INTERVAL_MS);
   const polling = setInterval(() => void pollRequests(), REQUEST_POLL_MS);

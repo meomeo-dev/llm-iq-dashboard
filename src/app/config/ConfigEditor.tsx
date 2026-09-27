@@ -104,7 +104,7 @@ export function ConfigEditor({
 
       <Section
         title="调度"
-        hint="cron 与间隔二选一，cron 优先。改动保存后于下一个触发点生效。"
+        hint="这里只定节奏，到点是否执行看“自动任务”开关。cron 与间隔二选一，cron 优先；保存后 30 秒内生效，无需重启。"
       >
         <ScheduleForm value={draft.schedule} onChange={(v) => patch("schedule", v)} />
       </Section>

@@ -33,7 +33,8 @@ async function main(): Promise<void> {
   const { enabled } = await readAutoRunSwitch();
   timestamped(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);
 
-  const handle = startScheduler(config, timestamped);
+  // 每个触发点重读配置，看板上的改动无需重启调度器
+  const handle = startScheduler(() => loadConfig(path), timestamped);
 
   // 收到终止信号即停止调度并退出；正在跑的一轮随之中断，已写入的产物保留。
   const shutdown = (signal: NodeJS.Signals) => {

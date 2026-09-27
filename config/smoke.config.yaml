@@ -1,8 +1,6 @@
 # 冒烟配置（smoke test）：验证三家 CLI 的调用链、候选集抽取与强度折叠是否仍然有效。
 # 用法：PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once
-
-schedule:
-  enabled: false
+# 不写 schedule：冒烟只手动跑，不定时。
 
 run:
   # 两条并行，正好对照：同一模型在固定题面与轮换题面下的表现差异

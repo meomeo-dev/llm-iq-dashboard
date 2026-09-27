@@ -9,8 +9,6 @@ import { loadConfig, type AppConfig } from "@/core/config";
 import { narrowConfig, scheduledRound } from "@/core/run-selection";
 
 const CONFIG_YAML = `
-schedule:
-  enabled: false
 run:
   promptIds: [xiyou-v1]
 targets:

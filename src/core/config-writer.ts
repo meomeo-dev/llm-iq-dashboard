@@ -15,7 +15,6 @@ import type { RotationConfig } from "./variables";
 /** 可写回的字段；未出现的键保持文件原样 */
 export interface ConfigPatch {
   schedule?: Partial<{
-    enabled: boolean;
     cron: string | null;
     intervalMinutes: number | null;
     timezone: string | null;
@@ -45,8 +44,10 @@ export async function applyConfigPatch(
   applyRun(doc, patch.run);
   if (patch.targets !== undefined) {
     reconcileSequence(doc, ["targets"], patch.targets.map(serializeTarget), {
-      // 身份不含强度，只改强度的项仍保留其注释
-      identityOf: (item) => `${String(item.cli)}::${String(item.model)}`,
+      // 精确身份含强度：删掉一项时，同模型的其他强度不会认领它的节点、继承它的手写 timeoutMs
+      identityOf: (item) => `${String(item.cli)}::${String(item.model)}::${String(item.effort)}`,
+      // 只改了强度的一项仍复用原节点，保留其注释
+      looseIdentityOf: (item) => `${String(item.cli)}::${String(item.model)}`,
       // enabled 由界面管理：勾回定时任务时须删掉文件里的 enabled: false
       managedKeys: ["enabled"],
     });

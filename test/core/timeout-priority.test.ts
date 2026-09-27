@@ -12,8 +12,6 @@ import { after, before, test } from "node:test";
 import { loadConfig } from "@/core/config";
 
 const CONFIG_YAML = `
-schedule:
-  enabled: false
 run:
   promptIds: [classic-v1]
   defaultTimeoutMs: 300000

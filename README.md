@@ -109,12 +109,16 @@ docker exec -it llm-iq-runner pnpm pair
 - **直接编辑** `config/pelican.config.yaml`。它是本机配置、不入库，首次加载时由
   [`config/pelican.example.yaml`](config/pelican.example.yaml) 生成。
 
+`schedule` 只定节奏，到点是否执行只看看板工具栏的“自动任务”开关；`cron` 与
+`intervalMinutes` 都不写即不定时。定时轮次与“跑一次”一样在发起时读配置，改动无需重启
+调度器：定时目标与题目下一次触发即生效，节奏的改动 30 秒内接手。
+
 | 字段 | 说明 |
 | --- | --- |
 | `schedule.cron` | cron 表达式，与 `intervalMinutes` 二选一，cron 优先；起步模板为 `0 9 * * *` 每天一轮 |
 | `schedule.intervalMinutes` | 固定间隔（分钟） |
 | `schedule.timezone` | cron 的时区，留空跟随本机 |
-| `schedule.runOnStart` | 调度器启动时是否立刻先跑一轮 |
+| `schedule.runOnStart` | 调度器启动时是否立刻先跑一轮；须同时设置节奏 |
 | `run.promptIds` | 本轮要跑的提示词条目，可多条并行 |
 | `run.concurrency` | 同时在跑的模型数上限（按模型分道，见下） |
 | `run.defaultTimeoutMs` | 全局默认超时（默认 300 秒） |
@@ -159,8 +163,8 @@ docker exec -it llm-iq-runner pnpm pair
 
 | `period` | 行为 |
 | --- | --- |
-| `day`（默认） | 同一天的各轮共用同一条候选，同一天内的结果可以横向对照；“一天”按 `timezone` 划分，默认 `UTC` |
-| `run` | 每轮都换 |
+| `day`（默认） | 同一天的各轮共用同一条候选，同一天内的结果可以横向对照；当天首轮（定时或手动）确立取值；“一天”按 `timezone` 划分，默认 `UTC` |
+| `run` | 定时每轮都换；手动“跑一次”只预览下一条、不推进轮换，定时序列仍在一副牌内不重复 |
 
 当前周期抽中的候选与洗牌顺序记录在 `data/variable-state.json`，调度器重启或一轮中途
 被打断后，同一周期内沿用同一条。每轮实际提问的完整文本写进运行记录，抽中的回目在卡片
@@ -193,8 +197,8 @@ docker exec -it llm-iq-runner pnpm pair
   的题目），浏览器记住上次的勾选。可选范围是配置里的全部目标（含不进定时任务的）与当前
   可调用的 CLI 的交集。发起后在后台执行，进度见执行状态；已有一轮
   在跑时拒绝发起。
-- **自动任务**：工具栏开关，默认关闭；打开后下行显示下一次触发时刻，调度器未运行或配置
-  里 `schedule.enabled: false` 时给出提示。
+- **自动任务**：工具栏开关，默认关闭，是否定时执行只看它；打开后下行显示下一次触发时刻，
+  调度器未运行或配置里没有定时节奏时给出提示。
 - **执行状态**：工具栏上的胶囊显示当前轮次“执行中 12/34”，空闲时显示“空闲”。展开后
   按模型分道列出每次调用：排队、执行中（已用 / 超时上限与进度条）、已完成（耗时，左边框
   标成败）。执行进程写 `data/runs/<runId>/progress.json`，看板进程监听它并经
