@@ -53,44 +53,6 @@ export const UPGRADED_PROMPT: PromptSpec = {
 };
 
 /**
- * 雷军骑自行车（带输入参考图片的本地测试题）。
- * 原型为雷军清晨骑折叠自行车上班向镜头挥手致意、配字“早上好”的经典画面。
- * 提示词包含输入图片 URL 与 Markdown 嵌入，并规定人物神态、着装、折叠车身、晨光长影与标语等视觉还原要求。
- */
-export const LEIJUN_PROMPT: PromptSpec = {
-  id: "leijun-v1",
-  label: "雷军骑自行车（Lei Jun on Bicycle）",
-  template: [
-    "请参考以下输入的图片，生成一幅雷军骑自行车的完整 SVG 插画：",
-    "",
-    "输入图片：",
-    "![雷军骑自行车](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLDs8B3MO0pHXY583y51i9lQs0mvoKTcn5SiELphxvfw&s)",
-    "",
-    "画面需忠实还原输入图片中的核心视觉要素：",
-    "1. 人物与姿态：雷军面带亲切温和的微笑，右手高高举起向前挥手致意，左手握把，单脚踩在脚踏板上骑行。",
-    "2. 服装与色彩：身穿砖红色/暗红色短袖T恤、深色九分长裤、白色短袜配醒目的亮橙色运动鞋，左手腕佩戴手表。",
-    "3. 自行车结构：一辆墨绿色小轮径折叠自行车（类似 Brompton 小布），车身折叠关节清晰，前后车轮带辐条与黄边黑胎，车头配有棕黄色车把置物小包。",
-    "4. 场景与构图：现代商务写字楼园区清晨户外，地面留有朝阳斜射拉长的人物与自行车影子，背景有现代写字楼幕墙立柱与绿植树木。",
-    "5. 画面文字：画面中醒目包含黄色“早上好”字样。",
-    "",
-    "请直接输出完整、自闭合、语法正确的 SVG 代码，无需多余说明。",
-  ].join("\n"),
-  variables: [],
-  candidates: [],
-  source: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLDs8B3MO0pHXY583y51i9lQs0mvoKTcn5SiELphxvfw&s",
-  verified: true,
-  immutable: true,
-  originDate: "2024-05-18",
-  registeredAt: "2026-09-26",
-  standard: {
-    coreKey: "Image-to-SVG 视觉要素与构图忠实还原",
-    groundTruth: "短发温和微笑、右手高举单手向前挥手、单脚踩踏板；砖红短袖T恤、深色九分裤、白袜配亮橙色运动鞋；墨绿色小轮折叠车（车架铰链分明、车头棕黄置物包）；写字楼晨光长影、醒目包含黄色“早上好”中文字样。",
-    evaluationCriteria: "1. 关键特征完整性：砖红T恤、亮橙鞋、墨绿折叠车、黄色“早上好”字样缺一扣分；2. 姿态神情：挥手致意微笑与单脚蹬车姿态还原输入图像；3. 矢量分层：光影朝向与长阴影投射准确。",
-    referenceSource: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLDs8B3MO0pHXY583y51i9lQs0mvoKTcn5SiELphxvfw&s",
-  },
-};
-
-/**
  * 钟表时针几何空间逻辑（3:45 时钟）。
  * 考察时间到角度的非线性空间映射能力：45 分钟时时针应偏向 4（112.5°）而非直指 3（90°）。
  */

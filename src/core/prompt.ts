@@ -22,7 +22,6 @@ export { promptLifecycle } from "./prompt/lifecycle";
 export {
   CLASSIC_PROMPT,
   UPGRADED_PROMPT,
-  LEIJUN_PROMPT,
   CLOCK_PROMPT,
   ANIMATED_PELICAN_PROMPT,
   PENROSE_PROMPT,

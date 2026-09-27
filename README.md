@@ -337,7 +337,7 @@ pnpm sync:data --repo ../llm-iq-data --json
    - 尚未发布的过期轮次自动保留并记录日志，防止因断网导致数据丢失；
    - 过期的空目录可删；仅有过程文件而无 `run.json` 的目录予以保留。
 6. **永不发布的题目**：
-   - `leijun-v1`（雷军骑自行车）仅用于本地测试，由本工程 `src/core/data-repo/contract.ts` 与数据仓 `validator.mjs` 双重代码强制阻断，其题面与结果永不上传至公开数据仓（详见 `AGENTS.md`）。
+   - 由本工程 `src/core/data-repo/contract.ts` 与数据仓 `validator.mjs` 的 `UNPUBLISHABLE_PROMPT_IDS` 双重阻断，清单内题目的题面与结果永不上传至公开数据仓（详见 `AGENTS.md`）。
 
 
 ## 设计要点

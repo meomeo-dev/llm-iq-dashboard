@@ -14,11 +14,12 @@
 
 ## 永不发布的题目
 
-- `leijun-v1`（雷军骑自行车）只是本地测试题，其题面与结果永远不上传到 llm-iq-data。
+- 题库不收录以真实人物为主体的题目。`leijun-v1` 已从题库移除，其 id 仍保留在下述两处清单中，
+  拦截任何残留的本地历史结果。
 - 规则由两处代码强制，二者须保持一致：
   - 本仓库 `src/core/data-repo/contract.ts` 的 `UNPUBLISHABLE_PROMPT_IDS`：同步时剔除；
   - 数据仓 `scripts/lib/validator.mjs` 的 `UNPUBLISHABLE_PROMPT_IDS`：CI 拒收。
-- 新增以真人为主体或仅供本地测试的题目时，加入上述两处清单。
+- 新增仅供本地测试的题目时，加入上述两处清单。
 - 不要用 `--run` 指定、手工复制或其他方式绕过这条规则。
 
 ## 质量门

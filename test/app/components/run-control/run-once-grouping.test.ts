@@ -14,7 +14,6 @@ describe("run-once-grouping", () => {
       assert.equal(classifyPrompt({ id: "classic-v1", label: "经典", defaultSelected: false }), "经典基准");
       assert.equal(classifyPrompt({ id: "upgraded-v2", label: "升级", defaultSelected: false }), "经典基准");
       assert.equal(classifyPrompt({ id: "animated-pelican-v1", label: "动态", defaultSelected: true }), "经典基准");
-      assert.equal(classifyPrompt({ id: "leijun-v1", label: "雷军", defaultSelected: false }), "经典基准");
     });
 
     test("四大名著分类", () => {

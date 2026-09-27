@@ -27,7 +27,6 @@ run:
   # 本轮要跑的提示词条目，登记在 src/core/prompt.ts，也可在下方 prompts: 自定义。
   # 每轮的调用次数 = 提示词条数 × 启用的 targets 数。
   # - classic-v1 / upgraded-v2  Simon Willison 公开发布的原文，逐字不改，与外部公开结果对齐。
-  # - leijun-v1                 雷军骑自行车，包含输入的参考图片（Image-to-SVG 本地测试题）。
   # - 前沿硬核工程与科技视觉：
   #     * jwst-deployment-v1    航天前沿：韦伯空间望远镜主镜与5层遮阳帆空间展开架构
   #     * tokamak-plasma-v1     核物理前沿：托卡马克核聚变 D 形真空室与磁约束等离子体芯（动态）

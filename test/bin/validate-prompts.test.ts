@@ -21,7 +21,7 @@ test("validate-prompts CLI 执行成功且包含三大校验步骤", async () =>
 
   assert.equal(stderr, "");
   assert.ok(stdout.includes("[1/3] 校验内置核心题库 (BUILTIN_PROMPTS)..."));
-  assert.ok(stdout.includes("43 道内置题目通过严格校验"));
+  assert.ok(stdout.includes("42 道内置题目通过严格校验"));
   assert.ok(stdout.includes("[2/3] 校验 14 领域全量 140 道独立前沿题目..."));
   assert.ok(stdout.includes("140 道前沿单题通过严格校验"));
   assert.ok(stdout.includes("[3/3] 校验 14 套前沿套题 candidate 级特异性标准..."));

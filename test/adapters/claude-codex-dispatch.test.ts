@@ -1,6 +1,6 @@
 /**
  * Claude 与 Codex 适配器调度参数的基本测试（零额度消耗）：
- * 验证对 leijun-v1（含输入参考图）等题目的参数拼装、努力程度传递与考场工具约束。
+ * 验证对含输入参考图的题目的参数拼装、努力程度传递与考场工具约束。
  */
 
 import assert from "node:assert/strict";
@@ -8,7 +8,12 @@ import { test } from "node:test";
 import { buildClaudeArgs } from "@/adapters/claude";
 import { buildTurnParams } from "@/adapters/codex";
 import type { AgentRequest } from "@/adapters/types";
-import { LEIJUN_PROMPT } from "@/core/prompt";
+/** 带输入参考图的题面样例：Markdown 图片嵌入 + 图片链接 */
+const IMAGE_PROMPT_TEMPLATE = [
+  "请参考以下输入的图片，生成对应的 SVG 插画：",
+  "",
+  "![参考图](https://example.com/reference.png)",
+].join("\n");
 import type { Target } from "@/core/types";
 
 const mockTargetClaude: Target = {
@@ -33,10 +38,10 @@ const mockTargetCodex: Target = {
   enabled: true,
 };
 
-test("Claude 适配器：正确组装 leijun-v1 提示词及 CLI 参数", () => {
+test("Claude 适配器：正确组装含参考图的提示词及 CLI 参数", () => {
   const request: AgentRequest = {
     target: mockTargetClaude,
-    promptText: LEIJUN_PROMPT.template,
+    promptText: IMAGE_PROMPT_TEMPLATE,
     workdir: "/tmp/mock-workdir",
     appliedEffort: "low",
     effortAdjustable: true,
@@ -47,9 +52,9 @@ test("Claude 适配器：正确组装 leijun-v1 提示词及 CLI 参数", () => 
 
   // 验证基础命令行结构
   assert.equal(args[0], "-p");
-  assert.equal(args[1], LEIJUN_PROMPT.template);
-  assert.ok(args[1].includes("![雷军骑自行车]"), "提示词参数未包含输入图片的 Markdown 语法");
-  assert.ok(args[1].includes("https://encrypted-tbn0.gstatic.com/"), "提示词参数未包含图片链接");
+  assert.equal(args[1], IMAGE_PROMPT_TEMPLATE);
+  assert.ok(args[1].includes("![参考图]"), "提示词参数未包含输入图片的 Markdown 语法");
+  assert.ok(args[1].includes("https://example.com/reference.png"), "提示词参数未包含图片链接");
 
   // 验证模型与思考强度
   const modelIdx = args.indexOf("--model");
@@ -66,10 +71,10 @@ test("Claude 适配器：正确组装 leijun-v1 提示词及 CLI 参数", () => 
   assert.equal(args[toolsIdx + 1], "");
 });
 
-test("Codex 适配器：正确组装 turn/start 参数与 leijun-v1 输入数据", () => {
+test("Codex 适配器：正确组装 turn/start 参数与含参考图的输入数据", () => {
   const request: AgentRequest = {
     target: mockTargetCodex,
-    promptText: LEIJUN_PROMPT.template,
+    promptText: IMAGE_PROMPT_TEMPLATE,
     workdir: "/tmp/mock-workdir",
     appliedEffort: "high",
     effortAdjustable: true,
@@ -88,8 +93,8 @@ test("Codex 适配器：正确组装 turn/start 参数与 leijun-v1 输入数据
   const first = input[0];
   assert.ok(first !== undefined);
   assert.equal(first.type, "text");
-  assert.equal(first.text, LEIJUN_PROMPT.template);
-  assert.ok(first.text.includes("https://encrypted-tbn0.gstatic.com/"), "Codex 输入未包含图片链接");
+  assert.equal(first.text, IMAGE_PROMPT_TEMPLATE);
+  assert.ok(first.text.includes("https://example.com/reference.png"), "Codex 输入未包含图片链接");
 });
 
 test("Codex 适配器：当模型不可调时不传递 effort", () => {

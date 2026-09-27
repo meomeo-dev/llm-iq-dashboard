@@ -218,11 +218,11 @@ meomeo-dev/llm-iq-data/
 ### 5.3 永不发布的题目（Unpublishable Prompts）
 
 某些题目属于本地联调、特定主体或测试用途，其题面与作品严禁公开发布：
-- **`leijun-v1`（雷军骑自行车）**：仅作为本地测试题（Image-to-SVG），其题面文本、图片输入与生成结果永远不上传到 `llm-iq-data`。
+- **`leijun-v1`**：已从题库移除的测试题，id 保留在清单中以拦截残留的本地历史结果。
 - **双重强制保障（二者须严格一致）**：
   1. **本仓库契约控制**：`src/core/data-repo/contract.ts` 中的 `UNPUBLISHABLE_PROMPT_IDS`。同步导出时直接剔除该题目的 attempts，若整轮仅含该题则整轮跳过（`skipped: unpublishable-prompt`），从源头阻断；
   2. **数据仓准入控制**：数据仓 `scripts/lib/validator.mjs` 中的 `UNPUBLISHABLE_PROMPT_IDS`。CI 门禁与提交前校验拒收任何包含此清单题目的 PR 或提交。
-- **扩展规范**：新增以真人为主体或仅供本地测试的题目时，必须同步登记至上述两处清单；严禁使用 `--run` 单独指定、手工复制或修改元数据等任何方式绕过。
+- **扩展规范**：题库不收录以真实人物为主体的题目；新增仅供本地测试的题目时，必须同步登记至上述两处清单；严禁使用 `--run` 单独指定、手工复制或修改元数据等任何方式绕过。
 
 ---
 

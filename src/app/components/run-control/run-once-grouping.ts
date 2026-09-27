@@ -55,7 +55,6 @@ const CLASSIC_PROMPT_IDS: ReadonlySet<string> = new Set([
   "classic-v1",
   "upgraded-v2",
   "animated-pelican-v1",
-  "leijun-v1",
 ]);
 
 export function classifyPrompt(p: PromptOption): GroupKey {
