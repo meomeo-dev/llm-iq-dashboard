@@ -10,6 +10,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -226,3 +227,159 @@ export async function pushAndVerify(
     );
   }
 }
+
+/**
+ * 检查指定目录是否为有效的 Git 仓库。
+ */
+export async function isGitRepository(repoDir: string): Promise<boolean> {
+  if (!existsSync(repoDir)) return false;
+  try {
+    const stdout = await gitExec(repoDir, ["rev-parse", "--is-inside-work-tree"]);
+    return stdout.trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 获取当前所在分支名称；detached HEAD 或无分支时返回 null。
+ */
+export async function getCurrentBranch(repoDir: string): Promise<string | null> {
+  try {
+    const stdout = await gitExec(repoDir, ["rev-parse", "--abbrev-ref", "HEAD"]);
+    const trimmed = stdout.trim();
+    return trimmed.length > 0 && trimmed !== "HEAD" ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 检查当前工作区是否干净（无未暂存、暂存或未跟踪文件）。
+ */
+export async function isWorkingTreeClean(repoDir: string): Promise<boolean> {
+  try {
+    const stdout = await gitExec(repoDir, ["status", "--porcelain"]);
+    return stdout.trim() === "";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 获取本地分支相对于上游的 ahead / behind 提交数。
+ * 无上游或执行失败时返回 null。
+ */
+export async function getAheadBehind(
+  repoDir: string,
+): Promise<{ ahead: number; behind: number } | null> {
+  try {
+    const stdout = await gitExec(repoDir, [
+      "rev-list",
+      "--left-right",
+      "--count",
+      "@{u}...HEAD",
+    ]);
+    const parts = stdout.trim().split(/\s+/);
+    const behindStr = parts[0];
+    const aheadStr = parts[1];
+    if (behindStr !== undefined && aheadStr !== undefined) {
+      const behind = Number.parseInt(behindStr, 10);
+      const ahead = Number.parseInt(aheadStr, 10);
+      return {
+        ahead: Number.isNaN(ahead) ? 0 : ahead,
+        behind: Number.isNaN(behind) ? 0 : behind,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 获取本地领先上游的提交短哈希列表，新的在前。
+ * 无上游或无领先提交时返回空数组。
+ */
+export async function getAheadCommits(repoDir: string): Promise<string[]> {
+  try {
+    const stdout = await gitExec(repoDir, [
+      "rev-list",
+      "--abbrev-commit",
+      "@{u}..HEAD",
+    ]);
+    const trimmed = stdout.trim();
+    if (trimmed === "") return [];
+    return trimmed.split("\n").map((line) => line.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export interface GitRepoInspection {
+  reachable: boolean;
+  isGitRepo: boolean;
+  clean: boolean;
+  branch: string | null;
+  upstream: string | null;
+  ahead: number | null;
+  behind: number | null;
+  aheadCommits: string[];
+}
+
+function emptyInspection(reachable: boolean): GitRepoInspection {
+  return {
+    reachable,
+    isGitRepo: false,
+    clean: false,
+    branch: null,
+    upstream: null,
+    ahead: null,
+    behind: null,
+    aheadCommits: [],
+  };
+}
+
+async function collectUpstreamMetrics(
+  repoDir: string,
+  upstream: string | null,
+): Promise<{ ahead: number | null; behind: number | null; aheadCommits: string[] }> {
+  if (upstream === null) {
+    return { ahead: null, behind: null, aheadCommits: [] };
+  }
+  const counts = await getAheadBehind(repoDir);
+  const aheadCommits = await getAheadCommits(repoDir);
+  return {
+    ahead: counts?.ahead ?? null,
+    behind: counts?.behind ?? null,
+    aheadCommits,
+  };
+}
+
+/**
+ * 综合探查数据仓工作副本状态，不抛错，各字段返回明确结果。
+ */
+export async function inspectGitRepo(repoDir: string): Promise<GitRepoInspection> {
+  if (!existsSync(repoDir)) return emptyInspection(false);
+  if (!(await isGitRepository(repoDir))) return emptyInspection(true);
+
+  const [clean, branch, upstream] = await Promise.all([
+    isWorkingTreeClean(repoDir),
+    getCurrentBranch(repoDir),
+    getUpstream(repoDir),
+  ]);
+  const metrics = await collectUpstreamMetrics(repoDir, upstream);
+
+  return {
+    reachable: true,
+    isGitRepo: true,
+    clean,
+    branch,
+    upstream,
+    ahead: metrics.ahead,
+    behind: metrics.behind,
+    aheadCommits: metrics.aheadCommits,
+  };
+}
+
+
