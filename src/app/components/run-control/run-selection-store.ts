@@ -109,7 +109,9 @@ function resolveTargetsSelection(
   if (currentTargets.size > 0) {
     return [...currentTargets].filter((id) => availableIds.has(id));
   }
-  if (storedTargets && storedTargets.length > 0) {
+  if (storedTargets) {
+    // 缓存里明确存的空数组是用户清空的结果，照常还原为空；全部失效才回退默认
+    if (storedTargets.length === 0) return [];
     const valid = storedTargets.filter((id) => availableIds.has(id));
     return valid.length > 0 ? valid : defaultSelectedIds(availableTargets);
   }
@@ -126,7 +128,8 @@ function resolvePromptsSelection(
   if (currentPrompts.size > 0) {
     return [...currentPrompts].filter((id) => availableIds.has(id));
   }
-  if (storedPrompts && storedPrompts.length > 0) {
+  if (storedPrompts) {
+    if (storedPrompts.length === 0) return [];
     const valid = storedPrompts.filter((id) => availableIds.has(id));
     return valid.length > 0 ? valid : defaults;
   }
@@ -147,6 +150,25 @@ function resolveCandidateOverrides(
     }
   }
   return resolved;
+}
+
+/**
+ * 可选范围刷新后校正已初始化的选择：只剔除不再存在的项，空集合原样保留。
+ * 用户清空后不得回填默认值，那是 resolveRunSelection 只在首次初始化时做的事。
+ */
+export function reconcileRunSelection(
+  available: AvailableOptions,
+  currentTargets: ReadonlySet<string>,
+  currentPrompts: ReadonlySet<string>,
+  currentOverrides: Readonly<Record<string, string>>,
+): { targets: Set<string>; prompts: Set<string>; candidateOverrides: Record<string, string> } {
+  const targetIds = new Set(available.targets.map((t) => t.id));
+  const promptIds = new Set(available.prompts.map((p) => p.id));
+  return {
+    targets: new Set([...currentTargets].filter((id) => targetIds.has(id))),
+    prompts: new Set([...currentPrompts].filter((id) => promptIds.has(id))),
+    candidateOverrides: resolveCandidateOverrides(available.prompts, currentOverrides),
+  };
 }
 
 export function resolveRunSelection(

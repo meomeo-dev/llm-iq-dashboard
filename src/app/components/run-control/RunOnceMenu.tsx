@@ -30,7 +30,8 @@ interface RunOnceMenuProps {
 export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
   const selection = useRunOnceSelection();
   const launcher = useRunOnceLauncher(selection.targets, selection.prompts, selection.candidateOverridesRef);
-  const onResolved = useCallback((next: RunOptionsView) => selection.applyResolved(next), [selection]);
+  const { applyResolved } = selection;
+  const onResolved = useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]);
   const { options } = useRunOnceOptions(open, onResolved, launcher.setNotice);
   const [mobileTab, setMobileTab] = useState<"models" | "prompts">("models");
 
@@ -47,10 +48,10 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
           <RunOnceHeadBar
             mobileTab={mobileTab}
             onSelectTab={setMobileTab}
-            targetCount={selection.targets.size}
+            pickedTargets={selection.targets}
             allTargetIds={options.targets.map((t) => t.id)}
             onPickTargets={selection.updateTargets}
-            promptCount={selection.prompts.size}
+            pickedPrompts={selection.prompts}
             allPromptIds={options.prompts.map((p) => p.id)}
             onPickPrompts={selection.updatePrompts}
             onClose={onClose}

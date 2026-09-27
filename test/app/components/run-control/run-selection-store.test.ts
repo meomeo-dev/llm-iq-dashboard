@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 import {
   defaultSelectedIds,
   readStoredSelection,
+  reconcileRunSelection,
   resolveRunSelection,
   SELECTION_STORAGE_KEY,
   writeStoredSelection,
@@ -54,6 +55,30 @@ const mockAvailable: AvailableOptions = {
 };
 
 describe("run-selection-store", () => {
+  test("用户清空后缓存为显式空数组，重新进入时保持为空而不回填默认", () => {
+    const storage = createMockStorage();
+    writeStoredSelection([], [], storage);
+    const result = resolveRunSelection(mockAvailable, new Set(), new Set(), storage);
+    assert.equal(result.targets.size, 0);
+    assert.equal(result.prompts.size, 0);
+  });
+
+  test("可选范围刷新时只剔除失效项，空选择原样保留（不回填动态鹈鹕车）", () => {
+    const empty = reconcileRunSelection(mockAvailable, new Set(), new Set(), {});
+    assert.equal(empty.targets.size, 0);
+    assert.equal(empty.prompts.size, 0);
+
+    const partial = reconcileRunSelection(
+      mockAvailable,
+      new Set(["codex__o3-mini__high", "gone__model__low"]),
+      new Set(["clock-v1", "removed-v1"]),
+      { "clock-v1": "c1", "removed-v1": "c2" },
+    );
+    assert.deepEqual([...partial.targets], ["codex__o3-mini__high"]);
+    assert.deepEqual([...partial.prompts], ["clock-v1"]);
+    assert.deepEqual(partial.candidateOverrides, { "clock-v1": "c1" });
+  });
+
   test("首次进入（无缓存）时：默认勾选与定时任务一致（服务端 defaultSelected）", () => {
     const storage = createMockStorage();
     const result = resolveRunSelection(mockAvailable, new Set(), new Set(), storage);
