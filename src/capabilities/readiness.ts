@@ -5,6 +5,9 @@
  * 并放行，因为误拦可用的 CLI 比多一次失败调用代价更大。
  */
 
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { commandHint, runsInContainer } from "../core/command-hint";
 import type { CliKind } from "../core/types";
 import { runProbeCommand, type CommandOutput } from "./probe-command";
@@ -25,6 +28,11 @@ interface CliGuide {
   statusArgs: readonly string[];
   /** 从登录状态命令的输出判断是否已登录；判断不了返回 null */
   signedIn: (output: CommandOutput) => boolean | null;
+  /**
+   * 本机是否留有可自动续期的登录凭据；没有离线判断手段的 CLI 缺省。
+   * 有凭据时状态命令报"未登录"多半是联网续期失败，按 unverified 放行而不是拦下。
+   */
+  localCredential?: () => Promise<boolean>;
 }
 
 const GUIDES: Readonly<Record<CliKind, CliGuide>> = {
@@ -46,8 +54,21 @@ const GUIDES: Readonly<Record<CliKind, CliGuide>> = {
     // agy 没有登录状态命令；列模型需要登录，未登录时明确提示 sign in
     statusArgs: ["models"],
     signedIn: agySignedIn,
+    localCredential: agyHasRefreshToken,
   },
 };
+
+/** agy 的 OAuth 凭据文件；带 refresh_token 即可在联网时自动续期，无需再登录 */
+const AGY_TOKEN_FILE = join(homedir(), ".gemini", "antigravity-cli", "antigravity-oauth-token");
+
+export async function agyHasRefreshToken(tokenFile: string = AGY_TOKEN_FILE): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(await readFile(tokenFile, "utf8")) as { token?: { refresh_token?: unknown } };
+    return typeof parsed.token?.refresh_token === "string" && parsed.token.refresh_token !== "";
+  } catch {
+    return false;
+  }
+}
 
 /** `claude auth status` 输出 JSON，loggedIn 为布尔值；未登录时同样以 0 退出 */
 export function claudeSignedIn(output: CommandOutput): boolean | null {
@@ -84,6 +105,7 @@ export function classifyReadiness(
   cli: CliKind,
   output: CommandOutput,
   env: Readonly<Record<string, string | undefined>> = process.env,
+  hasLocalCredential = false,
 ): CliReadiness {
   const guide = GUIDES[cli];
   if (output.notFound) {
@@ -99,6 +121,13 @@ export function classifyReadiness(
   if (keyVar !== undefined) {
     return { cli, state: "ready", detail: `未登录，但已设置 ${keyVar}，按密钥鉴权` };
   }
+  if (signedIn === false && hasLocalCredential) {
+    return {
+      cli,
+      state: "unverified",
+      detail: `${cli} 报告未登录，但本机仍有可续期的登录凭据，多为网络波动；照常发起调用`,
+    };
+  }
   if (signedIn === false) {
     return { cli, state: "signed-out", detail: `${cli} 未登录。登录：${commandHint(`pnpm onboard ${cli}`, env)}` };
   }
@@ -107,8 +136,12 @@ export function classifyReadiness(
 }
 
 export async function checkReadiness(cli: CliKind): Promise<CliReadiness> {
-  const output = await runProbeCommand(cli, [...GUIDES[cli].statusArgs]);
-  return classifyReadiness(cli, output);
+  const guide = GUIDES[cli];
+  const [output, hasLocalCredential] = await Promise.all([
+    runProbeCommand(cli, [...guide.statusArgs]),
+    guide.localCredential?.() ?? Promise.resolve(false),
+  ]);
+  return classifyReadiness(cli, output, process.env, hasLocalCredential);
 }
 
 /** 只有确定的问题才拦下该 CLI 的调用，见文件头 */

@@ -5,8 +5,11 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { CommandOutput } from "@/capabilities/probe-command";
-import { blocksCalls, classifyReadiness } from "@/capabilities/readiness";
+import { agyHasRefreshToken, blocksCalls, classifyReadiness } from "@/capabilities/readiness";
 
 const output = (stdout: string, extra: Partial<CommandOutput> = {}): CommandOutput => ({
   ok: stdout.trim() !== "", stdout, error: null, notFound: false, ...extra,
@@ -53,10 +56,38 @@ describe("classifyReadiness", () => {
     assert.equal(missing.detail, "codex 未安装。安装：docker exec -it llm-iq-dashboard sh docker/install-clis.sh");
   });
 
+  test("本机留有可续期凭据时，状态命令报未登录按网络波动放行，不拦调用", () => {
+    const signedOut = output("Error: Please sign in to view available models.");
+    const result = classifyReadiness("agy", signedOut, NO_ENV, true);
+    assert.equal(result.state, "unverified");
+    assert.equal(blocksCalls(result), false);
+    assert.match(result.detail ?? "", /仍有可续期的登录凭据/);
+    // 没有凭据时仍是明确的未登录
+    assert.equal(classifyReadiness("agy", signedOut, NO_ENV, false).state, "signed-out");
+  });
+
   test("检查本身失败（超时、输出无法识别）时放行", () => {
     const result = classifyReadiness("agy", output("", { ok: false, error: "agy 探测超时" }), NO_ENV);
     assert.equal(result.state, "unverified");
     assert.equal(blocksCalls(result), false);
     assert.equal(classifyReadiness("claude", output("not json"), NO_ENV).state, "unverified");
+  });
+});
+
+describe("agyHasRefreshToken", () => {
+  test("凭据文件带非空 refresh_token 才算有本机凭据；缺文件、坏文件、空值都不算", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "llm-iq-agy-token-"));
+    const withToken = join(dir, "with-token");
+    await writeFile(withToken, JSON.stringify({ token: { refresh_token: "r", expiry: "2026-09-27T18:52:24Z" } }));
+    assert.equal(await agyHasRefreshToken(withToken), true);
+
+    const emptyToken = join(dir, "empty-token");
+    await writeFile(emptyToken, JSON.stringify({ token: { refresh_token: "" } }));
+    assert.equal(await agyHasRefreshToken(emptyToken), false);
+
+    const broken = join(dir, "broken");
+    await writeFile(broken, "{not json");
+    assert.equal(await agyHasRefreshToken(broken), false);
+    assert.equal(await agyHasRefreshToken(join(dir, "missing")), false);
   });
 });
