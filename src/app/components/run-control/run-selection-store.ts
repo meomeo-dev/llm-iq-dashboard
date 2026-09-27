@@ -100,6 +100,55 @@ export function defaultSelectedIds(items: readonly MinimalOptionItem[]): string[
  *    - 模型（targets）：各模型的 low 和 high 两档思考强度
  *    - 题目（prompts）：默认只勾选动态鹈鹕车（animated-pelican-v1）
  */
+function resolveTargetsSelection(
+  availableTargets: readonly MinimalOptionItem[],
+  currentTargets: ReadonlySet<string>,
+  storedTargets: readonly string[] | undefined,
+): string[] {
+  const availableIds = new Set(availableTargets.map((t) => t.id));
+  if (currentTargets.size > 0) {
+    return [...currentTargets].filter((id) => availableIds.has(id));
+  }
+  if (storedTargets && storedTargets.length > 0) {
+    const valid = storedTargets.filter((id) => availableIds.has(id));
+    return valid.length > 0 ? valid : defaultSelectedIds(availableTargets);
+  }
+  return defaultSelectedIds(availableTargets);
+}
+
+function resolvePromptsSelection(
+  availablePrompts: readonly MinimalPromptItem[],
+  currentPrompts: ReadonlySet<string>,
+  storedPrompts: readonly string[] | undefined,
+): string[] {
+  const availableIds = new Set(availablePrompts.map((p) => p.id));
+  const defaults = defaultSelectedIds(availablePrompts);
+  if (currentPrompts.size > 0) {
+    return [...currentPrompts].filter((id) => availableIds.has(id));
+  }
+  if (storedPrompts && storedPrompts.length > 0) {
+    const valid = storedPrompts.filter((id) => availableIds.has(id));
+    return valid.length > 0 ? valid : defaults;
+  }
+  return defaults;
+}
+
+function resolveCandidateOverrides(
+  availablePrompts: readonly MinimalPromptItem[],
+  currentOverrides?: Readonly<Record<string, string>>,
+  storedOverrides?: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const availablePromptIds = new Set(availablePrompts.map((p) => p.id));
+  const resolved: Record<string, string> = {};
+  const source = currentOverrides ?? storedOverrides ?? {};
+  for (const [pId, cId] of Object.entries(source)) {
+    if (availablePromptIds.has(pId) && cId) {
+      resolved[pId] = cId;
+    }
+  }
+  return resolved;
+}
+
 export function resolveRunSelection(
   available: AvailableOptions,
   currentTargets: ReadonlySet<string>,
@@ -109,48 +158,11 @@ export function resolveRunSelection(
 ): { targets: Set<string>; prompts: Set<string>; candidateOverrides: Record<string, string> } {
   const currentOverrides = isStorage(overridesOrStorage) ? undefined : overridesOrStorage;
   const storage = isStorage(overridesOrStorage) ? overridesOrStorage : maybeStorage;
-
-  const availableTargetIds = new Set(available.targets.map((t) => t.id));
-  const availablePromptIds = new Set(available.prompts.map((p) => p.id));
-
   const stored = readStoredSelection(storage);
 
-  // --- 解析 targets ---
-  let resolvedTargets: string[];
-  if (currentTargets.size > 0) {
-    resolvedTargets = [...currentTargets].filter((id) => availableTargetIds.has(id));
-  } else if (stored !== null && stored.targets.length > 0) {
-    const valid = stored.targets.filter((id) => availableTargetIds.has(id));
-    resolvedTargets = valid.length > 0 ? valid : defaultSelectedIds(available.targets);
-  } else {
-    resolvedTargets = defaultSelectedIds(available.targets);
-  }
-
-  // --- 解析 prompts ---
-  const defaultPromptIds = defaultSelectedIds(available.prompts);
-
-  let resolvedPrompts: string[];
-  if (currentPrompts.size > 0) {
-    resolvedPrompts = [...currentPrompts].filter((id) => availablePromptIds.has(id));
-  } else if (stored !== null && stored.prompts.length > 0) {
-    const valid = stored.prompts.filter((id) => availablePromptIds.has(id));
-    resolvedPrompts = valid.length > 0 ? valid : defaultPromptIds;
-  } else {
-    resolvedPrompts = defaultPromptIds;
-  }
-
-  // --- 解析 candidateOverrides ---
-  const resolvedOverrides: Record<string, string> = {};
-  const sourceOverrides = currentOverrides ?? stored?.candidateOverrides ?? {};
-  for (const [pId, cId] of Object.entries(sourceOverrides)) {
-    if (availablePromptIds.has(pId) && cId) {
-      resolvedOverrides[pId] = cId;
-    }
-  }
-
   return {
-    targets: new Set(resolvedTargets),
-    prompts: new Set(resolvedPrompts),
-    candidateOverrides: resolvedOverrides,
+    targets: new Set(resolveTargetsSelection(available.targets, currentTargets, stored?.targets)),
+    prompts: new Set(resolvePromptsSelection(available.prompts, currentPrompts, stored?.prompts)),
+    candidateOverrides: resolveCandidateOverrides(available.prompts, currentOverrides, stored?.candidateOverrides),
   };
 }

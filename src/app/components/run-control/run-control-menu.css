@@ -1,0 +1,233 @@
+/* ---------- 执行控制：跑一次（范围 × 题目面板）与自动任务开关 ---------- */
+
+.run-once-label {
+  color: var(--text);
+}
+
+.menu-panel.run-once-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  right: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: min(850px, 94vw);
+  height: min(680px, 82vh);
+  max-height: 82vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.run-once-panel > .run-empty {
+  padding: 16px 12px;
+}
+
+/* 顶部固定表头：左列范围、右列题目、右侧关闭按钮 */
+.run-once-head-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0;
+  flex: 0 0 auto;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.run-once-head-bar > :first-child,
+.run-once-head-cell:first-child {
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+
+.run-once-head-bar > :last-child,
+.run-once-head-cell:last-child {
+  padding-left: 12px;
+}
+
+.run-once-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* 复用 .check-bulk 的按钮外观，去掉其分隔线与留白 */
+.run-once-head .check-bulk {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border-bottom: 0;
+}
+
+/* 主体分为两列各自独立滚动：左列模型范围，右列题目清单 */
+.run-once-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 12px 6px;
+  overflow: hidden;
+}
+
+.run-once-col {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.run-once-col::-webkit-scrollbar {
+  width: 5px;
+}
+
+.run-once-col::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.run-once-col::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.run-once-col::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+.run-once-col-models {
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.run-once-col-prompts {
+  padding-left: 12px;
+  padding-right: 2px;
+  overflow-x: hidden;
+}
+
+/* 范围清单网格：第 1 列模型名，其后每个强度一列；各行用 subgrid 共用列宽 */
+.run-once-models {
+  display: grid;
+  column-gap: 4px;
+}
+
+.run-once-model {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+
+.run-once-model .menu-row {
+  grid-column: 1;
+  min-width: 0;
+  margin-right: 2px;
+}
+
+/* 强度小块：按下 = 选中，与复选框同一强调色 */
+.effort-chip {
+  grid-row: 1;
+  justify-self: stretch;
+  min-width: 38px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.effort-chip:hover {
+  color: var(--text);
+}
+
+.effort-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: rgba(79, 141, 247, 0.16);
+  color: var(--text);
+}
+
+/* 暂不可选的 CLI：清单下一行灰字 */
+.run-once-unavailable {
+  margin: 8px 0 0;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+.run-once-prompt small {
+  display: block;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.run-once-group-header {
+  padding: 8px 4px 4px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.run-once-group:first-child .run-once-group-header {
+  margin-top: 0;
+}
+
+/* 题目列表项与候选场景下拉框 */
+.run-once-prompt-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2px;
+}
+
+.run-once-candidate-picker {
+  margin: -2px 0 6px 26px;
+  padding-right: 4px;
+}
+
+.candidate-picker-select {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-hi);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.4;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.candidate-picker-select:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.candidate-picker-select:focus {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* 同一模型只勾了部分强度：复选框画一条横杠 */
+.checkbox.partial {
+  border-color: var(--accent);
+  background: linear-gradient(#fff, #fff) center / 8px 2px no-repeat, var(--accent);
+}

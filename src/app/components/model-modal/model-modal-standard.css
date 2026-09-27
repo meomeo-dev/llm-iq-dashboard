@@ -1,0 +1,164 @@
+.modal-standard-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-standard-btn:hover,
+.modal-standard-btn.active {
+  background: var(--surface-hi);
+  border-color: rgba(96, 165, 250, 0.4);
+  color: var(--text);
+}
+
+.modal-standard-btn.active {
+  background: rgba(96, 165, 250, 0.08);
+  color: #93c5fd;
+}
+
+.modal-standard-btn .btn-icon {
+  font-size: 13px;
+}
+
+.modal-standard-btn .btn-chevron {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.modal-standard-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  color: #93c5fd;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.15s ease;
+}
+
+.modal-standard-pill:hover {
+  background: rgba(96, 165, 250, 0.18);
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.modal-standard-pill .pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #60a5fa;
+}
+
+/* 测评标准抽屉面板 */
+.modal-standard-panel {
+  flex: none;
+  padding: 14px 20px;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid var(--border);
+  animation: modalStandardSlide 0.18s ease-out;
+}
+
+@keyframes modalStandardSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-standard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.modal-standard-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-standard-col .standard-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-standard-col .standard-heading h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.standard-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.standard-tag.gt {
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+}
+
+.standard-tag.eval {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+}
+
+.modal-standard-col .standard-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.modal-standard-source {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  color: var(--text-faint);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.modal-standard-source .source-citation-text {
+  color: var(--text-dim);
+}
+
+.modal-standard-source .source-link {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.modal-standard-source .source-link:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,92 @@
+@media (max-width: 768px) {
+  .menu-panel.run-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    z-index: 100;
+    width: min(580px, calc(100vw - 20px));
+    max-height: min(640px, 85vh);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+    border-radius: 12px;
+  }
+
+  .run-calls {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 440px) {
+  .run-calls {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 单次调用：左边框标状态，排队的整体压暗 */
+.run-call {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-hi);
+  font-size: 11.5px;
+}
+
+.run-call-name {
+  color: var(--text);
+}
+
+.run-call-time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-call .run-bar {
+  margin-top: 4px;
+}
+
+.run-call.queued {
+  opacity: 0.55;
+}
+
+.run-call.running {
+  border-left-color: var(--accent);
+}
+
+.run-call.done-ok {
+  border-left-color: var(--ok);
+}
+
+.run-call.done-no-svg {
+  border-left-color: var(--warn);
+}
+
+.run-call.done-error,
+.run-call.done-timeout {
+  border-left-color: var(--err);
+}
+
+/* ---------- 停止：正在停止 / 已停止 / 被取消的调用 ---------- */
+
+.run-dot.stopping {
+  background: var(--warn);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
+.run-dot.cancelled {
+  background: var(--text-faint);
+}
+
+.run-call.cancelled {
+  border-left-color: var(--text-faint);
+  opacity: 0.55;
+}
+
+.run-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 4px;
+}

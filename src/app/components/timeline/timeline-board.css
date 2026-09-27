@@ -1,0 +1,118 @@
+/* 时间线面板：24 小时时间轴与按模型分行的结果矩阵 */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.board-panel {
+  padding: 16px 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+}
+
+.board-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.board-title-sub {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* 无结果时轴照常绘制，提示横跨两栏放在矩阵下方 */
+.matrix-empty {
+  grid-column: 1 / -1;
+  margin: 16px 0 8px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.matrix-empty-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.matrix-empty-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- 矩阵：左侧固定行标签 + 右侧可滚动的时间轨道 ---------- */
+
+.matrix {
+  display: grid;
+  grid-template-columns: var(--lane-label-width) minmax(0, 1fr);
+  margin-top: 8px;
+}
+
+.matrix-labels {
+  border-right: 1px solid var(--border);
+}
+
+/* 与轨道头部（轴 + 列头）同高，使两侧行对齐 */
+.matrix-labels-spacer {
+  height: calc(var(--axis-height) + var(--head-height));
+}
+
+.lane-head,
+.lane-line {
+  height: var(--lane-head-height);
+  border-bottom: 1px solid var(--border);
+}
+
+.lane-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 4px 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.lane-head-count {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.row-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: var(--cell-height);
+  padding: 0 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  overflow: hidden;
+}
+
+.row-label-name,
+.row-label-prompt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-label-prompt {
+  color: var(--text-faint);
+  font-size: 11px;
+}

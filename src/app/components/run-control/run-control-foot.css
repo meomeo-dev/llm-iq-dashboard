@@ -1,0 +1,63 @@
+.run-once-foot {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-top: 0;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* 成本预测独占一行；超出上限时整行转为警示色 */
+.run-once-forecast {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.run-once-forecast span:first-child {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.run-once-forecast.over,
+.run-once-forecast.over span:first-child {
+  color: var(--warn);
+}
+
+.run-once-notice {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+}
+
+.run-once-notice.ok {
+  color: var(--ok);
+}
+
+.run-once-notice.error {
+  color: var(--err);
+}
+
+.run-once-start {
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.run-once-start:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

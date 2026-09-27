@@ -1,0 +1,143 @@
+/* ---------- 停止本轮：点两下生效 ---------- */
+
+.run-stop-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-stop,
+.run-stop-cancel {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.run-stop:hover:not(:disabled) {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+.run-stop.confirm {
+  border-color: var(--err);
+  background: var(--err);
+  color: #fff;
+}
+
+.run-stop:disabled,
+.run-stop-cancel:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.run-stop-error {
+  color: var(--err);
+  font-size: 12px;
+}
+
+/* ---------- 关闭按钮：各屏幕尺寸均呈现，提升交互关闭便利性 ---------- */
+
+.run-once-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0 4px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.run-once-close:hover {
+  background: var(--surface-hi);
+  border-color: var(--text-faint);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .menu-panel.run-once-panel {
+    top: 10px;
+    bottom: 10px;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    width: auto;
+    height: auto;
+    max-height: calc(100vh - 20px);
+  }
+
+  .run-once-head-bar {
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .run-once-close {
+    margin: 4px 6px 4px 6px;
+  }
+
+  .run-once-head-cell {
+    flex: 1;
+    padding: 8px 10px;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    background: var(--surface);
+    transition: all 0.15s ease;
+  }
+
+  .run-once-head-cell:first-child {
+    padding-right: 10px;
+    border-right: 1px solid var(--border);
+  }
+
+  .run-once-head-cell:last-child {
+    padding-left: 10px;
+  }
+
+  .run-once-head-cell.tab-active {
+    border-bottom-color: var(--accent);
+    background: var(--surface-hi);
+  }
+
+  .run-once-body {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+  }
+
+  .run-once-col {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+  }
+
+  .run-once-col.tab-visible {
+    display: block;
+  }
+
+  .run-once-foot {
+    padding: 8px 10px 10px;
+    gap: 6px;
+  }
+
+  .run-once-start {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
