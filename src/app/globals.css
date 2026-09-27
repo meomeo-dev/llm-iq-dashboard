@@ -65,7 +65,8 @@ body {
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 14px;
   line-height: 1.55;
-  overflow-x: hidden;
+  /* clip 只裁剪不生成滚动容器，页内 position: sticky（如配置页导航）才能相对视口固定 */
+  overflow-x: clip;
 }
 
 .page {

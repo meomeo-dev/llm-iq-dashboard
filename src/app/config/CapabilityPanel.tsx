@@ -55,7 +55,8 @@ export function CapabilityPanel({
         <button type="button" onClick={refresh} disabled={busy || disabled}>
           {busy ? "正在探测…" : "重新探测"}
         </button>
-        <span className="note">
+        {/* 服务端与浏览器时区不同，本地化时间的水合文本允许不一致 */}
+        <span className="note" suppressHydrationWarning>
           上次探测：{new Date(catalog.probedAt).toLocaleString("zh-CN")}
         </span>
         {error !== null && <span className="status error">{error}</span>}
