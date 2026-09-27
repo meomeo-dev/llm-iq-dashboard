@@ -31,7 +31,7 @@ export interface DataRepoManifest {
   description: string;
   /** 数据仓的 GitHub 地址 */
   repository: string;
-  /** 最近一次追加的时刻（ISO） */
+  /** 最新一轮的 finishedAt（ISO），可由目录树确定性重建 */
   updatedAt: string;
   totalRuns: number;
   /** 有轮次的日期，新的在前 */

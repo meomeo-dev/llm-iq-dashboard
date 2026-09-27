@@ -1,0 +1,240 @@
+/**
+ * 轮次导出与脱敏处理（export-run）。
+ *
+ * 构造 PublicRunRecord：
+ * 1. rawFile 恒为 null，用量缺失时从同名 .txt 转录解析回填；
+ * 2. 规范化旧版记录（顶层 promptId/promptText）；
+ * 3. 扫描并脱敏 SVG 作品（命中则 svgFile 置 null，记录 redaction）；
+ * 4. 替换 run.json 文本中的本机绝对路径为 ~ 形式；
+ * 5. 扫描 run.json，若命中凭据/私钥/路径规则则整轮拒绝发布。
+ */
+
+import { access, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  DATA_REPO_SCHEMA_VERSION,
+  dayPartition,
+  type PublicAttempt,
+  type PublicRunRecord,
+  type Redaction,
+} from "../data-repo/contract";
+import type { LeakGuard } from "../leak-guard";
+import { runDir } from "../paths";
+import { usageFromTranscript } from "../../pricing/usage";
+import type { Attempt, RunRecord } from "../types";
+import { sanitizeLocalPaths, scanText, type LeakReason } from "./leak-scan";
+
+export type ExportStatus = "ready" | "skipped" | "rejected";
+
+export interface SvgExportItem {
+  filename: string;
+  content: string;
+}
+
+export interface ReadyExportResult {
+  status: "ready";
+  runId: string;
+  publicRecord: PublicRunRecord;
+  jsonText: string;
+  svgFiles: SvgExportItem[];
+  redactions: Redaction[];
+}
+
+export interface SkippedExportResult {
+  status: "skipped";
+  runId: string;
+  reason: "incomplete" | "invalid-run-id";
+}
+
+export interface RejectedExportResult {
+  status: "rejected";
+  runId: string;
+  reasons: Array<{ file: string; reason: LeakReason }>;
+}
+
+export type ExportRunResult =
+  | ReadyExportResult
+  | SkippedExportResult
+  | RejectedExportResult;
+
+export interface ExportOptions {
+  runsDir?: string;
+  leakGuard?: LeakGuard;
+}
+
+interface LegacyRunRecord
+  extends Omit<RunRecord, "prompts" | "attempts" | "inProgress"> {
+  prompts?: RunRecord["prompts"];
+  inProgress?: boolean;
+  promptId?: string;
+  promptText?: string;
+  attempts: Array<
+    Omit<Attempt, "promptId" | "appliedEffort" | "effortHonored"> &
+      Partial<Pick<Attempt, "promptId" | "appliedEffort" | "effortHonored">>
+  >;
+}
+
+/** 规范化旧版 RunRecord，复用与 store.ts 一致的口径 */
+export function normalizeLegacyRun(raw: LegacyRunRecord): RunRecord {
+  const legacyPromptId = raw.promptId ?? "classic-v1";
+  const prompts =
+    raw.prompts ??
+    [{ promptId: legacyPromptId, text: raw.promptText ?? "", bindings: {} }];
+
+  const attempts: Attempt[] = raw.attempts.map((attempt) => ({
+    ...attempt,
+    promptId: attempt.promptId ?? legacyPromptId,
+    appliedEffort: attempt.appliedEffort ?? attempt.effort,
+    effortHonored: attempt.effortHonored ?? true,
+  }));
+
+  const { promptId: _pId, promptText: _pText, ...rest } = raw;
+  return { ...rest, prompts, attempts, inProgress: raw.inProgress ?? false };
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 尝试从同名 .txt 转录回填用量。
+ */
+async function resolveUsage(
+  dir: string,
+  attempt: Attempt,
+): Promise<PublicAttempt["usage"]> {
+  if (attempt.usage !== undefined) return attempt.usage;
+
+  const candidates: string[] = [];
+  if (attempt.rawFile !== null) candidates.push(attempt.rawFile);
+  if (attempt.svgFile !== null && attempt.svgFile.endsWith(".svg")) {
+    candidates.push(attempt.svgFile.slice(0, -4) + ".txt");
+  }
+  candidates.push(`${attempt.targetId}__${attempt.promptId}.txt`);
+  candidates.push(`${attempt.targetId}.txt`);
+
+  for (const filename of candidates) {
+    const fullPath = join(dir, filename);
+    if (await fileExists(fullPath)) {
+      try {
+        const text = await readFile(fullPath, "utf8");
+        const usage = usageFromTranscript(attempt.cli, text);
+        if (usage !== null) return usage;
+      } catch {
+        // 读取或解析失败，继续尝试下一个候选
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * 导出单个运行轮次。
+ */
+export async function exportRun(
+  runId: string,
+  options: ExportOptions = {},
+): Promise<ExportRunResult> {
+  if (dayPartition(runId) === null) {
+    return { status: "skipped", runId, reason: "invalid-run-id" };
+  }
+
+  const dir = options.runsDir ? join(options.runsDir, runId) : runDir(runId);
+  const runFile = join(dir, "run.json");
+
+  let rawJson: string;
+  try {
+    rawJson = await readFile(runFile, "utf8");
+  } catch {
+    return { status: "skipped", runId, reason: "incomplete" };
+  }
+
+  let parsed: LegacyRunRecord;
+  try {
+    parsed = JSON.parse(rawJson) as LegacyRunRecord;
+  } catch {
+    return { status: "skipped", runId, reason: "incomplete" };
+  }
+
+  const run = normalizeLegacyRun(parsed);
+  if (run.inProgress) {
+    return { status: "skipped", runId, reason: "incomplete" };
+  }
+
+  const redactions: Redaction[] = [];
+  const svgFiles: SvgExportItem[] = [];
+  const publicAttempts: PublicAttempt[] = [];
+
+  for (const attempt of run.attempts) {
+    const usage = await resolveUsage(dir, attempt);
+    let finalSvgFile: string | null = attempt.svgFile;
+
+    if (attempt.svgFile !== null) {
+      const svgPath = join(dir, attempt.svgFile);
+      if (await fileExists(svgPath)) {
+        try {
+          const svgContent = await readFile(svgPath, "utf8");
+          const scan = scanText(svgContent, options.leakGuard);
+          if (scan.leaked) {
+            redactions.push({ file: attempt.svgFile, reason: scan.reason });
+            finalSvgFile = null;
+          } else {
+            svgFiles.push({ filename: attempt.svgFile, content: svgContent });
+          }
+        } catch {
+          finalSvgFile = null;
+        }
+      } else {
+        finalSvgFile = null;
+      }
+    }
+
+    const { rawFile: _rawFile, ...restAttempt } = attempt;
+    publicAttempts.push({
+      ...restAttempt,
+      rawFile: null,
+      svgFile: finalSvgFile,
+      usage,
+    });
+  }
+
+  const { attempts: _attempts, inProgress: _inProg, ...runRest } = run;
+  const publicRecord: PublicRunRecord = {
+    ...runRest,
+    publicSchemaVersion: DATA_REPO_SCHEMA_VERSION,
+    inProgress: false,
+    attempts: publicAttempts,
+    redactions,
+  };
+
+  const jsonText = `${JSON.stringify(publicRecord, null, 2)}\n`;
+  const sanitizedJson = sanitizeLocalPaths(jsonText);
+  const jsonScan = scanText(sanitizedJson, options.leakGuard);
+
+  if (jsonScan.leaked) {
+    return {
+      status: "rejected",
+      runId,
+      reasons: [{ file: "run.json", reason: jsonScan.reason }],
+    };
+  }
+
+  const finalRecord =
+    sanitizedJson === jsonText
+      ? publicRecord
+      : (JSON.parse(sanitizedJson) as PublicRunRecord);
+
+  return {
+    status: "ready",
+    runId,
+    publicRecord: finalRecord,
+    jsonText: sanitizedJson,
+    svgFiles,
+    redactions,
+  };
+}

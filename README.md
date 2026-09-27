@@ -275,6 +275,63 @@ pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后�
 与定时调度都会报出原因。没有历史成本或无法计价的调用按 0 计，不受上限约束。
 “跑一次”面板按所选范围与题目显示预计成本与剩余额度；`pnpm preflight` 显示定时任务一轮的预计。
 
+## 数据仓同步
+
+将本地评测结果脱敏导出并同步到公开数据仓（如 `xumetide-dev/llm-iq-data`）。
+
+### 配置
+
+在 `config/pelican.config.yaml` 中配置 `dataRepo` 节点：
+
+```yaml
+dataRepo:
+  path: ../llm-iq-data    # 本地数据仓路径（必填，相对路径按 cwd 解析）
+  autoSync: false         # 评测完成后是否自动触发同步（默认 false）
+  push: false             # 同步提交后是否自动 git push 到远程（默认 false）
+```
+
+开启 `autoSync: true` 时，`runner` 在每轮评测生成最终 `run.json` 后自动调用同步流水线。同步失败仅记录日志，不影响评测本身与结果。
+
+### 命令行工具
+
+```bash
+# 演练模式（只出报告，任何地方都不写）
+pnpm sync:data --repo ../llm-iq-data --dry-run
+
+# 同步指定轮次并推送到远程
+pnpm sync:data --repo ../llm-iq-data --run 20260927T021708Z --push
+
+# 机器可读 JSON 输出
+pnpm sync:data --repo ../llm-iq-data --json
+```
+
+退出码含义：
+- `0`：同步成功；
+- `1`：执行失败（如工作区不干净、Git 执行出错、配置缺失等）；
+- `2`：存在因敏感信息拦截而被拒绝发布的轮次或内容冲突。
+
+### 安全边界与脱敏机制
+
+1. **转录绝不外泄**：原始 `.txt` 终端流包含本机路径与会话凭据，公开记录的 `rawFile` 恒为 `null`；用量信息由流水线从转录中提取并回填到 `run.json`。
+2. **多层泄漏防护**：
+   - 共享扫描规则覆盖本机绝对路径（`local-path`）、私钥块（`private-key`）、云厂商与服务令牌（`secret-pattern`）；
+   - 结合三家 CLI 凭据指纹库（`leak-guard`）进行滑窗比对；
+   - **SVG 作品**命中任何泄漏规则即取消发布（`svgFile` 置 `null` 并记入 `redactions`）；
+   - **`run.json` 文本**中的本机路径先行替换为 `~` 形式，若仍包含敏感路径或命中密钥/令牌，整轮拒绝发布。
+3. **数据仓只追加与幂等校验**：
+   - 目标轮次目录已存在时，若内容完全一致则幂等跳过；若内容存在差异则判定为冲突，拒绝覆盖并退出报错。
+4. **Git 与推送确认**：
+   - 同步开始前要求数据仓工作区完全干净；
+   - 一次同步生成一个形如 `chore(data): sync <N> run(s)` 的提交；
+   - 所有 Git 命令均设超时限制（push/fetch 120 秒，其余 30 秒）；
+   - 绝不使用 force push；`--push` 时在导出前先 `git fetch` 并 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；
+   - 无论本次是否有新提交，`--push` 均推送并把台账中已被上游包含的 `exported` 轮次标为 `published`；数据仓已有同内容目录但台账缺失时自动补记；推送失败保持 `exported`。
+5. **修剪守卫（Retention Guard）**：
+   - 调度器过期清理（`retention`）**仅删除台账中标记为 `published` 的轮次**；
+   - 尚未发布的过期轮次自动保留并记录日志，防止因断网导致数据丢失；
+   - 过期的空目录可删；仅有过程文件而无 `run.json` 的目录予以保留。
+
+
 ## 设计要点
 
 CLI 能力探测与强度折叠、考题与考场规则分离、每次调用一个干净工作目录、SVG 净化、失败

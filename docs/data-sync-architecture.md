@@ -77,46 +77,61 @@ flowchart TB
 | 存储维度 | 本地生产端：热数据层 (Hot Partition) | GitHub 数据湖：冷归档层 (Cold Archive) |
 | :--- | :--- | :--- |
 | **存储载体** | 本地磁盘 `data/runs/<runId>/` | 独立公开仓库 `xumetide-dev/llm-iq-data` |
-| **保留窗口** | **严格限制在近 N 天（默认 3 ~ 7 天）** | **永久追加保存（Append-Only，永不删除）** |
-| **分区拓扑** | 扁平时间戳目录（最大容纳 ~100-200 个 runId） | 时序多级分区树：`runs/YYYY/MM/DD/<runId>/` |
-| **I/O 复杂度** | 目录项恒定 $\le 200$，扫描开销为常数时间 $O(1)$ | 单目录项 $\le 48$，规避 GitHub 网页与 Git 树卡顿 |
+| **保留窗口** | **按 `retention.days` 配置（起步示例 30 天，可设 null 保留全部）** | **永久追加保存（Append-Only，永不删除）** |
+| **分区拓扑** | 扁平紧凑 UTC 目录（如 `20260927T021708Z`） | 时序多级分区树：`runs/YYYY/MM/DD/<runId>/` |
+| **I/O 复杂度** | 目录项受保留期控制，保持常数级高效扫描 | 单目录项 $\le 48$，规避 GitHub 网页与 Git 树卡顿 |
 | **内容完整度** | 包含用于本地复盘的中间态 `.txt` 转录 | 仅保留脱敏后的 `run.json` 与 `*.svg` 成果 |
 | **核心用途** | 支撑本地开发调试、即时对比与近期待办 | 支撑长期学术引用、历史智商演进曲线分析 |
 
 ---
 
-### 3.3 四步闭环冷热流转与淘汰生命周期
+### 3.3 四步闭环冷热流转与修剪守卫
 
-为了保证“数据不丢、热区不膨胀、淘汰有据”，设计如下**四步闭环淘汰管线**：
+为了保证“数据不丢、热区不膨胀、淘汰有据”，流水线实施如下**闭环淘汰管线**：
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Runner as 本地执行引擎 (Runner)
     participant HotDir as 本地热数据区 (data/runs/)
-    participant Hook as 同步与归档Hook (Sync Hook)
-    participant ColdRepo as GitHub 数据湖 (llm-iq-data)
-    participant Guard as 本地热区守卫 (Retention Guard)
+    participant Hook as 同步流水线 (src/core/sync)
+    participant ColdRepo as GitHub 数据仓 (llm-iq-data)
+    participant Ledger as 同步台账 (sync-state.json)
+    participant Guard as 修剪守卫 (pruneExpiredRuns)
 
-    Runner->>HotDir: 1. 评测完成，落盘 runId/ (写入 run.json, svg, txt)
-    Note over HotDir: 此时为全新热数据，本地看板立即可见
-    Runner->>Hook: 2. 触发归档 Hook
-    Hook->>Hook: 提取并脱敏 run.json + *.svg，写入 runs/YYYY/MM/DD/
-    Hook->>ColdRepo: Git Push 推送至远端数据仓库并更新 index.json
-    ColdRepo-->>Hook: 3. 远端响应写入成功 (ACK 确认)
-    Hook->>HotDir: 将该 runId 标记为已归档 (synced)
-    Guard->>HotDir: 4. 执行例行巡检：检查超过 retentionDays (如 7 天) 的历史目录
-    alt 超过 7 天 且 已完成归档 (synced)
-        Guard->>HotDir: 安全物理擦除 (rm -rf)，释放本地磁盘与 I/O 扫描开销
-    else 超过 7 天 但 尚未归档 (网络中断或未推完)
-        Guard->>HotDir: 【安全熔断】保留不删，等待下一次联网重试！
+    Runner->>HotDir: 1. 评测每轮结束前，由 executeRun 触发修剪守卫
+    Runner->>Guard: 触发过期修剪巡检
+    Guard->>Ledger: 读取各轮同步状态 (不存在等同于全部未发布)
+    alt 超过 retentionDays 且 台账状态为 published
+        Guard->>HotDir: 安全物理擦除 (rm -rf)，释放热区磁盘
+    else 超过 retentionDays 但 尚未 published (或未在台账中)
+        Guard->>HotDir: 【安全熔断】安全保留并汇总记一行日志！
+    else 超过 retentionDays 且 目录为空
+        Guard->>HotDir: 清理过期空目录
+    else 超过 retentionDays 但 仅有 progress.json 缺 run.json
+        Guard->>HotDir: 过程目录安全保留
+    end
+    Runner->>HotDir: 2. 评测完成，最终落盘 runId/ (run.json, svg, txt)
+    Note over HotDir: 本地热数据即刻可见
+    alt autoSync 为 true 或 手动调用 sync:data
+        Runner->>Hook: 3. 触发同步流水线
+        Hook->>Hook: usage 回填、SVG 泄漏脱敏、run.json 路径替换与校验
+        Hook->>ColdRepo: 写入 runs/YYYY/MM/DD/<runId>/ 并更新 DayIndex 与 index.json
+        Hook->>ColdRepo: Git 提交 chore(data): sync <N> run(s)
+        Hook->>Ledger: 记录状态 status: exported 与 commit
+        opt push 为 true
+            Hook->>ColdRepo: git push 推送至远端
+            Hook->>ColdRepo: git merge-base --is-ancestor 验证远端包含
+            Hook->>Ledger: 验证通过，标记 status: published 与 publishedAt
+        end
     end
 ```
 
-1. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
-2. **脱敏归档（Sanitize & Archive）**：同步脚本按 `YYYY/MM/DD/<runId>` 规则增量提交至 `llm-iq-data`；
-3. **安全确认（Safety Verification Gate）**：只有确认 `git push` 到 GitHub 成功后，该轮才被授予“可淘汰凭证”；
-4. **热区安全修剪（Hot Eviction）**：本地调度器巡检超过保留期（如 7 天）的历史目录，**仅对已确认同步的轮次执行物理删除**。若遇本地断网或 GitHub API 故障，未同步的目录将被**安全熔断保护**，绝不会因过期而被误删导致数据永久丢失。
+1. **执行前修剪（Retention Guard）**：每轮评测开始时由 `executeRun` 调用 `pruneExpiredRuns`，**仅对台账中确认为 `published` 的过期轮次执行删除**。未发布的轮次熔断保留，防止网络异常导致数据永久丢失；
+2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
+3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；
+4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交。
+
 
 ---
 
@@ -166,28 +181,33 @@ xumetide-dev/llm-iq-data/
 ├── README.md                      # 仓库说明、数据字段规范与引用指南
 ├── LICENSE-CODE                   # MIT 许可证（针对同步与数据工具代码）
 ├── LICENSE-DATA                   # CC-BY-4.0 许可证（针对所有评测数据与 SVG）
-├── index.json                     # 顶层元数据清单 (记录所有存在 runs 的日期与统计)
+├── index.json                     # DataRepoManifest (记录全量日期清单与总轮数)
 └── runs/
     └── 2026/
         └── 09/
             └── 27/
-                ├── 2026-09-27T020000Z/
-                │   ├── run.json
-                │   ├── claude_sonnet_3_7_high.svg
-                │   ├── codex_5_high.svg
-                │   └── agy_gemini_2_5_max.svg
-                └── 2026-09-27T030000Z/
+                ├── index.json     # DayIndex (当天各轮次摘要，按 runId 升序)
+                ├── 20260927T021708Z/
+                │   ├── run.json   # PublicRunRecord (脱敏后的公开运行记录)
+                │   ├── claude__claude-sonnet-5__low__classic-v1.svg
+                │   ├── codex__gpt-6-luna__low__classic-v1.svg
+                │   └── agy__gemini-3.8-flash__low__classic-v1.svg
+                └── 20260927T031708Z/
 ```
 
 ### 5.2 准入与脱敏准则
-同步脚本在推送前必须执行确定性过滤：
+同步流水线在写入与推送前执行确定性过滤：
 * **必须同步（Allowlist）**：
-  * `run.json`：仅保留模型标识、用量 Token、API 折算成本、运行时长、客观标准绑定与成败状态；
-  * `*.svg`：模型生成的自闭合矢量作品；
-  * 根目录 `index.json`：增量追加本次运行的摘要。
+  * `run.json`：导出为 `PublicRunRecord`（`publicSchemaVersion: 1`），`rawFile` 恒为 `null`；用量优先保留已有值，缺失时从同名 `.txt` 转录解析回填；顶层 `promptId/promptText` 兼容规范化；
+  * `*.svg`：模型生成的自闭合矢量作品（原样复制）；
+  * `index.json`：重写受影响日期的 `DayIndex`，并重写根目录 `DataRepoManifest`。
+* **脱敏与泄漏扫描机制**：
+  * **SVG 作品扫描**：对每个 SVG 进行共享规则（`local-path`、`private-key`、`secret-pattern`）与 `leak-guard` 凭据指纹库比对。命中任一规则时，该作品不予发布（`svgFile` 置 `null`，并在 `redactions` 记录原因）；
+  * **`run.json` 脱敏与整轮拦截**：文本中的本机绝对路径自动替换为 `~` 形式；若替换后仍命中路径、私钥或令牌样式规则，则整轮拒绝发布；
+  * **幂等与冲突处理**：目标目录已存在且内容完全一致时幂等跳过；内容不一致时判定为冲突，拒绝覆盖并报告。
 * **严禁同步（Denylist / 严格拦截）**：
-  * `*.txt`：原始 CLI 终端流转录（严防包含本地主机名、用户名、调试输出或提示词泄露）；
-  * `.env`、凭证与本地配置文件；
+  * `*.txt`：原始 CLI 终端流转录（严防包含本地主机名、用户名、调试输出或会话凭据）；
+  * `.env`、凭据文件与本地配置文件；
   * 本地临时文件（`*.lock`、`*.staging`、`requests/` 等）。
 
 ---
@@ -203,15 +223,20 @@ xumetide-dev/llm-iq-data/
 
 ---
 
-## 7. 实施路线图
+## 7. 当前实施架构
 
-1. **第一阶段：数据仓库初始化（即刻实施）**
-   * 创建同级目录 `../llm-iq-data`；
-   * 配置 `LICENSE-CODE` (MIT)、`LICENSE-DATA` (CC-BY-4.0) 及基础说明文档；
-   * 初始化 Git 仓库并确立骨架。
-2. **第二阶段：本地同步 Hook 与索引工具**
-   * 编写轻量同步脚本（如 `scripts/sync-data-repo.mjs`）；
-   * 本地评测完成时自动执行脱敏过滤与增量推送到 `llm-iq-data`。
-3. **第三阶段：在线看板适配与 Vercel 部署**
-   * 看板适配 `DATA_SOURCE=remote` 模式（直接拉取数据仓的 CDN 路径）；
-   * 在 Vercel 上一键部署只读公开看板。
+系统已实现全自动化的数据脱敏导出、台账追踪与修剪守护架构：
+
+1. **核心同步模块（`src/core/sync/`）**：
+   * `leak-scan.ts`：共享泄漏扫描与本机绝对路径脱敏替换；
+   * `export-run.ts`：构建 `PublicRunRecord`、旧版记录规范化、用量解析回填与 SVG 脱敏；
+   * `data-repo-index.ts`：维护 `DayIndex`、迁移与更新根目录 `DataRepoManifest`；
+   * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账；
+   * `data-repo-git.ts`：Git 工作区检查、规范提交与带祖先校验的安全推送；
+   * `sync-orchestrator.ts`：串联候选过滤、幂等判定、冲突检测与完整同步流水线。
+2. **命令行工具（`src/bin/sync-data.ts`）**：
+   * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
+3. **执行引擎与修剪守护**：
+   * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步，具备完全的异常隔离保护；
+   * `src/core/retention.ts`：仅对台账确认为 `published` 的过期轮次执行物理删除，未发布轮次安全熔断保留。
+

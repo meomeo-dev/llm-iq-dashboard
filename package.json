@@ -24,6 +24,7 @@
     "validate:prompts": "tsx src/bin/validate-prompts.ts",
     "onboard": "tsx src/bin/onboard.ts",
     "pair": "tsx src/bin/pair.ts",
+    "sync:data": "tsx src/bin/sync-data.ts",
     "dashboard:prod": "node scripts/dashboard-prod.mjs"
   },
   "engines": {

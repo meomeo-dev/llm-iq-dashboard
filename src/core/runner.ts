@@ -14,6 +14,7 @@ import { pruneExpiredRuns } from "./retention";
 import { watchCancel } from "./run-cancel";
 import { ensureRunDir, saveRun } from "./store";
 import type { Attempt, CliKind, RunRecord } from "./types";
+import { syncDataRepo } from "./sync/sync-orchestrator";
 import { openSessionPool } from "../adapters/index";
 import { blocksCalls } from "../capabilities/readiness";
 import { checkAndRecord } from "../capabilities/readiness-cache";
@@ -157,6 +158,22 @@ export async function executeRun(
   const record = snapshot(false);
   await saveRun(record);
   await discardScratch(runId);
+  if (config.dataRepo?.autoSync) {
+    try {
+      await syncDataRepo({
+        repoPath: config.dataRepo.path,
+        runIds: [runId],
+        push: config.dataRepo.push,
+        log,
+      });
+    } catch (syncError) {
+      log(
+        `[${runId}] 数据仓自动同步失败：${
+          syncError instanceof Error ? syncError.message : String(syncError)
+        }`,
+      );
+    }
+  }
   const outcome = cancelledAt !== undefined ? "已停止" : "完成";
   log(`[${runId}] ${outcome}，成功 ${countOk(record.attempts)}/${record.attempts.length}`);
   return record;

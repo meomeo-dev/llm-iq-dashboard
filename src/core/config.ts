@@ -5,7 +5,7 @@
 
 import { Cron } from "croner";
 import { constants, copyFileSync, existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
   buildTargetId,
@@ -20,6 +20,16 @@ import { parsePrompts } from "./config-prompts";
 import type { RotationConfig } from "./variables";
 import type { BudgetConfig } from "./budget";
 import { applyCeiling, readCeiling } from "./ceiling";
+
+/** 数据仓同步配置 */
+export interface DataRepoConfig {
+  /** 本地数据仓的绝对路径（按进程 cwd 解析） */
+  path: string;
+  /** 每轮评测结束后是否自动触发同步 */
+  autoSync: boolean;
+  /** 同步提交后是否自动推送至远端 */
+  push: boolean;
+}
 
 /**
  * 定时任务的节奏。只描述“何时触发”；到点是否真的执行由看板的“自动任务”开关
@@ -82,6 +92,8 @@ export interface AppConfig {
   customPrompts: PromptSpec[];
   /** 探测不到的模型可以在这里手填，主要服务于没有列举命令的 claude */
   customModels: Partial<Record<CliKind, string[]>>;
+  /** 数据仓同步配置；未配置时为 null */
+  dataRepo?: DataRepoConfig | null;
 }
 
 const DEFAULT_TIMEOUT_MS = 1_800_000;
@@ -119,6 +131,7 @@ export function loadConfig(path: string): AppConfig {
   const targets = parseTargets(raw.targets, run, errors);
   const customPrompts = parsePrompts(raw.prompts, errors);
   const customModels = parseCustomModels(raw.customModels, errors);
+  const dataRepo = parseDataRepo(raw.dataRepo, errors);
 
   if (errors.length > 0) {
     throw new Error(`配置文件 ${path} 校验失败：\n  - ${errors.join("\n  - ")}`);
@@ -128,7 +141,10 @@ export function loadConfig(path: string): AppConfig {
   for (const promptId of run.promptIds) resolvePrompt(promptId, customPrompts);
 
   // 宿主机上限最后套用：预算只能在上限之下，extraArgs 默认不放行
-  return applyCeiling({ schedule, run, retention, budget, targets, customPrompts, customModels }, readCeiling());
+  return applyCeiling(
+    { schedule, run, retention, budget, targets, customPrompts, customModels, dataRepo },
+    readCeiling(),
+  );
 }
 
 interface RawConfig {
@@ -139,6 +155,7 @@ interface RawConfig {
   targets?: unknown;
   prompts?: unknown;
   customModels?: unknown;
+  dataRepo?: unknown;
 }
 
 function readRawConfig(path: string): RawConfig {
@@ -432,3 +449,34 @@ function isCliKind(value: string | null): value is CliKind {
 function isEffortLevel(value: string | null): value is EffortLevel {
   return value !== null && (EFFORT_LEVELS as readonly string[]).includes(value);
 }
+
+/** dataRepo: path 必填（相对路径按 cwd 解析），autoSync / push 默认 false */
+function parseDataRepo(raw: unknown, errors: string[]): DataRepoConfig | null {
+  if (raw === undefined || raw === null) return null;
+  const node = asRecord(raw);
+  if (node === null) {
+    errors.push("dataRepo 必须是一个映射");
+    return null;
+  }
+
+  const rawPath = optionalString(node.path);
+  if (rawPath === null) {
+    errors.push("dataRepo.path 必填");
+  }
+
+  if (node.autoSync !== undefined && typeof node.autoSync !== "boolean") {
+    errors.push("dataRepo.autoSync 必须是布尔值");
+  }
+
+  if (node.push !== undefined && typeof node.push !== "boolean") {
+    errors.push("dataRepo.push 必须是布尔值");
+  }
+
+  if (rawPath === null) return null;
+  return {
+    path: resolve(process.cwd(), rawPath),
+    autoSync: node.autoSync === true,
+    push: node.push === true,
+  };
+}
+
