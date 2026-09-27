@@ -27,20 +27,58 @@ export interface AttemptContext {
 /** 命中凭据指纹时记录里的失败说明；作品与转录都不落盘 */
 export const LEAK_BLOCKED = "输出含凭据指纹，已拦截：作品与转录未保存";
 
+async function prepareAttemptWorkspace(workdir: string): Promise<void> {
+  await mkdir(workdir, { recursive: true });
+  // 考场规则写入工作目录，提示词保持逐字不变
+  await installHouseRules(workdir);
+}
+
+async function processAttemptReply(
+  job: Job,
+  reply: AgentReply,
+  runId: string,
+  artifactId: string,
+  startedAt: Date,
+  leakGuard: LeakGuard,
+): Promise<Attempt> {
+  const usage = usageFromTranscript(job.target.cli, reply.transcript);
+  if (leaks(reply, leakGuard)) {
+    return buildAttempt(job, startedAt, { status: "error", error: LEAK_BLOCKED, effortHonored: reply.effortHonored, usage });
+  }
+
+  const rawFile = await writeArtifact(runId, `${artifactId}.txt`, reply.transcript);
+  const svg = await findSvg(reply);
+
+  if (svg !== null) {
+    const svgFile = await writeArtifact(runId, `${artifactId}.svg`, svg.source);
+    return buildAttempt(job, startedAt, {
+      status: "ok",
+      rawFile,
+      svgFile,
+      effortHonored: reply.effortHonored,
+      svgBytes: svg.bytes,
+      usage,
+    });
+  }
+
+  return buildAttempt(job, startedAt, {
+    ...classifyFailure(reply, job.target.timeoutMs),
+    rawFile,
+    effortHonored: reply.effortHonored,
+    usage,
+  });
+}
+
 /** 执行单个任务；所有失败路径都经 buildAttempt 返回完整记录，不抛错 */
 export async function runAttempt(job: Job, context: AttemptContext): Promise<Attempt> {
   const { runId, sessions, signal, leakGuard } = context;
   const { target, prompt, appliedEffort, effortAdjustable } = job;
   const startedAt = new Date();
-  // 同一目标回答多条提示词，产物文件名带提示词 id 以免互相覆盖
   const artifactId = `${target.id}__${prompt.promptId}`;
   const workdir = scratchDir(runId, artifactId);
 
   try {
-    await mkdir(workdir, { recursive: true });
-    // 考场规则写入工作目录，提示词保持逐字不变
-    await installHouseRules(workdir);
-
+    await prepareAttemptWorkspace(workdir);
     const reply = await sessions.sessionFor(target.cli).ask({
       target,
       promptText: prompt.text,
@@ -50,35 +88,8 @@ export async function runAttempt(job: Job, context: AttemptContext): Promise<Att
       timeoutMs: target.timeoutMs,
       signal,
     });
-    // 用量随记录落盘；成本由看板按价格目录另算
-    const usage = usageFromTranscript(target.cli, reply.transcript);
-    // 落盘前先查泄漏：转录含全部事件流，回答与写出的文件都在其中
-    if (leaks(reply, leakGuard)) {
-      return buildAttempt(job, startedAt, { status: "error", error: LEAK_BLOCKED, effortHonored: reply.effortHonored, usage });
-    }
-    const rawFile = await writeArtifact(runId, `${artifactId}.txt`, reply.transcript);
-    const svg = await findSvg(reply);
-
-    // 作品优先：超时前已交出的 SVG 仍是有效结果（如画完后卡在校验文件上）
-    if (svg !== null) {
-      const svgFile = await writeArtifact(runId, `${artifactId}.svg`, svg.source);
-      return buildAttempt(job, startedAt, {
-        status: "ok",
-        rawFile,
-        svgFile,
-        effortHonored: reply.effortHonored,
-        svgBytes: svg.bytes,
-        usage,
-      });
-    }
-    return buildAttempt(job, startedAt, {
-      ...classifyFailure(reply, target.timeoutMs),
-      rawFile,
-      effortHonored: reply.effortHonored,
-      usage,
-    });
+    return await processAttemptReply(job, reply, runId, artifactId, startedAt, leakGuard);
   } catch (cause) {
-    // 调用链本身出错（可执行文件缺失、磁盘不可写），记为 error 以区别于 no-svg
     return buildAttempt(job, startedAt, {
       status: "error",
       error: cause instanceof Error ? cause.message : String(cause),

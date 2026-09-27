@@ -44,6 +44,27 @@ interface TurnState {
   finished: boolean;
 }
 
+async function runTurn(
+  server: CodexAppServer,
+  threadId: string,
+  watch: ThreadWatch,
+  request: AgentRequest,
+  remaining: () => number,
+): Promise<{ timedOut: boolean }> {
+  const turn = await server.request("turn/start", buildTurnParams(threadId, request), remaining());
+  const turnId = asString(recordAt(turn, "turn")?.id);
+
+  const settled = await settlesWithin(watch.finished, remaining(), request.signal);
+  const timedOut = !settled && request.signal?.aborted !== true;
+  // 超时或停止时中断 turn：app-server 长驻，不中断会继续消耗配额
+  if (!settled && turnId !== null) {
+    await server
+      .request("turn/interrupt", { threadId, turnId }, INTERRUPT_TIMEOUT_MS)
+      .catch(() => null);
+  }
+  return { timedOut };
+}
+
 async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<AgentReply> {
   const { target, effortAdjustable, timeoutMs } = request;
   if (target.extraArgs.length > 0) {
@@ -59,18 +80,7 @@ async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<
   const watch = watchThread(server, threadId);
 
   try {
-    const turn = await server.request("turn/start", buildTurnParams(threadId, request), remaining());
-    const turnId = asString(recordAt(turn, "turn")?.id);
-
-    const settled = await settlesWithin(watch.finished, remaining(), request.signal);
-    const timedOut = !settled && request.signal?.aborted !== true;
-    // 超时或停止时中断 turn：app-server 长驻，不中断会继续消耗配额
-    if (!settled && turnId !== null) {
-      await server
-        .request("turn/interrupt", { threadId, turnId }, INTERRUPT_TIMEOUT_MS)
-        .catch(() => null);
-    }
-
+    const { timedOut } = await runTurn(server, threadId, watch, request, remaining);
     return {
       text: watch.state.texts.join("\n\n"),
       // 只读沙箱下无法写文件，作品只在回答正文里

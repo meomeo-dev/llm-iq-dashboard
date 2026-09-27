@@ -78,12 +78,13 @@ export interface ProgressTracker {
   finish: () => Promise<void>;
 }
 
-/** 每次状态变化整份重写（文件仅几 KB），读取方无需拼接增量 */
-export function createProgressTracker(
-  initial: Omit<RunProgress, "updatedAt" | "finishedAt" | "cancelledAt" | "budgetStop" | "pid" | "pidStart">,
-  writer: SerialWriter,
-): ProgressTracker {
-  const progress: RunProgress = {
+type InitialProgress = Omit<
+  RunProgress,
+  "updatedAt" | "finishedAt" | "cancelledAt" | "budgetStop" | "pid" | "pidStart"
+>;
+
+function initRunProgress(initial: InitialProgress): RunProgress {
+  return {
     ...initial,
     updatedAt: initial.startedAt,
     finishedAt: null,
@@ -92,6 +93,9 @@ export function createProgressTracker(
     pid: process.pid,
     pidStart: processStartMark(process.pid),
   };
+}
+
+function buildProgressTrackerActions(progress: RunProgress, writer: SerialWriter): ProgressTracker {
   const save = (): void => {
     progress.updatedAt = new Date().toISOString();
     const snapshot = structuredClone(progress);
@@ -105,25 +109,25 @@ export function createProgressTracker(
 
   save();
   return {
-    markRunning(lane, call) {
+    markRunning: (lane, call) => {
       Object.assign(callAt(lane, call), { state: "running", startedAt: new Date().toISOString() });
       save();
     },
-    markDone(lane, call, attempt) {
+    markDone: (lane, call, attempt) => {
       Object.assign(callAt(lane, call), { state: "done", status: attempt.status, durationMs: attempt.durationMs });
       save();
     },
-    markCancelling(at) {
+    markCancelling: (at) => {
       progress.cancelledAt = at;
       save();
     },
-    markCancelled(lane, call) {
+    markCancelled: (lane, call) => {
       const target = callAt(lane, call);
       const durationMs = target.startedAt === null ? null : Date.now() - Date.parse(target.startedAt);
       Object.assign(target, { state: "cancelled", durationMs });
       save();
     },
-    markBudgetStop(reason) {
+    markBudgetStop: (reason) => {
       progress.budgetStop = reason;
       save();
     },
@@ -133,6 +137,15 @@ export function createProgressTracker(
       await writer.drain();
     },
   };
+}
+
+/** 每次状态变化整份重写（文件仅几 KB），读取方无需拼接增量 */
+export function createProgressTracker(
+  initial: InitialProgress,
+  writer: SerialWriter,
+): ProgressTracker {
+  const progress = initRunProgress(initial);
+  return buildProgressTrackerActions(progress, writer);
 }
 
 /** 最近几轮的进度，新的在前；没有进度文件的轮次跳过 */
