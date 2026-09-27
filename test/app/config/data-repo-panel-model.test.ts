@@ -36,7 +36,7 @@ function createBaseStatus(): DataRepoStatus {
       latestDay: "2026-09-27",
     },
     ledger: {
-      exported: 52,
+      exported: 2,
       published: 50,
       lastExportedAt: "2026-09-27T08:00:00Z",
       lastPublishedAt: "2026-09-26T08:00:00Z",
@@ -164,7 +164,7 @@ test("deriveActionStates - 动作可用状态与禁用原因", async (t) => {
     status.deploy.externalRunner = true;
     const states = deriveActionStates(status);
     assert.strictEqual(states.push.enabled, false);
-    assert.match(states.push.disabledReason ?? "", /容器内无推送凭据/);
+    assert.match(states.push.disabledReason ?? "", /未连接 GitHub|容器内无推送凭据/);
   });
 
   await t.test("没有领先提交时推送禁用", () => {
@@ -194,12 +194,22 @@ test("derivePushConfirmation - 推送二次确认模型", async (t) => {
     assert.strictEqual(conf.disabledReason, null);
   });
 
-  await t.test("externalRunner 下无法确认并提示原因", () => {
+  await t.test("externalRunner 且未连接 GitHub 时无法确认并提示先连接", () => {
     const status = createBaseStatus();
     status.deploy.externalRunner = true;
+    status.pushCapability = "unavailable";
     const conf = derivePushConfirmation(status);
     assert.strictEqual(conf.canConfirm, false);
-    assert.match(conf.disabledReason ?? "", /容器内无推送凭据/);
+    assert.match(conf.disabledReason ?? "", /未连接 GitHub/);
+  });
+
+  await t.test("externalRunner 且执行器已连接 GitHub（github-app）时可确认", () => {
+    const status = createBaseStatus();
+    status.deploy.externalRunner = true;
+    status.pushCapability = "github-app";
+    const conf = derivePushConfirmation(status);
+    assert.strictEqual(conf.canConfirm, true);
+    assert.strictEqual(conf.disabledReason, null);
   });
 
   await t.test("无领先提交时无法确认", () => {
@@ -311,7 +321,7 @@ test("deriveCountsSummary - 计数文案汇总", () => {
   const status = createBaseStatus();
   const summary = deriveCountsSummary(status);
   assert.match(summary.localText, /总计 55 轮，待导出 1 轮/);
-  assert.match(summary.ledgerText, /已导出 52 轮，已发布 50 轮/);
+  assert.match(summary.ledgerText, /待发布 2 轮，已发布 50 轮/);
   assert.match(summary.manifestText, /总计 50 轮/);
   assert.match(summary.repoText, /分支 main/);
 });

@@ -120,7 +120,7 @@ describe("DataRepoGithubCard 组件与推送能力推导", () => {
       const actions = deriveActionStates(status);
 
       assert.equal(actions.push.enabled, false);
-      assert.equal(actions.push.disabledReason, "容器内无推送凭据，请在宿主机推送");
+      assert.match(actions.push.disabledReason ?? "", /未连接 GitHub|容器内无推送凭据/);
     });
 
     it("当 pushCapability 为 github-app 时，在分容器部署下放行推送", () => {

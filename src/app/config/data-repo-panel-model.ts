@@ -207,14 +207,23 @@ function deriveExportState(
   return { mode, label, enabled: true, disabledReason: null, hint };
 }
 
-function checkPushDisableReason(status: DataRepoStatus, commonReason: string | null): string | null {
-  if (commonReason !== null) return commonReason;
+/** 推送凭据是否可用：分容器部署下须已连接 GitHub（执行器上报 github-app 能力） */
+function checkPushCapabilityReason(status: DataRepoStatus): string | null {
   if (
     status.pushCapability === "unavailable" ||
     (!status.pushCapability && status.deploy.externalRunner)
   ) {
-    return "容器内无推送凭据，请在宿主机推送";
+    return status.deploy.externalRunner
+      ? "执行器未连接 GitHub，请先在上方连接后再推送"
+      : "容器内无推送凭据，请在宿主机推送";
   }
+  return null;
+}
+
+function checkPushDisableReason(status: DataRepoStatus, commonReason: string | null): string | null {
+  if (commonReason !== null) return commonReason;
+  const capabilityReason = checkPushCapabilityReason(status);
+  if (capabilityReason !== null) return capabilityReason;
   if (status.repo!.upstream === null) return "未配置上游分支，无法推送";
   if (!status.repo!.clean) return "工作区有未提交的改动，请先清理或提交";
   const ahead = status.repo!.ahead ?? 0;
@@ -314,17 +323,11 @@ export function derivePushConfirmation(
     };
   }
   const aheadCommits = status.repo.aheadCommits ?? [];
-  const pendingPublishCount = Math.max(
-    0,
-    status.ledger.exported - status.ledger.published,
-  );
-  if (status.deploy.externalRunner) {
-    return {
-      aheadCommits,
-      pendingPublishCount,
-      canConfirm: false,
-      disabledReason: "容器内无推送凭据，请在宿主机推送",
-    };
+  // 台账里 exported 即"已导出、尚未发布"的轮次数
+  const pendingPublishCount = status.ledger.exported;
+  const capabilityReason = checkPushCapabilityReason(status);
+  if (capabilityReason !== null) {
+    return { aheadCommits, pendingPublishCount, canConfirm: false, disabledReason: capabilityReason };
   }
   if (aheadCommits.length === 0) {
     return {
@@ -449,7 +452,8 @@ export function deriveCountsSummary(
   const incompleteText =
     status.local.incomplete > 0 ? `，未完成 ${status.local.incomplete} 轮` : "";
   const localText = `总计 ${status.local.totalRuns} 轮，待导出 ${status.local.pending.length} 轮${incompleteText}`;
-  const ledgerText = `已导出 ${status.ledger.exported} 轮，已发布 ${status.ledger.published} 轮`;
+  // 台账 exported 只计尚未发布的轮次
+  const ledgerText = `待发布 ${status.ledger.exported} 轮，已发布 ${status.ledger.published} 轮`;
   const manifestText = status.manifest
     ? `总计 ${status.manifest.totalRuns} 轮，最近更新 ${status.manifest.latestDay ?? "无"}`
     : "暂无清单数据";

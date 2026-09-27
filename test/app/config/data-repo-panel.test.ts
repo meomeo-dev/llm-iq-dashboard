@@ -36,7 +36,7 @@ function createBaseStatus(): DataRepoStatus {
       latestDay: "2026-09-27",
     },
     ledger: {
-      exported: 51,
+      exported: 1,
       published: 50,
       lastExportedAt: "2026-09-27T08:00:00Z",
       lastPublishedAt: "2026-09-26T08:00:00Z",
@@ -169,7 +169,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
     );
     const expected = readFixture("external-runner.html");
     assert.strictEqual(html, expected);
-    assert.match(html, /容器内无推送凭据，请在宿主机推送/);
+    assert.match(html, /执行器未连接 GitHub，请先在上方连接后再推送/);
   });
 
   await t.test("场景 5：动作进行中锁定全部按钮 (in-flight)", () => {
