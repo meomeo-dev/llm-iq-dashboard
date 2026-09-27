@@ -70,4 +70,5 @@ node $R validate
 | [ACR-007](ACR-007-owner-pairing-auth.md) | 所有者配对登录与公开只读 | done | 2026-09-26 | new-module | 自研 | 4 包 | ✓ 2026-09-26 | 6/6 | — |
 | [ACR-008](ACR-008-split-web-runner.md) | 看板与执行器分容器，凭据只在执行器 | done | 2026-09-26 | deployment-change | 自研 | 6 包 | ✓ 2026-09-26 | 5/6 | — |
 | [ACR-009](ACR-009-public-data-repo-showcase.md) | 运行结果公开数据仓与只读展台 | done | 2026-09-27 | new-module | 自研 | 3 包 | ✓ 2026-09-27 | 4/4 | — |
+| [ACR-010](ACR-010-web-data-repo-panel.md) | 所有者看板内的数据仓同步面板 | approved | 2026-09-27 | new-module | 自研 | 5 包 | ✓ 2026-09-27 | 0/5 | — |
 <!-- acr-index:end -->
