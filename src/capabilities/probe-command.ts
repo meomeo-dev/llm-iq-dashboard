@@ -41,7 +41,7 @@ export async function runProbeCommand(
         resolve({
           ok: usable.trim() !== "",
           stdout: usable,
-          error: cause !== null ? describeFailure(binary, cause) : null,
+          error: cause !== null ? describeFailure(binary, cause, `${stdout}\n${stderr}`) : null,
           notFound: cause?.code === "ENOENT",
         });
       },
@@ -49,8 +49,15 @@ export async function runProbeCommand(
   });
 }
 
-function describeFailure(binary: string, cause: ExecFileException): string {
+function describeFailure(binary: string, cause: ExecFileException, output: string): string {
   if (cause.code === "ENOENT") return `${binary} 不在 PATH 中`;
   if (cause.killed === true) return `${binary} 探测超时`;
-  return `${binary} 探测失败：${cause.message.split("\n")[0] ?? cause.message}`;
+  // CLI 自己报的错（如 agy 的 "Error: Eligibility check failed: Post https://…"）比
+  // "Command failed" 更能说明是网络还是登录问题
+  const reported = output
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("Error:"));
+  const reason = reported?.slice("Error:".length).trim() || cause.message.split("\n")[0];
+  return `${binary} 探测失败：${reason}`;
 }
