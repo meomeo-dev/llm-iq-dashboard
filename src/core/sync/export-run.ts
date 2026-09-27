@@ -94,13 +94,13 @@ export function normalizeLegacyRun(raw: LegacyRunRecord): RunRecord {
 }
 
 /**
- * 剔除永不发布的题目（题面与调用一并去掉）；剩下的题目或调用为空时返回 null，整轮不发布。
+ * 剔除永不发布的题目（题面与调用一并去掉）；不剩任何题目时返回 null，整轮不发布。
  */
 export function withoutUnpublishablePrompts(run: RunRecord): RunRecord | null {
   const blocked = new Set(UNPUBLISHABLE_PROMPT_IDS);
   const prompts = run.prompts.filter((prompt) => !blocked.has(prompt.promptId));
   const attempts = run.attempts.filter((attempt) => !blocked.has(attempt.promptId));
-  if (prompts.length === 0 || attempts.length === 0) return null;
+  if (prompts.length === 0) return null;
   return { ...run, prompts, attempts };
 }
 
