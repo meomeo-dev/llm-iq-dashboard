@@ -24,6 +24,7 @@ describe("sync-data CLI", () => {
   let runsDir: string;
   let previousDataDir: string | undefined;
   let prevHome: string | undefined;
+  let prevConfig: string | undefined;
 
   beforeEach(async () => {
     tempBase = await mkdtemp(join(tmpdir(), "llm-iq-cli-test-"));
@@ -38,6 +39,10 @@ describe("sync-data CLI", () => {
 
     prevHome = process.env.HOME;
     process.env.HOME = tempBase;
+
+    // 不读取本机真实配置：指向一个不存在的配置文件，使 dataRepo 视为未配置
+    prevConfig = process.env.PELICAN_CONFIG;
+    process.env.PELICAN_CONFIG = join(tempBase, "absent.config.yaml");
 
     execFileSync("git", ["init", "--bare", remoteGitDir]);
     execFileSync("git", [
@@ -69,6 +74,9 @@ describe("sync-data CLI", () => {
 
     if (prevHome !== undefined) process.env.HOME = prevHome;
     else delete process.env.HOME;
+
+    if (prevConfig === undefined) delete process.env.PELICAN_CONFIG;
+    else process.env.PELICAN_CONFIG = prevConfig;
 
     await rm(tempBase, { recursive: true, force: true });
   });
