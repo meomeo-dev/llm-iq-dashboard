@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
-  DEFAULT_PROMPT_ID,
-  defaultTargetIds,
+  defaultSelectedIds,
   readStoredSelection,
   resolveRunSelection,
   SELECTION_STORAGE_KEY,
   writeStoredSelection,
   type AvailableOptions,
 } from "@/app/components/run-control/run-selection-store";
+
+/** 模拟配置：run.promptIds 只有动态鹈鹕车 */
+const DEFAULT_PROMPT_ID = "animated-pelican-v1";
 
 function createMockStorage(initialData: Record<string, string> = {}): Storage {
   const store = new Map<string, string>(Object.entries(initialData));
@@ -36,27 +38,27 @@ function createMockStorage(initialData: Record<string, string> = {}): Storage {
 
 const mockAvailable: AvailableOptions = {
   targets: [
-    { id: "claude__claude-opus-5-5__low" },
-    { id: "claude__claude-opus-5-5__medium" },
-    { id: "claude__claude-opus-5-5__high" },
-    { id: "claude__claude-opus-5-5__max" },
-    { id: "codex__o3-mini__high" },
-    { id: "agy__gemini-2-5-pro__low" },
+    { id: "claude__claude-opus-5-5__low", defaultSelected: true },
+    { id: "claude__claude-opus-5-5__medium", defaultSelected: false },
+    { id: "claude__claude-opus-5-5__high", defaultSelected: true },
+    { id: "claude__claude-opus-5-5__max", defaultSelected: false },
+    { id: "codex__o3-mini__high", defaultSelected: true },
+    { id: "agy__gemini-2-5-pro__low", defaultSelected: true },
   ],
   prompts: [
-    { id: "classic-v1", defaultSelected: true },
+    { id: "classic-v1", defaultSelected: false },
     { id: "upgraded-v2", defaultSelected: false },
-    { id: "animated-pelican-v1", defaultSelected: false },
+    { id: "animated-pelican-v1", defaultSelected: true },
     { id: "clock-v1", defaultSelected: false },
   ],
 };
 
 describe("run-selection-store", () => {
-  test("首次进入（无缓存）时：默认仅勾选 low 与 high 思考强度，题目默认仅勾选动态鹈鹕车", () => {
+  test("首次进入（无缓存）时：默认勾选与定时任务一致（服务端 defaultSelected）", () => {
     const storage = createMockStorage();
     const result = resolveRunSelection(mockAvailable, new Set(), new Set(), storage);
 
-    // 模型默认仅选 low 和 high
+    // 模型默认为 enabled 的目标，未进定时任务的档位仍在列表里但不勾
     assert.deepEqual(
       [...result.targets],
       [
@@ -65,30 +67,30 @@ describe("run-selection-store", () => {
         "codex__o3-mini__high",
         "agy__gemini-2-5-pro__low",
       ],
-      "未缓存时应默认仅勾选 low 和 high 两档",
+      "未缓存时应默认勾选 enabled 的目标",
     );
 
-    // 题目仅默认勾选动态鹈鹕车
-    assert.deepEqual(
-      [...result.prompts],
-      [DEFAULT_PROMPT_ID],
-      "未缓存时应默认只勾选动态鹈鹕车（animated-pelican-v1）",
-    );
+    // 题目默认为 run.promptIds
+    assert.deepEqual([...result.prompts], [DEFAULT_PROMPT_ID], "未缓存时应默认勾选 run.promptIds 的题目");
   });
 
-  test("若题目列表中无动态鹈鹕车，回退到配置默认条目", () => {
+  test("默认值只看 defaultSelected，不按强度或题目 id 写死", () => {
     const storage = createMockStorage();
-    const noAnimatedAvailable: AvailableOptions = {
-      targets: [{ id: "t1" }, { id: "t2" }],
+    const available: AvailableOptions = {
+      targets: [
+        { id: "claude__m__low", defaultSelected: false },
+        { id: "claude__m__max", defaultSelected: true },
+      ],
       prompts: [
         { id: "classic-v1", defaultSelected: true },
-        { id: "upgraded-v2", defaultSelected: false },
+        { id: "animated-pelican-v1", defaultSelected: false },
       ],
     };
-    const result = resolveRunSelection(noAnimatedAvailable, new Set(), new Set(), storage);
+    const result = resolveRunSelection(available, new Set(), new Set(), storage);
 
-    assert.deepEqual([...result.targets], ["t1", "t2"]);
+    assert.deepEqual([...result.targets], ["claude__m__max"]);
     assert.deepEqual([...result.prompts], ["classic-v1"]);
+    assert.deepEqual(defaultSelectedIds([{ id: "x" }]), [], "未标记的条目不默认勾选");
   });
 
   test("缓存读写：持久化并在重新进入时还原选择", () => {
@@ -131,7 +133,7 @@ describe("run-selection-store", () => {
     });
 
     const result = resolveRunSelection(mockAvailable, new Set(), new Set(), storage);
-    assert.deepEqual([...result.targets], defaultTargetIds(mockAvailable.targets));
+    assert.deepEqual([...result.targets], defaultSelectedIds(mockAvailable.targets));
     assert.deepEqual([...result.prompts], [DEFAULT_PROMPT_ID]);
   });
 
@@ -158,7 +160,7 @@ describe("run-selection-store", () => {
 
     assert.equal(readStoredSelection(corruptStorage), null);
     const result = resolveRunSelection(mockAvailable, new Set(), new Set(), corruptStorage);
-    assert.deepEqual([...result.targets], defaultTargetIds(mockAvailable.targets));
+    assert.deepEqual([...result.targets], defaultSelectedIds(mockAvailable.targets));
     assert.deepEqual([...result.prompts], [DEFAULT_PROMPT_ID]);
   });
 

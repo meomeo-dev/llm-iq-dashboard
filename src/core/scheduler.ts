@@ -12,6 +12,7 @@ import { Cron } from "croner";
 import { readAutoRunSwitch } from "./auto-run";
 import type { AppConfig } from "./config";
 import { findActiveRun } from "./progress";
+import { scheduledRound } from "./run-selection";
 import { executeRun, type Logger } from "./runner";
 
 export interface SchedulerHandle {
@@ -41,7 +42,7 @@ export function startScheduler(config: AppConfig, log: Logger): SchedulerHandle 
         log(skipReason);
         return;
       }
-      await executeRun(config, { trigger: "schedule", log });
+      await executeRun(scheduledRound(config), { trigger: "schedule", log });
     } catch (cause) {
       log(`本轮执行失败：${cause instanceof Error ? cause.message : cause}`);
     } finally {

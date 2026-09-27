@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { loadConfig, type AppConfig } from "@/core/config";
-import { narrowConfig } from "@/core/run-selection";
+import { narrowConfig, scheduledRound } from "@/core/run-selection";
 
 const CONFIG_YAML = `
 schedule:
@@ -17,6 +17,7 @@ targets:
   - { cli: claude, model: m-a, effort: low }
   - { cli: claude, model: m-a, effort: high }
   - { cli: codex, model: m-b, effort: max }
+  - { cli: claude, model: m-a, effort: medium, enabled: false }
 `;
 
 let workdir: string;
@@ -51,4 +52,23 @@ test("拒绝空选择与未知 id", () => {
     () => narrowConfig(config, { targetIds: ["claude__nope__low"], promptIds: ["no-such-prompt"] }),
     /目标 claude__nope__low、题目 no-such-prompt/,
   );
+});
+
+test("enabled: false 的目标仍在矩阵里：跑一次可以选，定时任务不跑", () => {
+  const unscheduled = config.targets.find((target) => !target.enabled);
+  assert.ok(unscheduled, "未启用的目标不应在解析时丢弃");
+  assert.equal(unscheduled.id, "claude__m-a__medium");
+
+  const round = scheduledRound(config);
+  assert.deepEqual(round.targets.map((target) => target.effort), ["low", "high", "max"]);
+  assert.equal(config.targets.length, 4, "原配置不被改动");
+
+  const picked = narrowConfig(config, { targetIds: [unscheduled.id], promptIds: ["classic-v1"] });
+  assert.deepEqual(picked.targets.map((target) => target.id), [unscheduled.id]);
+});
+
+test("没有任何 enabled 的目标时配置无效：定时任务至少要有一项", async () => {
+  const path = join(workdir, "all-disabled.yaml");
+  await writeFile(path, CONFIG_YAML.replace(/effort: (low|high|max) \}/g, "effort: $1, enabled: false }"), "utf8");
+  assert.throws(() => loadConfig(path), /没有任何已启用的条目/);
 });

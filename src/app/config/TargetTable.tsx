@@ -52,6 +52,7 @@ export function TargetTable({
         label: "",
         timeoutMs: 900_000,
         extraArgs: [],
+        enabled: true,
       }),
     ]);
   };
@@ -72,6 +73,7 @@ export function TargetTable({
         <table className="matrix">
           <thead>
             <tr>
+              <th title="进入定时任务，也是“跑一次”的默认勾选；不勾的仍可在“跑一次”里手动选">定时</th>
               <th>CLI</th>
               <th>模型</th>
               <th>思考强度</th>
@@ -147,7 +149,15 @@ function TargetRow({
   const efforts = effortChoices(capability, target.model);
 
   return (
-    <tr>
+    <tr className={target.enabled ? undefined : "row-unscheduled"}>
+      <td>
+        <input
+          type="checkbox"
+          checked={target.enabled}
+          aria-label={`${target.label || target.id} 进入定时任务`}
+          onChange={(e) => onChange({ enabled: e.target.checked })}
+        />
+      </td>
       <td>
         <select
           value={target.cli}

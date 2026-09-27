@@ -9,6 +9,7 @@ import { checkAndRecord } from "../capabilities/readiness-cache";
 import { forecastRound, usd } from "../core/budget";
 import { commandHint } from "../core/command-hint";
 import { loadConfig, type AppConfig } from "../core/config";
+import { scheduledRound } from "../core/run-selection";
 import { loadCostHistory } from "../core/cost-history";
 import { configPath } from "../core/paths";
 import { CLI_KINDS } from "../core/types";
@@ -35,7 +36,8 @@ function checkConfig(): AppConfig | null {
   const path = configPath();
   try {
     const config = loadConfig(path);
-    report("✓", `配置 ${path}：${config.targets.length} 个目标 × ${config.run.promptIds.length} 道题`);
+    const scheduled = scheduledRound(config).targets.length;
+    report("✓", `配置 ${path}：定时 ${scheduled} 个目标 × ${config.run.promptIds.length} 道题（矩阵共 ${config.targets.length} 个目标）`);
     return config;
   } catch (cause) {
     report("✗", cause instanceof Error ? cause.message : String(cause));
@@ -64,7 +66,8 @@ function checkPricing(): void {
 
 async function checkBudget(config: AppConfig): Promise<void> {
   const history = await loadCostHistory();
-  const forecast = forecastRound(config.targets.map((target) => target.id), config.run.promptIds.length, history.expected);
+  // 预测定时任务的一轮；“跑一次”的范围由看板按勾选另算
+  const forecast = forecastRound(scheduledRound(config).targets.map((target) => target.id), config.run.promptIds.length, history.expected);
   const unpriced = forecast.unpricedCalls > 0 ? `（另有 ${forecast.unpricedCalls} 次暂无价格参考）` : "";
   const { perRoundUsd, perDayUsd } = config.budget;
   const caps =

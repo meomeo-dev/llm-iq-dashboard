@@ -13,7 +13,7 @@ import { loadConfig, type AppConfig } from "../core/config";
 import { configPath } from "../core/paths";
 import { findActiveRun } from "../core/progress";
 import { claimNextRequest, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
-import { narrowConfig } from "../core/run-selection";
+import { narrowConfig, scheduledRound } from "../core/run-selection";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
@@ -28,7 +28,7 @@ function log(message: string): void {
 async function main(): Promise<void> {
   const startedAt = new Date();
   const config = loadConfig(configPath());
-  log(`执行器启动，配置：${configPath()}，目标数：${config.targets.length}`);
+  log(`执行器启动，配置：${configPath()}，定时目标 ${scheduledRound(config).targets.length}/${config.targets.length}`);
 
   await writeHeartbeat(startedAt);
   setInterval(() => void writeHeartbeat(startedAt).catch((cause: unknown) => log(`写心跳失败：${describe(cause)}`)), HEARTBEAT_INTERVAL_MS);
@@ -99,7 +99,7 @@ async function handle(request: RunnerRequest): Promise<void> {
 async function startRun(request: RunnerRequest, full: AppConfig): Promise<void> {
   let config: AppConfig;
   try {
-    config = request.selection === null ? full : narrowConfig(full, request.selection);
+    config = request.selection === null ? scheduledRound(full) : narrowConfig(full, request.selection);
   } catch (cause) {
     await failRequest(request.id, describe(cause));
     return;

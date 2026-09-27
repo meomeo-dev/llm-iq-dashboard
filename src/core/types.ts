@@ -82,6 +82,11 @@ export interface Target {
   timeoutMs: number;
   /** 透传给该 CLI 的额外参数，用于适配器默认值覆盖不到的个别开关 */
   extraArgs: string[];
+  /**
+   * 是否进入定时任务，同时是“跑一次”的默认勾选。false 的条目仍属被测矩阵，
+   * 可在“跑一次”里手动选；与题目的 run.promptIds 作用对称。
+   */
+  enabled: boolean;
 }
 
 /**

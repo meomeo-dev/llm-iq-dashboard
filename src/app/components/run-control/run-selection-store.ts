@@ -2,14 +2,12 @@
  * “跑一次”面板的选择状态缓存与解析。
  *
  * 1. 记住用户的最后一次勾选状态（存储于当前浏览器的 localStorage），避免刷新或重新进入时丢失；
- * 2. 首次进入或无缓存时的默认状态：
- *    - 模型范围（targets）：全选（所有当前可用的 target）
- *    - 题目选择（prompts）：默认仅勾选“动态鹈鹕车”（animated-pelican-v1）
+ * 2. 首次进入或无缓存时，默认勾选与定时任务的范围一致，由服务端的 defaultSelected 给出：
+ *    - 模型范围（targets）：配置里 enabled 的目标
+ *    - 题目选择（prompts）：配置里 run.promptIds 的条目
  */
 
-export const SELECTION_STORAGE_KEY = "pelican.runOnce.selection.v2";
-export const DEFAULT_PROMPT_ID = "animated-pelican-v1";
-export const DEFAULT_EFFORTS = new Set(["low", "high"]);
+export const SELECTION_STORAGE_KEY = "pelican.runOnce.selection.v3";
 
 export interface StoredRunSelection {
   readonly targets: readonly string[];
@@ -19,12 +17,11 @@ export interface StoredRunSelection {
 
 export interface MinimalOptionItem {
   readonly id: string;
-  readonly effort?: string;
-}
-
-export interface MinimalPromptItem extends MinimalOptionItem {
+  /** 进入定时任务的条目，作为无缓存时的默认勾选 */
   readonly defaultSelected?: boolean;
 }
+
+export type MinimalPromptItem = MinimalOptionItem;
 
 export interface AvailableOptions {
   readonly targets: readonly MinimalOptionItem[];
@@ -90,17 +87,9 @@ export function writeStoredSelection(
   }
 }
 
-/**
- * 思考强度默认只选 low 和 high 两档；若没有这两档的目标则回退到全选
- */
-export function defaultTargetIds(targets: readonly MinimalOptionItem[]): string[] {
-  const filtered = targets.filter((target) => {
-    if (target.effort) return DEFAULT_EFFORTS.has(target.effort);
-    const parts = target.id.split("__");
-    const effort = parts[parts.length - 1];
-    return effort !== undefined && DEFAULT_EFFORTS.has(effort);
-  });
-  return filtered.length > 0 ? filtered.map((t) => t.id) : targets.map((t) => t.id);
+/** 默认勾选：服务端标为 defaultSelected 的条目（即定时任务的范围） */
+export function defaultSelectedIds(items: readonly MinimalOptionItem[]): string[] {
+  return items.filter((item) => item.defaultSelected === true).map((item) => item.id);
 }
 
 /**
@@ -132,15 +121,13 @@ export function resolveRunSelection(
     resolvedTargets = [...currentTargets].filter((id) => availableTargetIds.has(id));
   } else if (stored !== null && stored.targets.length > 0) {
     const valid = stored.targets.filter((id) => availableTargetIds.has(id));
-    resolvedTargets = valid.length > 0 ? valid : defaultTargetIds(available.targets);
+    resolvedTargets = valid.length > 0 ? valid : defaultSelectedIds(available.targets);
   } else {
-    resolvedTargets = defaultTargetIds(available.targets);
+    resolvedTargets = defaultSelectedIds(available.targets);
   }
 
   // --- 解析 prompts ---
-  const defaultPromptIds = available.prompts.some((p) => p.id === DEFAULT_PROMPT_ID)
-    ? [DEFAULT_PROMPT_ID]
-    : available.prompts.filter((p) => p.defaultSelected).map((p) => p.id);
+  const defaultPromptIds = defaultSelectedIds(available.prompts);
 
   let resolvedPrompts: string[];
   if (currentPrompts.size > 0) {

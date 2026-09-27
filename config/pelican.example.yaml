@@ -90,7 +90,8 @@ retention:
 # 被测矩阵：每一项是一个 CLI × 模型 × 思考强度的组合，也就是看板上的一格。
 # effort 统一取 low / medium / high / xhigh / max / ultra 六档；各模型实际支持哪些档位
 # 由 CLI 实时探测（见 /config 页），请求超出时折叠到不高于它的最高可用档。
-# enabled: false 可临时停用某一项而不必删除配置。
+# targets 是被测矩阵：“跑一次”可以从中任选。enabled: false 的条目不进定时任务，
+# 在“跑一次”里也不默认勾选，但仍可手动选（与 run.promptIds 对题目的作用相同）。
 targets:
   - cli: claude
     model: claude-sonnet-5

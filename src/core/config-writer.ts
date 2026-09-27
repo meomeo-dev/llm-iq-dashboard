@@ -47,8 +47,8 @@ export async function applyConfigPatch(
     reconcileSequence(doc, ["targets"], patch.targets.map(serializeTarget), {
       // 身份不含强度，只改强度的项仍保留其注释
       identityOf: (item) => `${String(item.cli)}::${String(item.model)}`,
-      // enabled: false 的目标不进界面，保存时须保留
-      retain: (item) => item.enabled === false,
+      // enabled 由界面管理：勾回定时任务时须删掉文件里的 enabled: false
+      managedKeys: ["enabled"],
     });
   }
   if (patch.prompts !== undefined) {
@@ -101,6 +101,8 @@ function serializeTarget(target: Target): Record<string, unknown> {
     label: target.label,
   };
   if (target.extraArgs.length > 0) node.extraArgs = target.extraArgs;
+  // 缺省即进入定时任务，只写出例外
+  if (!target.enabled) node.enabled = false;
   return node;
 }
 

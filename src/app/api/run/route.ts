@@ -21,7 +21,7 @@ import { configPath } from "@/core/paths";
 import { findActiveRun } from "@/core/progress";
 import { listPrompts } from "@/core/prompt";
 import { enqueueRequest, waitForRequest } from "@/core/requests";
-import { narrowConfig, type RunSelection } from "@/core/run-selection";
+import { narrowConfig, scheduledRound, type RunSelection } from "@/core/run-selection";
 import { executeRun } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
 
@@ -51,8 +51,11 @@ export interface RunPromptOption {
 }
 
 export interface RunOptionsView {
-  /** 配置里的目标中当前能调用的（见 capabilities/callable-targets.ts） */
-  targets: { id: string; label: string; cli: string; model: string; effort: string }[];
+  /**
+   * 被测矩阵中当前能调用的目标（见 capabilities/callable-targets.ts）；
+   * defaultSelected：进入定时任务的目标（enabled），与题目的 defaultSelected 对称
+   */
+  targets: { id: string; label: string; cli: string; model: string; effort: string; defaultSelected: boolean }[];
   /** 因 CLI 没装或没登录而暂不列出的，按 CLI 汇总；登录后自动回到 targets */
   unavailable: UnavailableCli[];
   /** defaultSelected：配置里 run.promptIds 启用的条目；多候选题目带候选清单 */
@@ -72,7 +75,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     const history = await loadCostHistory();
     const { callable, unavailable } = splitByReadiness(config.targets, await readReadiness());
     const view: RunOptionsView = {
-      targets: callable.map(({ id, label, cli, model, effort }) => ({ id, label, cli, model, effort })),
+      targets: callable.map(({ id, label, cli, model, effort, enabled }) => ({
+        id, label, cli, model, effort, defaultSelected: enabled,
+      })),
       unavailable,
       prompts: listPrompts(config.customPrompts).map(({ id, label, candidates }) => ({
         id,
@@ -109,7 +114,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const full = loadConfig(configPath());
     selection = await readSelection(request);
-    config = selection === null ? full : narrowConfig(full, selection);
+    // 不带选择（配置页“立即执行”）按定时任务的范围跑整轮
+    config = selection === null ? scheduledRound(full) : narrowConfig(full, selection);
   } catch (cause) {
     return NextResponse.json({ error: describe(cause) }, { status: 400 });
   }

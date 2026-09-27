@@ -1,7 +1,9 @@
 /**
- * 单次执行的选择：从生效配置中挑出本次要跑的目标（范围）与提示词（题目）。
+ * 一轮执行的范围：从配置里的被测矩阵与题目库中挑出本轮要跑的目标与题目。
  *
- * 只收窄不放宽：目标与提示词（内置或自定义）必须已在配置中登记。
+ * 配置登记的是全部可选项；定时任务跑 enabled 的目标与 run.promptIds 的题目
+ * （scheduledRound），“跑一次”跑人工勾选的子集（narrowConfig）。只收窄不放宽：
+ * 目标与提示词（内置或自定义）必须已在配置中登记。
  */
 
 import type { AppConfig } from "./config";
@@ -11,6 +13,11 @@ export interface RunSelection {
   targetIds: readonly string[];
   promptIds: readonly string[];
   candidateOverrides?: Readonly<Record<string, string>>;
+}
+
+/** 定时任务的一轮：只含 enabled 的目标；题目即 run.promptIds */
+export function scheduledRound(config: AppConfig): AppConfig {
+  return { ...config, targets: config.targets.filter((target) => target.enabled) };
 }
 
 /** 返回收窄后的配置；选择为空或含未知 id 时抛错，错误信息可直接给人看 */

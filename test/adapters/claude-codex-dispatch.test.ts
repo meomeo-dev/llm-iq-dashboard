@@ -19,6 +19,7 @@ const mockTargetClaude: Target = {
   label: "Claude Sonnet 5 · low",
   timeoutMs: 300_000,
   extraArgs: [],
+  enabled: true,
 };
 
 const mockTargetCodex: Target = {
@@ -29,6 +30,7 @@ const mockTargetCodex: Target = {
   label: "Codex gpt-6-luna · high",
   timeoutMs: 600_000,
   extraArgs: [],
+  enabled: true,
 };
 
 test("Claude 适配器：正确组装 leijun-v1 提示词及 CLI 参数", () => {

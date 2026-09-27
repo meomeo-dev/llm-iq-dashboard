@@ -8,7 +8,7 @@ import type { Target } from "@/core/types";
 
 const target = (extraArgs: string[] = []): Target => ({
   id: "claude__claude-sonnet-5__low", cli: "claude", model: "claude-sonnet-5", effort: "low",
-  label: "t", timeoutMs: 1000, extraArgs,
+  label: "t", timeoutMs: 1000, extraArgs, enabled: true,
 });
 
 const config = (perDayUsd: number | null, perRoundUsd: number | null, targets: Target[]): AppConfig =>

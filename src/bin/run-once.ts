@@ -8,11 +8,13 @@
 
 import { loadConfig } from "../core/config";
 import { configPath, runDir } from "../core/paths";
+import { scheduledRound } from "../core/run-selection";
 import { executeRun } from "../core/runner";
 
 async function main(): Promise<void> {
   const path = configPath();
-  const config = loadConfig(path);
+  // 与定时任务同一范围：enabled 的目标 × run.promptIds
+  const config = scheduledRound(loadConfig(path));
 
   console.log(`配置：${path}`);
   console.log(`目标：${config.targets.map((t) => t.id).join(", ")}`);

@@ -9,6 +9,7 @@
 import { readAutoRunSwitch, readLiveScheduler, recordSchedulerProcess } from "../core/auto-run";
 import { loadConfig } from "../core/config";
 import { configPath } from "../core/paths";
+import { scheduledRound } from "../core/run-selection";
 import { startScheduler } from "../core/scheduler";
 
 function timestamped(message: string): void {
@@ -20,7 +21,7 @@ async function main(): Promise<void> {
   const config = loadConfig(path);
 
   timestamped(`调度器启动，配置：${path}`);
-  timestamped(`目标数：${config.targets.length}，并发：${config.run.concurrency}`);
+  timestamped(`定时目标 ${scheduledRound(config).targets.length}/${config.targets.length}，并发：${config.run.concurrency}`);
   // 单例：两个调度器会在同一个整点各开一轮，同一模型的调用互相挤占配额
   const existing = await readLiveScheduler();
   if (existing !== null && existing.pid !== process.pid) {

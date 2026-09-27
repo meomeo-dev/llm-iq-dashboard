@@ -327,8 +327,6 @@ function parseTargets(raw: unknown, run: RunConfig, errors: string[]): Target[] 
       errors.push(`${where} 必须是一个映射`);
       return;
     }
-    if (node.enabled === false) return;
-
     const cli = optionalString(node.cli);
     const model = optionalString(node.model);
     const effort = optionalString(node.effort);
@@ -368,11 +366,12 @@ function parseTargets(raw: unknown, run: RunConfig, errors: string[]): Target[] 
         run.timeoutByCli[cli] ??
         run.defaultTimeoutMs,
       extraArgs: parseExtraArgs(node.extraArgs, where, errors),
+      enabled: node.enabled !== false,
     });
   });
 
-  if (targets.length === 0 && errors.length === 0) {
-    errors.push("targets 中没有任何已启用的条目");
+  if (!targets.some((target) => target.enabled) && errors.length === 0) {
+    errors.push("targets 中没有任何已启用的条目：定时任务至少要有一项");
   }
   return targets;
 }
