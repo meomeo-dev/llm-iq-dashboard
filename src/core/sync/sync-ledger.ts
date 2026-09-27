@@ -14,7 +14,8 @@ import type { Redaction } from "../data-repo/contract";
 
 export type SyncStatus = "exported" | "published" | "skipped";
 
-export type SkipReason = "unpublishable-prompt" | "rejected" | "abandoned";
+/** empty：轮次结束时没有任何完成的调用（如刚开始就被取消），没有可发布的内容 */
+export type SkipReason = "unpublishable-prompt" | "rejected" | "abandoned" | "empty";
 
 export interface NormalRunSyncRecord {
   status: "exported" | "published";
@@ -50,6 +51,7 @@ const VALID_SKIP_REASONS = new Set<string>([
   "unpublishable-prompt",
   "rejected",
   "abandoned",
+  "empty",
 ]);
 
 function validateLedgerRecord(

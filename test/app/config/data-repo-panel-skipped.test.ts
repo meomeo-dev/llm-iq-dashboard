@@ -216,6 +216,7 @@ describe("data-repo-panel-skipped 展示模型文案与状态过滤", () => {
         "unpublishable-prompt": 1,
         rejected: 2,
         abandoned: 0,
+        empty: 0,
       });
 
       // deriveCountsSummary 应给出正确的文案

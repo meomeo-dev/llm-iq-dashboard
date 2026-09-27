@@ -235,6 +235,8 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   "被拒绝": "被拒绝",
   abandoned: "已废弃",
   "已废弃": "已废弃",
+  empty: "空轮次",
+  "空轮次": "空轮次",
 };
 
 /** 确认发布与执行器推送的结果都是 ConfirmPublishedReport（带 confirmed 清单） */
@@ -393,7 +395,7 @@ export function deriveCountsSummary(
 
   const byReason = status.ledger.skippedByReason;
   const unpublishableCount = byReason
-    ? (byReason["unpublishable-prompt"] ?? 0) + (byReason.abandoned ?? 0)
+    ? (byReason["unpublishable-prompt"] ?? 0) + (byReason.abandoned ?? 0) + (byReason.empty ?? 0)
     : Math.max(0, (status.ledger.skipped ?? 0) - (status.local.rejected?.length ?? 0));
   const rejectedCount = byReason
     ? (byReason.rejected ?? 0)

@@ -43,7 +43,7 @@ import {
 } from "./sync-ledger";
 import {
   recordSkippedRejected,
-  recordSkippedUnpublishable,
+  recordSkippedPlain,
 } from "./ledger-skip";
 export {
   confirmPublished,
@@ -190,8 +190,9 @@ async function evaluateSingleCandidate(
   const res = await exportRun(runId, exportOpts);
   if (res.status === "skipped") {
     report.skipped.push({ runId, reason: res.reason });
-    if (!dryRun && res.reason === "unpublishable-prompt") {
-      if (recordSkippedUnpublishable(ledger, runId)) {
+    // 不可发布题目与空轮次都记入台账，否则会一直算作待导出
+    if (!dryRun && (res.reason === "unpublishable-prompt" || res.reason === "empty")) {
+      if (recordSkippedPlain(ledger, runId, res.reason)) {
         newlySkippedRunIds.push(runId);
       }
     }

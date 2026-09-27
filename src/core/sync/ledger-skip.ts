@@ -4,30 +4,39 @@
 
 import type { SyncLedger } from "./sync-ledger";
 
+/** 不带明细的跳过原因：不可发布题目、空轮次 */
+export type PlainSkipReason = "unpublishable-prompt" | "empty";
+
 /**
- * 记录不可发布题目导致的跳过。
+ * 记录不带明细的跳过（不可发布题目、空轮次）。
  * 已是 exported/published 的记录不得被覆盖为 skipped。
  * 原因相同的已有 skipped 记录保留原 skippedAt，不计入本次新增，返回 false。
  * 返回是否有写入修改。
  */
-export function recordSkippedUnpublishable(
+export function recordSkippedPlain(
   ledger: SyncLedger,
   runId: string,
+  reason: PlainSkipReason,
   nowIso = new Date().toISOString(),
 ): boolean {
   const existing = ledger[runId];
   if (existing?.status === "exported" || existing?.status === "published") {
     return false;
   }
-  if (existing?.status === "skipped" && existing.reason === "unpublishable-prompt") {
+  if (existing?.status === "skipped" && existing.reason === reason) {
     return false;
   }
-  ledger[runId] = {
-    status: "skipped",
-    reason: "unpublishable-prompt",
-    skippedAt: nowIso,
-  };
+  ledger[runId] = { status: "skipped", reason, skippedAt: nowIso };
   return true;
+}
+
+/** 记录不可发布题目导致的跳过，见 recordSkippedPlain */
+export function recordSkippedUnpublishable(
+  ledger: SyncLedger,
+  runId: string,
+  nowIso = new Date().toISOString(),
+): boolean {
+  return recordSkippedPlain(ledger, runId, "unpublishable-prompt", nowIso);
 }
 
 /**

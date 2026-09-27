@@ -120,6 +120,7 @@ function createEmptyLedgerMetrics(): DataRepoStatus["ledger"] {
       "unpublishable-prompt": 0,
       rejected: 0,
       abandoned: 0,
+      empty: 0,
     },
     lastExportedAt: null,
     lastPublishedAt: null,

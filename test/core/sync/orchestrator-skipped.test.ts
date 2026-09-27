@@ -152,6 +152,27 @@ describe("sync-orchestrator skipped 轮次台账维护与生命周期", () => {
     assert.ok(!ledgerRawText.includes("BEGIN RSA PRIVATE KEY"));
   });
 
+  it("空轮次（0 次调用）不导出，非预演时记为 skipped/empty，预演不写台账", async () => {
+    const emptyRunId = "20260927T175902Z";
+    const emptyDir = join(runsDir, emptyRunId);
+    await mkdir(emptyDir, { recursive: true });
+    await writeFile(
+      join(emptyDir, "run.json"),
+      JSON.stringify({ ...createRunData(emptyRunId, "classic-v1"), attempts: [], cancelledAt: "2026-09-27T02:17:30.000Z" }),
+    );
+
+    const preview = await syncDataRepo({ repoPath: repoDir, dataDir, dryRun: true, push: false });
+    assert.deepEqual(preview.skipped, [{ runId: emptyRunId, reason: "empty" }]);
+    assert.equal((await loadSyncLedger(dataDir))[emptyRunId], undefined);
+
+    const report = await syncDataRepo({ repoPath: repoDir, dataDir, dryRun: false, push: false });
+    assert.equal(report.exported.length, 0);
+    assert.deepEqual(report.skipped, [{ runId: emptyRunId, reason: "empty" }]);
+    const record = (await loadSyncLedger(dataDir))[emptyRunId];
+    assert.ok(record && record.status === "skipped");
+    assert.equal(record.reason, "empty");
+  });
+
   it("预演模式（dryRun=true）不写台账", async () => {
     const unpubRunId = "20260927T021708Z";
     const unpubDir = join(runsDir, unpubRunId);

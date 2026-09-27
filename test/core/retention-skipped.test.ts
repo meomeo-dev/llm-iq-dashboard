@@ -48,7 +48,7 @@ describe("retention-skipped 修剪分级测试", () => {
     await rm(join(dataDir, "sync-state.json"), { force: true });
   });
 
-  it("五种状态修剪分级与 rejected 永不删除", async () => {
+  it("六种状态修剪分级与 rejected 永不删除", async () => {
     const refNow = new Date("2026-09-27T00:00:00Z");
 
     const expPublished = "20260901T010000Z";
@@ -56,6 +56,7 @@ describe("retention-skipped 修剪分级测试", () => {
     const expRejected = "20260901T030000Z";
     const expExported = "20260901T040000Z";
     const expUnrecorded = "20260901T050000Z";
+    const expEmpty = "20260901T060000Z";
 
     for (const id of [
       expPublished,
@@ -63,6 +64,7 @@ describe("retention-skipped 修剪分级测试", () => {
       expRejected,
       expExported,
       expUnrecorded,
+      expEmpty,
     ]) {
       const d = join(runsDir, id);
       await mkdir(d, { recursive: true });
@@ -92,6 +94,11 @@ describe("retention-skipped 修剪分级测试", () => {
         exportedAt: "2026-09-01T04:05:00Z",
         redactions: [],
       },
+      [expEmpty]: {
+        status: "skipped",
+        reason: "empty",
+        skippedAt: "2026-09-01T06:05:00Z",
+      },
     };
     await saveSyncLedger(ledger, dataDir);
 
@@ -101,6 +108,7 @@ describe("retention-skipped 修剪分级测试", () => {
     const remaining = await readdir(runsDir);
     assert.ok(!remaining.includes(expPublished));
     assert.ok(!remaining.includes(expUnpublishable));
+    assert.ok(!remaining.includes(expEmpty));
     assert.ok(remaining.includes(expRejected));
     assert.ok(remaining.includes(expExported));
     assert.ok(remaining.includes(expUnrecorded));
@@ -109,7 +117,7 @@ describe("retention-skipped 修剪分级测试", () => {
       logs.some((msg) => msg.includes("保留 1 个被拒绝的过期轮次（需人工处理）")),
     );
     assert.ok(logs.some((msg) => msg.includes("保留 2 个未发布的过期轮次")));
-    assert.ok(logs.some((msg) => msg.includes("清理了 2 个过期轮次")));
+    assert.ok(logs.some((msg) => msg.includes("清理了 3 个过期轮次")));
   });
 
   it("残轮两倍阈值两侧判定：未超两倍保留，超两倍写 abandoned 并删除", async () => {

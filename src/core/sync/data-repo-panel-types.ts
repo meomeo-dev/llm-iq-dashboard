@@ -35,6 +35,8 @@ export interface DataRepoStatus {
       "unpublishable-prompt": number;
       rejected: number;
       abandoned: number;
+      /** 没有任何完成调用的轮次；旧状态快照可能缺失 */
+      empty?: number;
     };
     lastExportedAt: string | null;
     lastPublishedAt: string | null;

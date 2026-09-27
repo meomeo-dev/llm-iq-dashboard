@@ -44,7 +44,7 @@ export interface ReadyExportResult {
 export interface SkippedExportResult {
   status: "skipped";
   runId: string;
-  reason: "incomplete" | "invalid-run-id" | "unpublishable-prompt";
+  reason: "incomplete" | "invalid-run-id" | "unpublishable-prompt" | "empty";
 }
 
 export interface RejectedExportResult {
@@ -171,6 +171,10 @@ async function loadRunRecord(
   const localRun = normalizeLegacyRun(parsed);
   if (localRun.inProgress) {
     return { status: "skipped", runId, reason: "incomplete" };
+  }
+  // 一次调用都没完成的轮次（如刚开始就被取消）没有可发布的内容
+  if (localRun.attempts.length === 0) {
+    return { status: "skipped", runId, reason: "empty" };
   }
   const run = withoutUnpublishablePrompts(localRun);
   if (run === null) {

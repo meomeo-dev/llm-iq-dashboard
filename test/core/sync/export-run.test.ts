@@ -44,6 +44,28 @@ describe("export-run 轮次导出与脱敏", () => {
     }
   });
 
+  it("一次调用都没完成的轮次（如刚开始就被取消）标记为 skipped:empty", async () => {
+    const runId = "20260927T175902Z";
+    await mkdir(join(runsDir, runId), { recursive: true });
+    await writeFile(
+      join(runsDir, runId, "run.json"),
+      JSON.stringify({
+        runId,
+        prompts: [{ promptId: "classic-v1", text: "draw", bindings: {} }],
+        startedAt: "2026-09-27T17:59:02.232Z",
+        finishedAt: "2026-09-27T17:59:43.122Z",
+        durationMs: 40890,
+        trigger: "manual",
+        cancelledAt: "2026-09-27T17:59:43.099Z",
+        inProgress: false,
+        attempts: [],
+      }),
+    );
+    const result = await exportRun(runId, { runsDir });
+    assert.equal(result.status, "skipped");
+    if (result.status === "skipped") assert.equal(result.reason, "empty");
+  });
+
   it("支持旧版记录（顶层 promptId/promptText）规范化", async () => {
     const runId = "20260927T021708Z";
     const dir = join(runsDir, runId);

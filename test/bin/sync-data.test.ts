@@ -128,9 +128,30 @@ describe("sync-data CLI", () => {
         durationMs: 52000,
         trigger: "schedule",
         inProgress: false,
-        attempts: [],
+        attempts: [
+          {
+            targetId: "claude__model__low",
+            promptId: "classic-v1",
+            cli: "claude",
+            model: "model",
+            effort: "low",
+            appliedEffort: "low",
+            effortHonored: true,
+            label: "Claude",
+            status: "ok",
+            svgFile: "test.svg",
+            rawFile: null,
+            startedAt: "2026-09-27T02:17:09.000Z",
+            finishedAt: "2026-09-27T02:17:40.000Z",
+            durationMs: 31000,
+            svgBytes: 11,
+            error: null,
+            usage: null,
+          },
+        ],
       }),
     );
+    await writeFile(join(dir, "test.svg"), "<svg></svg>");
 
     const outputs: string[] = [];
     const code = await runSyncCli(

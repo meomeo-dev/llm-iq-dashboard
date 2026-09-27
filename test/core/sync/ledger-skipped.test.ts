@@ -17,6 +17,7 @@ import {
   type SyncLedger,
 } from "@/core/sync/sync-ledger";
 import {
+  recordSkippedPlain,
   recordSkippedRejected,
   recordSkippedUnpublishable,
 } from "@/core/sync/ledger-skip";
@@ -151,6 +152,17 @@ describe("sync-ledger skipped 状态与兼容性", () => {
       async () => loadSyncLedger(dataDir),
       /格式错误.*缺少有效 reason/,
     );
+  });
+
+  it("ledger-skip：空轮次记为 skipped/empty，已导出或已发布的记录不被覆盖", () => {
+    const ledger: SyncLedger = {
+      "20260901T030000Z": { status: "published", exportedAt: "2026-09-01T03:05:00Z", redactions: [] },
+    };
+    assert.equal(recordSkippedPlain(ledger, "20260901T040000Z", "empty", "2026-09-01T04:05:00Z"), true);
+    assert.deepEqual(ledger["20260901T040000Z"], { status: "skipped", reason: "empty", skippedAt: "2026-09-01T04:05:00Z" });
+    assert.equal(recordSkippedPlain(ledger, "20260901T040000Z", "empty"), false);
+    assert.equal(recordSkippedPlain(ledger, "20260901T030000Z", "empty"), false);
+    assert.equal(ledger["20260901T030000Z"]?.status, "published");
   });
 
   it("ledger-skip：原因相同的已有 skipped 记录保留原 skippedAt，返回 false", () => {
