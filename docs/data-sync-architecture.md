@@ -1,8 +1,8 @@
 # 大模型评测数据分离与 Vercel 在线展示架构方案
 
 > **状态**：已实施 / 生产就绪架构  
-> **关联代码仓**：`xumetide-dev/llm-iq-dashboard`（系统源码与本地看板）  
-> **关联数据仓**：`xumetide-dev/llm-iq-data`（评测结果、矢量作品与历史归档）  
+> **关联代码仓**：`meomeo-dev/llm-iq-dashboard`（系统源码与本地看板）  
+> **关联数据仓**：`meomeo-dev/llm-iq-data`（评测结果、矢量作品与历史归档）  
 > **编写时间**：2026-09-27  
 
 ---
@@ -40,7 +40,7 @@ flowchart TB
 
     subgraph GitHub数据湖 ["GitHub 独立数据中转湖 (Data Lake Hub)"]
         direction TB
-        B1["xumetide-dev/llm-iq-data<br/>(独立公开仓库)"]
+        B1["meomeo-dev/llm-iq-data<br/>(独立公开仓库)"]
         B2["全量历史产物 (Append-Only)<br/>runs/YYYY/MM/DD/&lt;runId&gt;/"]
         B3["轻量聚合索引<br/>index.json (日期/轮次清单)"]
         B1 --- B2
@@ -68,7 +68,7 @@ flowchart TB
 * **本地文件系统遍历性能坍塌**：看板服务端（`store.ts` 与 `/api/runs`）每次初始化或接收到 SSE 刷新通知时，需通过 `fs.readdir` 扫描 `data/runs/` 目录并逐个解析 `run.json`。若持续累积超过数千轮，单次全量 I/O 与 JSON 结构体重建耗时将从数毫秒飙升至数秒，导致看板卡顿与 Node.js 内存堆膨胀；
 * **前端 DOM 与时间线计算开销失控**：一次性向浏览器传递跨越数月的上万个强度槽位数据，会导致虚拟滚动与瀑布流计算帧率严重下跌。
 
-因此，**服务端使用的必须且永远是“受限热数据”，全量历史“只存放在 GitHub 的 `xumetide-dev/llm-iq-data` 仓库中”**。
+因此，**服务端使用的必须且永远是“受限热数据”，全量历史“只存放在 GitHub 的 `meomeo-dev/llm-iq-data` 仓库中”**。
 
 ---
 
@@ -76,7 +76,7 @@ flowchart TB
 
 | 存储维度 | 本地生产端：热数据层 (Hot Partition) | GitHub 数据湖：冷归档层 (Cold Archive) |
 | :--- | :--- | :--- |
-| **存储载体** | 本地磁盘 `data/runs/<runId>/` | 独立公开仓库 `xumetide-dev/llm-iq-data` |
+| **存储载体** | 本地磁盘 `data/runs/<runId>/` | 独立公开仓库 `meomeo-dev/llm-iq-data` |
 | **保留窗口** | **按 `retention.days` 配置（起步示例 30 天，可设 null 保留全部）** | **永久追加保存（Append-Only，永不删除）** |
 | **分区拓扑** | 扁平紧凑 UTC 目录（如 `20260927T021708Z`） | 时序多级分区树：`runs/YYYY/MM/DD/<runId>/` |
 | **I/O 复杂度** | 目录项受保留期控制，保持常数级高效扫描 | 单目录项 $\le 48$，规避 GitHub 网页与 Git 树卡顿 |
@@ -181,7 +181,7 @@ sequenceDiagram
 在 `llm-iq-data` 仓库中，数据按**年/月/日**多级树状结构存储，规避单目录数千子目录引发的 Git 与 GitHub 网页卡顿：
 
 ```text
-xumetide-dev/llm-iq-data/
+meomeo-dev/llm-iq-data/
 ├── README.md                      # 仓库说明、数据字段规范与引用指南
 ├── LICENSE-CODE                   # MIT 许可证（针对同步与数据工具代码）
 ├── LICENSE-DATA                   # CC-BY-4.0 许可证（针对所有评测数据与 SVG）

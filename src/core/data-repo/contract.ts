@@ -1,5 +1,5 @@
 /**
- * 公开数据仓（xumetide-dev/llm-iq-data）的布局与记录契约。
+ * 公开数据仓（meomeo-dev/llm-iq-data）的布局与记录契约。
  *
  * 写入方是同步流水线（src/core/sync），读取方是远程数据源（DATA_SOURCE=remote 的看板）
  * 与数据仓自身的校验脚本。三方只认本文件：改字段先改这里并提升 DATA_REPO_SCHEMA_VERSION。

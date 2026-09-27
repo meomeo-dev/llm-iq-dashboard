@@ -113,7 +113,7 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   `variable-state.json`（候选集与变量的轮换状态）、`capabilities.json`。
 - JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制，修剪只删已发布到数据仓的轮次
   （ACR-009）。
-- 公开数据仓 `xumetide-dev/llm-iq-data`：`pnpm sync:data` 把已结束轮次脱敏导出为
+- 公开数据仓 `meomeo-dev/llm-iq-data`：`pnpm sync:data` 把已结束轮次脱敏导出为
   `runs/YYYY/MM/DD/<runId>/`（UTC 分区，只追加），不含原始转录；布局契约是
   `src/core/data-repo/contract.ts`。台账 `sync-state.json` 记 exported / published，推送并确认
   远端包含后才为 published。仅供本地测试的题目永不发布（见仓库根 `AGENTS.md`）。

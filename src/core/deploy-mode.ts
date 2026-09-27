@@ -7,7 +7,7 @@
  */
 
 export const DEFAULT_DATA_REPO_URL =
-  "https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main";
+  "https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main";
 
 export type DataSourceKind = "local" | "remote";
 

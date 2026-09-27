@@ -40,4 +40,4 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[0.1.0]: https://github.com/xumetide-dev/llm-iq-dashboard/releases/tag/v0.1.0
+[0.1.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.1.0

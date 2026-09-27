@@ -9,7 +9,7 @@
 
 - **适用平台**：Vercel、Netlify 等无常驻后台进程、文件系统只读的 Serverless 运行环境。
 - **数据流向**：看板不再依赖本地 `data/` 目录，而是通过远程数据源模块向公开数据仓
-  （`xumetide-dev/llm-iq-data`）按需请求轮次清单与脱敏后的作品。
+  （`meomeo-dev/llm-iq-data`）按需请求轮次清单与脱敏后的作品。
 - **只读保证**：安全边界由服务端强行约束，即便直接调用 API 也无法触发模型执行或修改配置。
 
 ---
@@ -22,7 +22,7 @@
 |---|---|---|---|
 | `PELICAN_READONLY` | `1` | 推荐 | 强制只读部署。写接口拦截为 403，配对页面 404，不触达磁盘写入。 |
 | `PELICAN_DATA_SOURCE` | `remote` | 是 | 启用远程数据源，从数据仓读取数据。未设置 `PELICAN_READONLY` 时将自动隐含只读模式并记日志警告。 |
-| `PELICAN_DATA_REPO_URL` | `https://raw.githubusercontent.com/<org>/<repo>/main` | 否 | 公开数据仓根地址。缺省为 `https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`。 |
+| `PELICAN_DATA_REPO_URL` | `https://raw.githubusercontent.com/<org>/<repo>/main` | 否 | 公开数据仓根地址。缺省为 `https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`。 |
 
 ---
 
@@ -76,7 +76,7 @@
    在 **Environment Variables** 面板中添加：
    - `PELICAN_READONLY` = `1`
    - `PELICAN_DATA_SOURCE` = `remote`
-   - `PELICAN_DATA_REPO_URL` = `https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`（或自定义数据仓地址）
+   - `PELICAN_DATA_REPO_URL` = `https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`（或自定义数据仓地址）
 4. **触发部署**：
    - 点击 **Deploy** 开始构建；
    - 构建完成后即可分配自定义域名或使用 Vercel 分配的 `.vercel.app` 域名访问公开看板。

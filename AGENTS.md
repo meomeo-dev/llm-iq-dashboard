@@ -6,7 +6,7 @@
 
 - 评测运行产物（`data/`，含 `data/runs/`）不进入本仓库。
 - 运行结果只经 `pnpm sync:data` 脱敏后写入公开数据仓
-  [`xumetide-dev/llm-iq-data`](https://github.com/xumetide-dev/llm-iq-data)，
+  [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data)，
   本地工作副本位于同级目录 `../llm-iq-data`。
 - 向数据仓推送（`--push` 或 `git push`）会公开发布数据，须先经人工确认。
 - 数据仓布局与记录格式的唯一契约是 `src/core/data-repo/contract.ts`；改动契约时同步更新

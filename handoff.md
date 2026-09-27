@@ -12,8 +12,8 @@
 
 | 仓库名称 | GitHub 远程地址 | 本地工作副本路径 | 职责范围与开源协议 |
 | :--- | :--- | :--- | :--- |
-| **主工程看板仓**<br/>`llm-iq-dashboard` | [`xumetide-dev/llm-iq-dashboard`](https://github.com/xumetide-dev/llm-iq-dashboard) | 本工程根目录 | **系统源码与本地控制台**<br/>• Next.js 15 看板、调度器、CLI 适配器、数据同步流水线<br/>• 协议：**MIT License** |
-| **公开数据仓**<br/>`llm-iq-data` | [`xumetide-dev/llm-iq-data`](https://github.com/xumetide-dev/llm-iq-data) | 同级目录 `../llm-iq-data` | **评测结果与矢量艺术冷归档湖**<br/>• 仅存放脱敏后成果（`run.json`、`*.svg`、`index.json`）<br/>• 协议：**代码 MIT + 数据/作品 CC-BY-4.0** |
+| **主工程看板仓**<br/>`llm-iq-dashboard` | [`meomeo-dev/llm-iq-dashboard`](https://github.com/meomeo-dev/llm-iq-dashboard) | 本工程根目录 | **系统源码与本地控制台**<br/>• Next.js 15 看板、调度器、CLI 适配器、数据同步流水线<br/>• 协议：**MIT License** |
+| **公开数据仓**<br/>`llm-iq-data` | [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data) | 同级目录 `../llm-iq-data` | **评测结果与矢量艺术冷归档湖**<br/>• 仅存放脱敏后成果（`run.json`、`*.svg`、`index.json`）<br/>• 协议：**代码 MIT + 数据/作品 CC-BY-4.0** |
 
 ### 纪律与规则（详见 `AGENTS.md`）
 - **代码与数据物理分离**：本地评测运行产物（`data/`，含 `data/runs/`）严禁提交到主看板代码仓，仅经脱敏后写入公开数据仓。
@@ -99,11 +99,11 @@ CLI 工具参数与说明：
 以下步骤涉及外部平台控制台与私有凭据操作，须由运维或所有者人工完成：
 
 1. **Vercel 公开展台托管部署**：
-   - 登录 Vercel 控制台，选择 **Import Git Repository**，关联 `xumetide-dev/llm-iq-dashboard`；
+   - 登录 Vercel 控制台，选择 **Import Git Repository**，关联 `meomeo-dev/llm-iq-dashboard`；
    - 在项目设置（Settings → Environment Variables）中配置环境变量：
      * `PELICAN_DATA_SOURCE=remote`
      * `PELICAN_READONLY=1`
-     * `PELICAN_DATA_REPO_URL=https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`
+     * `PELICAN_DATA_REPO_URL=https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`
    - 点击 **Deploy** 构建上线（利用 Next.js 增量缓存拉取公开数据仓）。
 2. **宿主机定期人工推送发布**：
    - 定期或在重要评测轮次结束后，进入宿主机数据仓工作目录执行：

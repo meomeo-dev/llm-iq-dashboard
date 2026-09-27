@@ -26,7 +26,7 @@ import {
 
 const DEFAULT_REPO_NAME = "llm-iq-data";
 const DEFAULT_REPO_DESCRIPTION = "LLM-IQ Benchmark Open Data";
-const DEFAULT_REPOSITORY_URL = "https://github.com/xumetide-dev/llm-iq-data";
+const DEFAULT_REPOSITORY_URL = "https://github.com/meomeo-dev/llm-iq-data";
 
 /** 从 PublicRunRecord 提取 RunSummary */
 export function buildRunSummary(record: PublicRunRecord): RunSummary {

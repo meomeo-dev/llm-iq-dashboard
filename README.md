@@ -106,7 +106,7 @@ docker exec -it llm-iq-runner pnpm pair
 
 核心环境变量：
 - `PELICAN_DATA_SOURCE=remote`：从公开数据仓拉取历史评测与作品，自动启用只读保护。
-- `PELICAN_DATA_REPO_URL`：公开数据仓根地址（缺省为 `https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`）。
+- `PELICAN_DATA_REPO_URL`：公开数据仓根地址（缺省为 `https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`）。
 - `PELICAN_READONLY=1`：强制只读部署（写接口 403，配对页面与 API 404，不生成密钥）。
 
 部署前可通过 `pnpm showcase:smoke` 在本地执行完整的只读冒烟校验。
@@ -280,7 +280,7 @@ pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后�
 
 ## 数据仓同步
 
-将本地评测结果脱敏导出并同步到公开数据仓（如 `xumetide-dev/llm-iq-data`）。
+将本地评测结果脱敏导出并同步到公开数据仓（如 `meomeo-dev/llm-iq-data`）。
 
 ### 配置
 

@@ -1,5 +1,5 @@
 /**
- * 远程数据源实现：从公开数据仓（xumetide-dev/llm-iq-data）读取历史记录与作品。
+ * 远程数据源实现：从公开数据仓（meomeo-dev/llm-iq-data）读取历史记录与作品。
  *
  * 链路：
  * 1. 读根目录 index.json（DataRepoManifest）
