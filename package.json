@@ -14,7 +14,7 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "tsc --noEmit",
-    "test": "tsx --test \"test/**/*.test.ts\"",
+    "test": "tsx --test --test-timeout=120000 \"test/**/*.test.ts\"",
     "run:once": "tsx src/bin/run-once.ts",
     "scheduler": "tsx src/bin/scheduler.ts",
     "runner": "tsx src/bin/runner.ts",
