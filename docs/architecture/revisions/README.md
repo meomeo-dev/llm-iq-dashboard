@@ -69,5 +69,5 @@ node $R validate
 | [ACR-006](ACR-006-model-guardrails.md) | 模型层收口：禁用 CLI 工具、宿主机上限与输出泄漏拦截 | done | 2026-09-26 | structure-change | 用三家 CLI 自带的权限开关禁用工具：claude --tools ""、codex approvalPolicy: untrusted（适配器拒绝一切审批）、agy 仅 --sandbox | 3 包 | ✓ 2026-09-26 | 3/4 | — |
 | [ACR-007](ACR-007-owner-pairing-auth.md) | 所有者配对登录与公开只读 | done | 2026-09-26 | new-module | 自研 | 4 包 | ✓ 2026-09-26 | 6/6 | — |
 | [ACR-008](ACR-008-split-web-runner.md) | 看板与执行器分容器，凭据只在执行器 | done | 2026-09-26 | deployment-change | 自研 | 6 包 | ✓ 2026-09-26 | 5/6 | — |
-| [ACR-009](ACR-009-public-data-repo-showcase.md) | 运行结果公开数据仓与只读展台 | awaiting-approval | 2026-09-27 | new-module | 自研 | 3 包 | — | 4/4 | — |
+| [ACR-009](ACR-009-public-data-repo-showcase.md) | 运行结果公开数据仓与只读展台 | implementing | 2026-09-27 | new-module | 自研 | 3 包 | ✓ 2026-09-27 | 4/4 | — |
 <!-- acr-index:end -->

@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | awaiting-approval |
+| 状态 | implementing |
 | 日期 | 2026-09-27 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：按 handoff.md 实现运行结果与代码仓分离、公开数据仓同步与只读展台 |
@@ -66,7 +66,7 @@
 | `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | d26a518 | |
 | `pnpm test` | 单元与集成测试 | pass | pass | d26a518 | 255 项 |
 | `pnpm build` | Next.js 看板生产构建 | pass | pass | ff93861 | |
-| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式构建、启动与关键路由断言 | - | pass | ff93861 | 变更前无此入口 |
+| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式构建、启动与关键路由断言 | skip | pass | ff93861 | 变更前无此入口 |
 
 ## 分步实施
 
@@ -99,6 +99,7 @@
 
 | 日期 | 谁 | 结论 | 备注 |
 |---|---|---|---|
+| 2026-09-27 | xumetide-dev | approved | 对话中确认方案摘要 |
 
 ## 回填
 
