@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-27 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：按 handoff.md 实现运行结果与代码仓分离、公开数据仓同步与只读展台 |
@@ -64,7 +64,7 @@
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
 | `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | d26a518 | |
-| `pnpm test` | 单元与集成测试 | pass | pass | d26a518 | 255 项 |
+| `pnpm test` | 单元与集成测试 | pass | pass | 7026935 | 271 项 |
 | `pnpm build` | Next.js 看板生产构建 | pass | pass | ff93861 | |
 | `pnpm showcase:smoke` | 端到端冒烟：只读远程模式构建、启动与关键路由断言 | skip | pass | ff93861 | 变更前无此入口 |
 
@@ -77,7 +77,7 @@
 | 3 | 同步流水线与修剪守卫 | revert 3cac282 |
 | 4 | 展台首屏回落、健康检查与冒烟 | revert ff93861 |
 | 5 | 永不发布题目的剔除 | revert fe2873a、d26a518 |
-| 6 | 容器挂载数据仓与发布确认 | revert 该步 commit |
+| 6 | 容器挂载数据仓与发布确认 | revert 7026935 与其后的 compose 覆盖文件提交 |
 
 ## 回滚方案
 
@@ -105,6 +105,6 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §4 §6 §8 | 数据仓同步与修剪守卫；只读部署边界；只读展台部署形态 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-009 | 待回填 |
+| architecture.md §4 §6 §8 | 数据仓同步与修剪守卫；只读部署边界；只读展台部署形态 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-009 | 已回填 |
 | ADR（/adr-curator） | 不适用：非难逆转，开关关闭即恢复 | 不适用 |

@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 选型依据 | ARCH-001（accepted） |
-| 最近回填 | 2026-09-26 |
+| 最近回填 | 2026-09-27 |
 
 ### 变更记录
 
@@ -19,6 +19,7 @@
 | [ACR-006](revisions/ACR-006-model-guardrails.md) | 2026-09-26 | CLI 调用不给模型工具，宿主机上限与输出泄漏拦截 | §3 §6 |
 | [ACR-007](revisions/ACR-007-owner-pairing-auth.md) | 2026-09-27 | 所有者配对登录，公开视角只读 | §1 §2 §6 |
 | [ACR-008](revisions/ACR-008-split-web-runner.md) | 2026-09-27 | 看板与执行器分容器，凭据只在执行器 | §2 §8 |
+| [ACR-009](revisions/ACR-009-public-data-repo-showcase.md) | 2026-09-27 | 运行结果脱敏同步到公开数据仓，只读展台读远程数据 | §4 §6 §8 |
 
 ## 0. 技术选型总览
 
@@ -110,7 +111,12 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   `attempts`，第一次的原因记为 `budgetStop`。
 - 运行态：`auto-run.json`（自动任务开关，不存在即关闭）、`scheduler.json`（调度器 pid）、
   `variable-state.json`（候选集与变量的轮换状态）、`capabilities.json`。
-- JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制。
+- JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制，修剪只删已发布到数据仓的轮次
+  （ACR-009）。
+- 公开数据仓 `xumetide-dev/llm-iq-data`：`pnpm sync:data` 把已结束轮次脱敏导出为
+  `runs/YYYY/MM/DD/<runId>/`（UTC 分区，只追加），不含原始转录；布局契约是
+  `src/core/data-repo/contract.ts`。台账 `sync-state.json` 记 exported / published，推送并确认
+  远端包含后才为 published。仅供本地测试的题目永不发布（见仓库根 `AGENTS.md`）。
 
 ## 5. 配置与运行参数
 
@@ -129,6 +135,8 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 - 写操作与配置类读取只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
   `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
+- 发布前对 run.json 与 SVG 做泄漏规则与凭据指纹双重扫描，命中的作品不发布；数据仓 CI 再校验一次。
+- `PELICAN_READONLY=1` 在服务端强制只读：不承认会话、写接口 403、配对 404、不拉起调度器（ACR-009）。
 
 ## 7. 目录结构
 
@@ -179,6 +187,12 @@ llm_iq_dashboard/
   `next dev`。不做开机常驻。
 - 调度器可手动 `pnpm scheduler` 启动，也可由看板在打开自动任务时拉起（脱离的子进程，日志写
   `data/scheduler.log`）；同一时刻只允许一个调度器。
+- 部署形态只读展台（ACR-009）：`PELICAN_DATA_SOURCE=remote` 从公开数据仓读清单、日索引与
+  run.json，作品由服务端 `/art` 代理；只展示、不运行评测，适合 serverless 托管（如 Vercel）。
+  `pnpm showcase:smoke` 端到端自检，`/api/health` 报告数据仓连通性；见
+  `docs/deploy-public-showcase.md`。
+- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner，容器只导出
+  与本地提交、不持有 GitHub 凭据；推送由宿主机完成，容器以 `--confirm-published` 回填发布状态。
 - K8s：no。单机单用户的两个进程。复议条件：需要多人共用一套部署，或常驻进程增加到 5 个以上。
 
 ## 9. 待确认事项
