@@ -6,6 +6,8 @@
  */
 
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { AppConfig } from "./config";
 import { mapWithConcurrency } from "./concurrency";
 import { createProgressTracker } from "./progress";
@@ -14,7 +16,7 @@ import { pruneExpiredRuns } from "./retention";
 import { watchCancel } from "./run-cancel";
 import { ensureRunDir, saveRun } from "./store";
 import type { Attempt, CliKind, RunRecord } from "./types";
-import { syncDataRepo } from "./sync/sync-orchestrator";
+import { confirmPublished, syncDataRepo } from "./sync/sync-orchestrator";
 import { openSessionPool } from "../adapters/index";
 import { blocksCalls } from "../capabilities/readiness";
 import { checkAndRecord } from "../capabilities/readiness-cache";
@@ -159,19 +161,44 @@ export async function executeRun(
   await saveRun(record);
   await discardScratch(runId);
   if (config.dataRepo?.autoSync) {
-    try {
-      await syncDataRepo({
-        repoPath: config.dataRepo.path,
-        runIds: [runId],
-        push: config.dataRepo.push,
-        log,
-      });
-    } catch (syncError) {
-      log(
-        `[${runId}] 数据仓自动同步失败：${
-          syncError instanceof Error ? syncError.message : String(syncError)
-        }`,
-      );
+    const repoPath = config.dataRepo.path;
+    if (!existsSync(repoPath) || !existsSync(join(repoPath, ".git"))) {
+      log(`[${runId}] 数据仓目录未挂载或不是 Git 仓库 (${repoPath})，跳过自动同步`);
+    } else {
+      try {
+        await syncDataRepo({
+          repoPath,
+          runIds: [runId],
+          push: config.dataRepo.push,
+          log,
+        });
+      } catch (syncError) {
+        log(
+          `[${runId}] 数据仓自动同步失败：${
+            syncError instanceof Error ? syncError.message : String(syncError)
+          }`,
+        );
+      }
+
+      if (!config.dataRepo.push) {
+        try {
+          const confirmReport = await confirmPublished({
+            repoPath,
+            log,
+          });
+          if (confirmReport.confirmed.length > 0) {
+            log(
+              `[${runId}] 数据仓发布确认：新确认 ${confirmReport.confirmed.length} 轮已发布 (${confirmReport.confirmed.join(", ")})`,
+            );
+          }
+        } catch (confirmError) {
+          log(
+            `[${runId}] 数据仓发布确认失败：${
+              confirmError instanceof Error ? confirmError.message : String(confirmError)
+            }`,
+          );
+        }
+      }
     }
   }
   const outcome = cancelledAt !== undefined ? "已停止" : "完成";

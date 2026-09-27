@@ -1,6 +1,6 @@
 # 大模型评测数据分离与 Vercel 在线展示架构方案
 
-> **状态**：草案 / 架构提案  
+> **状态**：已实施 / 生产就绪架构  
 > **关联代码仓**：`xumetide-dev/llm-iq-dashboard`（系统源码与本地看板）  
 > **关联数据仓**：`xumetide-dev/llm-iq-data`（评测结果、矢量作品与历史归档）  
 > **编写时间**：2026-09-27  
@@ -130,7 +130,11 @@ sequenceDiagram
 1. **执行前修剪（Retention Guard）**：每轮评测开始时由 `executeRun` 调用 `pruneExpiredRuns`，**仅对台账中确认为 `published` 的过期轮次执行删除**。未发布的轮次熔断保留，防止网络异常导致数据永久丢失；
 2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
 3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；
-4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交。
+4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交；
+5. **发布确认模式（Confirm Published）与宿主机/容器分工**：
+   - **容器安全凭据隔离**：容器内不存放任何 GitHub Token 或 SSH 凭据，runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；
+   - **宿主机人工发布**：推送操作由宿主机操作者使用自身凭据在宿主机终端执行 `git -C ../llm-iq-data push` 完成，确保公开数据发布经过人工确认；
+   - **发布确认回填**：执行 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓的匿名 `git fetch` 拉取远端引用，基于 `git merge-base --is-ancestor` 校验提交是否已被远端上游分支包含；若已包含，则将台账中对应轮次安全转换为 `status: published` 并记录 `publishedAt`；此模式不导出、不提交、不推送，与 `--push` 互斥，fetch 失败或无上游分支时报错中止且台账不变。
 
 
 ---
@@ -210,6 +214,15 @@ xumetide-dev/llm-iq-data/
   * `.env`、凭据文件与本地配置文件；
   * 本地临时文件（`*.lock`、`*.staging`、`requests/` 等）。
 
+### 5.3 永不发布的题目（Unpublishable Prompts）
+
+某些题目属于本地联调、特定主体或测试用途，其题面与作品严禁公开发布：
+- **`leijun-v1`（雷军骑自行车）**：仅作为本地测试题（Image-to-SVG），其题面文本、图片输入与生成结果永远不上传到 `llm-iq-data`。
+- **双重强制保障（二者须严格一致）**：
+  1. **本仓库契约控制**：`src/core/data-repo/contract.ts` 中的 `UNPUBLISHABLE_PROMPT_IDS`。同步导出时直接剔除该题目的 attempts，若整轮仅含该题则整轮跳过（`skipped: unpublishable-prompt`），从源头阻断；
+  2. **数据仓准入控制**：数据仓 `scripts/lib/validator.mjs` 中的 `UNPUBLISHABLE_PROMPT_IDS`。CI 门禁与提交前校验拒收任何包含此清单题目的 PR 或提交。
+- **扩展规范**：新增以真人为主体或仅供本地测试的题目时，必须同步登记至上述两处清单；严禁使用 `--run` 单独指定、手工复制或修改元数据等任何方式绕过。
+
 ---
 
 ## 6. 开源许可协议策略（Licensing Strategy）
@@ -225,18 +238,19 @@ xumetide-dev/llm-iq-data/
 
 ## 7. 当前实施架构
 
-系统已实现全自动化的数据脱敏导出、台账追踪与修剪守护架构：
+系统已实现全自动化的数据脱敏导出、台账追踪、容器接入与修剪守护架构：
 
 1. **核心同步模块（`src/core/sync/`）**：
    * `leak-scan.ts`：共享泄漏扫描与本机绝对路径脱敏替换；
    * `export-run.ts`：构建 `PublicRunRecord`、旧版记录规范化、用量解析回填与 SVG 脱敏；
    * `data-repo-index.ts`：维护 `DayIndex`、迁移与更新根目录 `DataRepoManifest`；
    * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账；
-   * `data-repo-git.ts`：Git 工作区检查、规范提交与带祖先校验的安全推送；
+   * `data-repo-git.ts`：Git 工作区检查、提交身份校验、规范提交与安全推送；
+   * `confirm-published.ts`：基于匿名 fetch 与祖先关系比对的安全发布确认；
    * `sync-orchestrator.ts`：串联候选过滤、幂等判定、冲突检测与完整同步流水线。
 2. **命令行工具（`src/bin/sync-data.ts`）**：
-   * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
+   * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--confirm-published`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
 3. **执行引擎与修剪守护**：
-   * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步，具备完全的异常隔离保护；
+   * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
    * `src/core/retention.ts`：仅对台账确认为 `published` 的过期轮次执行物理删除，未发布轮次安全熔断保留。
 

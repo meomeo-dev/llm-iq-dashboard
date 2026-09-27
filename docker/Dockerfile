@@ -21,6 +21,7 @@ WORKDIR /app
 
 # claude / codex 钉版本：容器启动时按这里的版本安装，改版本号并重建后才会升级，
 # 凭据格式变化导致的重新登录只在主动升级时发生
+# GIT_CONFIG_*：数据仓以 bind mount 挂入 /data-repo，属主与容器内 node 用户不同，按安全目录放行
 ENV CLAUDE_CODE_VERSION=2.1.283 \
     CODEX_VERSION=0.157.1 \
     PELICAN_CLI_HOME=/opt/clis \
@@ -29,7 +30,10 @@ ENV CLAUDE_CODE_VERSION=2.1.283 \
     PELICAN_COMMAND_PREFIX="docker exec -it llm-iq-runner" \
     CLAUDE_CONFIG_DIR=/home/node/.claude \
     DISABLE_AUTOUPDATER=1 \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    GIT_CONFIG_COUNT=1 \
+    GIT_CONFIG_KEY_0=safe.directory \
+    GIT_CONFIG_VALUE_0=/data-repo
 
 COPY --chown=node:node . .
 # postinstall 把价格目录下载到 data/，数据卷首次创建时随之复制进卷

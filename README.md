@@ -94,7 +94,9 @@ docker exec -it llm-iq-runner pnpm pair
 
 两个容器共用一个镜像：`llm-iq-web` 只跑看板、开端口；`llm-iq-runner` 装三家 CLI、挂登录态、
 不开端口，负责调度与执行，看板发起的一轮经数据卷交给它。镜像不含 CLI，runner 首次启动时从
-各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。卷、配置、更新与设计取舍见
+各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。公开数据仓工作副本通过 bind mount
+（`${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo`）挂入 runner，容器内脱敏导出并本地提交，
+由宿主机安全推送并通过 `pnpm sync:data --confirm-published` 确认发布。卷、配置、更新与设计取舍见
 [`docs/deploy-docker.md`](docs/deploy-docker.md)。
 
 ## 公网只读展台部署
@@ -286,18 +288,21 @@ pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后�
 
 ```yaml
 dataRepo:
-  path: ../llm-iq-data    # 本地数据仓路径（必填，相对路径按 cwd 解析）
+  path: ../llm-iq-data    # 本地数据仓路径（相对路径按 cwd 解析；容器部署时填 /data-repo）
   autoSync: false         # 评测完成后是否自动触发同步（默认 false）
   push: false             # 同步提交后是否自动 git push 到远程（默认 false）
 ```
 
-开启 `autoSync: true` 时，`runner` 在每轮评测生成最终 `run.json` 后自动调用同步流水线。同步失败仅记录日志，不影响评测本身与结果。
+开启 `autoSync: true` 时，`runner` 在每轮评测生成最终 `run.json` 后自动调用同步流水线。若未挂载或不是 Git 仓库则记录清晰日志并跳过；同步失败仅记录日志，不影响评测本身与结果。
 
 ### 命令行工具
 
 ```bash
 # 演练模式（只出报告，任何地方都不写）
 pnpm sync:data --repo ../llm-iq-data --dry-run
+
+# 发布确认（匿名 fetch 校验远端包含并回填 published，不导出不提交不推送）
+pnpm sync:data --repo ../llm-iq-data --confirm-published
 
 # 同步指定轮次并推送到远程
 pnpm sync:data --repo ../llm-iq-data --run 20260927T021708Z --push
@@ -307,8 +312,8 @@ pnpm sync:data --repo ../llm-iq-data --json
 ```
 
 退出码含义：
-- `0`：同步成功；
-- `1`：执行失败（如工作区不干净、Git 执行出错、配置缺失等）；
+- `0`：同步或发布确认成功；
+- `1`：执行失败（如工作区不干净、Git 执行出错、fetch 失败、参数互斥、配置缺失等）；
 - `2`：存在因敏感信息拦截而被拒绝发布的轮次或内容冲突。
 
 ### 安全边界与脱敏机制
@@ -321,16 +326,18 @@ pnpm sync:data --repo ../llm-iq-data --json
    - **`run.json` 文本**中的本机路径先行替换为 `~` 形式，若仍包含敏感路径或命中密钥/令牌，整轮拒绝发布。
 3. **数据仓只追加与幂等校验**：
    - 目标轮次目录已存在时，若内容完全一致则幂等跳过；若内容存在差异则判定为冲突，拒绝覆盖并退出报错。
-4. **Git 与推送确认**：
-   - 同步开始前要求数据仓工作区完全干净；
-   - 一次同步生成一个形如 `chore(data): sync <N> run(s)` 的提交；
-   - 所有 Git 命令均设超时限制（push/fetch 120 秒，其余 30 秒）；
-   - 绝不使用 force push；`--push` 时在导出前先 `git fetch` 并 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；
-   - 无论本次是否有新提交，`--push` 均推送并把台账中已被上游包含的 `exported` 轮次标为 `published`；数据仓已有同内容目录但台账缺失时自动补记；推送失败保持 `exported`。
+4. **Git 与发布确认（凭据隔离）**：
+   - 同步开始前要求数据仓工作区完全干净，且已配置 Git 提交身份（`user.name`/`user.email`）；
+   - 容器内不存放任何 GitHub Token 或 SSH 凭据，以 `push: false` 导出并本地提交至 `/data-repo`，台账记录为 `exported`；
+   - 宿主机操作者使用自身凭据在宿主机执行 `git push`（人工确认的发布动作）；
+   - 推送后通过 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓匿名 `git fetch` 与 `git merge-base --is-ancestor` 校验提交是否已被远端上游包含，将台账安全转换为 `published`；
+   - 本机直跑模式下可传 `--push` 自动快进合并、推送并校验（与 `--confirm-published` 互斥）。
 5. **修剪守卫（Retention Guard）**：
    - 调度器过期清理（`retention`）**仅删除台账中标记为 `published` 的轮次**；
    - 尚未发布的过期轮次自动保留并记录日志，防止因断网导致数据丢失；
    - 过期的空目录可删；仅有过程文件而无 `run.json` 的目录予以保留。
+6. **永不发布的题目**：
+   - `leijun-v1`（雷军骑自行车）仅用于本地测试，由本工程 `src/core/data-repo/contract.ts` 与数据仓 `validator.mjs` 双重代码强制阻断，其题面与结果永不上传至公开数据仓（详见 `AGENTS.md`）。
 
 
 ## 设计要点

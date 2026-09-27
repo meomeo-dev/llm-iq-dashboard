@@ -6,8 +6,9 @@
  *   --repo <path>  数据仓本地路径（缺省读取配置文件 dataRepo.path）
  *   --dry-run      演练模式，任何地方都不写入，仅输出报告
  *   --run <runId>  指定同步的 runId（可重复传入多次）
- *   --push         同步提交后执行 git push
- *   --json         以 JSON 格式输出结果报告
+ *   --push               同步提交后执行 git push
+ *   --confirm-published  执行 git fetch 并将已包含在远端的 exported 轮次确认为 published
+ *   --json               以 JSON 格式输出结果报告
  *
  * 退出码：
  *   0：成功完成
@@ -19,12 +20,18 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { configPath } from "../core/paths";
 import { loadConfig } from "../core/config";
-import { syncDataRepo, type SyncReport } from "../core/sync/sync-orchestrator";
+import {
+  confirmPublished,
+  syncDataRepo,
+  type ConfirmPublishedReport,
+  type SyncReport,
+} from "../core/sync/sync-orchestrator";
 
 export interface ParsedArgs {
   repoPath?: string;
   dryRun: boolean;
   push: boolean;
+  confirmPublished: boolean;
   json: boolean;
   runIds: string[];
 }
@@ -33,6 +40,7 @@ export function parseCliArgs(args: readonly string[]): ParsedArgs {
   const result: ParsedArgs = {
     dryRun: false,
     push: false,
+    confirmPublished: false,
     json: false,
     runIds: [],
   };
@@ -49,6 +57,8 @@ export function parseCliArgs(args: readonly string[]): ParsedArgs {
       result.dryRun = true;
     } else if (arg === "--push") {
       result.push = true;
+    } else if (arg === "--confirm-published") {
+      result.confirmPublished = true;
     } else if (arg === "--json") {
       result.json = true;
     } else if (arg === "--run") {
@@ -131,12 +141,40 @@ function formatHumanReport(report: SyncReport, repoPath: string): string {
   return lines.join("\n");
 }
 
+function formatHumanConfirmReport(
+  report: ConfirmPublishedReport,
+  repoPath: string,
+): string {
+  const lines: string[] = [];
+  lines.push("========================================");
+  lines.push("           数据仓发布确认报告");
+  lines.push("========================================");
+  lines.push(`模式: ${report.dryRun ? "演练 (dry-run，零写入)" : "实际确认"}`);
+  lines.push(`数据仓路径: ${repoPath}`);
+  lines.push(`上游分支: ${report.upstream ?? "(未检测到)"}`);
+  lines.push("");
+
+  const verb = report.dryRun ? "将被确认" : "新确认为 published";
+  lines.push(`[发布确认] ${verb}: ${report.confirmed.length} 轮`);
+  for (const id of report.confirmed) {
+    lines.push(`  - ${id}`);
+  }
+  lines.push("========================================");
+
+  return lines.join("\n");
+}
+
 export async function runSyncCli(
   args: readonly string[] = process.argv.slice(2),
   out: (msg: string) => void = console.log,
   err: (msg: string) => void = console.error,
 ): Promise<number> {
   const parsed = parseCliArgs(args);
+
+  if (parsed.push && parsed.confirmPublished) {
+    err("参数错误：--confirm-published 与 --push 互斥，不能同时使用");
+    return 1;
+  }
 
   let repoPath = parsed.repoPath;
   if (!repoPath) {
@@ -158,6 +196,28 @@ export async function runSyncCli(
   if (!existsSync(repoPath)) {
     err(`错误：目标数据仓路径不存在：${repoPath}`);
     return 1;
+  }
+
+  if (parsed.confirmPublished) {
+    try {
+      const report = await confirmPublished({
+        repoPath,
+        runIds: parsed.runIds.length > 0 ? parsed.runIds : undefined,
+        dryRun: parsed.dryRun,
+      });
+
+      if (parsed.json) {
+        out(JSON.stringify(report, null, 2));
+      } else {
+        out(formatHumanConfirmReport(report, repoPath));
+      }
+
+      return 0;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      err(`发布确认失败：${msg}`);
+      return 1;
+    }
   }
 
   try {

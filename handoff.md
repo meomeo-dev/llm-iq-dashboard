@@ -1,128 +1,138 @@
-# 项目交接与实施指南 (Handoff Guide)
+# 运维与工程交接文档 (Handoff Guide)
 
-> **文档定位**：本文件为【大模型评测数据分离、Vercel 在线展示与冷热数据切换】后续实施工程师的**快速上手与交接清单**。  
+> **文档定位**：本文件为系统当前状态的运维与协作者交接文档。  
 > **编写日期**：2026-09-27  
-> **交接状态**：方案已定稿并评审通过，数据仓库已完成初始化与开源发布，待接手人实施流水线代码。  
+> **当前状态**：评测自动化、数据脱敏同步、发布确认门禁、只读公开展台与两容器部署均已完成并投产。
 
 ---
 
-## 1. 项目全貌与两个核心仓库
+## 1. 项目全貌与两仓分工
 
-本项目包含两个**物理隔离、职责明确**的开源代码/数据仓库：
+系统由两个物理隔离、职责明确的开源代码/数据仓库组成：
 
-| 仓库名称 | 本地工作区绝对路径 | GitHub 远程仓库 | 职责与许可范围 |
+| 仓库名称 | GitHub 远程地址 | 本地工作副本路径 | 职责范围与开源协议 |
 | :--- | :--- | :--- | :--- |
-| **主工程看板仓**<br/>`llm-iq-dashboard` | `/Users/luojin/git/git-my-code/llm_iq_dashboard` | [`xumetide-dev/llm-iq-dashboard`](https://github.com/xumetide-dev/llm-iq-dashboard) | **系统源码与本地控制台**<br/>• Next.js 15 看板、调度器、CLI 适配器、强类型 PromptSchema<br/>• 协议：**MIT License** |
-| **独立数据湖仓**<br/>`llm-iq-data` | `/Users/luojin/git/git-my-code/llm-iq-data` | [`xumetide-dev/llm-iq-data`](https://github.com/xumetide-dev/llm-iq-data) | **评测结果与矢量艺术冷归档湖**<br/>• 仅存放脱敏后的 `run.json`、生成的 `*.svg` 与聚合索引 `index.json`<br/>• 协议：**代码 MIT + 数据/作品 CC-BY-4.0**（均无传染性） |
+| **主工程看板仓**<br/>`llm-iq-dashboard` | [`xumetide-dev/llm-iq-dashboard`](https://github.com/xumetide-dev/llm-iq-dashboard) | 本工程根目录 | **系统源码与本地控制台**<br/>• Next.js 15 看板、调度器、CLI 适配器、数据同步流水线<br/>• 协议：**MIT License** |
+| **公开数据仓**<br/>`llm-iq-data` | [`xumetide-dev/llm-iq-data`](https://github.com/xumetide-dev/llm-iq-data) | 同级目录 `../llm-iq-data` | **评测结果与矢量艺术冷归档湖**<br/>• 仅存放脱敏后成果（`run.json`、`*.svg`、`index.json`）<br/>• 协议：**代码 MIT + 数据/作品 CC-BY-4.0** |
+
+### 纪律与规则（详见 `AGENTS.md`）
+- **代码与数据物理分离**：本地评测运行产物（`data/`，含 `data/runs/`）严禁提交到主看板代码仓，仅经脱敏后写入公开数据仓。
+- **发布须经人工确认**：容器与自动化流程中不存放任何公网推送凭据；数据向远端推送（`git push`）须由宿主机操作者人工确认并执行。
+- **数据契约唯一权威**：数据仓格式与多级时序布局的权威契约为本仓库 `src/core/data-repo/contract.ts`；数据仓只追加（Append-Only），已归档轮次不改写、不删除。
+- **永不发布题目**：`leijun-v1`（雷军骑自行车）仅用于本地测试，其题面与结果永不上传至公开数据仓，由两仓代码双重强制阻断（见 `AGENTS.md`）。
 
 ---
 
-## 2. 核心架构方案与设计纪律
+## 2. 已完成的核心能力与入口命令
 
-接手前请先完整阅读权威方案：
-📄 **[`docs/data-sync-architecture.md`](docs/data-sync-architecture.md)**
-
-### 必须坚守的三条铁律：
-1. **代码仓与数据仓物理隔离（禁止代码污染）**：
-   * 严禁将评测生成的运行记录（`data/runs/`）提交到 `llm-iq-dashboard` 主代码仓；
-   * 其他协作者正在主代码仓中开发其他功能，任何运行数据只能推往同级目录的 `llm-iq-data` 仓库。
-2. **冷热数据分层（服务端只读热数据，杜绝性能衰退）**：
-   * **本地服务端热区**：`data/runs/` 只保留最近 **3 ~ 7 天** 的热数据，文件数严格控制在 $\le 200$，确保 `fs.readdir` 扫描耗时为常数时间 $O(1)$，内存开销恒定；
-   * **远端数据湖冷区**：`llm-iq-data` 采用 **`runs/YYYY/MM/DD/<runId>/`** 多级时序分区，只追加永不删除，沉淀全量历史。
-3. **零丢失安全修剪门禁（Safety Fuse）**：
-   * 本地调度器在修剪超过 7 天的历史目录时，**必须确认该轮次已成功同步到 GitHub（`synced` 状态）**；若因断网未同步，必须熔断保留，绝不物理误删。
-
----
-
-## 3. 接手人待实施任务清单 (Actionable Checklist)
-
-接手工程师需要按照以下四个任务模块逐项实施与收口：
-
-```mermaid
-flowchart LR
-    Task1["Task 1: 同步与脱敏脚本<br/>(scripts/sync-data-repo.mjs)"] --> Task2["Task 2: 执行引擎与守卫集成<br/>(runner.ts & retention.ts)"]
-    Task2 --> Task3["Task 3: 看板只读与远程源模式<br/>(NEXT_PUBLIC_READONLY)"]
-    Task3 --> Task4["Task 4: Vercel 免费部署发布<br/>(Edge Showcase)"]
-```
-
-### Task 1: 编写数据同步与脱敏归档脚本 (`scripts/sync-data-repo.mjs`)
-* **目标**：实现一个轻量、幂等的 Node.js 脚本，可手动执行也可由程序调用。
-* **实现逻辑**：
-  1. 扫描本地 `data/runs/<runId>/`；
-  2. 检查每一轮是否已在同级目录 `../llm-iq-data` 中归档；
-  3. **严格脱敏过滤**：
-     * **白名单提取**：复制 `run.json` 和所有的 `*.svg` 矢量文件到 `../llm-iq-data/runs/YYYY/MM/DD/<runId>/`；
-     * **黑名单拦截**：**坚决过滤**所有 `*.txt` 原始终端转录、`.env` 变量、lock 文件；
-  4. **增量更新索引**：解析本次同步的 run 元数据，追加更新 `../llm-iq-data/index.json`（更新 `totalRuns`、`updatedAt`、日期列表）；
-  5. **Git 提交并推送**：在 `../llm-iq-data` 内执行 `git add .`、`git commit -m "chore(data): sync run <runId>"` 并 `git push origin main`；
-  6. 同步成功后，在本地该 `data/runs/<runId>/` 下生成一个轻量标记 `.synced`（或记录在本地同步状态表）。
+| 功能领域 | 入口命令 / 地址 | 功能描述 |
+| :--- | :--- | :--- |
+| **单次执行** | `pnpm run:once` | 手动发起一轮基准评测，支持按题目与模型矩阵执行 |
+| **常驻调度** | `pnpm scheduler` | 启动常驻定时调度进程，按配置节奏与自动任务开关执行 |
+| **环境自查** | `pnpm preflight` | 预检 Node 环境、配置合法性、三家 CLI 登录态与用量价格表 |
+| **引导登录** | `pnpm onboard` | 交互式逐家引导完成 `claude` / `codex` / `agy` 账号授权 |
+| **设备配对** | `pnpm pair` | 生成临时配对码，配对本地浏览器为所有者管理控制台 |
+| **价格同步** | `pnpm pricing:sync` | 按锁文件拉取公开价格目录并校验 sha256 完整性 |
+| **题库校验** | `pnpm validate:prompts` | 强类型校验题库规范、候选集完备性与针对性评判标准 |
+| **数据同步** | `pnpm sync:data [options]` | 执行数据仓脱敏导出、提交、发布确认或推送 |
+| **展台自检** | `pnpm showcase:smoke` | 自动化端到端校验公开只读模式、远程数据拉取与安全边界 |
+| **健康检查** | `GET /api/health` | 实时探测服务就绪态、数据源连通性与调度器存活动态 |
 
 ---
 
-### Task 2: 执行引擎与本地修剪守卫集成
-* **目标**：实现“本地跑完自动触发同步”与“未归档不误删”。
-* **代码落点**：
-  1. [`src/core/runner.ts`](src/core/runner.ts)：在整轮评测结束写入 `run.json` 后，派生或异步调用 `scripts/sync-data-repo.mjs`；
-  2. [`src/core/retention.ts`](src/core/retention.ts)：改造 `pruneExpiredRuns` 方法：
-     * 原逻辑：直接删除超过 `retentionDays` 的目录；
-     * 新逻辑：判断该目录是否存在 `.synced` 归档标记。只有同时满足 `已过期 && 已同步` 才执行 `fs.rm`；若未同步则跳过并输出日志警告。
+## 3. 标准运维操作规程
+
+### 3.1 数据同步流水线 (`pnpm sync:data`)
+CLI 工具参数与说明：
+- `--repo <path>`：数据仓本地路径（缺省读取 `pelican.config.yaml` 的 `dataRepo.path`）；
+- `--dry-run`：演练模式，任何地方都不写入，仅输出详细报告；
+- `--run <runId>`：指定同步的单个轮次（可多次传入）；
+- `--confirm-published`：发布确认模式，执行匿名 `git fetch` 并将已被远端包含的轮次标为 `published`；
+- `--push`：同步提交后执行 `git push`（与 `--confirm-published` 互斥）；
+- `--json`：以标准 JSON 结构输出执行结果。
+
+退出码定义：`0` 成功；`1` 执行出错（配置有误、工作区不干净、fetch/push 失败）；`2` 存在脱敏拦截拒绝发布或冲突。
+
+### 3.2 容器部署与发布闭环工作流
+在两容器部署（`compose.yaml`：`llm-iq-web` 与 `llm-iq-runner`）架构下：
+1. **自动导出与提交**：
+   - runner 容器将宿主机数据仓挂载至 `/data-repo`，配置 `dataRepo.path: /data-repo`、`autoSync: true`、`push: false`；
+   - runner 每轮评测结束自动完成脱敏归档，并在 `/data-repo` 生成 `chore(data)` 提交，台账记录为 `status: exported`；
+   - 容器内无 GitHub Token / SSH Key，不执行远程推送。
+2. **宿主机人工发布**：
+   - 宿主机操作者核验数据后，在宿主机终端执行 Git 推送：
+     ```bash
+     git -C ../llm-iq-data push
+     ```
+3. **状态确认回填（Confirm Published）**：
+   - 方式一（自动）：runner 容器在下一次定时评测自动同步时，会自动通过匿名 fetch 与 merge-base 祖先校验完成确认，回填 `published` 状态；
+   - 方式二（手动）：宿主机推送后可立即触发 runner 确认：
+     ```bash
+     docker compose exec runner pnpm sync:data --confirm-published
+     ```
+
+### 3.3 历史轮次滚动保留与修剪守卫
+- 由 `retention.days` 控制历史轮次保留天数（例如 30 天）；
+- 每轮评测启动前由 `pruneExpiredRuns` 执行清理巡检；
+- **修剪守卫机制**：仅物理删除台账中确认为 `published` 的过期轮次；未确认发布的轮次由守卫安全熔断保留，防止网络异常导致数据丢失；
+- 过期空目录允许删除；仅含 `progress.json` 过程文件而无 `run.json` 的目录予以保留。
+
+### 3.4 公开展台自检与运行监控
+- **发布前自检**：在部署公开展台前运行 `pnpm showcase:smoke`，脚本会在本地拉起静态数据服务与生产构建，验证只读路由拦截（写操作 403、配对 404、配置 307）与远程数据拉取；
+- **健康监控**：向看板发起 `GET /api/health` 请求，可获得如下监控指标：
+  ```json
+  {
+    "status": "healthy",
+    "dataSource": "remote",
+    "readonly": true,
+    "dataRepo": {
+      "reachable": true,
+      "totalRuns": 128
+    }
+  }
+  ```
 
 ---
 
-### Task 3: 前端适配只读展板与远程数据源模式
-* **目标**：支持在 Vercel 等公网环境作为只读安全展示台。
-* **代码落点与改动点**：
-  1. **只读模式开关 (`NEXT_PUBLIC_READONLY=true`)**：
-     * [`src/app/components/run-control/RunOnceMenu.tsx`](src/app/components/run-control/RunOnceMenu.tsx)：在只读模式下隐藏“跑一次”弹出层，或替换为只读状态徽章；
-     * [`src/app/components/run-control/AutoRunToggle.tsx`](src/app/components/run-control/AutoRunToggle.tsx)：隐藏操作开关，仅展示状态小圆点（绿色运行中 / 灰色停止）；
-     * [`src/app/config/`](src/app/config/) 与 [`src/app/pair/`](src/app/pair/)：在中间件或页面入口拦截，只读模式下直接重定向到首页或报 403。
-  2. **远程数据拉取适配 (`DATA_SOURCE=remote`)**：
-     * 改造 [`src/core/store.ts`](src/core/store.ts) 或增加远程适配器：
-     * 当处于云端部署时，不读取本地文件系统，而是通过 `fetch('https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main/index.json')` 获取最近 7 天数据；
-     * SVG 图片的 `src` 路径自动映射至 GitHub Raw 或 jsDelivr CDN 链接：
-       `https://cdn.jsdelivr.net/gh/xumetide-dev/llm-iq-data@main/runs/YYYY/MM/DD/<runId>/<file>.svg`。
+## 4. 仍需人工完成的事项
+
+以下步骤涉及外部平台控制台与私有凭据操作，须由运维或所有者人工完成：
+
+1. **Vercel 公开展台托管部署**：
+   - 登录 Vercel 控制台，选择 **Import Git Repository**，关联 `xumetide-dev/llm-iq-dashboard`；
+   - 在项目设置（Settings → Environment Variables）中配置环境变量：
+     * `PELICAN_DATA_SOURCE=remote`
+     * `PELICAN_READONLY=1`
+     * `PELICAN_DATA_REPO_URL=https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`
+   - 点击 **Deploy** 构建上线（利用 Next.js 增量缓存拉取公开数据仓）。
+2. **宿主机定期人工推送发布**：
+   - 定期或在重要评测轮次结束后，进入宿主机数据仓工作目录执行：
+     ```bash
+     git -C ../llm-iq-data status
+     git -C ../llm-iq-data log -n 5 --oneline
+     git -C ../llm-iq-data push
+     ```
 
 ---
 
-### Task 4: 部署到 Vercel (Edge Showcase)
-* **目标**：零成本托管、全球 CDN 加速的在线展板。
-* **步骤**：
-  1. 登录 Vercel 控制台，选择 **Import Git Repository**，关联 `xumetide-dev/llm-iq-dashboard`；
-  2. 配置环境变量：
-     * `NEXT_PUBLIC_READONLY=true`（启用只读安全保护）
-     * `DATA_SOURCE=remote`
-     * `DATA_REPO_URL=https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`
-  3. 点击 **Deploy**。通过 Next.js 的 ISR（增量静态再生），设置 60 秒自动重新拉取远端数据仓。
+## 5. 质量门禁要求
 
----
-
-## 4. 必备质量验收门禁 (Verification Gates)
-
-在提交任何代码改动前，必须依次跑通以下所有质量门禁：
+在本仓库进行任何代码改动并提交前，必须依次通过以下质量门禁：
 
 ```bash
-# 1. 题库 Schema 严格校验 (183 项单题/候选/标准校验，必须 0 error)
-pnpm validate:prompts
-
-# 2. TypeScript 静态类型检查
+# 1. 代码规范与 TypeScript 类型检查
 pnpm lint
 
-# 3. 自动化测试套件 (29 个测试套件、145 项测试，必须 100% Pass)
+# 2. 自动化单元与集成测试套件
 pnpm test
 
-# 4. Next.js 生产环境构建检查 (验证无服务端构建断言失败)
+# 3. 题库 Schema 与候选条目完整性校验
+pnpm validate:prompts
+
+# 4. Next.js 生产环境构建校验
 pnpm build
 ```
-
----
-
-## 5. 快速答疑与参考索引
-
-* **Q: 为什么不能直接在 Vercel 上点“单次运行”？**  
-  A: Vercel 是无状态 Serverless，免费版超时限制为 10 秒，无法安装或运行本地的 `claude` / `codex` / `agy` CLI，且不应向公网暴露 API 额度消耗权限。
-* **Q: 如果数据仓库以后非常大，会不会拉取很慢？**  
-  A: 不会。因为我们设计了 `index.json` 作为轻量元数据索引，前端默认只拉最近 7 天；查历史时按 `runs/YYYY/MM/DD/` 按需加载单天数据，完全不全量拉取。
-* **Q: 权威设计方案在哪？**  
-  A: 见本工程 [`docs/data-sync-architecture.md`](docs/data-sync-architecture.md)。
-* **Q: 题库出处与黄金标准台账在哪？**  
-  A: 见本工程 [`docs/benchmark-provenance.md`](docs/benchmark-provenance.md)。
+若改动涉及只读展示或远程数据源逻辑，另须通过：
+```bash
+pnpm showcase:smoke
+```

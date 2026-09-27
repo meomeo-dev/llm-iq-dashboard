@@ -88,9 +88,9 @@ retention:
   days: 30
 
 # 数据仓同步配置（可选）：自动或手动将已完成的评测脱敏同步到独立公开数据仓（llm-iq-data）。
-# path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析）。
+# path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析；容器部署时填 /data-repo）。
 # autoSync 为每轮评测结束后是否自动触发同步（默认 false）。
-# push 为同步提交后是否自动 git push 到远端（默认 false）。
+# push 为同步提交后是否自动 git push 到远端（默认 false；容器部署建议保持 false，由宿主机人工发布后通过发布确认回填）。
 # dataRepo:
 #   path: ../llm-iq-data
 #   autoSync: false

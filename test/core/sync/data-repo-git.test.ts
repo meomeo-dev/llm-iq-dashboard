@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import {
+  assertGitUserConfigured,
   assertRepoClean,
   commitSync,
   fetchAndFastForward,
@@ -229,5 +230,26 @@ describe("data-repo-git Git 操作适配", () => {
       { encoding: "utf8" },
     );
     assert.equal(remoteLog.trim(), sha);
+  });
+
+  it("assertGitUserConfigured: 已配置时通过，未配置时抛出清晰中文错误", async () => {
+    // 1. 已配置时正常通过
+    await assert.doesNotReject(() => assertGitUserConfigured(localDir));
+
+    // 2. 在临时仓库且无全局配置时，未配置 user.name/email 则抛出清晰中文错误
+    const cleanRepo = join(tempBase, "clean-repo");
+    execFileSync("git", ["init", cleanRepo]);
+
+    await assert.rejects(
+      () => assertGitUserConfigured(cleanRepo),
+      /数据仓未配置 Git 提交身份 \(user\.name\/user\.email\)/,
+    );
+
+    // 尝试在未配置身份的仓库执行 commitSync 也会失败
+    await writeFile(join(cleanRepo, "test.txt"), "hello\n");
+    await assert.rejects(
+      () => commitSync(cleanRepo, ["20260927T010000Z"]),
+      /数据仓未配置 Git 提交身份 \(user\.name\/user\.email\)/,
+    );
   });
 });

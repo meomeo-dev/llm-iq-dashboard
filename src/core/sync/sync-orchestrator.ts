@@ -21,6 +21,7 @@ import {
 import { buildLeakGuard, type LeakGuard } from "../leak-guard";
 import { dataRoot } from "../paths";
 import {
+  assertGitUserConfigured,
   assertRepoClean,
   commitSync,
   fetchAndFastForward,
@@ -44,6 +45,11 @@ import {
   saveSyncLedger,
   type SyncLedger,
 } from "./sync-ledger";
+export {
+  confirmPublished,
+  type ConfirmPublishedOptions,
+  type ConfirmPublishedReport,
+} from "./confirm-published";
 
 export interface SyncOptions {
   repoPath: string;
@@ -200,6 +206,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
 
   if (!dryRun) {
     await assertRepoClean(repoPath);
+    await assertGitUserConfigured(repoPath);
     if (push) {
       await fetchAndFastForward(repoPath);
     }

@@ -44,6 +44,7 @@ services:
       - claude-auth:/home/node/.claude
       - codex-auth:/home/node/.codex
       - agy-auth:/home/node/.gemini
+      - ${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo
 
 volumes:
   # 运行记录、配置（pelican.config.yaml）、价格目录、自动任务开关、设备表与请求文件

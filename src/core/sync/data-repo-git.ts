@@ -62,6 +62,31 @@ export async function assertRepoClean(repoDir: string): Promise<void> {
 }
 
 /**
+ * 校验数据仓是否已配置 Git 提交身份（user.name 与 user.email）。
+ * 缺失时抛出清晰中文错误提示。
+ */
+export async function assertGitUserConfigured(repoDir: string): Promise<void> {
+  let name = "";
+  let email = "";
+  try {
+    name = (await gitExec(repoDir, ["config", "user.name"])).trim();
+  } catch {
+    name = "";
+  }
+  try {
+    email = (await gitExec(repoDir, ["config", "user.email"])).trim();
+  } catch {
+    email = "";
+  }
+  if (!name || !email) {
+    throw new Error(
+      "数据仓未配置 Git 提交身份 (user.name/user.email)，请在数据仓内执行 " +
+        'git config user.name "..." 与 git config user.email "..." 进行设置',
+    );
+  }
+}
+
+/**
  * 获取当前分支对应的上游追踪分支。
  * 若尚未设置上游则返回 null。
  */
@@ -107,6 +132,8 @@ export async function commitSync(
   if (status.trim() === "") {
     return null;
   }
+
+  await assertGitUserConfigured(repoDir);
 
   const subject = `chore(data): sync ${runIds.length} run(s)`;
   const body = runIds.map((id) => `- ${id}`).join("\n");

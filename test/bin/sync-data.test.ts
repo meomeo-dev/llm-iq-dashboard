@@ -9,6 +9,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { parseCliArgs, runSyncCli } from "@/bin/sync-data";
+import { commitSync, pushCurrentBranch } from "@/core/sync/data-repo-git";
+import {
+  loadSyncLedger,
+  saveSyncLedger,
+  type SyncLedger,
+} from "@/core/sync/sync-ledger";
 
 describe("sync-data CLI", () => {
   let tempBase: string;
@@ -73,6 +79,7 @@ describe("sync-data CLI", () => {
       "/my/repo",
       "--dry-run",
       "--push",
+      "--confirm-published",
       "--json",
       "--run",
       "20260927T010000Z",
@@ -83,6 +90,7 @@ describe("sync-data CLI", () => {
     assert.equal(parsed.repoPath, "/my/repo");
     assert.equal(parsed.dryRun, true);
     assert.equal(parsed.push, true);
+    assert.equal(parsed.confirmPublished, true);
     assert.equal(parsed.json, true);
     assert.deepEqual(parsed.runIds, ["20260927T010000Z", "20260927T020000Z"]);
   });
@@ -197,5 +205,147 @@ describe("sync-data CLI", () => {
 
     assert.equal(code, 2);
     assert.ok(outputs.some((o) => o.includes("[拒绝发布] 1 轮")));
+  });
+
+  it("--confirm-published 与 --push 互斥时输出参数错误且退出码为 1", async () => {
+    const errors: string[] = [];
+    const code = await runSyncCli(
+      ["--repo", repoDir, "--push", "--confirm-published"],
+      () => {},
+      (msg) => errors.push(msg),
+    );
+    assert.equal(code, 1);
+    assert.ok(errors.some((e) => e.includes("互斥，不能同时使用")));
+  });
+
+  it("--confirm-published 正常运行输出人类可读报告且退出码为 0", async () => {
+    const runId = "20260927T021708Z";
+    await writeFile(join(repoDir, "run_confirm.json"), "{}\n");
+    const commitSha = await commitSync(repoDir, [runId]);
+    assert.ok(commitSha !== null);
+    await pushCurrentBranch(repoDir);
+
+    const ledger: SyncLedger = {
+      [runId]: {
+        status: "exported",
+        exportedAt: "2026-09-27T02:18:00.000Z",
+        commit: commitSha,
+        redactions: [],
+      },
+    };
+    await saveSyncLedger(ledger, dataDir);
+
+    const outputs: string[] = [];
+    const code = await runSyncCli(
+      ["--repo", repoDir, "--confirm-published"],
+      (msg) => outputs.push(msg),
+      () => {},
+    );
+
+    assert.equal(code, 0);
+    assert.ok(outputs.some((o) => o.includes("数据仓发布确认报告")));
+    assert.ok(outputs.some((o) => o.includes("[发布确认] 新确认为 published: 1 轮")));
+    assert.ok(outputs.some((o) => o.includes(runId)));
+
+    const updatedLedger = await loadSyncLedger(dataDir);
+    assert.equal(updatedLedger[runId]?.status, "published");
+  });
+
+  it("--confirm-published 配合 --json 输出合法 JSON 报告", async () => {
+    const runId = "20260927T030000Z";
+    await writeFile(join(repoDir, "run_json.json"), "{}\n");
+    const commitSha = await commitSync(repoDir, [runId]);
+    assert.ok(commitSha !== null);
+    await pushCurrentBranch(repoDir);
+
+    const ledger: SyncLedger = {
+      [runId]: {
+        status: "exported",
+        exportedAt: "2026-09-27T03:01:00.000Z",
+        commit: commitSha,
+        redactions: [],
+      },
+    };
+    await saveSyncLedger(ledger, dataDir);
+
+    const outputs: string[] = [];
+    const code = await runSyncCli(
+      ["--repo", repoDir, "--confirm-published", "--json"],
+      (msg) => outputs.push(msg),
+      () => {},
+    );
+
+    assert.equal(code, 0);
+    const parsed = JSON.parse(outputs.join("\n"));
+    assert.equal(parsed.success, true);
+    assert.deepEqual(parsed.confirmed, [runId]);
+    assert.deepEqual(parsed.ledgerTransitions.published, [runId]);
+  });
+
+  it("--confirm-published 配合 --dry-run 零写入台账", async () => {
+    const runId = "20260927T040000Z";
+    await writeFile(join(repoDir, "run_dry.json"), "{}\n");
+    const commitSha = await commitSync(repoDir, [runId]);
+    assert.ok(commitSha !== null);
+    await pushCurrentBranch(repoDir);
+
+    const ledger: SyncLedger = {
+      [runId]: {
+        status: "exported",
+        exportedAt: "2026-09-27T04:01:00.000Z",
+        commit: commitSha,
+        redactions: [],
+      },
+    };
+    await saveSyncLedger(ledger, dataDir);
+
+    const outputs: string[] = [];
+    const code = await runSyncCli(
+      ["--repo", repoDir, "--confirm-published", "--dry-run"],
+      (msg) => outputs.push(msg),
+      () => {},
+    );
+
+    assert.equal(code, 0);
+    assert.ok(outputs.some((o) => o.includes("将被确认: 1 轮")));
+
+    const checkLedger = await loadSyncLedger(dataDir);
+    assert.equal(checkLedger[runId]?.status, "exported");
+    assert.equal(checkLedger[runId]?.publishedAt, undefined);
+  });
+
+  it("--confirm-published 在 fetch 失败时输出错误原因且退出码为 1，台账不变", async () => {
+    execFileSync("git", [
+      "-C",
+      repoDir,
+      "remote",
+      "set-url",
+      "origin",
+      "/nonexistent/remote.git",
+    ]);
+
+    const runId = "20260927T050000Z";
+    const ledger: SyncLedger = {
+      [runId]: {
+        status: "exported",
+        exportedAt: "2026-09-27T05:01:00.000Z",
+        commit: "deadbeef",
+        redactions: [],
+      },
+    };
+    await saveSyncLedger(ledger, dataDir);
+
+    const errors: string[] = [];
+    const code = await runSyncCli(
+      ["--repo", repoDir, "--confirm-published"],
+      () => {},
+      (msg) => errors.push(msg),
+    );
+
+    assert.equal(code, 1);
+    assert.ok(errors.some((e) => e.includes("发布确认失败") || e.includes("fetch 失败")));
+
+    const checkLedger = await loadSyncLedger(dataDir);
+    assert.equal(checkLedger[runId]?.status, "exported");
   });
 });

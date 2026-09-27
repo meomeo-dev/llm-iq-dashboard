@@ -48,11 +48,12 @@ docker exec -it llm-iq-runner pnpm pair
 
 ## 数据与配置
 
-| 卷 | 挂载点 | 内容 |
+| 卷 / 路径 | 挂载点 | 内容 |
 | --- | --- | --- |
 | `pelican-data` | `/app/data`（两个容器） | 运行记录、配置 `pelican.config.yaml`、价格目录、自动任务开关、设备表、审计日志、请求文件 |
 | `cli-tools` | `/opt/clis`（仅 runner） | 三家 CLI 的程序文件；删掉后下次启动重新下载，不影响登录态 |
 | `claude-auth` / `codex-auth` / `agy-auth` | `/home/node/.claude` 等（仅 runner） | 各家登录态；删掉某个卷即退出该 CLI 的登录 |
+| `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`（bind mount） | `/data-repo`（仅 runner） | 宿主机公开数据仓工作副本，供 runner 脱敏导出与本地提交 |
 
 容器首次启动时使用起步配置（三家各一个轻量模型），与本机直跑时维护的矩阵不同。
 要沿用本机的配置，把它拷进容器（留意本机矩阵的每轮成本，见其 `budget` 设置）：
@@ -92,6 +93,31 @@ PELICAN_PORT=3100 docker compose up -d
 排查环境用 `docker exec -it llm-iq-runner pnpm preflight`；看板输出见 `docker logs -f llm-iq-web`，
 调度与执行输出见 `docker logs -f llm-iq-runner`。看板报"执行器未响应"时先看 runner 是否在跑
 （`docker compose ps`）。
+
+### 数据仓同步
+
+容器部署通过 bind mount 将宿主机的数据仓工作副本挂载进 runner 容器：
+
+- **挂载与属主隔离**：`compose.yaml` 中仅将 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
+- **安全边界与凭据隔离**：容器内部不存放任何 GitHub Token、credential helper 或 SSH Key。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
+- **容器内配置**：在 `/app/data/pelican.config.yaml` 中配置 `dataRepo`：
+  ```yaml
+  dataRepo:
+    path: /data-repo
+    autoSync: true
+    push: false
+  ```
+- **宿主机人工发布流程**：
+  1. 容器每轮评测完成生成终稿后，自动执行脱敏归档并生成本地 Git 提交，在台账（`/app/data/sync-state.json`）记录为 `exported` 状态；
+  2. 宿主机操作者使用自身 GitHub 凭据在宿主机执行安全推送发布：
+     ```bash
+     git -C ../llm-iq-data push
+     ```
+  3. **发布确认与状态回填**：推送完成后，容器在下一次评测自动同步时（`push: false`）会自动通过匿名 `git fetch` 与 `merge-base --is-ancestor` 校验上游包含情况，并将台账对应轮次标为 `published`；亦可在宿主机随时手动执行一次性发布确认：
+     ```bash
+     docker compose exec runner pnpm sync:data --confirm-published
+     ```
+- **修剪守卫关系**：过期轮次修剪（`retention.days`）严格以台账 `published` 状态为准，未确认发布的轮次由守卫安全熔断保留，防止网络异常导致成果丢失。若宿主机未挂载 `/data-repo` 或目录不是 Git 仓库，runner 仅记录一行日志并跳过自动同步，评测轮次照常完成。
 
 ## 升级与登录态
 
