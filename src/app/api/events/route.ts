@@ -7,6 +7,7 @@
  */
 
 import { createResponse } from "better-sse";
+import { isRemoteDataSource } from "@/core/deploy-mode";
 import { AUTO_RUN_EVENT, liveHub, PROGRESS_EVENT, readyHub } from "./live-hub";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request): Promise<Response> {
+  if (isRemoteDataSource()) {
+    return createResponse(request, (session) => {
+      session.push([], PROGRESS_EVENT);
+      session.push(null, AUTO_RUN_EVENT);
+    });
+  }
   const hub = liveHub();
   await readyHub(hub);
   return createResponse(request, (session) => {

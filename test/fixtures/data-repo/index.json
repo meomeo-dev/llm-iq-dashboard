@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "llm-iq-data-fixture",
+  "description": "测试用样例数据仓",
+  "repository": "https://github.com/xumetide-dev/llm-iq-data",
+  "updatedAt": "2026-09-27T02:20:00.000Z",
+  "totalRuns": 2,
+  "days": [
+    {
+      "date": "2026-09-27",
+      "runs": 1,
+      "path": "runs/2026/09/27"
+    },
+    {
+      "date": "2026-09-26",
+      "runs": 1,
+      "path": "runs/2026/09/26"
+    }
+  ]
+}

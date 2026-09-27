@@ -13,6 +13,7 @@ export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone:
   const href = viewHref(card);
   // 抽出了 SVG 才有作品地址；源码在进入视口时再取（见 ACR-003）
   const art = rawSvgHref(card);
+  const isRedacted = card.status === "ok" && card.svgFile === null;
   return (
     <article className="card">
       <header>
@@ -37,12 +38,20 @@ export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone:
         </div>
       </header>
 
-      {art !== null ? <ArtFrame card={card} art={art} /> : <FailureFrame card={card} />}
+      {art !== null ? (
+        <ArtFrame card={card} art={art} />
+      ) : isRedacted ? (
+        <RedactedFrame card={card} />
+      ) : (
+        <FailureFrame card={card} />
+      )}
 
       {/* 两行定高：第一行结果与开销，第二行附属信息与入口 */}
       <footer>
         <div className="footer-row">
-          <span className={`status-text status-${card.status}`}>{STATUS_TEXT[card.status]}</span>
+          <span className={`status-text ${isRedacted ? "status-redacted" : `status-${card.status}`}`}>
+            {isRedacted ? "已脱敏，未发布" : STATUS_TEXT[card.status]}
+          </span>
           <span>耗时 {formatDuration(card.durationMs)}</span>
           <span className="card-cost" title={costTitle(card)}>
             {formatCost(card.cost)}
@@ -109,6 +118,17 @@ function FailureFrame({ card }: { card: DashboardCard }) {
   return (
     <div className={`frame card-frame frame-failed failed-${card.status}`} title={reason}>
       <span className="failure-status">{STATUS_TEXT[card.status]}</span>
+      <p>{reason}</p>
+    </div>
+  );
+}
+
+/** 作品脱敏未发布时显示说明框 */
+function RedactedFrame({ card }: { card: DashboardCard }) {
+  const reason = card.error ?? "已脱敏，未发布";
+  return (
+    <div className="frame card-frame frame-redacted" title={reason}>
+      <span className="redacted-status">已脱敏，未发布</span>
       <p>{reason}</p>
     </div>
   );

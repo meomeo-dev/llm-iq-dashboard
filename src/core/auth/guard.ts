@@ -5,6 +5,7 @@
 
 import { audit } from "./audit";
 import { SESSION_COOKIE, verifySession, type OwnerSession } from "./session";
+import { isReadonly } from "../deploy-mode";
 
 /** 写请求必须带的头；浏览器不会替跨站表单自动加上它 */
 export const ACTION_HEADER = "x-pelican-action";
@@ -20,8 +21,11 @@ export async function requireOwner(request: Request): Promise<GuardResult> {
   return { ok: true, owner };
 }
 
-/** 写操作：cookie 之外还要 X-Pelican-Action 头；拒绝时记审计 */
+/** 写操作：cookie 之外还要 X-Pelican-Action 头；拒绝时记审计；只读部署返回 403 */
 export async function requireOwnerAction(request: Request, action: string): Promise<GuardResult> {
+  if (isReadonly()) {
+    return { ok: false, status: 403, error: "只读部署" };
+  }
   const guard = await requireOwner(request);
   if (!guard.ok) {
     await audit({ action, outcome: "denied", deviceId: null, ip: clientIp(request), detail: guard.error });

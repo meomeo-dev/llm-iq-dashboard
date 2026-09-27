@@ -21,6 +21,10 @@ import {
 export interface ToolbarProps {
   /** 所有者视角：显示跑一次、自动任务开关与配置入口；公开视角只看结果 */
   owner: boolean;
+  /** 只读部署模式：不显示钥匙入口，显示只读展台徽章 */
+  readonly?: boolean;
+  /** 是否使用远程数据源 */
+  remote?: boolean;
   /** 当天全部卡片（未筛选），用于计数 */
   cards: readonly DashboardCard[];
   /** 提示词 id → 显示名；查不到的（如已删除的自定义条目）直接显示 id */
@@ -45,7 +49,17 @@ export interface ToolbarProps {
  * 时钟与时区、配置入口。
  */
 export function Toolbar(props: ToolbarProps) {
-  const { owner, cards, promptLabels, days, dayKey, stats, timeZone } = props;
+  const {
+    owner,
+    readonly = false,
+    remote = false,
+    cards,
+    promptLabels,
+    days,
+    dayKey,
+    stats,
+    timeZone,
+  } = props;
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const clis = tally(cards.map((card) => card.cli)).map((item) => ({
     ...item,
@@ -143,7 +157,11 @@ export function Toolbar(props: ToolbarProps) {
               ))}
             </Menu>
           </div>
-          {owner ? (
+          {readonly ? (
+            <span className="badge-readonly" title="只读展台">
+              只读展台
+            </span>
+          ) : owner ? (
             <a className="icon-link" href="/config" title="配置" aria-label="配置">
               <SettingsIcon />
             </a>
@@ -163,7 +181,11 @@ export function Toolbar(props: ToolbarProps) {
           </span>
         </div>
         {owner && <RunOnceMenu {...menuProps("run-once")} onClose={closeMenus} />}
-        {owner && <AutoRunToggle timeZone={timeZone} />}
+        {owner ? (
+          <AutoRunToggle timeZone={timeZone} />
+        ) : !remote ? (
+          <AutoRunToggle timeZone={timeZone} readOnly={true} />
+        ) : null}
       </div>
     </header>
   );

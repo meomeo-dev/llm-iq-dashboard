@@ -97,6 +97,18 @@ docker exec -it llm-iq-runner pnpm pair
 各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。卷、配置、更新与设计取舍见
 [`docs/deploy-docker.md`](docs/deploy-docker.md)。
 
+## 公网只读展台部署
+
+若需将看板部署至公网 Serverless 平台（如 Vercel）作为公开成果展台：
+数据改从公开数据仓（GitHub raw）按需读取，文件系统只读，不依赖本地 `data/` 目录与常驻进程。
+
+核心环境变量：
+- `PELICAN_DATA_SOURCE=remote`：从公开数据仓拉取历史评测与作品，自动启用只读保护。
+- `PELICAN_DATA_REPO_URL`：公开数据仓根地址（缺省为 `https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`）。
+- `PELICAN_READONLY=1`：强制只读部署（写接口 403，配对页面与 API 404，不生成密钥）。
+
+详细部署步骤、安全边界与缓存机制参见 [`docs/deploy-public-showcase.md`](docs/deploy-public-showcase.md)。
+
 ## 配置
 
 两种方式修改的是同一个文件：

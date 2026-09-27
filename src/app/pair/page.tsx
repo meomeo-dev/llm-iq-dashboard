@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
 import { commandHint } from "@/core/command-hint";
+import { isReadonly } from "@/core/deploy-mode";
 import { PairForm } from "./PairForm";
 import "./pair.css";
 
@@ -14,6 +16,7 @@ interface PageProps {
 }
 
 export default async function PairPage({ searchParams }: PageProps) {
+  if (isReadonly()) notFound();
   const { next } = await searchParams;
   const returnTo = typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
   const owner = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);

@@ -17,7 +17,13 @@ interface SwitchFailure {
  * （见 core/auto-run.ts）；关闭只影响之后的触发，正在跑的一轮照常跑完。
  * 状态经 /api/events 推送。
  */
-export function AutoRunToggle({ timeZone }: { timeZone: string }) {
+export function AutoRunToggle({
+  timeZone,
+  readOnly = false,
+}: {
+  timeZone: string;
+  readOnly?: boolean;
+}) {
   const pushed = useLiveAutoRun();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<SwitchFailure | null>(null);
@@ -34,7 +40,7 @@ export function AutoRunToggle({ timeZone }: { timeZone: string }) {
   }, [failure]);
 
   const toggle = async (): Promise<void> => {
-    if (state === null) return;
+    if (readOnly || state === null) return;
     setBusy(true);
     const result = await putSwitch(!state.enabled);
     setBusy(false);
@@ -46,17 +52,27 @@ export function AutoRunToggle({ timeZone }: { timeZone: string }) {
   const enabled = state?.enabled === true;
   return (
     <div className="toolbar-stack auto-run" title={error ?? describeSchedule(state)}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        className="auto-run-switch"
-        disabled={state === null || busy}
-        onClick={() => void toggle()}
-      >
-        <span className="auto-run-track" aria-hidden="true" />
-        自动任务
-      </button>
+      {readOnly ? (
+        <div className="auto-run-readonly-status" aria-label="自动任务状态（只读）">
+          <span
+            className={`auto-run-dot ${enabled ? "dot-running" : "dot-paused"}`}
+            aria-hidden="true"
+          />
+          <span>自动任务</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          className="auto-run-switch"
+          disabled={state === null || busy}
+          onClick={() => void toggle()}
+        >
+          <span className="auto-run-track" aria-hidden="true" />
+          自动任务
+        </button>
+      )}
       <span className={error !== null ? "stack-sub auto-run-error" : "stack-sub"}>
         {error !== null ? (switchError ? "切换失败" : "读取失败") : subline(state, timeZone)}
       </span>

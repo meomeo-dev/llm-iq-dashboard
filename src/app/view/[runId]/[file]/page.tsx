@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { loadArt, loadCard } from "@/core/store";
+import { loadArt, loadCard } from "@/core/data-source";
 import { resolvePromptStandard } from "@/core/prompt";
 import { ArtViewer } from "../../ArtViewer";
 import "../../../components/card/cards.css";

@@ -6,9 +6,13 @@
 
 import { NextResponse } from "next/server";
 import { listProgressViews } from "@/core/progress";
+import { isRemoteDataSource } from "@/core/deploy-mode";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
+  if (isRemoteDataSource()) {
+    return NextResponse.json({ runs: [] });
+  }
   return NextResponse.json({ runs: await listProgressViews() });
 }

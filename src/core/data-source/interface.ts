@@ -1,0 +1,26 @@
+/**
+ * 数据源抽象接口：统一 local 与 remote 数据读取。
+ * 页面与路由只经这一层读轮次数据。
+ */
+
+import type { DashboardCard, RunRecord } from "../types";
+
+export interface DataSource {
+  /** 全部轮次的开始时刻（ISO），新的在前，供日历计数 */
+  listRunStarts(): Promise<string[]>;
+
+  /** 把开始时刻落在 [from, to) 内的轮次摊平成卡片，从新到旧 */
+  loadCardsBetween(from: Date, to: Date): Promise<DashboardCard[]>;
+
+  /** 单件作品的卡片，用于详情或原始接口校验 */
+  loadCard(runId: string, svgFile: string): Promise<DashboardCard | null>;
+
+  /** 单件作品的卡片连同 SVG 源码；文件不可得时 svg 为 null */
+  loadArt(runId: string, svgFile: string): Promise<{ card: DashboardCard; svg: string | null } | null>;
+
+  /** 按 runId 倒序列出运行记录，供外部工具查询 */
+  listRuns(limit: number): Promise<RunRecord[]>;
+
+  /** 远程数据源当前的提示或报错（如有降级）；本地数据源恒为 null */
+  getNotice?(): string | null;
+}

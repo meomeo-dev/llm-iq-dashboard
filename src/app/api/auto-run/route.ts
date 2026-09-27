@@ -10,10 +10,20 @@ import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwnerAction } from "@/core/auth/guard";
 import { describeAutoRun, writeAutoRunSwitch } from "@/core/auto-run";
 import { launchSchedulerIfNeeded } from "@/core/scheduler-launcher";
+import { isRemoteDataSource } from "@/core/deploy-mode";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
+  if (isRemoteDataSource()) {
+    return NextResponse.json({
+      enabled: false,
+      updatedAt: null,
+      schedulerPid: null,
+      schedule: { cron: null, intervalMinutes: null, timezone: null },
+      nextRunAt: null,
+    });
+  }
   try {
     return NextResponse.json(await describeAutoRun());
   } catch (cause) {

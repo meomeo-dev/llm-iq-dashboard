@@ -316,6 +316,33 @@
   cursor: pointer;
 }
 
+.auto-run-readonly-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--text);
+  cursor: default;
+  user-select: none;
+}
+
+.auto-run-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.auto-run-dot.dot-running {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+.auto-run-dot.dot-paused {
+  background: var(--text-faint);
+}
+
 .auto-run-switch:disabled {
   cursor: progress;
 }

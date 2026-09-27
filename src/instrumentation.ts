@@ -8,6 +8,8 @@ export async function register(): Promise<void> {
   // 会被打进 Edge 包，开发模式下整站编译失败
   if (process.env.NEXT_RUNTIME === "nodejs") {
     try {
+      const { isReadonly } = await import("./core/deploy-mode");
+      if (isReadonly()) return;
       const { launchSchedulerIfNeeded } = await import("./core/scheduler-launcher");
       const pid = await launchSchedulerIfNeeded();
       if (pid !== null) console.log(`自动任务已开启而调度器不在，已拉起调度器（pid ${pid}）`);

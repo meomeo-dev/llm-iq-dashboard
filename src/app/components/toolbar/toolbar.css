@@ -288,3 +288,16 @@
   background: var(--surface-hi);
   color: var(--text);
 }
+
+.badge-readonly {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  user-select: none;
+}

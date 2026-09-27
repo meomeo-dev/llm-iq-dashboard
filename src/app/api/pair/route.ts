@@ -11,6 +11,7 @@ import { clientIp, isSecureRequest } from "@/core/auth/guard";
 import { redeemPairingCode, type PairingOutcome } from "@/core/auth/pairing";
 import { sharedRateLimiter } from "@/core/auth/rate-limit";
 import { issueSession, SESSION_COOKIE, sessionCookieAttributes } from "@/core/auth/session";
+import { isReadonly } from "@/core/deploy-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,9 @@ const REASONS: Record<Exclude<PairingOutcome, { ok: true }>["reason"], string> =
 };
 
 export async function POST(request: Request): Promise<NextResponse> {
+  if (isReadonly()) {
+    return NextResponse.json({ error: "只读部署" }, { status: 404 });
+  }
   const ip = clientIp(request);
   if (!sharedRateLimiter("pair", PAIR_ATTEMPTS, PAIR_WINDOW_MS).take(ip ?? "local")) {
     await audit({ action: "pair", outcome: "denied", deviceId: null, ip, detail: "限流" });

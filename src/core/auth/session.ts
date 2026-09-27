@@ -9,6 +9,7 @@
 import { randomBytes } from "node:crypto";
 import { addDevice, findDevice, updateDevice, type DeviceRecord } from "./devices";
 import { digestsEqual, hmacOf, loadServerKey } from "./store";
+import { isReadonly } from "../deploy-mode";
 
 export const SESSION_COOKIE = "pelican_owner";
 const SLIDING_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -49,6 +50,7 @@ export async function issueSession(deviceName: string, now: Date = new Date()): 
  * 通过后更新最近使用时刻；到轮换点时换发新凭据。
  */
 export async function verifySession(cookie: string | null | undefined, now: Date = new Date()): Promise<OwnerSession | null> {
+  if (isReadonly()) return null;
   const parsed = parseCookie(cookie);
   if (parsed === null) return null;
   const device = await findDevice(parsed.deviceId);

@@ -39,6 +39,8 @@ const NOW_INTERVAL_MS = 60_000;
  */
 export function Dashboard({
   owner,
+  readonly = false,
+  remote = false,
   cards,
   runStarts,
   initialDay,
@@ -48,6 +50,10 @@ export function Dashboard({
 }: {
   /** 所有者视角（有效的设备 cookie），决定是否显示操作控件 */
   owner: boolean;
+  /** 只读部署模式，不显示钥匙入口，显示只读展台徽章 */
+  readonly?: boolean;
+  /** 是否使用远程数据源 */
+  remote?: boolean;
   /** 所选那天前后的卡片（服务端按 URL 的 day 参数载入） */
   cards: DashboardCard[];
   /** 全部轮次的开始时刻，供日历标出每天的轮数 */
@@ -108,6 +114,8 @@ export function Dashboard({
     <div className="workspace">
       <Toolbar
         owner={owner}
+        readonly={readonly}
+        remote={remote}
         cards={dayCards}
         promptLabels={promptLabels}
         days={days}

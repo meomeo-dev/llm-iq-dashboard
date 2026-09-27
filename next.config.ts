@@ -28,10 +28,13 @@ const SECURITY_HEADERS = [
   { key: "Referrer-Policy", value: "no-referrer" },
 ];
 
-// 页面每次动态读取 data/ 下的运行结果，因此不启用静态导出（output: "export"）
+// 页面每次动态读取运行结果，不启用静态导出；配置 outputFileTracingIncludes 打包价格目录
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  outputFileTracingIncludes: {
+    "/**": ["data/pricing/**/*"],
+  },
   async headers() {
     return [{ source: "/((?!art/).*)", headers: SECURITY_HEADERS }];
   },

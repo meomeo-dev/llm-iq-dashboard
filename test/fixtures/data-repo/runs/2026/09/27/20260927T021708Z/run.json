@@ -1,0 +1,76 @@
+{
+  "publicSchemaVersion": 1,
+  "runId": "20260927T021708Z",
+  "startedAt": "2026-09-27T02:17:08.000Z",
+  "finishedAt": "2026-09-27T02:18:00.000Z",
+  "durationMs": 52000,
+  "trigger": "schedule",
+  "inProgress": false,
+  "prompts": [
+    {
+      "promptId": "classic-v1",
+      "text": "Draw a pelican riding a bicycle",
+      "bindings": {}
+    }
+  ],
+  "attempts": [
+    {
+      "targetId": "claude__model-b__high",
+      "promptId": "classic-v1",
+      "cli": "claude",
+      "model": "model-b",
+      "effort": "high",
+      "appliedEffort": "high",
+      "effortHonored": true,
+      "label": "Claude Model B High",
+      "status": "ok",
+      "svgFile": "claude__model-b__high.svg",
+      "rawFile": null,
+      "startedAt": "2026-09-27T02:17:09.000Z",
+      "finishedAt": "2026-09-27T02:17:35.000Z",
+      "durationMs": 26000,
+      "svgBytes": 1024,
+      "error": null,
+      "usage": {
+        "inputTokens": 100,
+        "outputTokens": 200,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 50,
+        "reportedCostUsd": 0.005
+      }
+    },
+    {
+      "targetId": "codex__model-c__high",
+      "promptId": "classic-v1",
+      "cli": "codex",
+      "model": "model-c",
+      "effort": "high",
+      "appliedEffort": "high",
+      "effortHonored": true,
+      "label": "Codex Model C High",
+      "status": "ok",
+      "svgFile": null,
+      "rawFile": null,
+      "startedAt": "2026-09-27T02:17:10.000Z",
+      "finishedAt": "2026-09-27T02:17:40.000Z",
+      "durationMs": 30000,
+      "svgBytes": null,
+      "error": null,
+      "usage": {
+        "inputTokens": 150,
+        "outputTokens": 250,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 60,
+        "reportedCostUsd": 0.006
+      }
+    }
+  ],
+  "redactions": [
+    {
+      "file": "codex__model-c__high.svg",
+      "reason": "local-path"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { listRuns } from "@/core/store";
+import { listRuns } from "@/core/data-source";
 
 export const dynamic = "force-dynamic";
 

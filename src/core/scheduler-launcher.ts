@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { readAutoRunSwitch, readLiveScheduler } from "./auto-run";
 import { dataRoot } from "./paths";
 import { externalRunner } from "./runner-link";
+import { isReadonly } from "./deploy-mode";
 
 /** 调度器启动到登记 pid 需要一两秒，冷却期内不重复拉起 */
 const LAUNCH_COOLDOWN_MS = 15_000;
@@ -20,8 +21,9 @@ interface LaunchHolder {
   [LAST_LAUNCH]?: number;
 }
 
-/** 返回新进程的 pid；冷却期内返回 null */
+/** 返回新进程的 pid；冷却期内或只读模式下返回 null */
 export function launchScheduler(now: number = Date.now()): number | null {
+  if (isReadonly()) return null;
   // 挂在 globalThis 上，开发模式热重载会重置模块级变量
   const holder = globalThis as LaunchHolder;
   const last = holder[LAST_LAUNCH];
@@ -49,6 +51,7 @@ export function launchScheduler(now: number = Date.now()): number | null {
  * 拨开开关与看板启动时调用，后者用于补上机器或容器重启后缺失的调度器。
  */
 export async function launchSchedulerIfNeeded(): Promise<number | null> {
+  if (isReadonly()) return null;
   // 分容器部署：调度器在执行器容器里常驻，看板不拉起
   if (externalRunner()) return null;
   const { enabled } = await readAutoRunSwitch();

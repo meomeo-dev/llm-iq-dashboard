@@ -9,6 +9,7 @@ import { randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { dataRoot } from "../paths";
+import { isReadonly } from "../deploy-mode";
 
 const SERVER_KEY_FILE = "server.key";
 const SERVER_KEY_BYTES = 32;
@@ -23,6 +24,9 @@ export async function readJsonFile(filename: string): Promise<unknown> {
 
 /** 写临时文件再原子替换，另一进程随时可能读取 */
 export async function writeJsonFile(filename: string, value: unknown): Promise<void> {
+  if (isReadonly()) {
+    throw new Error("只读部署下不可写入数据");
+  }
   await mkdir(dataRoot(), { recursive: true });
   const target = join(dataRoot(), filename);
   const staging = `${target}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
@@ -40,6 +44,9 @@ export async function writeJsonFile(filename: string, value: unknown): Promise<v
 
 /** 读取服务端密钥，不存在则生成；生成失败直接抛错，没有密钥就没有登录 */
 export async function loadServerKey(): Promise<Buffer> {
+  if (isReadonly()) {
+    throw new Error("只读部署下不可生成或读取 server.key");
+  }
   const path = join(dataRoot(), SERVER_KEY_FILE);
   try {
     const hex = (await readFile(path, "utf8")).trim();

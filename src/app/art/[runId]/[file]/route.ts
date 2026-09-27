@@ -5,7 +5,8 @@
  * （opaque origin）：禁止脚本，只加载内联样式与 data: 图片 / 字体，无法访问看板同源数据。
  */
 
-import { loadArt } from "@/core/store";
+import { loadArt } from "@/core/data-source";
+import { isRemoteDataSource } from "@/core/deploy-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,11 @@ export async function GET(_request: Request, { params }: RouteContext): Promise<
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Content-Security-Policy": SANDBOX_POLICY,
       "X-Content-Type-Options": "nosniff",
-      // 作品写出后不再改动（过保留期后 404），immutable 让刷新页面时也不回源验证
-      "Cache-Control": "private, max-age=86400, immutable",
+      // 作品写出后不再改动（过保留期后 404），immutable 让刷新页面时也不回源验证；
+      // remote 模式下为公开数据，改为可公开缓存
+      "Cache-Control": isRemoteDataSource()
+        ? "public, max-age=86400, immutable"
+        : "private, max-age=86400, immutable",
     },
   });
 }

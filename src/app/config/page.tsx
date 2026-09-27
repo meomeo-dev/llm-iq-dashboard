@@ -9,6 +9,7 @@ import { BUILTIN_PROMPTS } from "@/core/prompt";
 import { readCachedCatalog, refreshCatalog } from "@/capabilities/catalog";
 import { probeViaRunner } from "@/core/requests";
 import { externalRunner } from "@/core/runner-link";
+import { isReadonly } from "@/core/deploy-mode";
 import { ConfigEditor } from "./ConfigEditor";
 import { DevicePanel } from "./DevicePanel";
 
@@ -16,6 +17,7 @@ import { DevicePanel } from "./DevicePanel";
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage() {
+  if (isReadonly()) redirect("/");
   // 配置页整页只对所有者开放：配置里有模型矩阵、提示词与 CLI 状态
   const owner = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
   if (owner === null) redirect("/pair?next=%2Fconfig");

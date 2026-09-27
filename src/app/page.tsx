@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
-import { listRunStarts, loadCardsBetween } from "@/core/store";
+import { listRunStarts, loadCardsBetween, getRemoteNotice } from "@/core/data-source";
+import { getDeployMode } from "@/core/deploy-mode";
 import { BUILTIN_PROMPTS, FRONTIER_INDIVIDUAL_PROMPT_MAP, listPrompts, type PromptSpec, type PromptStandard } from "@/core/prompt";
 import { loadConfig } from "@/core/config";
 import { configPath } from "@/core/paths";
@@ -24,11 +25,13 @@ interface PageProps {
 
 export default async function Page({ searchParams }: PageProps) {
   const { day } = await searchParams;
+  const { readonly, dataSource } = getDeployMode();
   const owner = (await verifySession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
   const dayKey = typeof day === "string" ? day : null;
   const range = cardWindow(dayKey, new Date());
   const runStarts = await listRunStarts();
   const cards = sortNewestFirst(await loadCardsBetween(range.from, range.to));
+  const remoteNotice = getRemoteNotice();
   const { prompts, scheduleTimeZone } = readDashboardSettings();
   const promptLabels = Object.fromEntries(prompts.map((spec) => [spec.id, spec.label]));
   
@@ -61,11 +64,22 @@ export default async function Page({ searchParams }: PageProps) {
 
   return (
     <div className="page">
+      {/* 远程数据源提示或降级信息 */}
+      {remoteNotice && (
+        <aside className="cli-banner" role="status" style={{ borderLeftColor: "var(--warn)" }}>
+          <p>
+            <b>数据提示：</b>
+            {remoteNotice}
+          </p>
+        </aside>
+      )}
       {/* CLI 登录状态与安装命令只给所有者看 */}
       {owner && <CliStatusBanner />}
       {/* 无记录时同样渲染完整看板，由时间线给出引导 */}
       <Dashboard
         owner={owner}
+        readonly={readonly}
+        remote={dataSource === "remote"}
         cards={cards}
         runStarts={runStarts}
         initialDay={dayKey}

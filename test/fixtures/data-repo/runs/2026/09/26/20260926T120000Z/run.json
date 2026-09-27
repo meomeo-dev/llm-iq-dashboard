@@ -1,0 +1,45 @@
+{
+  "publicSchemaVersion": 1,
+  "runId": "20260926T120000Z",
+  "startedAt": "2026-09-26T12:00:00.000Z",
+  "finishedAt": "2026-09-26T12:01:00.000Z",
+  "durationMs": 60000,
+  "trigger": "manual",
+  "inProgress": false,
+  "prompts": [
+    {
+      "promptId": "classic-v1",
+      "text": "Draw a pelican riding a bicycle",
+      "bindings": {}
+    }
+  ],
+  "attempts": [
+    {
+      "targetId": "claude__model-a__high",
+      "promptId": "classic-v1",
+      "cli": "claude",
+      "model": "model-a",
+      "effort": "high",
+      "appliedEffort": "high",
+      "effortHonored": true,
+      "label": "Claude Model A High",
+      "status": "ok",
+      "svgFile": "claude__model-a__high.svg",
+      "rawFile": null,
+      "startedAt": "2026-09-26T12:00:01.000Z",
+      "finishedAt": "2026-09-26T12:00:30.000Z",
+      "durationMs": 29000,
+      "svgBytes": 512,
+      "error": null,
+      "usage": {
+        "inputTokens": 80,
+        "outputTokens": 120,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0,
+        "reportedCostUsd": 0.002
+      }
+    }
+  ],
+  "redactions": []
+}

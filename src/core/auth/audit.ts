@@ -5,6 +5,7 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { dataRoot } from "../paths";
+import { isReadonly } from "../deploy-mode";
 
 const AUDIT_FILE = "audit.log";
 
@@ -17,6 +18,7 @@ export interface AuditEvent {
 }
 
 export async function audit(event: AuditEvent, now: Date = new Date()): Promise<void> {
+  if (isReadonly()) return;
   await mkdir(dataRoot(), { recursive: true });
   const line = JSON.stringify({ at: now.toISOString(), ...event });
   await appendFile(join(dataRoot(), AUDIT_FILE), `${line}\n`, "utf8");
