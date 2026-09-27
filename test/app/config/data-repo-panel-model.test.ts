@@ -325,3 +325,25 @@ test("deriveCountsSummary - 计数文案汇总", () => {
   assert.match(summary.manifestText, /总计 50 轮/);
   assert.match(summary.repoText, /分支 main/);
 });
+
+test("deriveActionResultSummary - 执行器推送结果（ConfirmPublishedReport 结构）不抛错并显示登记轮次", () => {
+  const summary = deriveActionResultSummary({
+    mode: "push",
+    startedAt: "2026-09-27T17:14:52.345Z",
+    finishedAt: "2026-09-27T17:14:55.239Z",
+    ok: true,
+    report: {
+      success: true,
+      dryRun: false,
+      upstream: "origin/main",
+      confirmed: ["20260927T161740Z"],
+      ledgerTransitions: { published: ["20260927T161740Z"] },
+    } as never,
+    executedBy: "runner",
+    error: null,
+  });
+  assert.ok(summary);
+  assert.equal(summary.ok, true);
+  assert.equal(summary.publishedCount, 1);
+  assert.match(summary.text, /已推送，1 轮登记为已发布/);
+});

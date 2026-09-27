@@ -363,12 +363,17 @@ export function deriveActionResultSummary(
 }
 
 /** 格式化成功的动作结果 */
+/** 确认发布与执行器推送的结果都是 ConfirmPublishedReport（带 confirmed 清单） */
+function isConfirmReport(report: SyncActionResult["report"]): report is ConfirmPublishedReport {
+  return report !== null && Array.isArray((report as ConfirmPublishedReport).confirmed);
+}
+
 function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
-  if (result.mode === "confirm") {
+  if (result.mode === "confirm" || (result.mode === "push" && isConfirmReport(result.report))) {
     const report = result.report as ConfirmPublishedReport | null;
-    const publishedCount = report?.confirmed.length ?? 0;
+    const publishedCount = report?.confirmed?.length ?? 0;
     return {
-      text: `已发布 ${publishedCount} 轮`,
+      text: result.mode === "push" ? `已推送，${publishedCount} 轮登记为已发布` : `已发布 ${publishedCount} 轮`,
       ok: true,
       mode: result.mode,
       exportedCount: 0,
@@ -381,11 +386,11 @@ function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
   }
 
   const report = result.report as SyncReport | null;
-  const exportedCount = report?.exported.length ?? 0;
-  const skippedCount = report?.skipped.length ?? 0;
-  const rejectedCount = report?.rejected.length ?? 0;
+  const exportedCount = report?.exported?.length ?? 0;
+  const skippedCount = report?.skipped?.length ?? 0;
+  const rejectedCount = report?.rejected?.length ?? 0;
   const redactedCount =
-    report?.redactions.reduce(
+    report?.redactions?.reduce(
       (acc, r) => acc + (r.redactions?.length ?? 1),
       0,
     ) ?? 0;
