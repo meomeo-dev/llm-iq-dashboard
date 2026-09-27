@@ -1,0 +1,7 @@
+# 可选覆盖：把宿主机的公开数据仓工作副本挂入 runner，供轮次结束后脱敏导出与本地提交。
+# 用法：docker compose -f compose.yaml -f compose.data-repo.yaml up -d
+# 宿主机路径须在 Docker Desktop 的 File Sharing 允许范围内。
+services:
+  runner:
+    volumes:
+      - ${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo

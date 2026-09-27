@@ -53,7 +53,7 @@ docker exec -it llm-iq-runner pnpm pair
 | `pelican-data` | `/app/data`（两个容器） | 运行记录、配置 `pelican.config.yaml`、价格目录、自动任务开关、设备表、审计日志、请求文件 |
 | `cli-tools` | `/opt/clis`（仅 runner） | 三家 CLI 的程序文件；删掉后下次启动重新下载，不影响登录态 |
 | `claude-auth` / `codex-auth` / `agy-auth` | `/home/node/.claude` 等（仅 runner） | 各家登录态；删掉某个卷即退出该 CLI 的登录 |
-| `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`（bind mount） | `/data-repo`（仅 runner） | 宿主机公开数据仓工作副本，供 runner 脱敏导出与本地提交 |
+| `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`（bind mount，可选） | `/data-repo`（仅 runner） | 宿主机公开数据仓工作副本，供 runner 脱敏导出与本地提交；由 `compose.data-repo.yaml` 叠加启用 |
 
 容器首次启动时使用起步配置（三家各一个轻量模型），与本机直跑时维护的矩阵不同。
 要沿用本机的配置，把它拷进容器（留意本机矩阵的每轮成本，见其 `budget` 设置）：
@@ -98,7 +98,7 @@ PELICAN_PORT=3100 docker compose up -d
 
 容器部署通过 bind mount 将宿主机的数据仓工作副本挂载进 runner 容器：
 
-- **挂载与属主隔离**：`compose.yaml` 中仅将 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
+- **挂载与属主隔离**：挂载写在可选覆盖文件 `compose.data-repo.yaml` 中，启用时执行 `docker compose -f compose.yaml -f compose.data-repo.yaml up -d`，只把 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）；宿主机路径须加入 Docker Desktop 的 File Sharing。不叠加该文件时两容器照常运行，只是不做数据仓同步。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
 - **安全边界与凭据隔离**：容器内部不存放任何 GitHub Token、credential helper 或 SSH Key。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
 - **容器内配置**：在 `/app/data/pelican.config.yaml` 中配置 `dataRepo`：
   ```yaml
