@@ -32,6 +32,8 @@ llm_iq_dashboard__worktrees/
 .extension-env
 .extension-env.lock
 issues/
+plans/
+.todo_tasks/
 scripts/issue-*.mjs
 scripts/governance/
 
