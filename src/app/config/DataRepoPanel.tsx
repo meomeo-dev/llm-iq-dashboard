@@ -8,7 +8,6 @@ import type {
 } from "@/core/sync/data-repo-panel-types";
 import {
   ACTION_LABELS,
-  deriveActionStates,
   deriveActionResultSummary,
   deriveCountsSummary,
   deriveHealthStatus,
@@ -16,10 +15,10 @@ import {
   extractReportIssues,
   type ActionResultSummary,
 } from "./data-repo-panel-model";
-import { DataRepoActionsBar } from "./DataRepoActionsBar";
 import { DataRepoCards } from "./DataRepoCards";
 import { DataRepoGithubCard } from "./DataRepoGithubCard";
 import { DataRepoIssuesList } from "./DataRepoIssuesList";
+import { DataRepoPipeline } from "./DataRepoPipeline";
 import { DataRepoPushDialog } from "./DataRepoPushDialog";
 import { useDataRepoActions, type FetchFn } from "./use-data-repo-actions";
 
@@ -88,12 +87,10 @@ function getSpecialNotice(
 /** 集中推导展示子模型 */
 function derivePanelData(
   status: DataRepoStatus | null,
-  inFlight: SyncActionMode | null,
   actionResult: SyncActionResult | null,
 ) {
   return {
     health: deriveHealthStatus(status),
-    actions: deriveActionStates(status, inFlight),
     counts: deriveCountsSummary(status),
     pushConfirm: derivePushConfirmation(status),
     summary: deriveActionResultSummary(
@@ -120,6 +117,7 @@ export function DataRepoPanel({
     inFlightMode: hookMode,
     actionResult: hookResult,
     error,
+    refresh,
     executeAction,
   } = useDataRepoActions({ fetchFn, initialStatus, autoLoad });
 
@@ -130,8 +128,8 @@ export function DataRepoPanel({
   const notice = getSpecialNotice(status, loading);
   if (notice !== null) return <DataRepoNoticeSection message={notice} />;
 
-  const { health, actions, counts, pushConfirm, summary, issues } =
-    derivePanelData(status, currentInFlight, currentResult);
+  const { health, counts, pushConfirm, summary, issues } =
+    derivePanelData(status, currentResult);
 
   return (
     <section id="data-repo" className="config-section data-repo-section">
@@ -146,11 +144,12 @@ export function DataRepoPanel({
         <div className="status notice data-repo-notice-bar">{status.notice}</div>
       )}
 
-      <DataRepoActionsBar
-        actions={actions}
+      <DataRepoPipeline
+        status={status}
         inFlightMode={currentInFlight}
         onTriggerAction={(mode) => void executeAction(mode)}
         onOpenPushDialog={() => setShowPushDialog(true)}
+        onRefresh={() => void refresh()}
       />
 
       <DataRepoSummaryBar error={error} summary={summary} />

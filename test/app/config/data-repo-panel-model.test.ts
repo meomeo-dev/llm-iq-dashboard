@@ -7,7 +7,7 @@ import type {
 import type { SyncReport } from "@/core/sync/sync-orchestrator";
 import type { ConfirmPublishedReport } from "@/core/sync/confirm-published";
 import {
-  deriveActionStates,
+  derivePipeline,
   deriveActionResultSummary,
   deriveCountsSummary,
   deriveHealthStatus,
@@ -130,69 +130,104 @@ test("deriveHealthStatus - 健康等级推导", async (t) => {
   });
 });
 
-test("deriveActionStates - 动作可用状态与禁用原因", async (t) => {
+test("derivePipeline - 动作可用状态与禁用原因迁移校验", async (t) => {
   await t.test("有动作在执行时锁定全部动作", () => {
     const status = createBaseStatus();
-    const states = deriveActionStates(status, "export");
-    for (const key of ["dry-run", "export", "confirm", "push"] as const) {
-      assert.strictEqual(states[key].enabled, false);
-      assert.match(states[key].disabledReason ?? "", /正在执行导出提交/);
-    }
+    const pipeline = derivePipeline(status, "export");
+    assert.strictEqual(pipeline.primaryAction?.enabled, false);
+    assert.match(
+      pipeline.primaryAction?.disabledReason ?? "",
+      /正在执行导出提交/,
+    );
+    assert.strictEqual(pipeline.secondaryAction.enabled, false);
+    assert.match(
+      pipeline.secondaryAction.disabledReason ?? "",
+      /正在执行导出提交/,
+    );
   });
 
   await t.test("未配置或只读部署时全部禁用", () => {
-    const unconfStates = deriveActionStates({ ...createBaseStatus(), configured: false });
-    assert.strictEqual(unconfStates.export.enabled, false);
-    assert.match(unconfStates.export.disabledReason ?? "", /未配置/);
+    const unconf = derivePipeline({
+      ...createBaseStatus(),
+      configured: false,
+    });
+    assert.strictEqual(unconf.primaryAction?.enabled, false);
+    assert.match(unconf.primaryAction?.disabledReason ?? "", /未配置/);
+    assert.strictEqual(unconf.secondaryAction.enabled, false);
+    assert.match(unconf.secondaryAction.disabledReason ?? "", /未配置/);
 
     const readonlyStatus = createBaseStatus();
     readonlyStatus.deploy.readonly = true;
-    const readonlyStates = deriveActionStates(readonlyStatus);
-    assert.strictEqual(readonlyStates.export.enabled, false);
-    assert.match(readonlyStates.export.disabledReason ?? "", /只读/);
+    const readonlyPipeline = derivePipeline(readonlyStatus);
+    assert.strictEqual(readonlyPipeline.primaryAction?.enabled, false);
+    assert.match(readonlyPipeline.primaryAction?.disabledReason ?? "", /只读/);
+    assert.strictEqual(readonlyPipeline.secondaryAction.enabled, false);
+    assert.match(readonlyPipeline.secondaryAction.disabledReason ?? "", /只读/);
   });
 
-  await t.test("没有 pending 时导出仍可用但提示无新轮次", () => {
+  await t.test("没有 pending 时若有 ahead 则主动作切换为推送发布", () => {
     const status = createBaseStatus();
     status.local.pending = [];
-    const states = deriveActionStates(status);
-    assert.strictEqual(states.export.enabled, true);
-    assert.strictEqual(states.export.hint, "无新轮次");
-    assert.strictEqual(states["dry-run"].enabled, true);
-    assert.strictEqual(states["dry-run"].hint, "无待同步轮次");
+    const pipeline = derivePipeline(status);
+    assert.strictEqual(pipeline.primaryAction?.mode, "push");
+    assert.strictEqual(pipeline.primaryAction?.label, "推送发布");
+    assert.strictEqual(pipeline.secondaryAction.enabled, true);
   });
 
   await t.test("工作区不干净时导出和推送被禁用", () => {
-    const status = createBaseStatus();
-    status.repo!.clean = false;
-    const states = deriveActionStates(status);
-    assert.strictEqual(states.export.enabled, false);
-    assert.strictEqual(states.push.enabled, false);
-    assert.match(states.export.disabledReason ?? "", /未提交/);
+    const statusExport = createBaseStatus();
+    statusExport.repo!.clean = false;
+    const pExport = derivePipeline(statusExport);
+    assert.strictEqual(pExport.primaryAction?.enabled, false);
+    assert.match(pExport.primaryAction?.disabledReason ?? "", /未提交/);
+
+    const statusPush = {
+      ...createBaseStatus(),
+      local: { ...createBaseStatus().local, pending: [] },
+    };
+    statusPush.repo!.clean = false;
+    const pPush = derivePipeline(statusPush);
+    assert.strictEqual(pPush.primaryAction?.enabled, false);
+    assert.match(pPush.primaryAction?.disabledReason ?? "", /未提交/);
   });
 
   await t.test("externalRunner 下推送禁用且原因明确", () => {
-    const status = createBaseStatus();
-    status.deploy.externalRunner = true;
-    const states = deriveActionStates(status);
-    assert.strictEqual(states.push.enabled, false);
-    assert.match(states.push.disabledReason ?? "", /未连接 GitHub|容器内无推送凭据/);
+    const status = {
+      ...createBaseStatus(),
+      local: { ...createBaseStatus().local, pending: [] },
+      deploy: { readonly: false, externalRunner: true },
+      github: {
+        state: "disconnected" as const,
+        login: null,
+        appSlug: null,
+        appSettingsUrl: null,
+      },
+    };
+    const pipeline = derivePipeline(status);
+    assert.strictEqual(pipeline.primaryAction?.enabled, false);
+    assert.match(pipeline.primaryAction?.disabledReason ?? "", /执行器未连接 GitHub/);
   });
 
-  await t.test("没有领先提交时推送禁用", () => {
-    const status = createBaseStatus();
-    status.repo!.ahead = 0;
-    status.repo!.aheadCommits = [];
-    const states = deriveActionStates(status);
-    assert.strictEqual(states.push.enabled, false);
-    assert.match(states.push.disabledReason ?? "", /没有领先/);
+  await t.test("没有领先提交时无推送主按钮", () => {
+    const status = {
+      ...createBaseStatus(),
+      local: { ...createBaseStatus().local, pending: [] },
+      repo: { ...createBaseStatus().repo!, ahead: 0, aheadCommits: [] },
+      ledger: { ...createBaseStatus().ledger, exported: 0 },
+    };
+    const pipeline = derivePipeline(status);
+    assert.strictEqual(pipeline.primaryAction, null);
   });
 
   await t.test("正常具备领先提交时推送可用", () => {
-    const status = createBaseStatus();
-    const states = deriveActionStates(status);
-    assert.strictEqual(states.push.enabled, true);
-    assert.strictEqual(states.push.disabledReason, null);
+    const status = {
+      ...createBaseStatus(),
+      local: { ...createBaseStatus().local, pending: [] },
+    };
+    const pipeline = derivePipeline(status);
+    assert.strictEqual(pipeline.primaryAction?.mode, "push");
+    assert.strictEqual(pipeline.primaryAction?.enabled, true);
+    assert.strictEqual(pipeline.primaryAction?.disabledReason, null);
   });
 });
 
@@ -271,8 +306,10 @@ test("deriveActionResultSummary - 动作结果摘要与失败覆盖", async (t) 
     const summary = deriveActionResultSummary(result);
     assert.ok(summary);
     assert.strictEqual(summary.ok, true);
-    assert.strictEqual(summary.publishedCount, 2);
-    assert.match(summary.text, /已发布 2 轮/);
+    assert.strictEqual(
+      summary.text,
+      "远端已包含 2 轮，登记为已发布",
+    );
   });
 
   await t.test("export 模式显示导出、跳过、拒绝、脱敏、发布统计", () => {
@@ -317,7 +354,7 @@ test("deriveActionResultSummary - 动作结果摘要与失败覆盖", async (t) 
     assert.strictEqual(summary.publishedCount, 0);
     assert.strictEqual(
       summary.text,
-      "导出 1 轮、跳过 1 轮、拒绝 1 轮、脱敏 1 处、已发布 0 轮",
+      "导出 1 轮；跳过 1 轮（已导出 1）；拒绝 1 轮；脱敏 1 处",
     );
 
     const issues = extractReportIssues(syncReport);

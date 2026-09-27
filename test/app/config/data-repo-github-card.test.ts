@@ -12,7 +12,7 @@ import React from "react";
 (globalThis as unknown as { React: typeof React }).React = React;
 import ReactDOMServer from "react-dom/server";
 import { DataRepoGithubCard } from "@/app/config/DataRepoGithubCard";
-import { deriveActionStates } from "@/app/config/data-repo-panel-model";
+import { derivePipeline } from "@/app/config/data-repo-pipeline-model";
 import type { DataRepoStatus, GithubConnection } from "@/core/sync/data-repo-panel-types";
 
 describe("DataRepoGithubCard 组件与推送能力推导", () => {
@@ -115,12 +115,32 @@ describe("DataRepoGithubCard 组件与推送能力推导", () => {
       };
     }
 
-    it("当 pushCapability 为 unavailable 时，即便在容器内且有领先提交也禁用推送并说明原因", () => {
-      const status = createMockStatus({ pushCapability: "unavailable" });
-      const actions = deriveActionStates(status);
+    it("分容器部署下 pushCapability 为 unavailable 时，禁用推送并提示先连接 GitHub", () => {
+      const status = createMockStatus({ pushCapability: "unavailable", github: undefined });
+      const pipeline = derivePipeline(status);
 
-      assert.equal(actions.push.enabled, false);
-      assert.match(actions.push.disabledReason ?? "", /未连接 GitHub|容器内无推送凭据/);
+      assert.equal(pipeline.primaryAction?.enabled, false);
+      assert.equal(
+        pipeline.primaryAction?.disabledReason,
+        "执行器未连接 GitHub，请先在上方连接后再推送",
+      );
+    });
+
+    it("当分容器部署且 GitHub 未连接时，提示先连接 GitHub 并给出链接", () => {
+      const status = createMockStatus({
+        pushCapability: "unavailable",
+        github: {
+          state: "disconnected",
+          login: null,
+          appSlug: null,
+          appSettingsUrl: null,
+        },
+      });
+      const pipeline = derivePipeline(status);
+
+      assert.equal(pipeline.primaryAction?.enabled, false);
+      assert.match(pipeline.primaryAction?.disabledReason ?? "", /执行器未连接 GitHub/);
+      assert.equal(pipeline.primaryAction?.disabledLink, "#data-repo");
     });
 
     it("当 pushCapability 为 github-app 时，在分容器部署下放行推送", () => {
@@ -133,10 +153,10 @@ describe("DataRepoGithubCard 组件与推送能力推导", () => {
           appSettingsUrl: null,
         },
       });
-      const actions = deriveActionStates(status);
+      const pipeline = derivePipeline(status);
 
-      assert.equal(actions.push.enabled, true);
-      assert.equal(actions.push.disabledReason, null);
+      assert.equal(pipeline.primaryAction?.enabled, true);
+      assert.equal(pipeline.primaryAction?.disabledReason, null);
     });
 
     it("当 pushCapability 为 host-credentials（单进程）时放行推送", () => {
@@ -144,10 +164,10 @@ describe("DataRepoGithubCard 组件与推送能力推导", () => {
         deploy: { readonly: false, externalRunner: false },
         pushCapability: "host-credentials",
       });
-      const actions = deriveActionStates(status);
+      const pipeline = derivePipeline(status);
 
-      assert.equal(actions.push.enabled, true);
-      assert.equal(actions.push.disabledReason, null);
+      assert.equal(pipeline.primaryAction?.enabled, true);
+      assert.equal(pipeline.primaryAction?.disabledReason, null);
     });
 
     it("当无领先提交时，即便具备 github-app 能力推送按钮也禁用并说明无需推送", () => {
@@ -164,11 +184,16 @@ describe("DataRepoGithubCard 组件与推送能力推导", () => {
           behind: 0,
           aheadCommits: [],
         },
+        ledger: {
+          exported: 0,
+          published: 8,
+          lastExportedAt: null,
+          lastPublishedAt: null,
+        },
       });
-      const actions = deriveActionStates(status);
+      const pipeline = derivePipeline(status);
 
-      assert.equal(actions.push.enabled, false);
-      assert.equal(actions.push.disabledReason, "没有领先上游的提交，无需推送");
+      assert.equal(pipeline.primaryAction, null);
     });
   });
 });

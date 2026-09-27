@@ -164,157 +164,18 @@ function deriveWarningOrHealthy(status: DataRepoStatus): HealthInfo {
   return { level: "healthy", label: "正常", reason: "数据仓状态健康" };
 }
 
-/** 检查所有动作通用的禁用前置条件 */
-function checkCommonDisableReason(
-  status: DataRepoStatus | null,
-  inFlightMode: SyncActionMode | null,
-): string | null {
-  if (inFlightMode !== null) {
-    return `正在执行${ACTION_LABELS[inFlightMode]}，请稍候`;
-  }
-  if (status === null) {
-    return "状态未加载";
-  }
-  if (status.deploy.readonly) {
-    return "只读部署下不可执行同步操作";
-  }
-  if (!status.configured) {
-    return "未配置数据仓";
-  }
-  if (status.repo === null || !status.repo.reachable) {
-    return "数据仓不可达";
-  }
-  if (!status.repo.isGitRepo) {
-    return "数据仓不是有效 Git 仓库";
-  }
-  return null;
-}
+import { checkPushCapabilityReason } from "./data-repo-pipeline-model";
 
-/** 推导导出动作的可用性 */
-function deriveExportState(
-  status: DataRepoStatus,
-  commonReason: string | null,
-): ActionState {
-  const mode: SyncActionMode = "export";
-  const label = ACTION_LABELS[mode];
-  if (commonReason !== null) {
-    return { mode, label, enabled: false, disabledReason: commonReason, hint: null };
-  }
-  if (!status.repo!.clean) {
-    return {
-      mode,
-      label,
-      enabled: false,
-      disabledReason: "工作区有未提交的改动，请先清理或提交",
-      hint: null,
-    };
-  }
-  const hint = status.local.pending.length === 0 ? "无新轮次" : null;
-  return { mode, label, enabled: true, disabledReason: null, hint };
-}
+export {
+  derivePipeline,
+  type PipelineModel,
+  type PipelineStep,
+  type PipelineStage,
+  type StepStatus,
+  type PipelinePrimaryAction,
+  type PipelineSecondaryAction,
+} from "./data-repo-pipeline-model";
 
-/** 推送凭据是否可用：分容器部署下须已连接 GitHub（执行器上报 github-app 能力） */
-function checkPushCapabilityReason(status: DataRepoStatus): string | null {
-  if (
-    status.pushCapability === "unavailable" ||
-    (!status.pushCapability && status.deploy.externalRunner)
-  ) {
-    return status.deploy.externalRunner
-      ? "执行器未连接 GitHub，请先在上方连接后再推送"
-      : "容器内无推送凭据，请在宿主机推送";
-  }
-  return null;
-}
-
-function checkPushDisableReason(status: DataRepoStatus, commonReason: string | null): string | null {
-  if (commonReason !== null) return commonReason;
-  const capabilityReason = checkPushCapabilityReason(status);
-  if (capabilityReason !== null) return capabilityReason;
-  if (status.repo!.upstream === null) return "未配置上游分支，无法推送";
-  if (!status.repo!.clean) return "工作区有未提交的改动，请先清理或提交";
-  const ahead = status.repo!.ahead ?? 0;
-  if (ahead <= 0 || status.repo!.aheadCommits.length === 0) {
-    return "没有领先上游的提交，无需推送";
-  }
-  return null;
-}
-
-/** 推导推送动作的可用性 */
-function derivePushState(
-  status: DataRepoStatus,
-  commonReason: string | null,
-): ActionState {
-  const mode: SyncActionMode = "push";
-  const label = ACTION_LABELS[mode];
-  const disabledReason = checkPushDisableReason(status, commonReason);
-  return { mode, label, enabled: disabledReason === null, disabledReason, hint: null };
-}
-
-/** 推导四个动作各自的可用性与禁用原因 */
-export function deriveActionStates(
-  status: DataRepoStatus | null,
-  inFlightMode: SyncActionMode | null = null,
-): Record<SyncActionMode, ActionState> {
-  const commonReason = checkCommonDisableReason(status, inFlightMode);
-
-  const dryRunState: ActionState = {
-    mode: "dry-run",
-    label: ACTION_LABELS["dry-run"],
-    enabled: commonReason === null,
-    disabledReason: commonReason,
-    hint: status && status.local.pending.length === 0 ? "无待同步轮次" : null,
-  };
-
-  const confirmState: ActionState = {
-    mode: "confirm",
-    label: ACTION_LABELS.confirm,
-    enabled: commonReason === null && (status?.repo?.upstream !== null),
-    disabledReason:
-      commonReason ?? (status?.repo?.upstream === null ? "未配置上游分支，无法确认发布状态" : null),
-    hint: null,
-  };
-
-  const safeStatus = status ?? createEmptyStatus();
-
-  return {
-    "dry-run": dryRunState,
-    export: deriveExportState(safeStatus, commonReason),
-    confirm: confirmState,
-    push: derivePushState(safeStatus, commonReason),
-  };
-}
-
-/** 空状态兜底，仅用于类型安全推导 */
-function createEmptyStatus(): DataRepoStatus {
-  return {
-    configured: false,
-    deploy: { readonly: false, externalRunner: false },
-    repo: null,
-    manifest: null,
-    ledger: {
-      exported: 0,
-      published: 0,
-      skipped: 0,
-      skippedByReason: {
-        "unpublishable-prompt": 0,
-        rejected: 0,
-        abandoned: 0,
-      },
-      lastExportedAt: null,
-      lastPublishedAt: null,
-    },
-    local: { totalRuns: 0, pending: [], incomplete: 0, rejected: [] },
-    lastAction: null,
-    notice: null,
-    github: {
-      state: "disconnected",
-      login: null,
-      appSlug: null,
-      appSettingsUrl: null,
-    },
-    pushCapability: "unavailable",
-  };
-}
 
 /** 推导推送二次确认对话框内容 */
 export function derivePushConfirmation(
@@ -368,32 +229,87 @@ export function deriveActionResultSummary(
   return formatSuccessSummary(result);
 }
 
-/** 格式化成功的动作结果 */
+const SKIP_REASON_LABELS: Record<string, string> = {
+  idempotent: "已导出",
+  "内容无变化": "已导出",
+  "已导出": "已导出",
+  incomplete: "未完成",
+  "未完成": "未完成",
+  "unpublishable-prompt": "不可发布",
+  "不可发布": "不可发布",
+  "invalid-run-id": "无效轮次",
+  "无效轮次": "无效轮次",
+  rejected: "被拒绝",
+  "被拒绝": "被拒绝",
+  abandoned: "已废弃",
+  "已废弃": "已废弃",
+};
+
 /** 确认发布与执行器推送的结果都是 ConfirmPublishedReport（带 confirmed 清单） */
 function isConfirmReport(report: SyncActionResult["report"]): report is ConfirmPublishedReport {
   return report !== null && Array.isArray((report as ConfirmPublishedReport).confirmed);
 }
 
-function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
-  if (result.mode === "confirm" || (result.mode === "push" && isConfirmReport(result.report))) {
-    const report = result.report as ConfirmPublishedReport | null;
-    const publishedCount = report?.confirmed?.length ?? 0;
-    return {
-      text: result.mode === "push" ? `已推送，${publishedCount} 轮登记为已发布` : `已发布 ${publishedCount} 轮`,
-      ok: true,
-      mode: result.mode,
-      exportedCount: 0,
-      skippedCount: 0,
-      rejectedCount: 0,
-      redactedCount: 0,
-      publishedCount,
-      error: null,
-    };
+/** 统计并格式化跳过原因明细 */
+function formatSkippedBreakdown(
+  skipped: Array<{ runId: string; reason: string }>,
+): string {
+  if (skipped.length === 0) return "跳过 0 轮";
+  const counts = new Map<string, number>();
+  for (const item of skipped) {
+    const label = SKIP_REASON_LABELS[item.reason] ?? item.reason;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
   }
+  const parts = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count]) => `${label} ${count}`);
+  return `跳过 ${skipped.length} 轮（${parts.join("、")}）`;
+}
 
+/** 结果摘要的公共骨架：只有文案与已发布数不同 */
+function publishedSummary(
+  result: SyncActionResult,
+  text: string,
+  publishedCount: number,
+): ActionResultSummary {
+  return {
+    text,
+    ok: true,
+    mode: result.mode,
+    exportedCount: 0,
+    skippedCount: 0,
+    rejectedCount: 0,
+    redactedCount: 0,
+    publishedCount,
+    error: null,
+  };
+}
+
+/** 格式化确认发布结果摘要 */
+function formatConfirmSummary(result: SyncActionResult): ActionResultSummary {
+  const publishedCount = isConfirmReport(result.report) ? result.report.confirmed.length : 0;
+  const text =
+    publishedCount > 0
+      ? `远端已包含 ${publishedCount} 轮，登记为已发布`
+      : "远端尚未包含任何待确认轮次";
+  return publishedSummary(result, text, publishedCount);
+}
+
+/** 格式化推送发布结果摘要：执行器推送返回确认清单，进程内推送返回同步报告 */
+function formatPushSummary(result: SyncActionResult): ActionResultSummary {
+  const publishedCount = isConfirmReport(result.report)
+    ? result.report.confirmed.length
+    : ((result.report as SyncReport | null)?.ledgerTransitions?.published?.length ?? 0);
+  return publishedSummary(result, `已推送，${publishedCount} 轮登记为已发布`, publishedCount);
+}
+
+/** 格式化导出或预演结果摘要 */
+function formatExportOrDryRunSummary(
+  result: SyncActionResult,
+): ActionResultSummary {
   const report = result.report as SyncReport | null;
   const exportedCount = report?.exported?.length ?? 0;
-  const skippedCount = report?.skipped?.length ?? 0;
+  const skipped = report?.skipped ?? [];
   const rejectedCount = report?.rejected?.length ?? 0;
   const redactedCount =
     report?.redactions?.reduce(
@@ -402,20 +318,30 @@ function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
     ) ?? 0;
   const publishedCount = report?.ledgerTransitions?.published?.length ?? 0;
 
-  const prefix = result.mode === "dry-run" ? "预演：" : "";
-  const text = `${prefix}导出 ${exportedCount} 轮、跳过 ${skippedCount} 轮、拒绝 ${rejectedCount} 轮、脱敏 ${redactedCount} 处、已发布 ${publishedCount} 轮`;
+  const prefix = result.mode === "dry-run" ? "预演：可导出 " : "导出 ";
+  let text = `${prefix}${exportedCount} 轮；${formatSkippedBreakdown(skipped)}`;
+  if (rejectedCount > 0) text += `；拒绝 ${rejectedCount} 轮`;
+  if (redactedCount > 0) text += `；脱敏 ${redactedCount} 处`;
+  if (publishedCount > 0) text += `；已发布 ${publishedCount} 轮`;
 
   return {
     text,
     ok: true,
     mode: result.mode,
     exportedCount,
-    skippedCount,
+    skippedCount: skipped.length,
     rejectedCount,
     redactedCount,
     publishedCount,
     error: null,
   };
+}
+
+/** 格式化成功的动作结果 */
+function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
+  if (result.mode === "confirm") return formatConfirmSummary(result);
+  if (result.mode === "push") return formatPushSummary(result);
+  return formatExportOrDryRunSummary(result);
 }
 
 /** 从同步报告提取被拦截或跳过的轮次清单 */

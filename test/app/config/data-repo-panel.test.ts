@@ -10,9 +10,14 @@ import type { DataRepoStatus } from "@/core/sync/data-repo-panel-types";
 
 const FIXTURES_DIR = path.resolve(__dirname, "../../fixtures/markup/wp-l");
 
-function readFixture(filename: string): string {
+/** UPDATE_MARKUP_FIXTURES=1 时把当前标记写回夹具，否则与夹具逐字比对 */
+function assertFixture(html: string, filename: string): void {
   const filePath = path.join(FIXTURES_DIR, filename);
-  return fs.readFileSync(filePath, "utf-8");
+  if (process.env.UPDATE_MARKUP_FIXTURES === "1") {
+    fs.writeFileSync(filePath, html, "utf-8");
+    return;
+  }
+  assert.strictEqual(html, fs.readFileSync(filePath, "utf-8"));
 }
 
 function createBaseStatus(): DataRepoStatus {
@@ -87,8 +92,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("unconfigured.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "unconfigured.html");
     assert.match(html, /当前配置未启用数据仓/);
   });
 
@@ -100,10 +104,9 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("healthy.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "healthy.html");
     assert.match(html, /data-repo-health-badge healthy/);
-    assert.match(html, /导出 1 轮、跳过 0 轮、拒绝 0 轮/);
+    assert.match(html, /导出 1 轮；跳过 0 轮/);
   });
 
   await t.test("场景 3：有 pending 与被拒绝轮次 (pending-and-rejected)", () => {
@@ -150,8 +153,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("pending-and-rejected.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "pending-and-rejected.html");
     assert.match(html, /local-path 泄漏/);
     assert.match(html, /内容无变化/);
   });
@@ -167,8 +169,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("external-runner.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "external-runner.html");
     assert.match(html, /执行器未连接 GitHub，请先在上方连接后再推送/);
   });
 
@@ -181,8 +182,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("in-flight.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "in-flight.html");
     assert.match(html, /正在执行导出提交，请稍候/);
     assert.match(html, /正在导出提交…/);
   });
@@ -196,8 +196,7 @@ test("DataRepoPanel 静态标记特征测试", async (t) => {
         autoLoad: false,
       }),
     );
-    const expected = readFixture("push-confirm-open.html");
-    assert.strictEqual(html, expected);
+    assertFixture(html, "push-confirm-open.html");
     assert.match(html, /确认推送到远程数据仓/);
     assert.match(html, /3f8a92b/);
   });
