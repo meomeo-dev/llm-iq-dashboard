@@ -17,6 +17,16 @@ case "$MODE" in
     exec /app/node_modules/.bin/next start --hostname 0.0.0.0 --port 3000
     ;;
   runner)
+    if [ -n "${PELICAN_SECRETS_DIR:-}" ]; then
+      if [ -d "$PELICAN_SECRETS_DIR" ] && [ -w "$PELICAN_SECRETS_DIR" ]; then
+        chmod 700 "$PELICAN_SECRETS_DIR" 2>/dev/null || true
+      elif mkdir -p "$PELICAN_SECRETS_DIR" 2>/dev/null && [ -w "$PELICAN_SECRETS_DIR" ]; then
+        chmod 700 "$PELICAN_SECRETS_DIR" 2>/dev/null || true
+      else
+        echo "警告：凭据目录 $PELICAN_SECRETS_DIR 不存在或不可写，GitHub App 凭据功能可能不可用"
+      fi
+    fi
+
     # CLI 不在镜像里，首次启动时下载安装，之后只核对版本；失败不阻止启动，重启容器会重试
     if ! sh /app/docker/install-clis.sh; then
       echo "提示：有 CLI 安装失败（多为网络问题），重启容器会重试：docker restart llm-iq-runner"

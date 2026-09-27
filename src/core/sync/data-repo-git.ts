@@ -18,6 +18,19 @@ const execFileAsync = promisify(execFile);
 const LONG_TIMEOUT_MS = 120_000;
 const SHORT_TIMEOUT_MS = 30_000;
 
+
+
+export interface GitExecOptions {
+  timeoutMs?: number;
+  gitArgs?: string[];
+  env?: Record<string, string | undefined>;
+}
+
+export interface GitPushEnv {
+  env?: Record<string, string>;
+  gitArgs?: string[];
+}
+
 /**
  * 执行 Git 命令并返回 stdout。
  * push/fetch 默认 120s 超时，其余命令 30s 超时。
@@ -25,15 +38,23 @@ const SHORT_TIMEOUT_MS = 30_000;
 export async function gitExec(
   repoDir: string,
   args: string[],
-  customTimeoutMs?: number,
+  customTimeoutOrOptions?: number | GitExecOptions,
 ): Promise<string> {
   const isLong = args.some((a) => a === "push" || a === "fetch");
-  const timeout = customTimeoutMs ?? (isLong ? LONG_TIMEOUT_MS : SHORT_TIMEOUT_MS);
+  const options =
+    typeof customTimeoutOrOptions === "object"
+      ? customTimeoutOrOptions
+      : { timeoutMs: customTimeoutOrOptions };
+  const timeout = options.timeoutMs ?? (isLong ? LONG_TIMEOUT_MS : SHORT_TIMEOUT_MS);
+  const gitArgs = options.gitArgs ?? [];
+  const execEnv = options.env ? { ...process.env, ...options.env } : process.env;
+  const fullArgs = [...gitArgs, "-C", repoDir, ...args];
 
   try {
-    const { stdout } = await execFileAsync("git", ["-C", repoDir, ...args], {
+    const { stdout } = await execFileAsync("git", fullArgs, {
       encoding: "utf8",
       timeout,
+      env: execEnv,
     });
     return stdout;
   } catch (error) {
@@ -145,11 +166,94 @@ export async function commitSync(
   return sha.trim();
 }
 
+export interface GitPushTarget {
+  remote: string;
+  pushUrl: string;
+  upstreamBranch: string;
+}
+
+export interface PushTargetRef {
+  pushUrl?: string;
+  upstreamBranch?: string;
+}
+
+/**
+ * 获取当前分支的推送目标（remote、pushUrl、上游分支名）。
+ */
+export async function getPushTarget(repoDir: string): Promise<GitPushTarget> {
+  const currentBranch = await getCurrentBranch(repoDir);
+  let remote = "origin";
+  let upstreamBranch = currentBranch ?? "main";
+
+  if (currentBranch) {
+    try {
+      const configuredRemote = (
+        await gitExec(repoDir, ["config", `branch.${currentBranch}.remote`])
+      ).trim();
+      if (configuredRemote) remote = configuredRemote;
+    } catch {}
+
+    try {
+      const configuredMerge = (
+        await gitExec(repoDir, ["config", `branch.${currentBranch}.merge`])
+      ).trim();
+      if (configuredMerge) {
+        upstreamBranch = configuredMerge.replace(/^refs\/heads\//, "");
+      }
+    } catch {}
+  }
+
+  const pushUrl = (
+    await gitExec(repoDir, ["remote", "get-url", "--push", remote])
+  ).trim();
+  return { remote, pushUrl, upstreamBranch };
+}
+
 /**
  * 推送当前分支到远端（绝不 force）。
+ * 仅在显式传入 pushEnv 时使用 App 推送环境；不传则使用宿主机默认凭据。
+ * 可选 target 指定目标 pushUrl 与上游分支名（HEAD:<upstreamBranch>）。
  */
-export async function pushCurrentBranch(repoDir: string): Promise<void> {
-  await gitExec(repoDir, ["push"]);
+export async function pushCurrentBranch(
+  repoDir: string,
+  pushEnv?: GitPushEnv,
+  target?: PushTargetRef,
+): Promise<void> {
+  const args = ["push"];
+  if (target?.pushUrl && target?.upstreamBranch) {
+    args.push(target.pushUrl, `HEAD:${target.upstreamBranch}`);
+  }
+  if (pushEnv) {
+    await gitExec(repoDir, args, {
+      gitArgs: pushEnv.gitArgs,
+      env: pushEnv.env,
+    });
+  } else {
+    await gitExec(repoDir, args);
+  }
+}
+
+/**
+ * 校验指定提交是否已被上游包含；若未包含先 fetch 远端后再校验。
+ */
+export async function verifyUpstreamContains(
+  repoDir: string,
+  commitSha: string,
+  upstreamBranch?: string,
+  pushEnv?: GitPushEnv,
+): Promise<boolean> {
+  let contained = await isCommitInUpstream(repoDir, commitSha, upstreamBranch);
+  if (!contained) {
+    try {
+      await gitExec(
+        repoDir,
+        ["fetch"],
+        pushEnv ? { gitArgs: pushEnv.gitArgs, env: pushEnv.env } : undefined,
+      );
+      contained = await isCommitInUpstream(repoDir, commitSha, upstreamBranch);
+    } catch {}
+  }
+  return contained;
 }
 
 /**

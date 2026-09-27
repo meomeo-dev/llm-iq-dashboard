@@ -118,9 +118,45 @@ PELICAN_PORT=3100 docker compose up -d
      docker compose exec runner pnpm sync:data --confirm-published
      ```
 - **修剪守卫关系**：过期轮次修剪（`retention.days`）严格以台账 `published` 状态为准，未确认发布的轮次由守卫安全熔断保留，防止网络异常导致成果丢失。若宿主机未挂载 `/data-repo` 或目录不是 Git 仓库，runner 仅记录一行日志并跳过自动同步，评测轮次照常完成。
-- **所有者看板「数据仓」面板动作（ACR-010）**：所有者在看板 `/config` 页可直接查看数据仓状态。在分容器部署下：
-  - **可用动作**：演练（dry-run）、脱敏导出（export）与发布确认（confirm），经 `data/requests/` 通道由 runner 执行；
-  - **推送限制**：容器内无推送凭据，面板触发 push 会直接返回 409（提示“容器内无推送凭据，请在宿主机推送”）；推送须在宿主机终端执行 `git -C ../llm-iq-data push`，随后在面板点击「发布确认」更新台账。
+- **所有者看板「数据仓」面板动作（ACR-010 / ACR-011）**：所有者在看板 `/config` 页可直接查看数据仓状态。在分容器部署下：
+  - **可用动作**：演练（dry-run）、脱敏导出（export）、发布确认（confirm）与推送（push）；
+  - **网页推送凭据**：未连接 GitHub App 时触发 push 返回 409（提示“容器内无推送凭据，请在宿主机推送”）；在看板完成 GitHub App 网页授权后，runner 获得专用推送令牌，可在面板核对领先提交后一键完成安全推送。
+
+### 在网页连接 GitHub（ACR-011）
+
+所有者可通过看板网页一键完成 GitHub App 清单注册与授权，实现免配置令牌的容器内安全推送：
+
+1. **连接步骤**：
+   - 配对并以所有者身份登录看板，进入 `/config` 页「数据仓」区块，在 GitHub 授权卡片点击「连接 GitHub」；
+   - 浏览器自动跳转至 GitHub App 清单页面，清单已预置权限与回调，所有者点击「Create GitHub App」；
+   - 创建成功后自动回跳看板，看板无缝重定向至 GitHub App 安装页面，所有者勾选「Only select repositories → llm-iq-data」并确认授权；
+   - 授权完成后自动跳回看板 `/config#data-repo`，卡片显示「已连接 {login}」，推送按钮立即解锁。
+
+2. **权限范围与安全性**：
+   - **权限极小化**：应用仅申请 Contents 读写（`contents: write`）与 Metadata 只读（`metadata: read`），关闭 Webhook（`active: false`）；
+   - **仓库限定**：安装时严格限定仅访问单一公开数据仓（`llm-iq-data`），无法触碰账号下其他仓库；
+   - **双重作用域**：生成的 User-to-Server 访问令牌同时受限于用户自身权限与应用安装范围的交集。
+
+3. **凭据存放与隔离**：
+   - 凭据仅保存在 runner 专用命名卷 `runner-secrets`（挂载至 `/app/secrets`，目录权限 0o700，文件权限 0o600）；
+   - 卷内包含：`github-app.json`（App 标识与密钥）、`github-user.json`（用户与刷新令牌）、`github-access-token`（供 askpass 读取的临时访问令牌）；
+   - `web` 看板容器不挂载凭据卷；推送时经 `GIT_ASKPASS` 脚本交付 Git，令牌绝不进入环境变量、命令行参数或日志。
+   - 访问令牌剩余有效期不足 10 分钟时，推送前由 runner 自动刷新并持久化。
+
+4. **撤销与删除应用**：
+   - **断开连接**：在面板卡片点击「断开 GitHub」，runner 自动调用 GitHub 端点撤销授权并安全擦除本地全部凭据；
+   - **删除应用**：面板提供「在 GitHub 上管理应用」跳转链接，所有者可前往 GitHub 设置页彻底删除该 App 或卸载安装。
+
+5. **备用路径（网络限制下手建应用）**：
+   若因特定网络环境无法自动提交 Manifest，可在 GitHub 网页（`https://github.com/settings/apps/new`）手工创建应用并填写对应项：
+   - GitHub App name: `llm-iq-data-publisher-<随机后缀>`
+   - Homepage URL: `https://github.com/meomeo-dev/llm-iq-data`
+   - Callback URL: `http://localhost:3000/api/data-repo/github/callback`
+   - Setup URL (redirect on install): `http://localhost:3000/api/data-repo/github/app-created`
+   - Webhook: 取消勾选 Active
+   - Permissions -> Repository permissions -> Contents: Read and write; Metadata: Read-only
+   - Where can this GitHub App be installed: Only on this account
+   创建后生成 Client secret，并将 `{ id, slug, client_id, client_secret }` 写入 runner 凭据目录 `github-app.json`。
 
 ## 升级与登录态
 

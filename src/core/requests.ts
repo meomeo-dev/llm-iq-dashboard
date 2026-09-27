@@ -15,6 +15,8 @@ import { dataRoot } from "./paths";
 import type { RunSelection } from "./run-selection";
 import type {
   DataRepoStatus,
+  GithubConnection,
+  PushCapability,
   SyncActionRequest,
   SyncActionResult,
 } from "./sync/data-repo-panel-types";
@@ -29,7 +31,10 @@ export type RequestKind =
   | "check-readiness"
   | "probe-capabilities"
   | "sync-data"
-  | "data-repo-status";
+  | "data-repo-status"
+  | "github-app-convert"
+  | "github-token-exchange"
+  | "github-disconnect";
 export type RequestState = "pending" | "claimed" | "done" | "failed";
 
 export interface RunnerRequest {
@@ -43,7 +48,9 @@ export interface RunnerRequest {
   selection: RunSelection | null;
   /** kind 为 sync-data 时的动作载荷 */
   syncAction?: SyncActionRequest | null;
-  /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；failed：原因 */
+  /** kind 为 github-* 时的授权载荷，完成处理后 code 覆写为 null */
+  githubAction?: { code: string | null } | null;
+  /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；github 为 githubConnection */
   result: {
     runId?: string;
     calls?: number;
@@ -52,7 +59,11 @@ export interface RunnerRequest {
     statusResult?: {
       repo: DataRepoStatus["repo"];
       manifest: DataRepoStatus["manifest"];
+      github?: GithubConnection;
+      pushCapability?: PushCapability;
     };
+    githubConnection?: GithubConnection;
+    githubDisconnectResult?: { revoked: boolean; revokeError?: string };
   } | null;
 }
 
@@ -73,10 +84,45 @@ export async function requestRunnerDataRepoStatus(
 ): Promise<{
   repo: DataRepoStatus["repo"];
   manifest: DataRepoStatus["manifest"];
+  github?: GithubConnection;
+  pushCapability?: PushCapability;
 } | null> {
   const req = await enqueueRequest("data-repo-status");
   const settled = await waitForRequest(req.id, timeoutMs);
   return settled?.state === "done" ? (settled.result?.statusResult ?? null) : null;
+}
+
+const GITHUB_REQUEST_TIMEOUT_MS = 60_000;
+
+/** 让执行器代办 GitHub App 授权动作；超时或失败返回错误描述 */
+export async function requestRunnerGithubAction(
+  kind: "github-app-convert" | "github-token-exchange" | "github-disconnect",
+  code?: string | null,
+  timeoutMs: number = GITHUB_REQUEST_TIMEOUT_MS,
+): Promise<{
+  ok: boolean;
+  connection?: GithubConnection;
+  disconnectResult?: { revoked: boolean; revokeError?: string };
+  error?: string;
+}> {
+  const req = await enqueueRequest(kind, {
+    githubAction: code ? { code } : null,
+  });
+  const settled = await waitForRequest(req.id, timeoutMs);
+  if (settled?.state === "done") {
+    return {
+      ok: true,
+      connection: settled.result?.githubConnection,
+      disconnectResult: settled.result?.githubDisconnectResult,
+    };
+  }
+  if (code) {
+    await clearRequestCode(req.id).catch(() => {});
+  }
+  return {
+    ok: false,
+    error: settled?.result?.error ?? "执行器未响应 GitHub 授权请求",
+  };
 }
 
 export function requestsDir(): string {
@@ -86,6 +132,7 @@ export function requestsDir(): string {
 export interface EnqueuePayload {
   selection?: RunSelection | null;
   syncAction?: SyncActionRequest | null;
+  githubAction?: { code: string | null } | null;
 }
 
 export async function enqueueRequest(
@@ -95,12 +142,18 @@ export async function enqueueRequest(
 ): Promise<RunnerRequest> {
   let selection: RunSelection | null = null;
   let syncAction: SyncActionRequest | null = null;
+  let githubAction: { code: string | null } | null = null;
 
   if (payload !== null) {
-    if ("syncAction" in payload || ("selection" in payload && payload.selection !== undefined)) {
+    if (
+      "syncAction" in payload ||
+      "githubAction" in payload ||
+      ("selection" in payload && payload.selection !== undefined)
+    ) {
       const p = payload as EnqueuePayload;
       selection = p.selection ?? null;
       syncAction = p.syncAction ?? null;
+      githubAction = p.githubAction ?? null;
     } else {
       selection = payload as RunSelection;
     }
@@ -115,6 +168,7 @@ export async function enqueueRequest(
     finishedAt: null,
     selection,
     ...(syncAction !== null ? { syncAction } : {}),
+    ...(githubAction !== null ? { githubAction } : {}),
     result: null,
   };
   await mkdir(requestsDir(), { recursive: true });
@@ -187,10 +241,63 @@ async function listRequests(): Promise<RunnerRequest[]> {
   return found;
 }
 
-async function settle(id: string, state: "done" | "failed", result: NonNullable<RunnerRequest["result"]>, now: Date): Promise<void> {
+async function settle(
+  id: string,
+  state: "done" | "failed",
+  result: NonNullable<RunnerRequest["result"]>,
+  now: Date,
+): Promise<void> {
   const current = await readRequest(id);
   if (current === null) return;
-  await save({ ...current, state, finishedAt: now.toISOString(), result });
+  const githubAction = current.githubAction
+    ? { ...current.githubAction, code: null }
+    : undefined;
+  await save({
+    ...current,
+    state,
+    finishedAt: now.toISOString(),
+    result,
+    ...(githubAction !== undefined ? { githubAction } : {}),
+  });
+}
+
+/**
+ * 抹除请求中的授权码 (code)
+ */
+export async function clearRequestCode(id: string): Promise<void> {
+  const current = await readRequest(id);
+  if (current?.githubAction?.code) {
+    await save({
+      ...current,
+      githubAction: { ...current.githubAction, code: null },
+    });
+  }
+}
+
+const STALE_GITHUB_REQUEST_MS = 60 * 60 * 1000;
+
+/**
+ * 清理超过 1 小时的未完成 github-* 请求中的 code
+ */
+export async function cleanStaleGithubRequestCodes(
+  now: Date = new Date(),
+): Promise<number> {
+  let cleaned = 0;
+  for (const request of await listRequests()) {
+    if (
+      request.kind.startsWith("github-") &&
+      request.githubAction?.code &&
+      (request.state === "pending" || request.state === "claimed") &&
+      now.getTime() - Date.parse(request.requestedAt) >= STALE_GITHUB_REQUEST_MS
+    ) {
+      await save({
+        ...request,
+        githubAction: { ...request.githubAction, code: null },
+      });
+      cleaned += 1;
+    }
+  }
+  return cleaned;
 }
 
 /** 写临时文件再原子替换：看板随时可能在读 */

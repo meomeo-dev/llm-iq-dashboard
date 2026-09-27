@@ -10,7 +10,11 @@ import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwnerAction } from "@/core/auth/guard";
 import { loadConfig } from "@/core/config";
 import { configPath } from "@/core/paths";
-import { enqueueRequest, waitForRequest } from "@/core/requests";
+import {
+  enqueueRequest,
+  requestRunnerDataRepoStatus,
+  waitForRequest,
+} from "@/core/requests";
 import { externalRunner } from "@/core/runner-link";
 import { acquireDataRepoSyncLock } from "@/core/sync/data-repo-action-lock";
 import { getAheadCommits } from "@/core/sync/data-repo-git";
@@ -36,6 +40,17 @@ function isAheadCommitsMatch(actual: string[], confirmed?: string[]): boolean {
   if (!confirmed) return false;
   if (actual.length !== confirmed.length) return false;
   return actual.every((sha, idx) => sha === confirmed[idx]);
+}
+
+async function checkExternalRunnerPush(actionRequest: SyncActionRequest): Promise<string | null> {
+  const runnerStatus = await requestRunnerDataRepoStatus();
+  if (runnerStatus?.pushCapability !== "github-app") {
+    return "容器内无推送凭据，请在宿主机推送";
+  }
+  if (!actionRequest.confirmation?.aheadCommits || actionRequest.confirmation.aheadCommits.length === 0) {
+    return "推送前须先确认领先提交清单";
+  }
+  return null;
 }
 
 async function startViaRunner(
@@ -141,7 +156,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     if (externalRunner()) {
       if (actionRequest.mode === "push") {
-        return NextResponse.json({ error: "容器内无推送凭据，请在宿主机推送" }, { status: 409 });
+        const pushErr = await checkExternalRunnerPush(actionRequest);
+        if (pushErr) return NextResponse.json({ error: pushErr }, { status: 409 });
       }
       return await startViaRunner(actionRequest, who);
     }
