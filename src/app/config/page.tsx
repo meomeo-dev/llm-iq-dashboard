@@ -6,6 +6,7 @@ import { configPath } from "@/core/paths";
 import { BUILTIN_PROMPTS } from "@/core/prompt";
 import { isReadonly } from "@/core/deploy-mode";
 import { ConfigEditor } from "./ConfigEditor";
+import { DataRepoPanel } from "./DataRepoPanel";
 import { DevicePanel } from "./DevicePanel";
 import { ConfigPageHeader } from "./ConfigPageHeader";
 import {
@@ -53,6 +54,7 @@ export default async function ConfigPage() {
           initialCatalog={catalog}
         />
       )}
+      <DataRepoPanel />
       <DevicePanel pairCommand={commandHint("pnpm pair")} />
     </main>
   );
