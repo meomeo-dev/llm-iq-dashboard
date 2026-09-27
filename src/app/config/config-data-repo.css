@@ -277,3 +277,18 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* GitHub App 卡片样式 */
+.data-repo-github-card { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.data-repo-github-header { display: flex; justify-content: space-between; align-items: center; }
+.data-repo-github-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.data-repo-github-badge.connected { background: rgba(16, 185, 129, 0.15); color: var(--ok); }
+.data-repo-github-badge.app-created, .data-repo-github-badge.reconnect-required { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.data-repo-github-badge.disconnected { background: rgba(100, 116, 139, 0.15); color: var(--text-dim); }
+.data-repo-github-body { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; }
+.data-repo-github-desc { margin: 0; color: var(--text-dim); }
+.data-repo-github-link { color: var(--accent); font-size: 12.5px; text-decoration: underline; }
+.data-repo-github-actions { display: flex; align-items: center; gap: 10px; }
+.data-repo-btn-primary { background: var(--accent); color: #fff; text-decoration: none; }
+
+

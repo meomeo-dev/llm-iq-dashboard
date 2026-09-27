@@ -1,5 +1,9 @@
 import type { SyncReport } from "./sync-orchestrator";
 import type { ConfirmPublishedReport } from "./confirm-published";
+import type { GithubConnection, GithubConnectionState } from "../github-auth";
+
+export type { GithubConnection, GithubConnectionState };
+export type PushCapability = "github-app" | "host-credentials" | "unavailable";
 
 /** 数据仓面板状态：GET /api/data-repo 的响应体 */
 export interface DataRepoStatus {
@@ -41,6 +45,10 @@ export interface DataRepoStatus {
   lastAction: SyncActionResult | null;
   /** 聚合过程中的非致命错误说明（中文），无则 null */
   notice: string | null;
+  /** GitHub App 连接状态 */
+  github?: GithubConnection;
+  /** 推送能力：github-app（已连接 GitHub App）、host-credentials（宿主机凭据）、unavailable（容器内无凭据） */
+  pushCapability?: PushCapability;
 }
 
 export type SyncActionMode = "dry-run" | "export" | "confirm" | "push";
@@ -64,3 +72,6 @@ export interface SyncActionResult {
   executedBy: "web" | "runner";
   error: string | null;
 }
+
+
+

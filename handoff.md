@@ -52,7 +52,7 @@
    - 点击「演练」预览待导出与脱敏情况（无写操作）；
    - 点击「导出」执行脱敏归档并生成本地 `chore(data)` Git 提交；
    - 点击「发布确认」基于匿名 fetch 校验上游祖先关系，自动回填 `published` 状态；
-   - 点击「推送」：弹出二次确认框核对即将公开的提交短哈希列表，确认后安全推送（容器部署下禁用并提示在宿主机推送）。
+   - 点击「推送」：弹出二次确认框核对即将公开的提交短哈希列表，确认后由 runner 经授权的 GitHub App 安全推送（未授权时提示连接 GitHub 或在宿主机推送）。
 
 2. **CLI 运维工具（备用，`pnpm sync:data`）**：
    参数与说明：
@@ -65,23 +65,21 @@
 
    退出码定义：`0` 成功；`1` 执行出错（配置有误、工作区不干净、fetch/push 失败）；`2` 存在脱敏拦截拒绝发布或冲突。
 
-### 3.2 容器部署与发布闭环工作流
+### 3.2 容器部署与发布闭环工作流（网页优先，宿主机备用）
 在两容器部署（`compose.yaml`：`llm-iq-web` 与 `llm-iq-runner`）架构下：
 1. **自动导出与提交**：
    - runner 容器将宿主机数据仓挂载至 `/data-repo`，配置 `dataRepo.path: /data-repo`、`autoSync: true`、`push: false`；
-   - runner 每轮评测结束自动完成脱敏归档，并在 `/data-repo` 生成 `chore(data)` 提交，台账记录为 `status: exported`；
-   - 容器内无 GitHub Token / SSH Key，不执行远程推送。
-2. **宿主机人工发布**：
-   - 宿主机操作者核验数据后，在宿主机终端执行 Git 推送：
+   - runner 每轮评测结束自动完成脱敏归档，并在 `/data-repo` 生成 `chore(data)` 提交，台账记录为 `status: exported`。
+2. **网页一键授权与推送（首选闭环）**：
+   - 所有者在看板 `/config` 页点击「连接 GitHub」，按流程创建 GitHub App 并安装至 `llm-iq-data`；
+   - 推送凭据自动保存在 runner 专用卷 `runner-secrets` 中（web 容器不接触任何密钥）；
+   - 在面板点击「推送」核对领先提交列表后确认，runner 自动刷新令牌并安全推送，自动更新台账为 `published`。
+3. **宿主机人工发布（备用）**：
+   - 若未连接 GitHub App，宿主机操作者亦可在宿主机终端使用宿主机 Git 凭据推送：
      ```bash
      git -C ../llm-iq-data push
      ```
-3. **状态确认回填（Confirm Published）**：
-   - 方式一（自动）：runner 容器在下一次定时评测自动同步时，会自动通过匿名 fetch 与 merge-base 祖先校验完成确认，回填 `published` 状态；
-   - 方式二（手动）：宿主机推送后可立即触发 runner 确认：
-     ```bash
-     docker compose exec runner pnpm sync:data --confirm-published
-     ```
+   - 推送后在看板点击「发布确认」，或等待 runner 下次评测自动确认回填 `published` 状态。
 
 ### 3.3 历史轮次滚动保留与修剪守卫
 - 由 `retention.days` 控制历史轮次保留天数（例如 30 天）；

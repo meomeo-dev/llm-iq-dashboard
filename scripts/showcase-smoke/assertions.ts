@@ -80,6 +80,33 @@ export async function assertBlockedDataRepoSyncPost(baseUrl: string): Promise<vo
   assert.equal(res.status, 403, `只读模式应拦截 POST /api/data-repo/sync 为 403，实际: ${res.status}`);
 }
 
+/** 断言只读远程模式下 GET /api/data-repo/github/connect 阻断为 403 */
+export async function assertBlockedGithubConnectGet(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo/github/connect`);
+  assert.equal(res.status, 403, `只读模式应拦截 GET /api/data-repo/github/connect 为 403，实际: ${res.status}`);
+}
+
+/** 断言只读远程模式下 GET /api/data-repo/github/app-created 阻断为 403 */
+export async function assertBlockedGithubAppCreatedGet(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo/github/app-created`);
+  assert.equal(res.status, 403, `只读模式应拦截 GET /api/data-repo/github/app-created 为 403，实际: ${res.status}`);
+}
+
+/** 断言只读远程模式下 GET /api/data-repo/github/callback 阻断为 403 */
+export async function assertBlockedGithubCallbackGet(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo/github/callback`);
+  assert.equal(res.status, 403, `只读模式应拦截 GET /api/data-repo/github/callback 为 403，实际: ${res.status}`);
+}
+
+/** 断言只读远程模式下 POST /api/data-repo/github/disconnect 阻断为 403 */
+export async function assertBlockedGithubDisconnectPost(baseUrl: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/data-repo/github/disconnect`, {
+    method: "POST",
+    headers: { "x-pelican-action": "1" },
+  });
+  assert.equal(res.status, 403, `只读模式应拦截 POST /api/data-repo/github/disconnect 为 403，实际: ${res.status}`);
+}
+
 /** 断言配对页面入口返回 404 */
 export async function assertPairPage404(baseUrl: string): Promise<void> {
   const res = await fetch(`${baseUrl}/pair`);
@@ -98,6 +125,35 @@ export async function assertConfigPageRedirect(baseUrl: string): Promise<void> {
     location === "/" || location.endsWith("/"),
     `Location 应重定向到 /，实际: ${location}`,
   );
+}
+
+function buildDataRepoBlockedSteps(baseUrl: string): AssertionStep[] {
+  return [
+    {
+      name: "数据仓状态接口阻断 GET /api/data-repo (返回 403 Forbidden)",
+      run: () => assertBlockedDataRepoGet(baseUrl),
+    },
+    {
+      name: "数据仓同步动作阻断 POST /api/data-repo/sync (返回 403 Forbidden)",
+      run: () => assertBlockedDataRepoSyncPost(baseUrl),
+    },
+    {
+      name: "GitHub 连接路由阻断 GET /api/data-repo/github/connect (返回 403 Forbidden)",
+      run: () => assertBlockedGithubConnectGet(baseUrl),
+    },
+    {
+      name: "GitHub 应用创建回跳阻断 GET /api/data-repo/github/app-created (返回 403 Forbidden)",
+      run: () => assertBlockedGithubAppCreatedGet(baseUrl),
+    },
+    {
+      name: "GitHub 授权回调阻断 GET /api/data-repo/github/callback (返回 403 Forbidden)",
+      run: () => assertBlockedGithubCallbackGet(baseUrl),
+    },
+    {
+      name: "GitHub 断开连接阻断 POST /api/data-repo/github/disconnect (返回 403 Forbidden)",
+      run: () => assertBlockedGithubDisconnectPost(baseUrl),
+    },
+  ];
 }
 
 /** 构建冒烟测试断言步骤列表 */
@@ -123,14 +179,7 @@ export function buildAssertionSteps(baseUrl: string): AssertionStep[] {
       name: "写操作阻断 POST /api/run (返回 403 Forbidden)",
       run: () => assertBlockedRunPost(baseUrl),
     },
-    {
-      name: "数据仓状态接口阻断 GET /api/data-repo (返回 403 Forbidden)",
-      run: () => assertBlockedDataRepoGet(baseUrl),
-    },
-    {
-      name: "数据仓同步动作阻断 POST /api/data-repo/sync (返回 403 Forbidden)",
-      run: () => assertBlockedDataRepoSyncPost(baseUrl),
-    },
+    ...buildDataRepoBlockedSteps(baseUrl),
     {
       name: "所有者配对页面入口 GET /pair (返回 404 Not Found)",
       run: () => assertPairPage404(baseUrl),

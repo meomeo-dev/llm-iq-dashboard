@@ -15,6 +15,7 @@ RUN npm install -g "pnpm@${PNPM_VERSION}" && npm cache clean --force
 # 登录态目录与数据目录先以 node 用户建好：命名卷首次挂载时沿用镜像里的属主
 RUN mkdir -p /app /opt/clis /home/node/.claude /home/node/.codex /home/node/.gemini \
   && chown -R node:node /app /opt/clis /home/node
+RUN mkdir -p /app/secrets && chown node:node /app/secrets && chmod 700 /app/secrets
 
 USER node
 WORKDIR /app

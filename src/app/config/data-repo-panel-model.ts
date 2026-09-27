@@ -205,6 +205,23 @@ function deriveExportState(
   return { mode, label, enabled: true, disabledReason: null, hint };
 }
 
+function checkPushDisableReason(status: DataRepoStatus, commonReason: string | null): string | null {
+  if (commonReason !== null) return commonReason;
+  if (
+    status.pushCapability === "unavailable" ||
+    (!status.pushCapability && status.deploy.externalRunner)
+  ) {
+    return "容器内无推送凭据，请在宿主机推送";
+  }
+  if (status.repo!.upstream === null) return "未配置上游分支，无法推送";
+  if (!status.repo!.clean) return "工作区有未提交的改动，请先清理或提交";
+  const ahead = status.repo!.ahead ?? 0;
+  if (ahead <= 0 || status.repo!.aheadCommits.length === 0) {
+    return "没有领先上游的提交，无需推送";
+  }
+  return null;
+}
+
 /** 推导推送动作的可用性 */
 function derivePushState(
   status: DataRepoStatus,
@@ -212,47 +229,8 @@ function derivePushState(
 ): ActionState {
   const mode: SyncActionMode = "push";
   const label = ACTION_LABELS[mode];
-  if (commonReason !== null) {
-    return { mode, label, enabled: false, disabledReason: commonReason, hint: null };
-  }
-  if (status.deploy.externalRunner) {
-    return {
-      mode,
-      label,
-      enabled: false,
-      disabledReason: "容器内无推送凭据，请在宿主机推送",
-      hint: null,
-    };
-  }
-  if (status.repo!.upstream === null) {
-    return {
-      mode,
-      label,
-      enabled: false,
-      disabledReason: "未配置上游分支，无法推送",
-      hint: null,
-    };
-  }
-  if (!status.repo!.clean) {
-    return {
-      mode,
-      label,
-      enabled: false,
-      disabledReason: "工作区有未提交的改动，请先清理或提交",
-      hint: null,
-    };
-  }
-  const ahead = status.repo!.ahead ?? 0;
-  if (ahead <= 0 || status.repo!.aheadCommits.length === 0) {
-    return {
-      mode,
-      label,
-      enabled: false,
-      disabledReason: "没有领先上游的提交，无需推送",
-      hint: null,
-    };
-  }
-  return { mode, label, enabled: true, disabledReason: null, hint: null };
+  const disabledReason = checkPushDisableReason(status, commonReason);
+  return { mode, label, enabled: disabledReason === null, disabledReason, hint: null };
 }
 
 /** 推导四个动作各自的可用性与禁用原因 */
@@ -305,6 +283,13 @@ function createEmptyStatus(): DataRepoStatus {
     local: { totalRuns: 0, pending: [], incomplete: 0 },
     lastAction: null,
     notice: null,
+    github: {
+      state: "disconnected",
+      login: null,
+      appSlug: null,
+      appSettingsUrl: null,
+    },
+    pushCapability: "unavailable",
   };
 }
 

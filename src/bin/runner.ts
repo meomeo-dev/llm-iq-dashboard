@@ -13,14 +13,40 @@ import { readAutoRunSwitch, recordSchedulerProcess } from "../core/auto-run";
 import { loadConfig, type AppConfig } from "../core/config";
 import { configPath } from "../core/paths";
 import { findActiveRun } from "../core/progress";
-import { claimNextRequest, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
+import { claimNextRequest, cleanStaleGithubRequestCodes, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
-import { inspectGitRepo } from "../core/sync/data-repo-git";
+import {
+  buildPushEnv,
+  clearGithubCredentials,
+  convertManifest,
+  exchangeCode,
+  fetchRepositoryId,
+  fetchUserLogin,
+  parseGitHubRemote,
+  readAccessToken,
+  readGithubApp,
+  readGithubConnection,
+  revokeGrant,
+  writeAccessToken,
+  writeGithubApp,
+  writeGithubUser,
+} from "../core/github-auth";
+import { acquireDataRepoSyncLock } from "../core/sync/data-repo-action-lock";
+import {
+  getAheadCommits,
+  getPushTarget,
+  gitExec,
+  inspectGitRepo,
+  pushCurrentBranch,
+  verifyUpstreamContains,
+} from "../core/sync/data-repo-git";
 import type {
+  PushCapability,
   SyncActionMode,
+  SyncActionRequest,
   SyncActionResult,
 } from "../core/sync/data-repo-panel-types";
 import {
@@ -63,6 +89,7 @@ async function main(): Promise<void> {
   // 调度器每个触发点重读配置，看板改的定时目标、题目与节奏无需重启执行器
   const scheduler = startScheduler(() => loadConfig(configPath()), log);
 
+  await cleanStaleGithubRequestCodes().catch(() => {});
   setInterval(() => void pruneRequests().catch(() => {}), PRUNE_INTERVAL_MS);
   const polling = setInterval(() => void pollRequests(), REQUEST_POLL_MS);
 
@@ -94,7 +121,7 @@ async function pollRequests(): Promise<void> {
   }
 }
 
-async function handle(request: RunnerRequest): Promise<void> {
+export async function handle(request: RunnerRequest): Promise<void> {
   // 每条请求都重读配置：看板改过的配置对下一条立即生效
   const full = loadConfig(configPath());
   switch (request.kind) {
@@ -117,34 +144,141 @@ async function handle(request: RunnerRequest): Promise<void> {
     case "sync-data":
       await handleSyncData(request, full);
       return;
+    case "github-app-convert":
+      await handleGithubAppConvert(request);
+      return;
+    case "github-token-exchange":
+      await handleGithubTokenExchange(request, full);
+      return;
+    case "github-disconnect":
+      await handleGithubDisconnect(request);
+      return;
+  }
+}
+
+async function handleGithubAppConvert(request: RunnerRequest): Promise<void> {
+  const code = request.githubAction?.code;
+  if (!code) {
+    await failRequest(request.id, "缺少 GitHub App 授权码 (code)");
+    return;
+  }
+  try {
+    const creds = await convertManifest(code);
+    await writeGithubApp(creds);
+    const conn = await readGithubConnection();
+    await completeRequest(request.id, { githubConnection: conn });
+  } catch (cause) {
+    await failRequest(request.id, describe(cause));
+  }
+}
+
+async function resolveRepoFullNameAndId(
+  repoPath?: string,
+): Promise<{ fullName: string; repoId: number | null }> {
+  let fullName = "meomeo-dev/llm-iq-data";
+  let repoId: number | null = null;
+  if (!repoPath) return { fullName, repoId };
+  try {
+    const remote = (await gitExec(repoPath, ["remote", "get-url", "origin"])).trim();
+    const parsed = parseGitHubRemote(remote);
+    if (parsed) {
+      fullName = parsed;
+      const parts = parsed.split("/");
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        repoId = await fetchRepositoryId(parts[0], parts[1]);
+      }
+    }
+  } catch {
+    // 忽略未配置 remote
+  }
+  return { fullName, repoId };
+}
+
+async function handleGithubTokenExchange(
+  request: RunnerRequest,
+  full: AppConfig,
+): Promise<void> {
+  const code = request.githubAction?.code;
+  if (!code) {
+    await failRequest(request.id, "缺少 GitHub 授权码 (code)");
+    return;
+  }
+  try {
+    const app = await readGithubApp();
+    if (!app) {
+      await failRequest(request.id, "未找到 GitHub App 凭据，请重新发起连接");
+      return;
+    }
+    const { fullName, repoId } = await resolveRepoFullNameAndId(full.dataRepo?.path);
+    const tokens = await exchangeCode(app, code, repoId);
+    const login = await fetchUserLogin(tokens.access_token);
+    const now = Date.now();
+    const expiresAt = tokens.expires_in
+      ? new Date(now + tokens.expires_in * 1000).toISOString()
+      : null;
+    const refreshExpiresAt = tokens.refresh_token_expires_in
+      ? new Date(now + tokens.refresh_token_expires_in * 1000).toISOString()
+      : null;
+    await writeGithubUser({
+      login,
+      refresh_token: tokens.refresh_token,
+      expiresAt,
+      refreshExpiresAt,
+      repositoryFullName: fullName,
+    });
+    await writeAccessToken(tokens.access_token);
+    const conn = await readGithubConnection();
+    await completeRequest(request.id, { githubConnection: conn });
+  } catch (cause) {
+    await failRequest(request.id, describe(cause));
+  }
+}
+
+async function handleGithubDisconnect(request: RunnerRequest): Promise<void> {
+  let revoked = true;
+  let revokeError: string | undefined;
+  try {
+    const app = await readGithubApp();
+    const token = await readAccessToken();
+    if (app && token) {
+      await revokeGrant(app, token);
+    }
+  } catch (cause) {
+    revoked = false;
+    revokeError = `撤销 GitHub 授权失败: ${describe(cause)}`;
+  } finally {
+    await clearGithubCredentials().catch(() => {});
+    const conn = await readGithubConnection();
+    await completeRequest(request.id, {
+      githubConnection: conn,
+      githubDisconnectResult: { revoked, revokeError },
+    });
   }
 }
 
 async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Promise<void> {
-  if (!full.dataRepo) {
+  const conn = await readGithubConnection();
+  const pushCapability: PushCapability =
+    conn.state === "connected" ? "github-app" : "unavailable";
+
+  if (!full.dataRepo || !existsSync(full.dataRepo.path)) {
     await completeRequest(request.id, {
-      statusResult: { repo: null, manifest: null },
+      statusResult: { repo: null, manifest: null, github: conn, pushCapability },
     });
     return;
   }
   const repoPath = full.dataRepo.path;
-  if (!existsSync(repoPath)) {
-    await completeRequest(request.id, {
-      statusResult: { repo: null, manifest: null },
-    });
-    return;
-  }
   const gitInfo = await inspectGitRepo(repoPath);
   const rawPath = getRawDataRepoPath(full, configPath());
   const repo = { path: rawPath, ...gitInfo };
   const manifest = await readDataRepoManifest(repoPath);
   await completeRequest(request.id, {
-    statusResult: { repo, manifest },
+    statusResult: { repo, manifest, github: conn, pushCapability },
   });
 }
 
 async function executeSyncAction(
-  mode: SyncActionMode,
+  mode: "dry-run" | "export" | "confirm",
   repoPath: string,
 ): Promise<SyncReport | ConfirmPublishedReport> {
   if (mode === "dry-run") {
@@ -159,6 +293,97 @@ async function executeSyncAction(
   throw new Error(`不支持的同步模式: ${mode}`);
 }
 
+function isAheadCommitsMatch(actual: string[], confirmed?: string[]): boolean {
+  if (!confirmed) return false;
+  if (actual.length !== confirmed.length) return false;
+  return actual.every((sha, idx) => sha === confirmed[idx]);
+}
+
+async function doRunnerPushAndVerify(
+  repoPath: string,
+  currentAhead: string[],
+): Promise<ConfirmPublishedReport> {
+  const target = await getPushTarget(repoPath);
+  const pushEnv = await buildPushEnv(target.pushUrl);
+  await pushCurrentBranch(repoPath, pushEnv, target);
+
+  if (currentAhead.length > 0 && currentAhead[0]) {
+    const latestSha = currentAhead[0];
+    const contained = await verifyUpstreamContains(repoPath, latestSha, target.upstreamBranch, pushEnv);
+    if (!contained) {
+      throw new Error(`推送后远程分支未包含提交 (${latestSha})，推送校验失败`);
+    }
+  }
+
+  return confirmPublished({ repoPath, dryRun: false });
+}
+
+async function handleRunnerPush(
+  requestId: string,
+  action: SyncActionRequest,
+  full: AppConfig,
+  startedAt: string,
+): Promise<void> {
+  const lock = await acquireDataRepoSyncLock();
+  if (!lock.acquired) {
+    await recordSyncFailure(requestId, "push", lock.reason ?? "已有一个数据仓动作正在执行", startedAt);
+    return;
+  }
+
+  try {
+    const conn = await readGithubConnection();
+    if (conn.state !== "connected") {
+      throw new Error("容器内无推送凭据，请在宿主机推送");
+    }
+    if (!full.dataRepo || !existsSync(full.dataRepo.path)) {
+      throw new Error("数据仓未配置");
+    }
+    const repoPath = full.dataRepo.path;
+    const currentAhead = await getAheadCommits(repoPath);
+    if (!isAheadCommitsMatch(currentAhead, action.confirmation?.aheadCommits)) {
+      throw new Error("待推送提交清单已发生变化，请刷新面板后重新确认");
+    }
+
+    const report = await doRunnerPushAndVerify(repoPath, currentAhead);
+    const result: SyncActionResult = {
+      mode: "push",
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      ok: true,
+      report,
+      executedBy: "runner",
+      error: null,
+    };
+    await saveLastAction(result);
+    await completeRequest(requestId, { syncResult: result });
+  } catch (cause) {
+    const error = describe(cause);
+    log(`执行器 push 失败：${error}`);
+    await recordSyncFailure(requestId, "push", error, startedAt);
+  } finally {
+    await lock.release();
+  }
+}
+
+async function recordSyncFailure(
+  requestId: string,
+  mode: SyncActionMode,
+  error: string,
+  startedAt: string,
+): Promise<void> {
+  const result: SyncActionResult = {
+    mode,
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    ok: false,
+    report: null,
+    executedBy: "runner",
+    error,
+  };
+  await saveLastAction(result);
+  await completeRequest(requestId, { syncResult: result });
+}
+
 async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<void> {
   const action = request.syncAction;
   const startedAt = new Date().toISOString();
@@ -167,31 +392,11 @@ async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<
     return;
   }
   if (action.mode === "push") {
-    const res: SyncActionResult = {
-      mode: "push",
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      ok: false,
-      report: null,
-      executedBy: "runner",
-      error: "容器内无推送凭据，请在宿主机推送",
-    };
-    await saveLastAction(res);
-    await completeRequest(request.id, { syncResult: res });
+    await handleRunnerPush(request.id, action, full, startedAt);
     return;
   }
-  if (!full.dataRepo) {
-    const res: SyncActionResult = {
-      mode: action.mode,
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      ok: false,
-      report: null,
-      executedBy: "runner",
-      error: "数据仓未配置",
-    };
-    await saveLastAction(res);
-    await completeRequest(request.id, { syncResult: res });
+  if (!full.dataRepo || !existsSync(full.dataRepo.path)) {
+    await recordSyncFailure(request.id, action.mode, "数据仓未配置", startedAt);
     return;
   }
   await performRunnerSync(request.id, action.mode, full.dataRepo.path, startedAt);
@@ -199,7 +404,7 @@ async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<
 
 async function performRunnerSync(
   requestId: string,
-  mode: SyncActionMode,
+  mode: "dry-run" | "export" | "confirm",
   repoPath: string,
   startedAt: string,
 ): Promise<void> {
@@ -262,7 +467,9 @@ function describe(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-main().catch((cause: unknown) => {
-  console.error(describe(cause));
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith("runner.ts") || process.argv[1]?.endsWith("runner")) {
+  main().catch((cause: unknown) => {
+    console.error(describe(cause));
+    process.exit(1);
+  });
+}

@@ -38,8 +38,11 @@ services:
     restart: unless-stopped
     depends_on:
       - web
+    environment:
+      PELICAN_SECRETS_DIR: /app/secrets
     volumes:
       - pelican-data:/app/data
+      - runner-secrets:/app/secrets
       - cli-tools:/opt/clis
       - claude-auth:/home/node/.claude
       - codex-auth:/home/node/.codex
@@ -48,6 +51,8 @@ services:
 volumes:
   # 运行记录、配置（pelican.config.yaml）、价格目录、自动任务开关、设备表与请求文件
   pelican-data:
+  # GitHub App 凭据与访问令牌卷（仅 runner 挂载，目录 700 / 文件 600）
+  runner-secrets:
   # 三家 CLI 的程序文件，runner 首次启动时安装；删掉后下次启动会重新下载，不影响登录态
   cli-tools:
   # 各家 CLI 的登录态；删掉某个卷即退出对应 CLI 的登录

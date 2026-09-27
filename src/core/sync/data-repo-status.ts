@@ -17,9 +17,12 @@ import { externalRunner } from "../runner-link";
 import { inspectGitRepo } from "./data-repo-git";
 import type {
   DataRepoStatus,
+  GithubConnection,
+  PushCapability,
   SyncActionResult,
 } from "./data-repo-panel-types";
 import { loadSyncLedger, type SyncLedger } from "./sync-ledger";
+import { readGithubConnection } from "../github-auth";
 
 export const LAST_ACTION_FILE = "data-repo-last-action.json";
 
@@ -28,9 +31,12 @@ export interface CollectDataRepoStatusOptions {
   configPath?: string;
   rawPath?: string;
   timeoutMs?: number;
+  secretsDir?: string;
   fetchRunnerStatus?: () => Promise<{
     repo: DataRepoStatus["repo"];
     manifest: DataRepoStatus["manifest"];
+    github?: GithubConnection;
+    pushCapability?: PushCapability;
   } | null>;
 }
 
@@ -187,7 +193,12 @@ async function resolveRepoState(
   rawPath: string,
   options: CollectDataRepoStatusOptions | undefined,
   notices: string[],
-): Promise<{ repo: DataRepoStatus["repo"]; manifest: DataRepoStatus["manifest"] }> {
+): Promise<{
+  repo: DataRepoStatus["repo"];
+  manifest: DataRepoStatus["manifest"];
+  github?: GithubConnection;
+  pushCapability?: PushCapability;
+}> {
   const repoPath = config.dataRepo?.path;
   if (!repoPath) return { repo: null, manifest: null };
 
@@ -240,30 +251,51 @@ export async function collectDataRepoStatus(
   const { ledger, rawLedger } = await collectLedgerMetrics(dataDir, notices);
   const local = await collectLocalRuns(dataDir, rawLedger, notices);
   const lastAction = await readLastAction(dataDir);
+  const repoState = configured
+    ? await resolveRepoState(config, rawPath, options, notices)
+    : { repo: null, manifest: null };
 
-  if (!configured) {
-    return {
-      configured: false,
-      deploy,
-      repo: null,
-      manifest: null,
-      ledger,
-      local,
-      lastAction,
-      notice: notices.length > 0 ? notices.join("；") : null,
-    };
-  }
-
-  const { repo, manifest } = await resolveRepoState(config, rawPath, options, notices);
+  const { github, pushCapability } = await resolveGithubAndPushCapability(
+    deploy.externalRunner,
+    repoState.github,
+    repoState.pushCapability,
+    options?.secretsDir,
+  );
 
   return {
-    configured: true,
+    configured,
     deploy,
-    repo,
-    manifest,
+    repo: repoState.repo,
+    manifest: repoState.manifest,
     ledger,
     local,
     lastAction,
     notice: notices.length > 0 ? notices.join("；") : null,
+    github,
+    pushCapability,
   };
+}
+
+async function resolveGithubAndPushCapability(
+  external: boolean,
+  runnerGithub?: GithubConnection,
+  runnerCapability?: PushCapability,
+  secretsDir?: string,
+): Promise<{ github: GithubConnection; pushCapability: PushCapability }> {
+  if (external) {
+    const fallbackGithub: GithubConnection = {
+      state: "disconnected",
+      login: null,
+      appSlug: null,
+      appSettingsUrl: null,
+    };
+    return {
+      github: runnerGithub ?? fallbackGithub,
+      pushCapability: runnerCapability ?? "unavailable",
+    };
+  }
+  const github = await readGithubConnection(secretsDir);
+  const pushCapability: PushCapability =
+    github.state === "connected" ? "github-app" : "host-credentials";
+  return { github, pushCapability };
 }

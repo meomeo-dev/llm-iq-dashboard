@@ -18,6 +18,7 @@ import {
 } from "./data-repo-panel-model";
 import { DataRepoActionsBar } from "./DataRepoActionsBar";
 import { DataRepoCards } from "./DataRepoCards";
+import { DataRepoGithubCard } from "./DataRepoGithubCard";
 import { DataRepoIssuesList } from "./DataRepoIssuesList";
 import { DataRepoPushDialog } from "./DataRepoPushDialog";
 import { useDataRepoActions, type FetchFn } from "./use-data-repo-actions";
@@ -140,6 +141,7 @@ export function DataRepoPanel({
       </header>
 
       <DataRepoCards health={health} counts={counts} />
+      {status?.github && <DataRepoGithubCard github={status.github} />}
       {status?.notice && (
         <div className="status notice data-repo-notice-bar">{status.notice}</div>
       )}
