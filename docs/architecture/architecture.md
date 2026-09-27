@@ -17,6 +17,8 @@
 | [ACR-004](revisions/ACR-004-root-layout-tidy.md) | 2026-09-26 | 根目录只留工具约定入口，Docker 文件归入 docker/，生成物不入库 | §7 |
 | [ACR-005](revisions/ACR-005-component-and-docs-layout.md) | 2026-09-26 | 界面文档路径改为英文，看板组件按职责归入子目录 | §7 |
 | [ACR-006](revisions/ACR-006-model-guardrails.md) | 2026-09-26 | CLI 调用不给模型工具，宿主机上限与输出泄漏拦截 | §3 §6 |
+| [ACR-007](revisions/ACR-007-owner-pairing-auth.md) | 2026-09-27 | 所有者配对登录，公开视角只读 | §1 §2 §6 |
+| [ACR-008](revisions/ACR-008-split-web-runner.md) | 2026-09-27 | 看板与执行器分容器，凭据只在执行器 | §2 §8 |
 
 ## 0. 技术选型总览
 
@@ -56,7 +58,9 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   `progress.json`，写入方是哪个进程都一样；执行进程被直接杀掉、下一次触发点到期这两种不落盘的
   变化，由看板进程内的计时器复核后推送。
 - 执行进程与看板互不相识：执行方写 `data/runs/{runId}/progress.json`，看板按 pid 判断执行进程
-  是否存活。
+  是否存活；分容器部署时看不到对方的 pid，改按执行器心跳判断（ACR-008）。
+- 看板分公开与所有者两个视角（ACR-007）：没有设备 cookie 的请求只能读结果；配置、发起与停止
+  执行、自动任务开关要求配对过的设备。
 - 手动执行与定时执行互斥：看板与调度器都先查进度文件里有无存活的未结束轮次。
 - 停止一轮（`POST /api/run/cancel`）同样只经文件：看板写 `data/runs/{runId}/cancel.json`，执行
   这一轮的进程（看板或调度器）每秒检查一次，接住后不再发起排队中的调用、按超时的同一路径终止
@@ -69,9 +73,13 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 | dashboard | web | `pnpm dashboard:prod`（生产，:3000）/ `pnpm dev --port 3001`（开发） | 看板读者、配置维护者 | timeline, run-status, run-control, config-editor, art-viewer, export |
 | scheduler | worker | `pnpm scheduler`（`src/bin/scheduler.ts`） | 无人值守 | schedule, auto-run-switch, orchestration, retention |
 | run-once | cli | `pnpm run:once`（`src/bin/run-once.ts`） | 仓库所有者 | orchestration |
+| runner | worker | `pnpm runner`（`src/bin/runner.ts`），分容器部署时代替 scheduler | 无人值守 | schedule, requests, orchestration |
+| pair | cli | `pnpm pair`（`src/bin/pair.ts`） | 仓库所有者 | auth |
 
-三个端都是 TypeScript：看板为 Next.js 15 + React 19；调度器与 run-once 为 Node 22 + tsx，
-与看板共用 `src/core`。
+各端都是 TypeScript：看板为 Next.js 15 + React 19；其余为 Node 22 + tsx，与看板共用 `src/core`。
+看板分两个视角（ACR-007）：公开只读结果；配对过的浏览器是所有者，可配置、跑一次与开关自动任务。
+分容器部署时看板不在进程内执行调用（`PELICAN_RUNNER=external`），把请求写成 `data/requests/`
+下的文件交给 runner（ACR-008）。
 
 ## 3. 领域模块与硬约束
 
@@ -113,7 +121,9 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 - 模型产物不可信：SVG 经净化后展示，`/art` 路由以 CSP 沙箱返回原图。
 - 每次调用一个空的临时工作目录，避免 CLI 读到仓库里的 `CLAUDE.md` / `AGENTS.md`。
 - 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）。
-- 看板只监听本机，不对公网开放。
+- 写操作与配置类读取只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
+  `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
+- 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
 
 ## 7. 目录结构
 
@@ -154,10 +164,11 @@ llm_iq_dashboard/
 
 - 部署形态 local：本机直跑看板与调度器；配置用到的 CLI 必须已安装在 `PATH` 上并已登录，
   `pnpm preflight` 自查，`pnpm onboard` 引导登录。
-- 部署形态 Docker：单容器（看板、调度器与三家 CLI），登录态与 `data/` 放在命名卷，
-  端口只绑定 127.0.0.1；见 `docs/deploy-docker.md`。看板启动时若自动任务开着而调度器
-  不在，会拉起调度器。进程存活按 pid 加启动标记（Linux 的 /proc starttime）认定，
-  容器重启后 pid 重新分配不会造成误判。
+- 部署形态 Docker（ACR-008）：两个容器共用一个镜像——web 只跑看板、开端口、只挂 `data/`；
+  runner 装三家 CLI、挂登录态卷、不开端口，常驻调度器并消费看板的请求文件。端口只绑定
+  127.0.0.1；见 `docs/deploy-docker.md`。看板看不见 runner 的 pid，按 runner 心跳
+  （`data/runner.json`，15 秒一次、45 秒过期）加登记的 pid 判断某轮的执行进程是否还在；
+  本机直跑仍按 pid 加启动标记（Linux 的 /proc starttime）认定。
 - 看板以生产模式手动启动（`pnpm dashboard:prod`）：在同级 worktree `../<仓库名>-deploy` 按已提交的
   HEAD 构建并 `next start`，`PELICAN_DATA_DIR`、`PELICAN_CONFIG` 指回本仓库；仓库根的 `.next` 留给
   `next dev`。不做开机常驻。

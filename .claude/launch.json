@@ -22,6 +22,18 @@
     {
       "name": "dashboard-attach",
       "url": "http://localhost:3000"
+    },
+    {
+      "name": "dashboard-external",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PELICAN_RUNNER=external",
+        "pnpm",
+        "dev",
+        "--port",
+        "3002"
+      ],
+      "port": 3002
     }
   ]
 }

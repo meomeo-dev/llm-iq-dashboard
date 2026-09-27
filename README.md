@@ -88,12 +88,13 @@ pnpm scheduler
 
 ```bash
 docker compose up -d --build
-docker exec -it llm-iq-dashboard pnpm onboard
-docker exec -it llm-iq-dashboard pnpm pair
+docker exec -it llm-iq-runner pnpm onboard
+docker exec -it llm-iq-runner pnpm pair
 ```
 
-看板、调度器与三家 CLI 同在一个容器。镜像不含 CLI，容器首次启动时从各家官方渠道安装；
-登录态与运行产物放在命名卷里，各家用订阅账号在容器里独立登录一次即可。卷、配置、更新与设计取舍见
+两个容器共用一个镜像：`llm-iq-web` 只跑看板、开端口；`llm-iq-runner` 装三家 CLI、挂登录态、
+不开端口，负责调度与执行，看板发起的一轮经数据卷交给它。镜像不含 CLI，runner 首次启动时从
+各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。卷、配置、更新与设计取舍见
 [`docs/deploy-docker.md`](docs/deploy-docker.md)。
 
 ## 配置

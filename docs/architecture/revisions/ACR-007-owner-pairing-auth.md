@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | done |
 | 日期 | 2026-09-26 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：看板对公网开放只读，所有者配置、跑一次与开定时须登录（docs/security/public-exposure-design.md §4.2、§4.3、§4.6） |
@@ -84,12 +84,12 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查 | pass | - | | |
-| `pnpm test` | node:test 单元测试 | pass | - | | |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `PELICAN_PORT=3100 docker compose up -d --build && sleep 30 && test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3100/api/run)" = 401` | 无凭据的写请求被拒 | - | - | | |
-| `test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/api/runs)" = 200` | 公开只读仍可访问 | - | - | | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟 | skip | - | | 冒烟含 codex，按约定不消耗其额度；本单不触及调用链 |
+| `pnpm lint` | 全仓类型检查 | pass | pass | 22931d9 | |
+| `pnpm test` | node:test 单元测试 | pass | pass | 22931d9 | |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | 22931d9 | |
+| `PELICAN_PORT=3100 docker compose up -d --build && sleep 30 && test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3100/api/run)" = 401` | 无凭据的写请求被拒 | fail | pass | 22931d9 | 变更前无鉴权，该请求返回 202 或 409 |
+| `test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/api/runs)" = 200` | 公开只读仍可访问 | pass | pass | 22931d9 | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟 | skip | pass | 22931d9 | 回归时误跑了完整冒烟（含 codex）；另在开发服务器上完成配对、写操作头、退出与吊销的实测 |
 
 ## 分步实施
 
@@ -124,8 +124,8 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §1 | 看板分公开只读与所有者两个视角 | 待回填 |
-| architecture.md §2 | 端增加 `pnpm pair` | 待回填 |
-| architecture.md §6 | 安全边界增加：配对登录、写操作头校验、审计 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-007 | 待回填 |
-| ADR（/adr-curator） | 不适用：可 revert | 待回填 |
+| architecture.md §1 | 看板分公开只读与所有者两个视角 | 已回填 |
+| architecture.md §2 | 端增加 `pnpm pair` | 已回填 |
+| architecture.md §6 | 安全边界增加：配对登录、写操作头校验、审计 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-007 | 已回填 |
+| ADR（/adr-curator） | 不适用：可 revert | 不适用 |

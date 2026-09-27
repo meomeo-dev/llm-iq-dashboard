@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | implementing |
 | 日期 | 2026-09-26 |
 | 变更类型 | deployment-change |
 | 触发来源 | 口头：看板公网暴露的安全设计 §4.4（docs/security/public-exposure-design.md） |
@@ -32,21 +32,23 @@
 | 路径 | 动作 | 改什么 | 影响既有行为 |
 |---|---|---|---|
 | `src/core/requests.ts` | add | `data/requests/` 下每请求一个 JSON：run / check-readiness / probe-capabilities 三类请求的写入、认领、完成 | no |
-| `src/core/runner-mode.ts` | add | `PELICAN_RUNNER=external` 判定：看板不在进程内执行、不拉起调度器 | no |
-| `src/core/auto-run.ts` | modify | 执行器每 30 秒写心跳到 `scheduler.json`；外部模式按心跳判定调度器存活 | yes |
+| `src/core/runner-link.ts` | add | `PELICAN_RUNNER=external` 判定；执行器心跳 `data/runner.json` 的读写与覆盖判定 | no |
+| `src/core/auto-run.ts` | modify | 外部模式按执行器心跳判定调度器存活 | yes |
+| `src/core/progress.ts` | modify | 外部模式按心跳加登记 pid 判定某轮的执行进程是否还在 | yes |
+| `src/core/scheduler-launcher.ts` | modify | 外部模式不拉起调度器 | yes |
 | `src/bin/runner.ts` | add | 执行器进程：调度器 + 请求消费循环 + 心跳 | no |
 | `src/app/api/run/route.ts` | modify | 外部模式写请求文件并等待执行器认领后返回 202 | yes |
 | `src/app/api/readiness/route.ts` | modify | 外部模式 POST 写请求并等待缓存更新 | yes |
 | `src/app/api/capabilities/route.ts` | modify | 同上 | yes |
-| `src/app/api/auto-run/route.ts` | modify | 外部模式不拉起调度器 | yes |
-| `src/core/command-hint.ts` | modify | `docker exec` 目标改为执行器容器 | yes |
+| `src/app/config/page.tsx` | modify | 外部模式下无缓存时经执行器探测能力目录 | yes |
 | `docker/entrypoint.sh` | modify | 按参数 `web` / `runner` 分支：web 不装 CLI、只启动看板；runner 装 CLI、预检、启动执行器 | yes |
-| `docker/Dockerfile` | modify | ENTRYPOINT 默认 `web`；`PELICAN_RUNNER=external` | yes |
+| `docker/Dockerfile` | modify | CMD 默认 `web`；命令提示前缀指向 runner 容器 | yes |
 | `compose.yaml` | modify | 两个服务：`web`（端口、只挂数据卷）、`runner`（凭据卷、CLI 卷，不开端口） | yes |
 | `package.json` | modify | scripts 增加 `runner` | no |
-| `test/core/requests.test.ts` | add | 请求文件的写入、认领、完成与过期 | no |
+| `test/core/requests.test.ts` | add | 请求文件的写入、认领、完成与过期；心跳覆盖判定 | no |
 | `docs/deploy-docker.md` | modify | 两容器的卷、命令与升级 | no |
 | `README.md` | modify | Docker 小节 | no |
+| `docs/development.md` | modify | src/bin 目录说明 | no |
 
 **不动的东西**：
 
@@ -60,12 +62,12 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查 | pass | - | | |
-| `pnpm test` | node:test 单元测试 | pass | - | | |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `PELICAN_PORT=3100 docker compose up -d --build && sleep 60 && curl -fsS -o /dev/null http://127.0.0.1:3100/` | 两容器启动，看板可访问 | - | - | | |
-| `docker exec llm-iq-web sh -c 'test ! -e /home/node/.claude/.credentials.json && test ! -e /opt/clis/bin/agy'` | 看板容器内没有凭据与 CLI | - | - | | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟 | skip | - | | 冒烟含 codex，按约定不消耗其额度；用看板发起 claude 与 agy 各一次的手动轮次代替 |
+| `pnpm lint` | 全仓类型检查 | pass | pass | 22931d9 | |
+| `pnpm test` | node:test 单元测试 | pass | pass | 22931d9 | |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | 22931d9 | |
+| `PELICAN_PORT=3100 docker compose up -d --build && sleep 60 && curl -fsS -o /dev/null http://127.0.0.1:3100/` | 两容器启动，看板可访问 | fail | - | | 变更前只有单容器；变更后待跑：宿主机 Docker 经代理访问 registry 返回 405，镜像无法重建 |
+| `docker exec llm-iq-web sh -c 'test ! -e /home/node/.claude/.credentials.json && test ! -e /opt/clis/bin/agy'` | 看板容器内没有凭据与 CLI | fail | - | | 同上 |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟 | skip | skip | 22931d9 | 冒烟含 codex，按约定不消耗其额度；本机以 `PELICAN_RUNNER=external` 的看板 + `pnpm runner` 两进程实测：请求文件 1 秒内被认领并返回 runId，agy 一次调用 ok，就绪检查经执行器返回 200，心跳判定存活正确 |
 
 ## 分步实施
 

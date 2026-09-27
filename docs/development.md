@@ -12,7 +12,7 @@ src/core/        领域逻辑：配置与写回、提示词与变量、编排、
 src/capabilities/ CLI 能力探测与多源合并、安装与登录预检
 src/adapters/    每家 CLI 一个适配器，实现统一的 AgentAdapter 契约
 src/pricing/     用量解析与按价格目录折算成本
-src/bin/         命令行入口：run-once、scheduler、preflight、onboard 与 pricing-sync
+src/bin/         命令行入口：run-once、scheduler、runner（分容器时的执行器）、pair、preflight、onboard 与 pricing-sync
 src/app/         Next.js 看板（/）与配置界面（/config）
 test/            单元测试，目录与 src/ 同构
 data/runs/       运行产物（已 gitignore）
