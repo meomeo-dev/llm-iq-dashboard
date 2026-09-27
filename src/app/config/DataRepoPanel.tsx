@@ -35,7 +35,7 @@ export interface DataRepoPanelProps {
 /** 渲染提示或禁用说明的精简区块 */
 function DataRepoNoticeSection({ message }: { message: string }) {
   return (
-    <section className="config-section data-repo-section">
+    <section id="data-repo" className="config-section data-repo-section">
       <header>
         <h2>数据仓</h2>
         <p>公开评测数据仓（llm-iq-data）的同步与发布状态。</p>
@@ -134,7 +134,7 @@ export function DataRepoPanel({
     derivePanelData(status, currentInFlight, currentResult);
 
   return (
-    <section className="config-section data-repo-section">
+    <section id="data-repo" className="config-section data-repo-section">
       <header>
         <h2>数据仓</h2>
         <p>公开评测数据仓（llm-iq-data）的同步与发布状态。</p>

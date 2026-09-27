@@ -9,6 +9,7 @@ import { ConfigEditor } from "./ConfigEditor";
 import { DataRepoPanel } from "./DataRepoPanel";
 import { DevicePanel } from "./DevicePanel";
 import { ConfigPageHeader } from "./ConfigPageHeader";
+import { ConfigSideNav } from "./ConfigSideNav";
 import {
   ConfigCatalogUnavailableAlert,
   ConfigLoadErrorAlert,
@@ -36,26 +37,29 @@ export default async function ConfigPage() {
   }
 
   return (
-    <main className="page">
-      <ConfigPageHeader path={path} />
+    <main className="page config-page-layout">
+      <ConfigSideNav />
+      <div className="config-content">
+        <ConfigPageHeader path={path} />
 
-      {loadError !== null ? (
-        <ConfigLoadErrorAlert error={loadError} />
-      ) : (
-        <ConfigEditor
-          initialConfig={{
-            schedule: config!.schedule,
-            run: config!.run,
-            targets: config!.targets,
-            customPrompts: config!.customPrompts,
-            customModels: config!.customModels,
-          }}
-          builtinPrompts={[...BUILTIN_PROMPTS]}
-          initialCatalog={catalog}
-        />
-      )}
-      <DataRepoPanel />
-      <DevicePanel pairCommand={commandHint("pnpm pair")} />
+        {loadError !== null ? (
+          <ConfigLoadErrorAlert error={loadError} />
+        ) : (
+          <ConfigEditor
+            initialConfig={{
+              schedule: config!.schedule,
+              run: config!.run,
+              targets: config!.targets,
+              customPrompts: config!.customPrompts,
+              customModels: config!.customModels,
+            }}
+            builtinPrompts={[...BUILTIN_PROMPTS]}
+            initialCatalog={catalog}
+          />
+        )}
+        <DataRepoPanel />
+        <DevicePanel pairCommand={commandHint("pnpm pair")} />
+      </div>
     </main>
   );
 }

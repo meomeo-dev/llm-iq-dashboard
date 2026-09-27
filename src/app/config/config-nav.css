@@ -1,0 +1,120 @@
+/* 配置页双栏布局与侧边/顶部响应式导航样式 (ConfigSideNav.tsx) */
+
+.config-page-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.config-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.config-side-nav {
+  position: sticky;
+  top: 24px;
+  width: 200px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.config-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.config-nav-item {
+  margin: 0;
+  padding: 0;
+}
+
+.config-nav-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--radius, 6px);
+  color: var(--text-dim);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.config-nav-link:hover {
+  color: var(--text);
+  background: var(--surface-hi);
+}
+
+.config-nav-link.active,
+.config-nav-link[aria-current="location"] {
+  color: var(--accent);
+  background: var(--surface-hi);
+  font-weight: 500;
+}
+
+.config-section {
+  scroll-margin-top: 24px;
+}
+
+/* 窄屏响应式折叠为顶部横向滚动胶囊条 (≤ 900px) */
+@media (max-width: 900px) {
+  .config-page-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .config-side-nav {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 20;
+    padding: 8px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .config-nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding: 4px 2px;
+    scrollbar-width: none;
+  }
+
+  .config-nav-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .config-nav-link {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12.5px;
+  }
+
+  .config-nav-link:hover {
+    border-color: var(--text-faint);
+    background: var(--surface-hi);
+  }
+
+  .config-nav-link.active,
+  .config-nav-link[aria-current="location"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface-hi);
+  }
+
+  .config-section {
+    scroll-margin-top: 60px;
+  }
+}
