@@ -42,11 +42,6 @@ export function ConfigEditor({
     <div className="config">
       <CapabilityPanel catalog={catalog} onCatalog={setCatalog} disabled={busy} />
 
-      <ScheduleSection
-        schedule={draft.schedule}
-        onChange={(v) => patch("schedule", v)}
-      />
-
       <PromptSection
         builtinPrompts={builtinPrompts}
         customPrompts={draft.customPrompts}
@@ -62,6 +57,11 @@ export function ConfigEditor({
         customModels={draft.customModels}
         onTargets={(targets) => patch("targets", targets)}
         onCustomModels={(models) => patch("customModels", models)}
+      />
+
+      <ScheduleSection
+        schedule={draft.schedule}
+        onChange={(v) => patch("schedule", v)}
       />
 
       <TimeoutSection
@@ -96,6 +96,7 @@ function PromptSection({
 }) {
   return (
     <ConfigSection
+      id="prompts"
       title="提示词"
       hint="经典版固定不变，作为对照；变量版按轮换周期更换主体与场景。"
     >
@@ -128,7 +129,7 @@ function MatrixSection({
   onCustomModels: (models: Partial<Record<CliKind, string[]>>) => void;
 }) {
   return (
-    <ConfigSection title="被测矩阵" hint="强度只列出该模型支持的档位。">
+    <ConfigSection id="matrix" title="被测矩阵" hint="强度只列出该模型支持的档位。">
       <TargetTable
         targets={targets}
         catalog={catalog}
@@ -175,6 +176,7 @@ function ScheduleSection({
 }) {
   return (
     <ConfigSection
+      id="schedule"
       title="调度"
       hint="这里只定节奏，到点是否执行看“自动任务”开关。cron 与间隔二选一，cron 优先；保存后 30 秒内生效，无需重启。"
     >
@@ -192,6 +194,7 @@ function TimeoutSection({
 }) {
   return (
     <ConfigSection
+      id="timeout"
       title="执行与超时"
       hint="各家 CLI 的超时可单独设置。"
     >

@@ -37,7 +37,7 @@ export function CapabilityPanel({
   };
 
   return (
-    <section className="config-section capability">
+    <section id="capability" className="config-section capability">
       <header>
         <h2>CLI 能力目录</h2>
         <p>
