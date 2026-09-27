@@ -68,5 +68,5 @@ node $R validate
 | [ACR-005](ACR-005-component-and-docs-layout.md) | 界面文档路径改为英文，看板组件按职责归入子目录 | done | 2026-09-26 | structure-change | 按 Next.js 项目结构指南的做法，组件按功能分目录、就近放置；文档路径用英文 kebab-case | 3 包 | ✓ 2026-09-26 | 6/7 | — |
 | [ACR-006](ACR-006-model-guardrails.md) | 模型层收口：禁用 CLI 工具、宿主机上限与输出泄漏拦截 | done | 2026-09-26 | structure-change | 用三家 CLI 自带的权限开关禁用工具：claude --tools ""、codex approvalPolicy: untrusted（适配器拒绝一切审批）、agy 仅 --sandbox | 3 包 | ✓ 2026-09-26 | 3/4 | — |
 | [ACR-007](ACR-007-owner-pairing-auth.md) | 所有者配对登录与公开只读 | done | 2026-09-26 | new-module | 自研 | 4 包 | ✓ 2026-09-26 | 6/6 | — |
-| [ACR-008](ACR-008-split-web-runner.md) | 看板与执行器分容器，凭据只在执行器 | implementing | 2026-09-26 | deployment-change | 自研 | 6 包 | ✓ 2026-09-26 | 3/6 | — |
+| [ACR-008](ACR-008-split-web-runner.md) | 看板与执行器分容器，凭据只在执行器 | done | 2026-09-26 | deployment-change | 自研 | 6 包 | ✓ 2026-09-26 | 5/6 | — |
 <!-- acr-index:end -->

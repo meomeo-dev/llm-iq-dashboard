@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-26 |
 | 变更类型 | deployment-change |
 | 触发来源 | 口头：看板公网暴露的安全设计 §4.4（docs/security/public-exposure-design.md） |
@@ -65,8 +65,8 @@
 | `pnpm lint` | 全仓类型检查 | pass | pass | 22931d9 | |
 | `pnpm test` | node:test 单元测试 | pass | pass | 22931d9 | |
 | `pnpm build` | Next.js 看板生产构建 | pass | pass | 22931d9 | |
-| `PELICAN_PORT=3100 docker compose up -d --build && sleep 60 && curl -fsS -o /dev/null http://127.0.0.1:3100/` | 两容器启动，看板可访问 | fail | - | | 变更前只有单容器；变更后待跑：宿主机 Docker 经代理访问 registry 返回 405，镜像无法重建 |
-| `docker exec llm-iq-web sh -c 'test ! -e /home/node/.claude/.credentials.json && test ! -e /opt/clis/bin/agy'` | 看板容器内没有凭据与 CLI | fail | - | | 同上 |
+| `PELICAN_PORT=3100 docker compose up -d --build && sleep 60 && curl -fsS -o /dev/null http://127.0.0.1:3100/` | 两容器启动，看板可访问 | fail | pass | df75c13 | 变更前只有单容器 |
+| `docker exec llm-iq-web sh -c 'test ! -e /home/node/.claude/.credentials.json && test ! -e /opt/clis/bin/agy'` | 看板容器内没有凭据与 CLI | fail | pass | df75c13 | 变更前看板与凭据同一容器 |
 | `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟 | skip | skip | 22931d9 | 冒烟含 codex，按约定不消耗其额度；本机以 `PELICAN_RUNNER=external` 的看板 + `pnpm runner` 两进程实测：请求文件 1 秒内被认领并返回 runId，agy 一次调用 ok，就绪检查经执行器返回 200，心跳判定存活正确 |
 
 ## 分步实施
@@ -102,7 +102,7 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §2 | 端与进程：容器部署为 web 与 runner 两个进程，请求经 `data/requests/` | 待回填 |
-| architecture.md §8 | 部署形态 Docker 改为两容器 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-008 | 待回填 |
-| ADR（/adr-curator） | 不适用：开关可回退 | 待回填 |
+| architecture.md §2 | 端与进程：容器部署为 web 与 runner 两个进程，请求经 `data/requests/` | 已回填 |
+| architecture.md §8 | 部署形态 Docker 改为两容器 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-008 | 已回填 |
+| ADR（/adr-curator） | 不适用：开关可回退 | 不适用 |
