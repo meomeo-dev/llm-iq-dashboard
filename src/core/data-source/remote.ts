@@ -23,7 +23,8 @@ import { getDataRepoUrl } from "../deploy-mode";
 import { usageAndCost } from "../../pricing/attempt-cost";
 import { runIdTime } from "../store";
 import type { DashboardCard, RunRecord } from "../types";
-import type { DataSource } from "./interface";
+import { FetchPool } from "./fetch-pool";
+import type { DataRepoHealth, DataSource } from "./interface";
 import { utcDatesBetween } from "./utc-partitions";
 
 export type FetchFn = (
@@ -35,22 +36,30 @@ export interface RemoteDataSourceOptions {
   repoUrl?: string;
   fetchFn?: FetchFn;
   timeoutMs?: number;
+  concurrency?: number;
 }
 
 export class RemoteDataSource implements DataSource {
   private readonly repoUrl: string;
   private readonly fetchFn: FetchFn;
   private readonly timeoutMs: number;
+  private readonly pool: FetchPool;
   private notice: string | null = null;
 
   constructor(options?: RemoteDataSourceOptions) {
     this.repoUrl = (options?.repoUrl ?? getDataRepoUrl()).replace(/\/+$/, "");
     this.fetchFn = options?.fetchFn ?? fetch;
     this.timeoutMs = options?.timeoutMs ?? 10_000;
+    this.pool = new FetchPool({ concurrency: options?.concurrency ?? 6 });
   }
 
   getNotice(): string | null {
     return this.notice;
+  }
+
+  /** 清空请求缓存（测试时重置） */
+  clearCache(): void {
+    this.pool.clearCache();
   }
 
   /** 全部轮次的开始时刻（ISO），新的在前，供日历计数 */
@@ -101,35 +110,10 @@ export class RemoteDataSource implements DataSource {
         matchingDays.map((d) => this.fetchDayIndex(d.path)),
       );
 
-      const targetRuns: RunSummary[] = [];
-      for (const di of dayIndices) {
-        for (const r of di.runs) {
-          const at = runIdTime(r.runId) ?? new Date(r.startedAt);
-          if (at >= from && at < to) {
-            targetRuns.push(r);
-          }
-        }
-      }
+      const targetRuns = this.filterRunsInRange(dayIndices, from, to);
+      const { cards, failedCount } = await this.loadTargetRunCards(targetRuns);
 
-      const runRecords = await Promise.all(
-        targetRuns.map(async (r) => {
-          try {
-            return await this.fetchPublicRun(r.path);
-          } catch (e) {
-            console.error(`读取远程轮次 ${r.runId} 失败:`, e);
-            return null;
-          }
-        }),
-      );
-
-      const cards: DashboardCard[] = [];
-      for (const run of runRecords) {
-        if (run !== null) {
-          cards.push(...(await this.cardsOfPublicRun(run)));
-        }
-      }
-
-      this.notice = null;
+      this.updateNoticeOnRunFailures(failedCount, targetRuns.length, cards.length);
       return cards.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
     } catch (err) {
       this.handleError("加载轮次卡片数据失败", err);
@@ -144,7 +128,6 @@ export class RemoteDataSource implements DataSource {
     if (dir === null) return null;
     try {
       const run = await this.fetchPublicRun(dir);
-      // 文件名登记校验：只接受 run.json 登记过的作品（未脱敏的 svgFile）
       const attempt = run.attempts.find((item) => item.svgFile === svgFile);
       if (attempt === undefined) return null;
       const [card] = await this.cardsOfPublicRun({ ...run, attempts: [attempt] });
@@ -186,8 +169,7 @@ export class RemoteDataSource implements DataSource {
           for (const r of sortedRuns) {
             if (runs.length >= limit) break;
             try {
-              const runRecord = await this.fetchPublicRun(r.path);
-              runs.push(runRecord);
+              runs.push(await this.fetchPublicRun(r.path));
             } catch {
               // 忽略拉取失败的单轮
             }
@@ -201,6 +183,84 @@ export class RemoteDataSource implements DataSource {
     } catch (err) {
       this.handleError("获取运行记录列表失败", err);
       return [];
+    }
+  }
+
+  /** 数据仓健康检查探针：探测根清单 index.json */
+  async checkHealth(): Promise<DataRepoHealth> {
+    try {
+      const manifest = await this.fetchManifest();
+      return {
+        reachable: true,
+        schemaVersion: manifest.schemaVersion,
+        totalRuns: manifest.totalRuns,
+        latestDay: manifest.days[0]?.date ?? null,
+      };
+    } catch (err) {
+      const reason = sanitizeErrorReason(err);
+      return {
+        reachable: false,
+        schemaVersion: null,
+        totalRuns: null,
+        latestDay: null,
+        reason: `远程数据源不可达（${reason}）`,
+      };
+    }
+  }
+
+  private filterRunsInRange(
+    dayIndices: DayIndex[],
+    from: Date,
+    to: Date,
+  ): RunSummary[] {
+    const targetRuns: RunSummary[] = [];
+    for (const di of dayIndices) {
+      for (const r of di.runs) {
+        const at = runIdTime(r.runId) ?? new Date(r.startedAt);
+        if (at >= from && at < to) {
+          targetRuns.push(r);
+        }
+      }
+    }
+    return targetRuns;
+  }
+
+  private async loadTargetRunCards(
+    targetRuns: RunSummary[],
+  ): Promise<{ cards: DashboardCard[]; failedCount: number }> {
+    let failedCount = 0;
+    const runRecords = await Promise.all(
+      targetRuns.map(async (r) => {
+        try {
+          return await this.fetchPublicRun(r.path);
+        } catch (e) {
+          failedCount++;
+          console.error(`读取远程轮次 ${r.runId} 失败:`, e);
+          return null;
+        }
+      }),
+    );
+
+    const cards: DashboardCard[] = [];
+    for (const run of runRecords) {
+      if (run !== null) {
+        cards.push(...(await this.cardsOfPublicRun(run)));
+      }
+    }
+    return { cards, failedCount };
+  }
+
+  private updateNoticeOnRunFailures(
+    failedCount: number,
+    targetCount: number,
+    cardCount: number,
+  ): void {
+    if (failedCount > 0 && cardCount > 0) {
+      this.notice = "部分轮次加载失败";
+    } else if (failedCount > 0 && targetCount > 0 && cardCount === 0) {
+      this.notice = "全部轮次加载失败";
+    } else {
+      this.notice = null;
     }
   }
 
@@ -257,11 +317,13 @@ export class RemoteDataSource implements DataSource {
   }
 
   private async fetchWithTimeout(url: string, revalidateSec: number): Promise<Response> {
-    const init: RequestInit & { next?: { revalidate: number } } = {
-      signal: AbortSignal.timeout(this.timeoutMs),
-      next: { revalidate: revalidateSec },
-    };
-    return this.fetchFn(url, init);
+    return this.pool.fetch(url, async () => {
+      const init: RequestInit & { next?: { revalidate: number } } = {
+        signal: AbortSignal.timeout(this.timeoutMs),
+        next: { revalidate: revalidateSec },
+      };
+      return this.fetchFn(url, init);
+    });
   }
 
   private async cardsOfPublicRun(run: PublicRunRecord): Promise<DashboardCard[]> {
@@ -271,7 +333,6 @@ export class RemoteDataSource implements DataSource {
 
     for (const attempt of run.attempts) {
       const prompt = byId.get(attempt.promptId);
-      // 被脱敏拦截的作品：attempt.status 为 ok 但 svgFile 为 null
       const isRedacted = attempt.status === "ok" && attempt.svgFile === null;
       let error = attempt.error;
       if (isRedacted) {
@@ -299,12 +360,25 @@ export class RemoteDataSource implements DataSource {
   private handleError(context: string, err: unknown): void {
     const msg = describeError(err);
     console.error(`${context}：${msg}`);
-    if (msg.includes("不支持的数据仓版本") || msg.includes("不支持的日索引版本") || msg.includes("不支持的运行记录版本")) {
+    if (
+      msg.includes("不支持的数据仓版本") ||
+      msg.includes("不支持的日索引版本") ||
+      msg.includes("不支持的运行记录版本")
+    ) {
       this.notice = msg;
     } else {
       this.notice = `${context}：远程数据源拉取失败（${msg}）`;
     }
   }
+}
+
+/** 消除错误描述中的本机绝对路径与潜在敏感信息 */
+export function sanitizeErrorReason(err: unknown): string {
+  const msg = describeError(err);
+  const sanitized = msg
+    .replace(/(?:\/Users|\/home|\/root|[A-Za-z]:\\Users)[^\s:"')]+/gi, "[REDACTED_PATH]")
+    .trim();
+  return sanitized.length > 0 ? sanitized : "未知错误";
 }
 
 function describeError(err: unknown): string {

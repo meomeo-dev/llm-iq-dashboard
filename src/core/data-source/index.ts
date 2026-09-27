@@ -5,10 +5,11 @@
 
 import { isRemoteDataSource } from "../deploy-mode";
 import type { DashboardCard, RunRecord } from "../types";
-import type { DataSource } from "./interface";
+import type { DataRepoHealth, DataSource } from "./interface";
 import { LocalDataSource } from "./local";
 import { RemoteDataSource } from "./remote";
 
+export * from "./fetch-pool";
 export * from "./interface";
 export * from "./local";
 export * from "./remote";
@@ -61,4 +62,19 @@ export async function listRuns(limit: number): Promise<RunRecord[]> {
 /** 获取远程数据源当前的提示信息（如有） */
 export function getRemoteNotice(): string | null {
   return getDataSource().getNotice?.() ?? null;
+}
+
+/** 探测数据仓健康状态；非远程模式返回 null */
+export async function checkDataRepoHealth(): Promise<DataRepoHealth | null> {
+  const ds = getDataSource();
+  if (typeof ds.checkHealth === "function") {
+    return ds.checkHealth();
+  }
+  return null;
+}
+
+/** 供单测重置单例实例与请求缓存 */
+export function _resetDataSourceInstancesForTest(): void {
+  localInstance = null;
+  remoteInstance = null;
 }

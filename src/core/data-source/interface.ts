@@ -5,6 +5,14 @@
 
 import type { DashboardCard, RunRecord } from "../types";
 
+export interface DataRepoHealth {
+  reachable: boolean;
+  schemaVersion: number | null;
+  totalRuns: number | null;
+  latestDay: string | null;
+  reason?: string;
+}
+
 export interface DataSource {
   /** 全部轮次的开始时刻（ISO），新的在前，供日历计数 */
   listRunStarts(): Promise<string[]>;
@@ -23,4 +31,8 @@ export interface DataSource {
 
   /** 远程数据源当前的提示或报错（如有降级）；本地数据源恒为 null */
   getNotice?(): string | null;
+
+  /** 数据仓健康检查探针；仅远程数据源有实际探针 */
+  checkHealth?(): Promise<DataRepoHealth>;
 }
+

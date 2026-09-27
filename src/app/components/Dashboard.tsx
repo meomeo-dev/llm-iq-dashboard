@@ -80,7 +80,11 @@ export function Dashboard({
   const moments = useMemo(() => (timeZone === null ? [] : groupMoments(cards, timeZone)), [cards, timeZone]);
   const days = useMemo(() => (timeZone === null ? [] : listDays(runStarts, timeZone)), [runStarts, timeZone]);
   const todayKey = ready ? zonedDayKey(now, timeZone) : null;
-  const dayKey = pickedDay ?? todayKey;
+  const isShowcase = readonly || remote;
+  const todayHasRuns = ready && todayKey !== null && days.some((d) => d.dayKey === todayKey && d.momentCount > 0);
+  // 远程或只读展台下，未显式指定日期且访客时区今天无轮次时，默认落到最近有数据的一天
+  const defaultShowcaseDay = isShowcase && !todayHasRuns && days.length > 0 ? days[0]?.dayKey ?? null : null;
+  const dayKey = pickedDay ?? defaultShowcaseDay ?? todayKey;
   const nowMark: NowMark | null =
     ready && dayKey === todayKey ? { fraction: zonedDayFraction(now, timeZone), clock: formatZonedClock(now, timeZone) } : null;
   const timeZones = useMemo(() => (timeZone === null ? [] : listTimeZones(scheduleTimeZone)), [timeZone, scheduleTimeZone]);
@@ -104,7 +108,8 @@ export function Dashboard({
   const closeModal = useCallback(() => setOpenCell(null), []);
 
   const jumpToNow = (): void => {
-    setPickedDay(null);
+    // 远程展台若今天无数据，点回到现在时显式切到今天展示空引导；有数据或本地模式清空跟随今天
+    setPickedDay(isShowcase && !todayHasRuns ? todayKey : null);
     setJumpCount((count) => count + 1);
   };
 
@@ -131,8 +136,11 @@ export function Dashboard({
         hidden={hidden}
         onHidden={(key, values) => setHidden((current) => ({ ...current, [key]: values }))}
         onPickDay={(next) => {
-          // 选中今天即跟随今天
-          setPickedDay(next === todayKey ? null : next);
+          if (isShowcase) {
+            setPickedDay(next);
+          } else {
+            setPickedDay(next === todayKey ? null : next);
+          }
         }}
         stats={summarize(dayCards)}
       />

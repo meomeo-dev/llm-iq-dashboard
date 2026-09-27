@@ -27,10 +27,15 @@ export default async function Page({ searchParams }: PageProps) {
   const { day } = await searchParams;
   const { readonly, dataSource } = getDeployMode();
   const owner = (await verifySession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
+  const isShowcase = readonly || dataSource === "remote";
   const dayKey = typeof day === "string" ? day : null;
-  const range = cardWindow(dayKey, new Date());
   const runStarts = await listRunStarts();
+  // 只读或远程展台下，未显式指定日期时默认按最新轮次所在日期拉取卡片，确保访客首屏不为空
+  const effectiveDayKey =
+    dayKey ?? (isShowcase && runStarts.length > 0 ? runStarts[0]?.slice(0, 10) ?? null : null);
+  const range = cardWindow(effectiveDayKey, new Date());
   const cards = sortNewestFirst(await loadCardsBetween(range.from, range.to));
+
   const remoteNotice = getRemoteNotice();
   const { prompts, scheduleTimeZone } = readDashboardSettings();
   const promptLabels = Object.fromEntries(prompts.map((spec) => [spec.id, spec.label]));

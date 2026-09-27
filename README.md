@@ -107,7 +107,8 @@ docker exec -it llm-iq-runner pnpm pair
 - `PELICAN_DATA_REPO_URL`：公开数据仓根地址（缺省为 `https://raw.githubusercontent.com/xumetide-dev/llm-iq-data/main`）。
 - `PELICAN_READONLY=1`：强制只读部署（写接口 403，配对页面与 API 404，不生成密钥）。
 
-详细部署步骤、安全边界与缓存机制参见 [`docs/deploy-public-showcase.md`](docs/deploy-public-showcase.md)。
+部署前可通过 `pnpm showcase:smoke` 在本地执行完整的只读冒烟校验。
+详细部署步骤、安全边界、自检流程与缓存机制参见 [`docs/deploy-public-showcase.md`](docs/deploy-public-showcase.md)。
 
 ## 配置
 

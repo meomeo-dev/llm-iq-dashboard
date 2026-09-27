@@ -25,7 +25,8 @@
     "onboard": "tsx src/bin/onboard.ts",
     "pair": "tsx src/bin/pair.ts",
     "sync:data": "tsx src/bin/sync-data.ts",
-    "dashboard:prod": "node scripts/dashboard-prod.mjs"
+    "dashboard:prod": "node scripts/dashboard-prod.mjs",
+    "showcase:smoke": "tsx scripts/showcase-smoke.ts"
   },
   "engines": {
     "node": ">=22",
