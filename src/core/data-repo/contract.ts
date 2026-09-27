@@ -24,6 +24,12 @@ export const DAY_INDEX_FILE = "index.json";
 export const PUBLIC_RUN_FILE = "run.json";
 export const RUNS_DIR = "runs";
 
+/**
+ * 永不发布到数据仓的题目：仅供本地测试（如以真人为主体的题目）。同步时剔除这些题目的
+ * 调用与题面，整轮只含这些题目时跳过；数据仓校验脚本对它们同样拒收。
+ */
+export const UNPUBLISHABLE_PROMPT_IDS: readonly string[] = ["leijun-v1"];
+
 /** 数据仓根的 index.json：全量轮次的轻量目录，读取方据此决定拉哪几天 */
 export interface DataRepoManifest {
   schemaVersion: typeof DATA_REPO_SCHEMA_VERSION;

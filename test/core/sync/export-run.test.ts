@@ -323,3 +323,69 @@ describe("export-run 轮次导出与脱敏", () => {
     }
   });
 });
+
+describe("永不发布的题目", () => {
+  let runsDir: string;
+
+  beforeEach(async () => {
+    runsDir = await mkdtemp(join(tmpdir(), "llm-iq-export-unpublishable-"));
+  });
+
+  afterEach(async () => {
+    await rm(runsDir, { recursive: true, force: true });
+  });
+
+  function attemptFor(promptId: string) {
+    return {
+      targetId: "agy__m__high",
+      promptId,
+      cli: "agy",
+      model: "m",
+      effort: "high",
+      appliedEffort: "high",
+      effortHonored: true,
+      label: "M",
+      status: "no-svg",
+      svgFile: null,
+      rawFile: null,
+      startedAt: "2026-09-27T02:17:08.000Z",
+      finishedAt: "2026-09-27T02:18:00.000Z",
+      durationMs: 52000,
+      svgBytes: null,
+      error: null,
+      usage: null,
+    };
+  }
+
+  async function writeRun(runId: string, promptIds: string[]): Promise<void> {
+    await mkdir(join(runsDir, runId), { recursive: true });
+    const run = {
+      runId,
+      prompts: promptIds.map((promptId) => ({ promptId, text: `题面 ${promptId}`, bindings: {} })),
+      startedAt: "2026-09-27T02:17:08.000Z",
+      finishedAt: "2026-09-27T02:18:00.000Z",
+      durationMs: 52000,
+      trigger: "manual",
+      inProgress: false,
+      attempts: promptIds.map(attemptFor),
+    };
+    await writeFile(join(runsDir, runId, "run.json"), JSON.stringify(run));
+  }
+
+  it("整轮只含测试题时跳过，不产出任何公开内容", async () => {
+    await writeRun("20260927T021708Z", ["leijun-v1"]);
+    const result = await exportRun("20260927T021708Z", { runsDir });
+    assert.equal(result.status, "skipped");
+    if (result.status === "skipped") assert.equal(result.reason, "unpublishable-prompt");
+  });
+
+  it("混合轮次剔除测试题的题面与调用，其余照常导出", async () => {
+    await writeRun("20260927T021708Z", ["classic-v1", "leijun-v1"]);
+    const result = await exportRun("20260927T021708Z", { runsDir });
+    assert.equal(result.status, "ready");
+    if (result.status !== "ready") return;
+    assert.deepEqual(result.publicRecord.prompts.map((p) => p.promptId), ["classic-v1"]);
+    assert.deepEqual(result.publicRecord.attempts.map((a) => a.promptId), ["classic-v1"]);
+    assert.equal(result.jsonText.includes("leijun"), false);
+  });
+});

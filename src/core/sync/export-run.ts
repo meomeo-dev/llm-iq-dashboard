@@ -17,6 +17,7 @@ import {
   type PublicAttempt,
   type PublicRunRecord,
   type Redaction,
+  UNPUBLISHABLE_PROMPT_IDS,
 } from "../data-repo/contract";
 import type { LeakGuard } from "../leak-guard";
 import { runDir } from "../paths";
@@ -43,7 +44,7 @@ export interface ReadyExportResult {
 export interface SkippedExportResult {
   status: "skipped";
   runId: string;
-  reason: "incomplete" | "invalid-run-id";
+  reason: "incomplete" | "invalid-run-id" | "unpublishable-prompt";
 }
 
 export interface RejectedExportResult {
@@ -90,6 +91,17 @@ export function normalizeLegacyRun(raw: LegacyRunRecord): RunRecord {
 
   const { promptId: _pId, promptText: _pText, ...rest } = raw;
   return { ...rest, prompts, attempts, inProgress: raw.inProgress ?? false };
+}
+
+/**
+ * 剔除永不发布的题目（题面与调用一并去掉）；剩下的题目或调用为空时返回 null，整轮不发布。
+ */
+export function withoutUnpublishablePrompts(run: RunRecord): RunRecord | null {
+  const blocked = new Set(UNPUBLISHABLE_PROMPT_IDS);
+  const prompts = run.prompts.filter((prompt) => !blocked.has(prompt.promptId));
+  const attempts = run.attempts.filter((attempt) => !blocked.has(attempt.promptId));
+  if (prompts.length === 0 || attempts.length === 0) return null;
+  return { ...run, prompts, attempts };
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -161,9 +173,13 @@ export async function exportRun(
     return { status: "skipped", runId, reason: "incomplete" };
   }
 
-  const run = normalizeLegacyRun(parsed);
-  if (run.inProgress) {
+  const localRun = normalizeLegacyRun(parsed);
+  if (localRun.inProgress) {
     return { status: "skipped", runId, reason: "incomplete" };
+  }
+  const run = withoutUnpublishablePrompts(localRun);
+  if (run === null) {
+    return { status: "skipped", runId, reason: "unpublishable-prompt" };
   }
 
   const redactions: Redaction[] = [];
