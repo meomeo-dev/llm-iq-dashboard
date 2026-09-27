@@ -131,6 +131,9 @@ pnpm validate:prompts
 
 # 4. Next.js 生产环境构建校验
 pnpm build
+
+# 5. 文件与函数长度门禁（阈值见 config/code-length-policy.yaml）
+pnpm check:length
 ```
 若改动涉及只读展示或远程数据源逻辑，另须通过：
 ```bash
