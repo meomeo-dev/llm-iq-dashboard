@@ -57,6 +57,7 @@ describe("GitHub Auth 核心模块", () => {
       assert.ok(manifest.name.startsWith("llm-iq-data-publisher-"));
       assert.equal(manifest.url, "https://github.com/org/repo");
       assert.equal(manifest.hook_attributes.active, false);
+      assert.equal(manifest.hook_attributes.url, manifest.url);
       assert.equal(manifest.public, false);
       assert.equal(manifest.default_permissions.contents, "write");
       assert.equal(manifest.default_permissions.metadata, "read");

@@ -12,7 +12,9 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 export interface GitHubAppManifest {
   name: string;
   url: string;
+  /** webhook 关闭，但 GitHub 仍要求提供 url */
   hook_attributes: {
+    url: string;
     active: boolean;
   };
   public: boolean;
@@ -51,6 +53,7 @@ export function buildManifest(origin: string, repoUrl: string): GitHubAppManifes
     name: `llm-iq-data-publisher-${randomSuffix}`,
     url: repoUrl,
     hook_attributes: {
+      url: repoUrl,
       active: false,
     },
     public: false,
