@@ -15,6 +15,7 @@ import { configPath } from "../core/paths";
 import { findActiveRun } from "../core/progress";
 import { claimNextRequest, cleanStaleGithubRequestCodes, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
+import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
@@ -82,6 +83,9 @@ async function main(): Promise<void> {
     log("没有能力目录缓存，先探测一次");
     await refreshCatalog(config.customModels).catch((cause: unknown) => log(`探测失败：${describe(cause)}`));
   }
+
+  // 上一个进程退出前没跑完的轮次先收尾，已完成的作品照常导出
+  await recoverInterruptedRuns(config, log);
 
   const { enabled } = await readAutoRunSwitch();
   log(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);

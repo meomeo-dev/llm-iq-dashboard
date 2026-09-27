@@ -9,6 +9,7 @@
 import { readAutoRunSwitch, readLiveScheduler, recordSchedulerProcess } from "../core/auto-run";
 import { loadConfig } from "../core/config";
 import { configPath } from "../core/paths";
+import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
 import { scheduledRound } from "../core/run-selection";
 import { startScheduler } from "../core/scheduler";
 
@@ -30,6 +31,8 @@ async function main(): Promise<void> {
   }
   // 登记 pid，看板据此判断打开自动任务时是否需要拉起调度器
   await recordSchedulerProcess(process.pid);
+  // 上一个进程退出前没跑完的轮次先收尾，已完成的作品照常导出
+  await recoverInterruptedRuns(loadConfig(path), timestamped);
   const { enabled } = await readAutoRunSwitch();
   timestamped(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);
 

@@ -139,7 +139,7 @@ export interface RunRecord {
    * finishedAt 为最近一次落盘时刻。
    */
   inProgress: boolean;
-  /** 本轮被手动停止的时刻；attempts 只含停止前已完成的调用。未停止时缺省 */
+  /** 本轮被停止的时刻（手动停止，或执行进程重启时收尾中断的轮次）；attempts 只含停止前已完成的调用。未停止时缺省 */
   cancelledAt?: string;
   /** 首次因预算上限未发起调用的原因；未被预算拦下时缺省 */
   budgetStop?: string;
