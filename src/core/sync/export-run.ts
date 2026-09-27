@@ -148,10 +148,11 @@ async function resolveUsage(
 /**
  * 导出单个运行轮次。
  */
-export async function exportRun(
+/** 读取并校验运行轮次，若未完成或包含禁用提示词则返回跳过原因 */
+async function loadRunRecord(
   runId: string,
-  options: ExportOptions = {},
-): Promise<ExportRunResult> {
+  options: ExportOptions,
+): Promise<{ dir: string; run: RunRecord } | SkippedExportResult> {
   if (dayPartition(runId) === null) {
     return { status: "skipped", runId, reason: "invalid-run-id" };
   }
@@ -159,15 +160,9 @@ export async function exportRun(
   const dir = options.runsDir ? join(options.runsDir, runId) : runDir(runId);
   const runFile = join(dir, "run.json");
 
-  let rawJson: string;
-  try {
-    rawJson = await readFile(runFile, "utf8");
-  } catch {
-    return { status: "skipped", runId, reason: "incomplete" };
-  }
-
   let parsed: LegacyRunRecord;
   try {
+    const rawJson = await readFile(runFile, "utf8");
     parsed = JSON.parse(rawJson) as LegacyRunRecord;
   } catch {
     return { status: "skipped", runId, reason: "incomplete" };
@@ -182,33 +177,72 @@ export async function exportRun(
     return { status: "skipped", runId, reason: "unpublishable-prompt" };
   }
 
+  return { dir, run };
+}
+
+/** 扫描并处理单项 attempt 的 SVG 文件，命中泄漏则生成 redaction 并置空文件名 */
+async function processAttemptSvg(
+  dir: string,
+  svgFile: string | null,
+  leakGuard?: LeakGuard,
+): Promise<{
+  finalSvgFile: string | null;
+  svgItem: SvgExportItem | null;
+  redaction: Redaction | null;
+}> {
+  if (svgFile === null) {
+    return { finalSvgFile: null, svgItem: null, redaction: null };
+  }
+
+  const svgPath = join(dir, svgFile);
+  if (!(await fileExists(svgPath))) {
+    return { finalSvgFile: null, svgItem: null, redaction: null };
+  }
+
+  try {
+    const svgContent = await readFile(svgPath, "utf8");
+    const scan = scanText(svgContent, leakGuard);
+    if (scan.leaked) {
+      return {
+        finalSvgFile: null,
+        svgItem: null,
+        redaction: { file: svgFile, reason: scan.reason },
+      };
+    }
+    return {
+      finalSvgFile: svgFile,
+      svgItem: { filename: svgFile, content: svgContent },
+      redaction: null,
+    };
+  } catch {
+    return { finalSvgFile: null, svgItem: null, redaction: null };
+  }
+}
+
+/** 批量处理 attempt 列表：回填用量、脱敏 SVG 与构建 PublicAttempt */
+async function processAttempts(
+  dir: string,
+  attempts: readonly Attempt[],
+  leakGuard?: LeakGuard,
+): Promise<{
+  publicAttempts: PublicAttempt[];
+  svgFiles: SvgExportItem[];
+  redactions: Redaction[];
+}> {
   const redactions: Redaction[] = [];
   const svgFiles: SvgExportItem[] = [];
   const publicAttempts: PublicAttempt[] = [];
 
-  for (const attempt of run.attempts) {
+  for (const attempt of attempts) {
     const usage = await resolveUsage(dir, attempt);
-    let finalSvgFile: string | null = attempt.svgFile;
+    const { finalSvgFile, svgItem, redaction } = await processAttemptSvg(
+      dir,
+      attempt.svgFile,
+      leakGuard,
+    );
 
-    if (attempt.svgFile !== null) {
-      const svgPath = join(dir, attempt.svgFile);
-      if (await fileExists(svgPath)) {
-        try {
-          const svgContent = await readFile(svgPath, "utf8");
-          const scan = scanText(svgContent, options.leakGuard);
-          if (scan.leaked) {
-            redactions.push({ file: attempt.svgFile, reason: scan.reason });
-            finalSvgFile = null;
-          } else {
-            svgFiles.push({ filename: attempt.svgFile, content: svgContent });
-          }
-        } catch {
-          finalSvgFile = null;
-        }
-      } else {
-        finalSvgFile = null;
-      }
-    }
+    if (redaction !== null) redactions.push(redaction);
+    if (svgItem !== null) svgFiles.push(svgItem);
 
     const { rawFile: _rawFile, ...restAttempt } = attempt;
     publicAttempts.push({
@@ -219,6 +253,16 @@ export async function exportRun(
     });
   }
 
+  return { publicAttempts, svgFiles, redactions };
+}
+
+/** 构建 PublicRunRecord，执行文本脱敏与整轮泄漏检查 */
+function buildAndScanRecord(
+  run: RunRecord,
+  publicAttempts: PublicAttempt[],
+  redactions: Redaction[],
+  leakGuard?: LeakGuard,
+): { publicRecord: PublicRunRecord; jsonText: string; leakReason: LeakReason | null } {
   const { attempts: _attempts, inProgress: _inProg, ...runRest } = run;
   const publicRecord: PublicRunRecord = {
     ...runRest,
@@ -230,14 +274,10 @@ export async function exportRun(
 
   const jsonText = `${JSON.stringify(publicRecord, null, 2)}\n`;
   const sanitizedJson = sanitizeLocalPaths(jsonText);
-  const jsonScan = scanText(sanitizedJson, options.leakGuard);
+  const jsonScan = scanText(sanitizedJson, leakGuard);
 
   if (jsonScan.leaked) {
-    return {
-      status: "rejected",
-      runId,
-      reasons: [{ file: "run.json", reason: jsonScan.reason }],
-    };
+    return { publicRecord, jsonText: sanitizedJson, leakReason: jsonScan.reason };
   }
 
   const finalRecord =
@@ -245,12 +285,50 @@ export async function exportRun(
       ? publicRecord
       : (JSON.parse(sanitizedJson) as PublicRunRecord);
 
+  return { publicRecord: finalRecord, jsonText: sanitizedJson, leakReason: null };
+}
+
+/**
+ * 导出单个运行轮次。
+ */
+export async function exportRun(
+  runId: string,
+  options: ExportOptions = {},
+): Promise<ExportRunResult> {
+  const loaded = await loadRunRecord(runId, options);
+  if ("status" in loaded) {
+    return loaded;
+  }
+
+  const { dir, run } = loaded;
+  const { publicAttempts, svgFiles, redactions } = await processAttempts(
+    dir,
+    run.attempts,
+    options.leakGuard,
+  );
+
+  const { publicRecord, jsonText, leakReason } = buildAndScanRecord(
+    run,
+    publicAttempts,
+    redactions,
+    options.leakGuard,
+  );
+
+  if (leakReason !== null) {
+    return {
+      status: "rejected",
+      runId,
+      reasons: [{ file: "run.json", reason: leakReason }],
+    };
+  }
+
   return {
     status: "ready",
     runId,
-    publicRecord: finalRecord,
-    jsonText: sanitizedJson,
+    publicRecord,
+    jsonText,
     svgFiles,
     redactions,
   };
 }
+

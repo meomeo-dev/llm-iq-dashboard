@@ -54,21 +54,8 @@ export function buildRunSummary(record: PublicRunRecord): RunSummary {
  * 更新或创建指定日期的 DayIndex（runs/YYYY/MM/DD/index.json）。
  * 按 runId 升序排列。损坏或形状错误时抛错。
  */
-export async function updateDayIndex(
-  repoDir: string,
-  date: string,
-  newSummaries: readonly RunSummary[],
-): Promise<DayIndex> {
-  const [year, month, day] = date.split("-");
-  if (!year || !month || !day) {
-    throw new Error(`非法的日期格式：${date}，期望 YYYY-MM-DD`);
-  }
-
-  const partitionDir = join(repoDir, RUNS_DIR, year, month, day);
-  await mkdir(partitionDir, { recursive: true });
-  const indexFile = join(partitionDir, DAY_INDEX_FILE);
-
-  let existingRuns: RunSummary[] = [];
+/** 读取并校验已有日索引中的运行记录 */
+async function readExistingDayRuns(indexFile: string): Promise<RunSummary[]> {
   try {
     const raw = await readFile(indexFile, "utf8");
     let parsed: unknown;
@@ -85,15 +72,34 @@ export async function updateDayIndex(
     if (!Array.isArray(dayObj.runs)) {
       throw new Error(`日索引 ${indexFile} 格式错误，缺少 runs 数组`);
     }
-    existingRuns = dayObj.runs;
+    return dayObj.runs;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      existingRuns = [];
-    } else {
-      throw error;
+      return [];
     }
+    throw error;
+  }
+}
+
+/**
+ * 更新或创建指定日期的 DayIndex（runs/YYYY/MM/DD/index.json）。
+ * 按 runId 升序排列。损坏或形状错误时抛错。
+ */
+export async function updateDayIndex(
+  repoDir: string,
+  date: string,
+  newSummaries: readonly RunSummary[],
+): Promise<DayIndex> {
+  const [year, month, day] = date.split("-");
+  if (!year || !month || !day) {
+    throw new Error(`非法的日期格式：${date}，期望 YYYY-MM-DD`);
   }
 
+  const partitionDir = join(repoDir, RUNS_DIR, year, month, day);
+  await mkdir(partitionDir, { recursive: true });
+  const indexFile = join(partitionDir, DAY_INDEX_FILE);
+
+  const existingRuns = await readExistingDayRuns(indexFile);
   const runMap = new Map<string, RunSummary>();
   for (const item of existingRuns) {
     runMap.set(item.runId, item);
@@ -113,83 +119,71 @@ export async function updateDayIndex(
   return dayIndex;
 }
 
+/** 列出指定目录下匹配正则表达式的子目录名列表 */
+async function listMatchingDirs(dir: string, pattern: RegExp): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory() && pattern.test(e.name)).map((e) => e.name);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+/** 尝试读取单日索引并组装 DayEntry */
+async function loadDayEntry(
+  runsRoot: string,
+  year: string,
+  month: string,
+  day: string,
+): Promise<DayEntry | null> {
+  const date = `${year}-${month}-${day}`;
+  const dayIndexPath = join(runsRoot, year, month, day, DAY_INDEX_FILE);
+  try {
+    const raw = await readFile(dayIndexPath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+      throw new Error(`日索引 ${dayIndexPath} JSON 损坏: ${msg}`);
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`日索引 ${dayIndexPath} 格式错误，期望 JSON 对象`);
+    }
+    const dayObj = parsed as Partial<DayIndex>;
+    if (!Array.isArray(dayObj.runs)) {
+      throw new Error(`日索引 ${dayIndexPath} 缺少 runs 数组`);
+    }
+    return {
+      date,
+      runs: dayObj.runs.length,
+      path: `${RUNS_DIR}/${year}/${month}/${day}`,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
 /**
  * 遍历 runs/ 目录发现所有已建立的日索引。
  */
 async function scanAllDays(repoDir: string): Promise<DayEntry[]> {
   const runsRoot = join(repoDir, RUNS_DIR);
   const days: DayEntry[] = [];
-
-  let years: string[] = [];
-  try {
-    const entries = await readdir(runsRoot, { withFileTypes: true });
-    years = entries
-      .filter((e) => e.isDirectory() && /^\d{4}$/.test(e.name))
-      .map((e) => e.name);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    throw err;
-  }
+  const years = await listMatchingDirs(runsRoot, /^\d{4}$/);
 
   for (const year of years) {
-    let months: string[] = [];
-    try {
-      const entries = await readdir(join(runsRoot, year), { withFileTypes: true });
-      months = entries
-        .filter((e) => e.isDirectory() && /^\d{2}$/.test(e.name))
-        .map((e) => e.name);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
-      throw err;
-    }
-
+    const months = await listMatchingDirs(join(runsRoot, year), /^\d{2}$/);
     for (const month of months) {
-      let dayDirs: string[] = [];
-      try {
-        const entries = await readdir(join(runsRoot, year, month), {
-          withFileTypes: true,
-        });
-        dayDirs = entries
-          .filter((e) => e.isDirectory() && /^\d{2}$/.test(e.name))
-          .map((e) => e.name);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === "ENOENT") continue;
-        throw err;
-      }
-
+      const dayDirs = await listMatchingDirs(join(runsRoot, year, month), /^\d{2}$/);
       for (const day of dayDirs) {
-        const date = `${year}-${month}-${day}`;
-        const dayIndexPath = join(runsRoot, year, month, day, DAY_INDEX_FILE);
-        try {
-          const raw = await readFile(dayIndexPath, "utf8");
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(raw);
-          } catch (parseErr) {
-            const msg =
-              parseErr instanceof Error ? parseErr.message : String(parseErr);
-            throw new Error(`日索引 ${dayIndexPath} JSON 损坏: ${msg}`);
-          }
-          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-            throw new Error(`日索引 ${dayIndexPath} 格式错误，期望 JSON 对象`);
-          }
-          const dayObj = parsed as Partial<DayIndex>;
-          if (!Array.isArray(dayObj.runs)) {
-            throw new Error(`日索引 ${dayIndexPath} 缺少 runs 数组`);
-          }
-          days.push({
-            date,
-            runs: dayObj.runs.length,
-            path: `${RUNS_DIR}/${year}/${month}/${day}`,
-          });
-        } catch (error) {
-          if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-            // 目录存在但日索引尚未生成，跳过
-          } else {
-            throw error;
-          }
+        const entry = await loadDayEntry(runsRoot, year, month, day);
+        if (entry !== null) {
+          days.push(entry);
         }
       }
     }
@@ -198,17 +192,15 @@ async function scanAllDays(repoDir: string): Promise<DayEntry[]> {
   return days;
 }
 
-/**
- * 汇总各日索引，更新数据仓根目录的 DataRepoManifest（index.json）。
- * 保留已有 name、description、repository。
- * updatedAt 遵循确定性生成规则。
- */
-export async function updateManifest(
-  repoDir: string,
-  now = new Date(),
-): Promise<DataRepoManifest> {
-  const manifestPath = join(repoDir, MANIFEST_FILE);
+interface ManifestMeta {
+  name: string;
+  description: string;
+  repository: string;
+  existingUpdatedAt: string | null;
+}
 
+/** 读取已有根清单元信息，损坏时报错中止 */
+async function loadManifestMeta(manifestPath: string): Promise<ManifestMeta> {
   let name = DEFAULT_REPO_NAME;
   let description = DEFAULT_REPO_DESCRIPTION;
   let repository = DEFAULT_REPOSITORY_URL;
@@ -228,14 +220,10 @@ export async function updateManifest(
     }
     const obj = parsed as Record<string, unknown>;
     if (obj.schemaVersion === undefined && obj.version === undefined) {
-      throw new Error(
-        `数据仓清单 ${manifestPath} 缺少 schemaVersion 或 version 字段`,
-      );
+      throw new Error(`数据仓清单 ${manifestPath} 缺少 schemaVersion 或 version 字段`);
     }
 
-    if (typeof obj.name === "string" && obj.name.trim() !== "") {
-      name = obj.name;
-    }
+    if (typeof obj.name === "string" && obj.name.trim() !== "") name = obj.name;
     if (typeof obj.description === "string" && obj.description.trim() !== "") {
       description = obj.description;
     }
@@ -246,51 +234,60 @@ export async function updateManifest(
       existingUpdatedAt = obj.updatedAt;
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      // 仅当文件不存在时使用默认元信息
-    } else {
-      throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  return { name, description, repository, existingUpdatedAt };
+}
+
+/** 确定性计算最新已完成时刻：从最新日索引读取最新一轮的 finishedAt */
+async function findLatestFinishedAt(
+  repoDir: string,
+  days: readonly DayEntry[],
+): Promise<string | null> {
+  for (const day of days) {
+    if (day.runs === 0) continue;
+    const dayIndexPath = join(repoDir, day.path, DAY_INDEX_FILE);
+    const raw = await readFile(dayIndexPath, "utf8");
+    const parsed = JSON.parse(raw) as DayIndex;
+    if (Array.isArray(parsed.runs) && parsed.runs.length > 0) {
+      let maxAt: string | null = null;
+      for (const r of parsed.runs) {
+        if (r.finishedAt && (maxAt === null || r.finishedAt.localeCompare(maxAt) > 0)) {
+          maxAt = r.finishedAt;
+        }
+      }
+      if (maxAt !== null) return maxAt;
     }
   }
+  return null;
+}
+
+/**
+ * 汇总各日索引，更新数据仓根目录的 DataRepoManifest（index.json）。
+ * 保留已有 name、description、repository。
+ * updatedAt 遵循确定性生成规则。
+ */
+export async function updateManifest(
+  repoDir: string,
+  now = new Date(),
+): Promise<DataRepoManifest> {
+  const manifestPath = join(repoDir, MANIFEST_FILE);
+  const meta = await loadManifestMeta(manifestPath);
 
   const days = await scanAllDays(repoDir);
   days.sort((a, b) => b.date.localeCompare(a.date));
 
   const totalRuns = days.reduce((sum, item) => sum + item.runs, 0);
-
-  // 确定性 updatedAt：从最新的日索引读取最新一轮的 finishedAt
-  let latestFinishedAt: string | null = null;
-  for (const day of days) {
-    if (day.runs > 0) {
-      const dayIndexPath = join(repoDir, day.path, DAY_INDEX_FILE);
-      const raw = await readFile(dayIndexPath, "utf8");
-      const parsed = JSON.parse(raw) as DayIndex;
-      if (Array.isArray(parsed.runs) && parsed.runs.length > 0) {
-        for (const r of parsed.runs) {
-          if (r.finishedAt) {
-            if (
-              latestFinishedAt === null ||
-              r.finishedAt.localeCompare(latestFinishedAt) > 0
-            ) {
-              latestFinishedAt = r.finishedAt;
-            }
-          }
-        }
-        if (latestFinishedAt !== null) {
-          break;
-        }
-      }
-    }
-  }
-
+  const latestFinishedAt = await findLatestFinishedAt(repoDir, days);
   const updatedAt =
-    latestFinishedAt ?? (existingUpdatedAt ?? now.toISOString());
+    latestFinishedAt ?? (meta.existingUpdatedAt ?? now.toISOString());
 
   const manifest: DataRepoManifest = {
     schemaVersion: DATA_REPO_SCHEMA_VERSION,
-    name,
-    description,
-    repository,
+    name: meta.name,
+    description: meta.description,
+    repository: meta.repository,
     updatedAt,
     totalRuns,
     days,
@@ -299,3 +296,4 @@ export async function updateManifest(
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifest;
 }
+

@@ -26,7 +26,8 @@
     "pair": "tsx src/bin/pair.ts",
     "sync:data": "tsx src/bin/sync-data.ts",
     "dashboard:prod": "node scripts/dashboard-prod.mjs",
-    "showcase:smoke": "tsx scripts/showcase-smoke.ts"
+    "showcase:smoke": "tsx scripts/showcase-smoke.ts",
+    "check:length": "tsx scripts/check-code-length.ts"
   },
   "engines": {
     "node": ">=22",

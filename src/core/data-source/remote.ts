@@ -67,29 +67,10 @@ export class RemoteDataSource implements DataSource {
     try {
       const manifest = await this.fetchManifest();
       const dayIndices = await Promise.all(
-        manifest.days.map(async (day) => {
-          try {
-            return await this.fetchDayIndex(day.path);
-          } catch {
-            return null;
-          }
-        }),
+        manifest.days.map((day) => this.fetchDayIndex(day.path).catch(() => null)),
       );
-
-      const starts: string[] = [];
-      for (const dayIndex of dayIndices) {
-        if (dayIndex === null) continue;
-        for (const run of dayIndex.runs) {
-          const at = runIdTime(run.runId);
-          if (at !== null) {
-            starts.push(at.toISOString());
-          } else if (run.startedAt) {
-            starts.push(run.startedAt);
-          }
-        }
-      }
       this.notice = null;
-      return starts.sort().reverse();
+      return extractRunStarts(dayIndices);
     } catch (err) {
       this.handleError("获取轮次开始时间列表失败", err);
       return [];
@@ -384,3 +365,20 @@ export function sanitizeErrorReason(err: unknown): string {
 function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
+
+function extractRunStarts(dayIndices: readonly (DayIndex | null)[]): string[] {
+  const starts: string[] = [];
+  for (const dayIndex of dayIndices) {
+    if (dayIndex === null) continue;
+    for (const run of dayIndex.runs) {
+      const at = runIdTime(run.runId);
+      if (at !== null) {
+        starts.push(at.toISOString());
+      } else if (run.startedAt) {
+        starts.push(run.startedAt);
+      }
+    }
+  }
+  return starts.sort().reverse();
+}
+

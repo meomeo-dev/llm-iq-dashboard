@@ -21,6 +21,7 @@ import {
 import {
   loadSyncLedger,
   saveSyncLedger,
+  type SyncLedger,
 } from "./sync-ledger";
 
 export interface ConfirmPublishedOptions {
@@ -42,13 +43,8 @@ export interface ConfirmPublishedReport {
   error?: string;
 }
 
-export async function confirmPublished(
-  options: ConfirmPublishedOptions,
-): Promise<ConfirmPublishedReport> {
-  const dryRun = options.dryRun === true;
-  const repoPath = options.repoPath;
-  const dataDirPath = options.dataDir ?? dataRoot();
-
+/** 校验仓库与上游配置，并执行 git fetch 同步最新远端引用 */
+async function prepareUpstream(repoPath: string): Promise<string> {
   if (!existsSync(repoPath) || !existsSync(join(repoPath, ".git"))) {
     throw new Error(`数据仓目录不存在或不是 Git 仓库：${repoPath}`);
   }
@@ -66,12 +62,18 @@ export async function confirmPublished(
     throw new Error(`数据仓 fetch 失败：${msg}`);
   }
 
-  const ledger = await loadSyncLedger(dataDirPath);
+  return upstream;
+}
+
+/** 筛选台账中已被上游追踪分支包含的 exported 轮次 */
+async function findContainedRuns(
+  repoPath: string,
+  ledger: SyncLedger,
+  upstream: string,
+  runIds?: readonly string[],
+): Promise<string[]> {
   const confirmed: string[] = [];
-  const filterSet =
-    options.runIds && options.runIds.length > 0
-      ? new Set(options.runIds)
-      : null;
+  const filterSet = runIds && runIds.length > 0 ? new Set(runIds) : null;
 
   for (const [runId, entry] of Object.entries(ledger)) {
     if (filterSet && !filterSet.has(runId)) {
@@ -89,16 +91,44 @@ export async function confirmPublished(
     }
   }
 
-  if (!dryRun && confirmed.length > 0) {
-    const publishedAt = new Date().toISOString();
-    for (const runId of confirmed) {
-      const entry = ledger[runId];
-      if (entry) {
-        entry.status = "published";
-        entry.publishedAt = publishedAt;
-      }
+  return confirmed;
+}
+
+/** 将已确认的轮次在本地台账中更新为 published 状态并保存 */
+async function markPublishedInLedger(
+  ledger: SyncLedger,
+  confirmed: readonly string[],
+  dataDirPath: string,
+): Promise<void> {
+  const publishedAt = new Date().toISOString();
+  for (const runId of confirmed) {
+    const entry = ledger[runId];
+    if (entry) {
+      entry.status = "published";
+      entry.publishedAt = publishedAt;
     }
-    await saveSyncLedger(ledger, dataDirPath);
+  }
+  await saveSyncLedger(ledger, dataDirPath);
+}
+
+export async function confirmPublished(
+  options: ConfirmPublishedOptions,
+): Promise<ConfirmPublishedReport> {
+  const dryRun = options.dryRun === true;
+  const repoPath = options.repoPath;
+  const dataDirPath = options.dataDir ?? dataRoot();
+
+  const upstream = await prepareUpstream(repoPath);
+  const ledger = await loadSyncLedger(dataDirPath);
+  const confirmed = await findContainedRuns(
+    repoPath,
+    ledger,
+    upstream,
+    options.runIds,
+  );
+
+  if (!dryRun && confirmed.length > 0) {
+    await markPublishedInLedger(ledger, confirmed, dataDirPath);
   }
 
   return {
@@ -111,3 +141,4 @@ export async function confirmPublished(
     },
   };
 }
+
