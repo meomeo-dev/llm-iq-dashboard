@@ -4,7 +4,7 @@
  * 覆盖：
  * 1. 待推送提交清单比对（aheadCommits 不一致时拒绝推送并报错）；
  * 2. 未连接 GitHub App 时拒绝推送；
- * 3. 互斥锁冲突时拒绝并发推送。
+ * 3. web 进程持锁转交的推送不被锁拒绝。
  */
 
 import assert from "node:assert/strict";
@@ -171,7 +171,7 @@ dataRepo:
     assert.ok(settled?.result?.syncResult?.error?.includes("容器内无推送凭据"));
   });
 
-  it("互斥锁被占用时 runner 拒绝并发 push", async () => {
+  it("web 进程持有互斥锁转交的 push，runner 不因锁被占用而拒绝", async () => {
     await mockConnectedCredentials();
     const lock = await acquireDataRepoSyncLock();
     assert.equal(lock.acquired, true);
@@ -188,8 +188,8 @@ dataRepo:
 
       const settled = await readRequest(req.id);
       assert.equal(settled?.state, "done");
-      assert.equal(settled?.result?.syncResult?.ok, false);
-      assert.ok(settled?.result?.syncResult?.error?.includes("已有一个数据仓动作正在执行"));
+      const error = settled?.result?.syncResult?.error ?? "";
+      assert.ok(!error.includes("已有一个数据仓动作正在执行"), `不应因锁拒绝：${error}`);
     } finally {
       await lock.release();
     }

@@ -34,7 +34,6 @@ import {
   writeGithubApp,
   writeGithubUser,
 } from "../core/github-auth";
-import { acquireDataRepoSyncLock } from "../core/sync/data-repo-action-lock";
 import {
   getAheadCommits,
   getPushTarget,
@@ -324,12 +323,8 @@ async function handleRunnerPush(
   full: AppConfig,
   startedAt: string,
 ): Promise<void> {
-  const lock = await acquireDataRepoSyncLock();
-  if (!lock.acquired) {
-    await recordSyncFailure(requestId, "push", lock.reason ?? "已有一个数据仓动作正在执行", startedAt);
-    return;
-  }
-
+  // 互斥锁由发起请求的 web 进程持有（共享数据卷上的文件标记），这里不再重复获取；
+  // 推送前重新比对领先提交清单，保证只推送用户确认过的内容
   try {
     const conn = await readGithubConnection();
     if (conn.state !== "connected") {
@@ -360,8 +355,6 @@ async function handleRunnerPush(
     const error = describe(cause);
     log(`执行器 push 失败：${error}`);
     await recordSyncFailure(requestId, "push", error, startedAt);
-  } finally {
-    await lock.release();
   }
 }
 
