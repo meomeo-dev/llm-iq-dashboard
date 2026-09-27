@@ -36,16 +36,9 @@ interface ArmedTimer {
   nextRun(): Date | null;
 }
 
-/** 启动时读不到配置直接抛错；之后读失败只记日志，沿用已生效的节奏 */
-export function startScheduler(
-  readConfig: ConfigSource,
-  log: Logger,
-  rhythmCheckMs: number = RHYTHM_CHECK_MS,
-): SchedulerHandle {
-  const initial = readConfig();
+function createSchedulerTick(readConfig: ConfigSource, log: Logger): () => Promise<void> {
   let running = false;
-
-  const tick = async (): Promise<void> => {
+  return async (): Promise<void> => {
     if (running) {
       log("上一轮尚未结束，跳过本次触发");
       return;
@@ -64,6 +57,16 @@ export function startScheduler(
       running = false;
     }
   };
+}
+
+/** 启动时读不到配置直接抛错；之后读失败只记日志，沿用已生效的节奏 */
+export function startScheduler(
+  readConfig: ConfigSource,
+  log: Logger,
+  rhythmCheckMs: number = RHYTHM_CHECK_MS,
+): SchedulerHandle {
+  const initial = readConfig();
+  const tick = createSchedulerTick(readConfig, log);
 
   let timer = arm(initial.schedule, tick, log);
   const watcher = watchRhythm(readConfig, log, rhythmCheckMs, (next) => {

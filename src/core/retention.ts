@@ -13,10 +13,47 @@ import { readdir, rm } from "node:fs/promises";
 import type { Logger } from "./runner";
 import { runDir } from "./paths";
 import { listRunIds, runIdTime } from "./store";
-import { loadSyncLedger } from "./sync/sync-ledger";
+import { loadSyncLedger, type SyncLedger } from "./sync/sync-ledger";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RUN_FILE = "run.json";
+
+async function removeExpiredDir(dir: string, runId: string, label: string, log: Logger): Promise<boolean> {
+  try {
+    await rm(dir, { recursive: true, force: true });
+    return true;
+  } catch (cause) {
+    log(`清理${label} ${runId} 失败：${cause instanceof Error ? cause.message : cause}`);
+    return false;
+  }
+}
+
+async function inspectAndPruneRun(
+  runId: string,
+  ledger: SyncLedger,
+  log: Logger,
+): Promise<"deleted" | "unpublished" | "retained"> {
+  const dir = runDir(runId);
+  let files: string[];
+  try {
+    files = await readdir(dir);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      log(`读取过期轮次目录 ${runId} 失败：${err instanceof Error ? err.message : err}`);
+    }
+    return "retained";
+  }
+
+  if (files.length === 0) {
+    return (await removeExpiredDir(dir, runId, "过期空目录", log)) ? "deleted" : "retained";
+  }
+  if (!files.includes(RUN_FILE)) return "retained";
+
+  if (ledger[runId]?.status === "published") {
+    return (await removeExpiredDir(dir, runId, "过期轮次", log)) ? "deleted" : "retained";
+  }
+  return "unpublished";
+}
 
 /**
  * 带有修剪守卫的过期清理。
@@ -33,60 +70,15 @@ export async function pruneExpiredRuns(
   });
 
   const ledger = await loadSyncLedger();
-
   let deletedCount = 0;
   let unPublishedCount = 0;
 
   for (const runId of expiredIds) {
-    const dir = runDir(runId);
-    let files: string[] = [];
-    try {
-      files = await readdir(dir);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        continue;
-      }
-      log(
-        `读取过期轮次目录 ${runId} 失败：${err instanceof Error ? err.message : err}`,
-      );
-      continue;
-    }
-
-    // 1. 空目录：可以删除
-    if (files.length === 0) {
-      try {
-        await rm(dir, { recursive: true, force: true });
-        deletedCount += 1;
-      } catch (cause) {
-        log(`清理过期空目录 ${runId} 失败：${cause instanceof Error ? cause.message : cause}`);
-      }
-      continue;
-    }
-
-    // 2. 只有过程文件没有 run.json：保留不删
-    const hasRunJson = files.includes(RUN_FILE);
-    if (!hasRunJson) {
-      continue;
-    }
-
-    // 3. 有 run.json：检查是否已 published
-    const syncRecord = ledger[runId];
-    if (syncRecord?.status === "published") {
-      try {
-        await rm(dir, { recursive: true, force: true });
-        deletedCount += 1;
-      } catch (cause) {
-        log(`清理过期轮次 ${runId} 失败：${cause instanceof Error ? cause.message : cause}`);
-      }
-    } else {
-      unPublishedCount += 1;
-    }
+    const outcome = await inspectAndPruneRun(runId, ledger, log);
+    if (outcome === "deleted") deletedCount += 1;
+    else if (outcome === "unpublished") unPublishedCount += 1;
   }
 
-  if (unPublishedCount > 0) {
-    log(`保留 ${unPublishedCount} 个未发布的过期轮次`);
-  }
-  if (deletedCount > 0) {
-    log(`按 ${retentionDays} 天保留期清理了 ${deletedCount} 个过期轮次`);
-  }
+  if (unPublishedCount > 0) log(`保留 ${unPublishedCount} 个未发布的过期轮次`);
+  if (deletedCount > 0) log(`按 ${retentionDays} 天保留期清理了 ${deletedCount} 个过期轮次`);
 }

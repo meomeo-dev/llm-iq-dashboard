@@ -1,6 +1,6 @@
 /** 子进程执行器：运行命令并逐行交出输出，不涉及任何 CLI 的语义 */
 
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 
 export interface Command {
   /** 可执行文件名，交由 PATH 解析 */
@@ -28,6 +28,45 @@ export interface ExecOutcome {
 /** SIGTERM 之后给 CLI 自己收尾的宽限期 */
 const GRACE_MS = 5_000;
 
+interface StreamContext {
+  stdoutChunks: string[];
+  stderrChunks: string[];
+  splitter: LineSplitter;
+  timedOut: boolean;
+  settled: boolean;
+}
+
+function setupTermination(
+  pid: number | undefined,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+  onTimeout: () => void,
+): { killTimer: NodeJS.Timeout; cleanupSignal: () => void } {
+  const killTimer = setTimeout(() => {
+    onTimeout();
+    terminateGroup(pid);
+  }, timeoutMs);
+
+  const onAbort = (): void => terminateGroup(pid);
+  if (signal?.aborted === true) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+
+  const cleanupSignal = (): void => {
+    signal?.removeEventListener("abort", onAbort);
+  };
+  return { killTimer, cleanupSignal };
+}
+
+function pipeChildOutput(child: ChildProcess, ctx: StreamContext): void {
+  child.stdout?.setEncoding("utf8");
+  child.stderr?.setEncoding("utf8");
+  child.stdout?.on("data", (chunk: string) => {
+    ctx.stdoutChunks.push(chunk);
+    ctx.splitter.push(chunk);
+  });
+  child.stderr?.on("data", (chunk: string) => ctx.stderrChunks.push(chunk));
+}
+
 /**
  * 执行一次调用，超时则终止整个进程组（先 SIGTERM，宽限期后 SIGKILL）。
  * CLI 会派生子进程，只杀 CLI 本身会留下孤儿进程继续占用模型配额。
@@ -38,54 +77,47 @@ export async function execStreaming(
 ): Promise<ExecOutcome> {
   return new Promise((resolve, reject) => {
     const child = spawnDetached(command, options.cwd);
+    const ctx: StreamContext = {
+      stdoutChunks: [],
+      stderrChunks: [],
+      splitter: new LineSplitter(options.onLine),
+      timedOut: false,
+      settled: false,
+    };
 
-    const stdoutChunks: string[] = [];
-    const stderrChunks: string[] = [];
-    const splitter = new LineSplitter(options.onLine);
-    let timedOut = false;
-    let settled = false;
+    const { killTimer, cleanupSignal } = setupTermination(
+      child.pid,
+      options.timeoutMs,
+      options.signal,
+      () => { ctx.timedOut = true; },
+    );
 
-    const killTimer = setTimeout(() => {
-      timedOut = true;
-      terminateGroup(child.pid);
-    }, options.timeoutMs);
-    const onAbort = (): void => terminateGroup(child.pid);
-    // 轮次已停止时立即终止刚启动的进程
-    if (options.signal?.aborted === true) onAbort();
-    else options.signal?.addEventListener("abort", onAbort, { once: true });
-
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => {
-      stdoutChunks.push(chunk);
-      splitter.push(chunk);
-    });
-    child.stderr.on("data", (chunk: string) => stderrChunks.push(chunk));
+    pipeChildOutput(child, ctx);
 
     child.on("error", (cause) => {
-      if (settled) return;
-      settled = true;
+      if (ctx.settled) return;
+      ctx.settled = true;
       clearTimeout(killTimer);
-      options.signal?.removeEventListener("abort", onAbort);
+      cleanupSignal();
       reject(new Error(`无法启动 ${command.binary}：${cause.message}`));
     });
 
     child.on("close", (code) => {
-      if (settled) return;
-      settled = true;
+      if (ctx.settled) return;
+      ctx.settled = true;
       clearTimeout(killTimer);
-      options.signal?.removeEventListener("abort", onAbort);
-      splitter.flush();
+      cleanupSignal();
+      ctx.splitter.flush();
       resolve({
-        stdout: stdoutChunks.join(""),
-        stderr: stderrChunks.join(""),
-        exitCode: timedOut ? null : code,
-        timedOut,
+        stdout: ctx.stdoutChunks.join(""),
+        stderr: ctx.stderrChunks.join(""),
+        exitCode: ctx.timedOut ? null : code,
+        timedOut: ctx.timedOut,
       });
     });
 
     // 提示词经参数传入；stdin 须立即关闭，否则部分 CLI 会一直等待输入
-    child.stdin.end();
+    child.stdin?.end();
   });
 }
 
