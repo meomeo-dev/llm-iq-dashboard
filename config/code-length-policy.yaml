@@ -1,0 +1,149 @@
+# 代码长度门禁策略配置
+# 阈值取自代码健康重构冲刺公共要求表格中的硬上限
+
+thresholds:
+  files:
+    ts: 500
+    tsx: 300
+    css: 300
+  functions:
+    ts: 50
+    tsx: 80
+
+include:
+  - "src/**/*.{ts,tsx,css}"
+  - "scripts/**/*.{ts,tsx,css}"
+
+exclude:
+  - "src/core/prompts/**"
+  - "test/fixtures/**"
+  - ".next/**"
+  - "node_modules/**"
+  - "dist/**"
+
+# 临时豁免清单：尚未由其它并行任务包重构的对象
+# 其它四个并行包合并后，主代理会统一删掉已达标的豁免项
+allowlist:
+  # --- 其他工作包负责对象 ---
+  - path: "src/core/prompt.ts"
+    limit: 1000
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/prompt.ts"
+    symbol: "resolvePromptStandard"
+    limit: 60
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/prompt.ts"
+    symbol: "promptLifecycle"
+    limit: 60
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/prompt-schema.ts"
+    symbol: "validatePromptSpec"
+    limit: 160
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/prompt-schema.ts"
+    symbol: "validatePromptStandard"
+    limit: 100
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/prompt-schema.ts"
+    symbol: "validatePromptCandidate"
+    limit: 75
+    reason: "WP-E 任务包重构对象"
+  - path: "src/core/runner.ts"
+    symbol: "executeRun"
+    limit: 160
+    reason: "WP-D 任务包重构对象"
+  - path: "src/core/run-attempt.ts"
+    symbol: "runAttempt"
+    limit: 65
+    reason: "WP-D 任务包重构对象"
+  - path: "src/core/progress.ts"
+    symbol: "createProgressTracker"
+    limit: 65
+    reason: "WP-D 任务包重构对象"
+  - path: "src/core/retention.ts"
+    symbol: "pruneExpiredRuns"
+    limit: 75
+    reason: "WP-D 任务包重构对象"
+  - path: "src/core/config.ts"
+    symbol: "parseTargets"
+    limit: 70
+    reason: "WP-C 任务包重构对象"
+  - path: "src/bin/validate-prompts.ts"
+    symbol: "run"
+    limit: 110
+    reason: "WP-E 任务包重构对象"
+  - path: "src/adapters/exec.ts"
+    symbol: "execStreaming"
+    limit: 65
+    reason: "WP-D 任务包重构对象"
+  - path: "src/app/api/run/route.ts"
+    symbol: "POST"
+    limit: 75
+    reason: "WP-D 任务包重构对象"
+  - path: "src/app/components/Dashboard.tsx"
+    symbol: "Dashboard"
+    limit: 180
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/menu/menu.css"
+    limit: 450
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/model-modal/ModelModal.tsx"
+    symbol: "ModelModal"
+    limit: 100
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/run-control/RunOnceMenu.tsx"
+    limit: 550
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/run-control/RunOnceMenu.tsx"
+    symbol: "RunOnceMenu"
+    limit: 210
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/run-control/run-control.css"
+    limit: 550
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/run-control/run-selection-store.ts"
+    symbol: "resolveRunSelection"
+    limit: 65
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/toolbar/Toolbar.tsx"
+    symbol: "Toolbar"
+    limit: 150
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/components/toolbar/toolbar.css"
+    limit: 320
+    reason: "WP-A 任务包重构对象"
+  - path: "src/app/config/ConfigEditor.tsx"
+    symbol: "ConfigEditor"
+    limit: 140
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/PromptPicker.tsx"
+    symbol: "CustomPromptEditor"
+    limit: 130
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/PromptPicker.tsx"
+    symbol: "PromptPicker"
+    limit: 120
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/ScheduleForm.tsx"
+    symbol: "ScheduleForm"
+    limit: 210
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/TargetTable.tsx"
+    symbol: "TargetTable"
+    limit: 120
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/TargetTable.tsx"
+    symbol: "TargetRow"
+    limit: 100
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/TimeoutForm.tsx"
+    symbol: "TimeoutForm"
+    limit: 180
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/config/config.css"
+    limit: 560
+    reason: "WP-B 任务包重构对象"
+  - path: "src/app/view/ArtViewer.tsx"
+    symbol: "ArtViewer"
+    limit: 110
+    reason: "WP-A 任务包重构对象"

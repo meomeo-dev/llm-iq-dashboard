@@ -73,28 +73,8 @@ export function parseCliArgs(args: readonly string[]): ParsedArgs {
   return result;
 }
 
-function formatHumanReport(report: SyncReport, repoPath: string): string {
-  const lines: string[] = [];
-  lines.push("========================================");
-  lines.push("           数据仓同步报告");
-  lines.push("========================================");
-  lines.push(`模式: ${report.dryRun ? "演练 (dry-run，零写入)" : "实际写入"}`);
-  lines.push(`数据仓路径: ${repoPath}`);
-  lines.push(`候选轮次总数: ${report.totalCandidates}`);
-  lines.push("");
-
-  lines.push(`[成功导出] ${report.exported.length} 轮`);
-  for (const id of report.exported) {
-    lines.push(`  - ${id}`);
-  }
-  lines.push("");
-
-  lines.push(`[跳过未处理] ${report.skipped.length} 轮`);
-  for (const item of report.skipped) {
-    lines.push(`  - ${item.runId}: ${item.reason}`);
-  }
-  lines.push("");
-
+/** 格式化报告中被拒绝、被脱敏与冲突的异常轮次清单 */
+function appendIssueSections(lines: string[], report: SyncReport): void {
   lines.push(`[拒绝发布] ${report.rejected.length} 轮`);
   for (const item of report.rejected) {
     lines.push(`  - ${item.runId}:`);
@@ -118,7 +98,10 @@ function formatHumanReport(report: SyncReport, repoPath: string): string {
     lines.push(`  - ${id}: 目标仓已存在但内容不一致`);
   }
   lines.push("");
+}
 
+/** 格式化台账状态变化与 Git 提交结果 */
+function appendLedgerAndGitSummary(lines: string[], report: SyncReport): void {
   lines.push("[台账状态变化]");
   lines.push(`  - 新标为 exported: ${report.ledgerTransitions.exported.length} 轮`);
   for (const id of report.ledgerTransitions.exported) {
@@ -137,7 +120,32 @@ function formatHumanReport(report: SyncReport, repoPath: string): string {
     lines.push(`错误信息: ${report.error}`);
   }
   lines.push("========================================");
+}
 
+function formatHumanReport(report: SyncReport, repoPath: string): string {
+  const lines: string[] = [];
+  lines.push("========================================");
+  lines.push("           数据仓同步报告");
+  lines.push("========================================");
+  lines.push(`模式: ${report.dryRun ? "演练 (dry-run，零写入)" : "实际写入"}`);
+  lines.push(`数据仓路径: ${repoPath}`);
+  lines.push(`候选轮次总数: ${report.totalCandidates}`);
+  lines.push("");
+
+  lines.push(`[成功导出] ${report.exported.length} 轮`);
+  for (const id of report.exported) {
+    lines.push(`  - ${id}`);
+  }
+  lines.push("");
+
+  lines.push(`[跳过未处理] ${report.skipped.length} 轮`);
+  for (const item of report.skipped) {
+    lines.push(`  - ${item.runId}: ${item.reason}`);
+  }
+  lines.push("");
+
+  appendIssueSections(lines, report);
+  appendLedgerAndGitSummary(lines, report);
   return lines.join("\n");
 }
 
@@ -164,62 +172,53 @@ function formatHumanConfirmReport(
   return lines.join("\n");
 }
 
-export async function runSyncCli(
-  args: readonly string[] = process.argv.slice(2),
-  out: (msg: string) => void = console.log,
-  err: (msg: string) => void = console.error,
+/** 解析并确定目标数据仓本地路径 */
+function resolveRepoPath(explicitPath?: string): string | null {
+  if (explicitPath) return explicitPath;
+  try {
+    const config = loadConfig(configPath());
+    if (config.dataRepo?.path) {
+      return config.dataRepo.path;
+    }
+  } catch {
+    // 忽略配置文件读取失败
+  }
+  return null;
+}
+
+/** 执行发布确认子流程 */
+async function handleConfirmCli(
+  repoPath: string,
+  parsed: ParsedArgs,
+  out: (msg: string) => void,
+  err: (msg: string) => void,
 ): Promise<number> {
-  const parsed = parseCliArgs(args);
-
-  if (parsed.push && parsed.confirmPublished) {
-    err("参数错误：--confirm-published 与 --push 互斥，不能同时使用");
-    return 1;
-  }
-
-  let repoPath = parsed.repoPath;
-  if (!repoPath) {
-    try {
-      const config = loadConfig(configPath());
-      if (config.dataRepo?.path) {
-        repoPath = config.dataRepo.path;
-      }
-    } catch {
-      // 配置文件不存在或无法读取
+  try {
+    const report = await confirmPublished({
+      repoPath,
+      runIds: parsed.runIds.length > 0 ? parsed.runIds : undefined,
+      dryRun: parsed.dryRun,
+    });
+    if (parsed.json) {
+      out(JSON.stringify(report, null, 2));
+    } else {
+      out(formatHumanConfirmReport(report, repoPath));
     }
-  }
-
-  if (!repoPath) {
-    err("错误：未指定 --repo 且配置文件中未配置 dataRepo.path");
+    return 0;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    err(`发布确认失败：${msg}`);
     return 1;
   }
+}
 
-  if (!existsSync(repoPath)) {
-    err(`错误：目标数据仓路径不存在：${repoPath}`);
-    return 1;
-  }
-
-  if (parsed.confirmPublished) {
-    try {
-      const report = await confirmPublished({
-        repoPath,
-        runIds: parsed.runIds.length > 0 ? parsed.runIds : undefined,
-        dryRun: parsed.dryRun,
-      });
-
-      if (parsed.json) {
-        out(JSON.stringify(report, null, 2));
-      } else {
-        out(formatHumanConfirmReport(report, repoPath));
-      }
-
-      return 0;
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      err(`发布确认失败：${msg}`);
-      return 1;
-    }
-  }
-
+/** 执行数据同步子流程 */
+async function handleSyncCli(
+  repoPath: string,
+  parsed: ParsedArgs,
+  out: (msg: string) => void,
+  err: (msg: string) => void,
+): Promise<number> {
   try {
     const report = await syncDataRepo({
       repoPath,
@@ -243,6 +242,36 @@ export async function runSyncCli(
     err(`同步中断：${msg}`);
     return 1;
   }
+}
+
+export async function runSyncCli(
+  args: readonly string[] = process.argv.slice(2),
+  out: (msg: string) => void = console.log,
+  err: (msg: string) => void = console.error,
+): Promise<number> {
+  const parsed = parseCliArgs(args);
+
+  if (parsed.push && parsed.confirmPublished) {
+    err("参数错误：--confirm-published 与 --push 互斥，不能同时使用");
+    return 1;
+  }
+
+  const repoPath = resolveRepoPath(parsed.repoPath);
+  if (!repoPath) {
+    err("错误：未指定 --repo 且配置文件中未配置 dataRepo.path");
+    return 1;
+  }
+
+  if (!existsSync(repoPath)) {
+    err(`错误：目标数据仓路径不存在：${repoPath}`);
+    return 1;
+  }
+
+  if (parsed.confirmPublished) {
+    return handleConfirmCli(repoPath, parsed, out, err);
+  }
+
+  return handleSyncCli(repoPath, parsed, out, err);
 }
 
 // 直接以 CLI 执行时执行并返回对应退出码

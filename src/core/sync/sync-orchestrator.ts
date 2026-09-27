@@ -10,13 +10,12 @@
  */
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   dayPartition,
   runDirPath,
   type Redaction,
-  type RunSummary,
 } from "../data-repo/contract";
 import { buildLeakGuard, type LeakGuard } from "../leak-guard";
 import { dataRoot } from "../paths";
@@ -31,15 +30,12 @@ import {
   pushCurrentBranch,
 } from "./data-repo-git";
 import {
-  buildRunSummary,
-  updateDayIndex,
-  updateManifest,
-} from "./data-repo-index";
-import {
   exportRun,
   type ExportOptions,
   type ReadyExportResult,
 } from "./export-run";
+import { isContentIdentical } from "./sync-content-check";
+import { updateRepoIndices, writeAllExportedRuns } from "./sync-writer";
 import {
   loadSyncLedger,
   saveSyncLedger,
@@ -89,43 +85,40 @@ export interface SyncReport {
   error?: string;
 }
 
-/** 比较目标目录已有产物是否与本次导出完全一致 */
-async function isContentIdentical(
-  targetDir: string,
-  exported: ReadyExportResult,
-): Promise<boolean> {
-  const targetRunJson = join(targetDir, "run.json");
-  if (!existsSync(targetRunJson)) return false;
-
-  try {
-    const existingJson = await readFile(targetRunJson, "utf8");
-    if (existingJson.trim() !== exported.jsonText.trim()) {
-      return false;
-    }
-
-    const entries = await readdir(targetDir);
-    const existingSvgs = new Set(
-      entries.filter((name) => name.endsWith(".svg")),
-    );
-    const newSvgs = new Set(exported.svgFiles.map((s) => s.filename));
-
-    if (existingSvgs.size !== newSvgs.size) return false;
-    for (const name of newSvgs) {
-      if (!existingSvgs.has(name)) return false;
-      const existingSvgContent = await readFile(join(targetDir, name), "utf8");
-      const newSvgItem = exported.svgFiles.find((s) => s.filename === name);
-      if (existingSvgContent !== newSvgItem?.content) return false;
-    }
-
-    return true;
-  } catch {
-    return false;
+/** 预检仓库状态与上游配置 */
+async function preparePreflight(
+  repoPath: string,
+  dryRun: boolean,
+  push: boolean,
+): Promise<void> {
+  if (dryRun) return;
+  await assertRepoClean(repoPath);
+  await assertGitUserConfigured(repoPath);
+  if (push) {
+    await fetchAndFastForward(repoPath);
   }
 }
 
-/**
- * 补记数据仓已有目录的轮次到台账（status: exported）。
- */
+/** 收集待检查的候选轮次 ID 列表 */
+async function collectCandidateIds(
+  options: SyncOptions,
+  runsDir: string,
+): Promise<string[]> {
+  if (options.runIds && options.runIds.length > 0) {
+    return [...options.runIds];
+  }
+  try {
+    const entries = await readdir(runsDir, { withFileTypes: true });
+    return entries
+      .filter((e) => e.isDirectory() && dayPartition(e.name) !== null)
+      .map((e) => e.name)
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+/** 补记数据仓已有目录的轮次到台账（status: exported） */
 async function backfillIdempotentLedger(
   repoPath: string,
   runId: string,
@@ -146,9 +139,111 @@ async function backfillIdempotentLedger(
   newlyExported.push(runId);
 }
 
-/**
- * 推送当前分支并检验祖先关系，将已上游包含的 exported 轮次标为 published。
- */
+/** 处理已有目录的幂等与冲突检查 */
+async function checkExistingTargetDir(
+  repoPath: string,
+  runId: string,
+  relativeRunDir: string,
+  res: ReadyExportResult,
+  dryRun: boolean,
+  ledger: SyncLedger,
+  newlyExportedRunIds: string[],
+  report: SyncReport,
+): Promise<void> {
+  const targetDir = join(repoPath, relativeRunDir);
+  const identical = await isContentIdentical(targetDir, res);
+  if (identical) {
+    report.skipped.push({ runId, reason: "idempotent" });
+    if (!dryRun) {
+      await backfillIdempotentLedger(
+        repoPath,
+        runId,
+        relativeRunDir,
+        res.redactions,
+        ledger,
+        newlyExportedRunIds,
+      );
+    }
+  } else {
+    report.conflicts.push(runId);
+  }
+}
+
+/** 评估单个候选轮次：导出、脱敏、幂等与冲突判定 */
+async function evaluateSingleCandidate(
+  runId: string,
+  repoPath: string,
+  exportOpts: ExportOptions,
+  dryRun: boolean,
+  ledger: SyncLedger,
+  newlyExportedRunIds: string[],
+  report: SyncReport,
+): Promise<{ ready?: ReadyExportResult; redactions?: Redaction[] }> {
+  const res = await exportRun(runId, exportOpts);
+  if (res.status === "skipped") {
+    report.skipped.push({ runId, reason: res.reason });
+    return {};
+  }
+  if (res.status === "rejected") {
+    report.rejected.push({ runId, reasons: res.reasons });
+    return {};
+  }
+  const relativeRunDir = runDirPath(runId);
+  if (relativeRunDir === null) {
+    report.skipped.push({ runId, reason: "invalid-run-id" });
+    return {};
+  }
+  if (existsSync(join(repoPath, relativeRunDir))) {
+    await checkExistingTargetDir(
+      repoPath,
+      runId,
+      relativeRunDir,
+      res,
+      dryRun,
+      ledger,
+      newlyExportedRunIds,
+      report,
+    );
+    return { redactions: res.redactions };
+  }
+  return { ready: res, redactions: res.redactions };
+}
+
+/** 逐轮评估候选轮次：收集准备导出的轮次与全部脱敏记录 */
+async function evaluateCandidates(
+  candidateIds: readonly string[],
+  repoPath: string,
+  exportOpts: ExportOptions,
+  dryRun: boolean,
+  ledger: SyncLedger,
+  newlyExportedRunIds: string[],
+  report: SyncReport,
+): Promise<{ readyToExport: ReadyExportResult[]; allRedactions: RunRedactionGroup[] }> {
+  const readyToExport: ReadyExportResult[] = [];
+  const allRedactions: RunRedactionGroup[] = [];
+
+  for (const runId of candidateIds) {
+    const outcome = await evaluateSingleCandidate(
+      runId,
+      repoPath,
+      exportOpts,
+      dryRun,
+      ledger,
+      newlyExportedRunIds,
+      report,
+    );
+    if (outcome.redactions && outcome.redactions.length > 0) {
+      allRedactions.push({ runId, redactions: outcome.redactions });
+    }
+    if (outcome.ready) {
+      readyToExport.push(outcome.ready);
+    }
+  }
+
+  return { readyToExport, allRedactions };
+}
+
+/** 推送当前分支并检验祖先关系，将已上游包含的 exported 轮次标为 published */
 async function publishContainedRuns(
   repoPath: string,
   ledger: SyncLedger,
@@ -179,18 +274,43 @@ async function publishContainedRuns(
   }
 }
 
+/** 提交 Git 并将新导出的轮次记录到本地台账，同时持久化新增 exported 记录 */
+async function commitAndRecordExported(
+  repoPath: string,
+  readyToExport: readonly ReadyExportResult[],
+  ledger: SyncLedger,
+  dataDirPath: string,
+  newlyExportedRunIds: string[],
+): Promise<string | null> {
+  let commitSha: string | null = null;
+  if (readyToExport.length > 0) {
+    commitSha = await commitSync(
+      repoPath,
+      readyToExport.map((r) => r.runId),
+    );
+    const nowIso = new Date().toISOString();
+    for (const item of readyToExport) {
+      ledger[item.runId] = {
+        status: "exported",
+        exportedAt: nowIso,
+        ...(commitSha !== null ? { commit: commitSha } : {}),
+        redactions: item.redactions,
+      };
+      newlyExportedRunIds.push(item.runId);
+    }
+  }
+
+  if (newlyExportedRunIds.length > 0) {
+    await saveSyncLedger(ledger, dataDirPath);
+  }
+  return commitSha;
+}
+
 /**
  * 执行数据仓同步流水线。
  */
-export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
-  const dryRun = options.dryRun === true;
-  const push = options.push === true;
-  const repoPath = options.repoPath;
-  const dataDirPath = options.dataDir ?? dataRoot();
-  const runsDir = join(dataDirPath, "runs");
-  const leakGuard = options.leakGuard ?? (await buildLeakGuard());
-
-  const report: SyncReport = {
+function createInitialReport(dryRun: boolean): SyncReport {
+  return {
     success: true,
     dryRun,
     totalCandidates: 0,
@@ -203,170 +323,117 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
     commit: null,
     pushed: false,
   };
+}
 
-  if (!dryRun) {
-    await assertRepoClean(repoPath);
-    await assertGitUserConfigured(repoPath);
-    if (push) {
-      await fetchAndFastForward(repoPath);
-    }
+/** 执行推送流程并更新报告与台账 */
+async function executePushStep(
+  repoPath: string,
+  ledger: SyncLedger,
+  dataDirPath: string,
+  newlyPublishedRunIds: string[],
+  report: SyncReport,
+): Promise<void> {
+  try {
+    await publishContainedRuns(repoPath, ledger, dataDirPath, newlyPublishedRunIds);
+    report.pushed = true;
+  } catch (pushError) {
+    report.success = false;
+    report.error = pushError instanceof Error ? pushError.message : String(pushError);
+    throw pushError;
   }
+}
 
-  // 1. 收集候选 runId
-  let candidateIds: string[] = [];
-  if (options.runIds && options.runIds.length > 0) {
-    candidateIds = [...options.runIds];
-  } else {
-    try {
-      const entries = await readdir(runsDir, { withFileTypes: true });
-      candidateIds = entries
-        .filter((e) => e.isDirectory() && dayPartition(e.name) !== null)
-        .map((e) => e.name)
-        .sort();
-    } catch {
-      candidateIds = [];
-    }
-  }
+/** 持久化导出产物、更新索引并完成提交记账 */
+async function persistExportedData(
+  repoPath: string,
+  readyToExport: readonly ReadyExportResult[],
+  ledger: SyncLedger,
+  dataDirPath: string,
+  newlyExportedRunIds: string[],
+): Promise<{ exportedRunIds: string[]; commitSha: string | null }> {
+  const { exportedRunIds, affectedDates } = await writeAllExportedRuns(
+    repoPath,
+    readyToExport,
+  );
+  await updateRepoIndices(repoPath, affectedDates);
+  const commitSha = await commitAndRecordExported(
+    repoPath,
+    readyToExport,
+    ledger,
+    dataDirPath,
+    newlyExportedRunIds,
+  );
+  return { exportedRunIds, commitSha };
+}
 
+interface SyncContext {
+  dryRun: boolean;
+  push: boolean;
+  repoPath: string;
+  dataDirPath: string;
+  runsDir: string;
+  leakGuard: LeakGuard;
+}
+
+async function resolveSyncContext(options: SyncOptions): Promise<SyncContext> {
+  const dryRun = options.dryRun === true;
+  const push = options.push === true;
+  const repoPath = options.repoPath;
+  const dataDirPath = options.dataDir ?? dataRoot();
+  const runsDir = join(dataDirPath, "runs");
+  const leakGuard = options.leakGuard ?? (await buildLeakGuard());
+  return { dryRun, push, repoPath, dataDirPath, runsDir, leakGuard };
+}
+
+/**
+ * 执行数据仓同步流水线。
+ */
+export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
+  const ctx = await resolveSyncContext(options);
+  const report = createInitialReport(ctx.dryRun);
+  await preparePreflight(ctx.repoPath, ctx.dryRun, ctx.push);
+  const candidateIds = await collectCandidateIds(options, ctx.runsDir);
   report.totalCandidates = candidateIds.length;
 
-  const readyToExport: ReadyExportResult[] = [];
-  const exportOpts: ExportOptions = { runsDir, leakGuard };
-  const ledger: SyncLedger = await loadSyncLedger(dataDirPath);
+  const ledger: SyncLedger = await loadSyncLedger(ctx.dataDirPath);
   const newlyExportedRunIds: string[] = [];
   const newlyPublishedRunIds: string[] = [];
-  const allRedactions: RunRedactionGroup[] = [];
+  const exportOpts: ExportOptions = { runsDir: ctx.runsDir, leakGuard: ctx.leakGuard };
 
-  // 2. 逐轮处理与脱敏
-  for (const runId of candidateIds) {
-    const res = await exportRun(runId, exportOpts);
-    if (res.status === "skipped") {
-      report.skipped.push({ runId, reason: res.reason });
-      continue;
-    }
-    if (res.status === "rejected") {
-      report.rejected.push({ runId, reasons: res.reasons });
-      continue;
-    }
-
-    if (res.redactions.length > 0) {
-      allRedactions.push({ runId, redactions: res.redactions });
-    }
-
-    const relativeRunDir = runDirPath(runId);
-    if (relativeRunDir === null) {
-      report.skipped.push({ runId, reason: "invalid-run-id" });
-      continue;
-    }
-
-    const targetDir = join(repoPath, relativeRunDir);
-    if (existsSync(targetDir)) {
-      const identical = await isContentIdentical(targetDir, res);
-      if (identical) {
-        report.skipped.push({ runId, reason: "idempotent" });
-        if (!dryRun) {
-          await backfillIdempotentLedger(
-            repoPath,
-            runId,
-            relativeRunDir,
-            res.redactions,
-            ledger,
-            newlyExportedRunIds,
-          );
-        }
-      } else {
-        report.conflicts.push(runId);
-      }
-      continue;
-    }
-
-    readyToExport.push(res);
-  }
-
+  const { readyToExport, allRedactions } = await evaluateCandidates(
+    candidateIds,
+    ctx.repoPath,
+    exportOpts,
+    ctx.dryRun,
+    ledger,
+    newlyExportedRunIds,
+    report,
+  );
   report.redactions = allRedactions;
 
-  if (dryRun) {
+  if (ctx.dryRun) {
     report.exported = readyToExport.map((r) => r.runId);
     return report;
   }
 
-  // 3. 写入数据仓
-  const affectedDates = new Map<string, RunSummary[]>();
+  const { exportedRunIds, commitSha } = await persistExportedData(
+    ctx.repoPath,
+    readyToExport,
+    ledger,
+    ctx.dataDirPath,
+    newlyExportedRunIds,
+  );
+  report.exported = exportedRunIds;
+  report.commit = commitSha;
 
-  for (const item of readyToExport) {
-    const partition = dayPartition(item.runId);
-    if (partition === null) continue;
-
-    const targetDir = join(repoPath, partition.path, item.runId);
-    await mkdir(targetDir, { recursive: true });
-
-    await writeFile(join(targetDir, "run.json"), item.jsonText, "utf8");
-
-    for (const svg of item.svgFiles) {
-      await writeFile(join(targetDir, svg.filename), svg.content, "utf8");
-    }
-
-    const summary = buildRunSummary(item.publicRecord);
-    const dateSummaries = affectedDates.get(partition.date) ?? [];
-    dateSummaries.push(summary);
-    affectedDates.set(partition.date, dateSummaries);
-
-    report.exported.push(item.runId);
-  }
-
-  // 4. 更新日索引与清单
-  for (const [date, summaries] of affectedDates.entries()) {
-    await updateDayIndex(repoPath, date, summaries);
-  }
-  if (affectedDates.size > 0) {
-    await updateManifest(repoPath);
-  }
-
-  // 5. Git 提交
-  let commitSha: string | null = null;
-  if (report.exported.length > 0) {
-    commitSha = await commitSync(repoPath, report.exported);
-    report.commit = commitSha;
-  }
-
-  // 6. 更新同步台账（exported 状态）
-  const nowIso = new Date().toISOString();
-  for (const item of readyToExport) {
-    ledger[item.runId] = {
-      status: "exported",
-      exportedAt: nowIso,
-      ...(commitSha !== null ? { commit: commitSha } : {}),
-      redactions: item.redactions,
-    };
-    newlyExportedRunIds.push(item.runId);
-  }
-
-  if (newlyExportedRunIds.length > 0) {
-    await saveSyncLedger(ledger, dataDirPath);
-  }
-
-  // 7. 若要求推送，执行 push 并将已上游包含的轮次标记为 published
-  if (push) {
-    try {
-      await publishContainedRuns(
-        repoPath,
-        ledger,
-        dataDirPath,
-        newlyPublishedRunIds,
-      );
-      report.pushed = true;
-    } catch (pushError) {
-      report.success = false;
-      report.error =
-        pushError instanceof Error ? pushError.message : String(pushError);
-      throw pushError;
-    }
+  if (ctx.push) {
+    await executePushStep(ctx.repoPath, ledger, ctx.dataDirPath, newlyPublishedRunIds, report);
   }
 
   report.ledgerTransitions = {
     exported: newlyExportedRunIds,
     published: newlyPublishedRunIds,
   };
-
   return report;
 }
+
