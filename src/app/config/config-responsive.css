@@ -1,0 +1,26 @@
+@media (max-width: 768px) {
+  .config {
+    margin-top: 10px;
+    gap: 16px;
+  }
+
+  .config-section {
+    padding: 14px 12px;
+  }
+
+  .field-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .schedule-runtime-notice {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .schedule-toggle-btn {
+    align-self: flex-start;
+  }
+}

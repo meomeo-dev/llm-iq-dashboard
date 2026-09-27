@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { actionFetch } from "../components/action-fetch";
 import type { CapabilitySnapshot } from "@/capabilities/types";
+import { CliCapabilityCard } from "./CliCapabilityCard";
 
 const SOURCE_HINT =
   "来源：已探测 = 从 CLI 读取；已验证 = 历史运行成功过；自定义 = 手动填写；内置 = 仓库默认值，可能过时";
@@ -46,25 +47,7 @@ export function CapabilityPanel({
 
       <div className="cli-cards">
         {catalog.clis.map((capability) => (
-          <div key={capability.cli} className="cli-card">
-            <div className="cli-head">
-              <strong>{capability.cli}</strong>
-              <span className={capability.available ? "cli-availability ok" : "cli-availability error"}>
-                {capability.available ? "可用" : "不可用"}
-              </span>
-            </div>
-            <div className="cli-body">
-              <div>
-                模型 <b>{capability.models.length}</b> 个
-              </div>
-              <div>强度 {capability.efforts.join(" / ")}</div>
-              {capability.notes.map((note) => (
-                <div key={note} className="note">
-                  {note}
-                </div>
-              ))}
-            </div>
-          </div>
+          <CliCapabilityCard key={capability.cli} capability={capability} />
         ))}
       </div>
 

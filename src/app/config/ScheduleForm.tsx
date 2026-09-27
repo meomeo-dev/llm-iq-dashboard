@@ -1,20 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { actionFetch } from "../components/action-fetch";
-import { publishAutoRun, useLiveAutoRun } from "../components/live-state/live-store";
-import { formatZonedClock } from "../components/timeline/zoned-time";
-import type { AutoRunView } from "@/core/auto-run";
+import { useLiveAutoRun } from "../components/live-state/live-store";
+import {
+  type ScheduleDraft,
+  type ScheduleMode,
+  getScheduleMode,
+  switchScheduleMode,
+  resolveTimeZone,
+} from "./schedule-form-model";
+import { useMasterSwitch } from "./use-master-switch";
+import { ScheduleRuntimeCard } from "./ScheduleRuntimeCard";
 
-export interface ScheduleDraft {
-  cron: string | null;
-  intervalMinutes: number | null;
-  timezone: string | null;
-  runOnStart: boolean;
-}
-
-/** cron 与间隔互斥：未选中的一方置 null，写回时从 YAML 删除；两者皆空即不定时 */
-type Mode = "none" | "cron" | "interval";
+export { type ScheduleDraft };
 
 export function ScheduleForm({
   value,
@@ -23,175 +20,34 @@ export function ScheduleForm({
   value: ScheduleDraft;
   onChange: (next: ScheduleDraft) => void;
 }) {
-  const mode: Mode = value.cron !== null ? "cron" : value.intervalMinutes !== null ? "interval" : "none";
+  const mode = getScheduleMode(value);
   const scheduled = mode !== "none";
   const liveAutoRun = useLiveAutoRun();
-  const [switching, setSwitching] = useState(false);
-
   const state = liveAutoRun !== null && !("error" in liveAutoRun) ? liveAutoRun : null;
   const isMasterEnabled = state?.enabled === true;
+  const { switching, toggleMasterSwitch } = useMasterSwitch(state);
 
-  const toggleMasterSwitch = async (): Promise<void> => {
-    if (state === null || switching) return;
-    setSwitching(true);
-    try {
-      const next = !state.enabled;
-      const res = await actionFetch("/api/auto-run", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: next }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as AutoRunView;
-        publishAutoRun(data);
-      }
-    } finally {
-      setSwitching(false);
-    }
+  const switchMode = (next: ScheduleMode): void => {
+    onChange(switchScheduleMode(value, next));
   };
 
-  const switchMode = (next: Mode): void => {
-    if (next === "none") onChange({ ...value, cron: null, intervalMinutes: null, runOnStart: false });
-    else if (next === "cron") onChange({ ...value, cron: value.cron ?? "0 */6 * * *", intervalMinutes: null });
-    else onChange({ ...value, cron: null, intervalMinutes: value.intervalMinutes ?? 360 });
-  };
-
-  const timeZone = value.timezone ?? (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "Asia/Shanghai");
+  const timeZone = resolveTimeZone(value.timezone);
 
   return (
     <div className="stack">
       {/* 调度运行态总开关与实时状态感知面板 */}
-      <div className="schedule-runtime-card">
-        <div className="schedule-runtime-row">
-          <div className="schedule-runtime-title">
-            <span>自动任务全局运行态</span>
-            <span className={`schedule-badge ${isMasterEnabled ? "running" : "offline"}`}>
-              {isMasterEnabled ? "● 执行中（已激活）" : "○ 已暂停（保护模式）"}
-            </span>
-          </div>
-          <div className="schedule-runtime-badges">
-            <span
-              className={`schedule-badge ${state?.schedulerPid ? "running" : "offline"}`}
-              title={state?.schedulerPid ? `后台守护进程正在运行` : "后台未检测到调度器守护进程"}
-            >
-              {state?.schedulerPid ? `调度器 PID ${state.schedulerPid}` : "调度器未运行"}
-            </span>
-            <button
-              type="button"
-              className={`schedule-toggle-btn ${!isMasterEnabled ? "btn-activate" : ""}`}
-              disabled={switching || state === null}
-              onClick={() => void toggleMasterSwitch()}
-            >
-              {isMasterEnabled ? "暂停自动任务" : "开启自动任务"}
-            </button>
-          </div>
-        </div>
-
-        {/* 消除歧义的状态解读与快捷操作 */}
-        {scheduled && !isMasterEnabled ? (
-          <div className="schedule-runtime-notice warn">
-            <span>
-              ⚠️ <strong>状态说明：</strong>定时节奏已设置，但<strong>自动任务开关当前处于“已暂停”</strong>状态。定时点到达时将自动跳过，不消耗 API 配额。
-            </span>
-            <button
-              type="button"
-              className="schedule-toggle-btn btn-activate"
-              disabled={switching}
-              onClick={() => void toggleMasterSwitch()}
-            >
-              一键开启自动任务
-            </button>
-          </div>
-        ) : scheduled && isMasterEnabled ? (
-          <div className="schedule-runtime-notice ok">
-            <span>
-              ✅ <strong>状态说明：</strong>自动任务正常运行中。
-              {state?.nextRunAt
-                ? `下次触发预计于 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
-                : `按设定间隔自动发起评测`}。
-            </span>
-          </div>
-        ) : (
-          <div className="schedule-runtime-notice muted">
-            <span>
-              ○ <strong>状态说明：</strong>下方选了“不定时”，调度器不会自动触发任何任务。
-            </span>
-          </div>
-        )}
-      </div>
+      <ScheduleRuntimeCard
+        state={state}
+        isMasterEnabled={isMasterEnabled}
+        switching={switching}
+        scheduled={scheduled}
+        timeZone={timeZone}
+        onToggleMaster={toggleMasterSwitch}
+      />
 
       {/* 定时节奏：只决定何时触发，是否执行看上方的自动任务开关 */}
-      <div className="field-row">
-        <label className="radio">
-          <input
-            type="radio"
-            name="schedule-mode"
-            checked={mode === "none"}
-            onChange={() => switchMode("none")}
-          />
-          不定时
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name="schedule-mode"
-            checked={mode === "cron"}
-            onChange={() => switchMode("cron")}
-          />
-          cron 表达式
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name="schedule-mode"
-            checked={mode === "interval"}
-            onChange={() => switchMode("interval")}
-          />
-          固定间隔
-        </label>
-      </div>
-
-      {mode === "cron" ? (
-        <div className="field-row">
-          <label>
-            cron
-            <input
-              type="text"
-              value={value.cron ?? ""}
-              placeholder="分 时 日 月 周"
-              onChange={(e) => onChange({ ...value, cron: e.target.value })}
-            />
-          </label>
-          <label>
-            时区
-            <input
-              type="text"
-              value={value.timezone ?? ""}
-              placeholder="留空跟随本机"
-              onChange={(e) =>
-                onChange({
-                  ...value,
-                  timezone: e.target.value.trim() === "" ? null : e.target.value,
-                })
-              }
-            />
-          </label>
-        </div>
-      ) : mode === "interval" ? (
-        <div className="field-row">
-          <label>
-            间隔（分钟）
-            <input
-              type="number"
-              min={1}
-              value={value.intervalMinutes ?? 360}
-              onChange={(e) =>
-                onChange({ ...value, intervalMinutes: Number(e.target.value) })
-              }
-            />
-          </label>
-        </div>
-      ) : null}
+      <ScheduleModeSelector mode={mode} onSelect={switchMode} />
+      <ScheduleInputs mode={mode} value={value} onChange={onChange} />
 
       {scheduled ? (
         <div className="field-row">
@@ -212,4 +68,102 @@ export function ScheduleForm({
       </p>
     </div>
   );
+}
+
+function ScheduleModeSelector({
+  mode,
+  onSelect,
+}: {
+  mode: ScheduleMode;
+  onSelect: (next: ScheduleMode) => void;
+}) {
+  return (
+    <div className="field-row">
+      <label className="radio">
+        <input
+          type="radio"
+          name="schedule-mode"
+          checked={mode === "none"}
+          onChange={() => onSelect("none")}
+        />
+        不定时
+      </label>
+      <label className="radio">
+        <input
+          type="radio"
+          name="schedule-mode"
+          checked={mode === "cron"}
+          onChange={() => onSelect("cron")}
+        />
+        cron 表达式
+      </label>
+      <label className="radio">
+        <input
+          type="radio"
+          name="schedule-mode"
+          checked={mode === "interval"}
+          onChange={() => onSelect("interval")}
+        />
+        固定间隔
+      </label>
+    </div>
+  );
+}
+
+function ScheduleInputs({
+  mode,
+  value,
+  onChange,
+}: {
+  mode: ScheduleMode;
+  value: ScheduleDraft;
+  onChange: (next: ScheduleDraft) => void;
+}) {
+  if (mode === "cron") {
+    return (
+      <div className="field-row">
+        <label>
+          cron
+          <input
+            type="text"
+            value={value.cron ?? ""}
+            placeholder="分 时 日 月 周"
+            onChange={(e) => onChange({ ...value, cron: e.target.value })}
+          />
+        </label>
+        <label>
+          时区
+          <input
+            type="text"
+            value={value.timezone ?? ""}
+            placeholder="留空跟随本机"
+            onChange={(e) =>
+              onChange({
+                ...value,
+                timezone: e.target.value.trim() === "" ? null : e.target.value,
+              })
+            }
+          />
+        </label>
+      </div>
+    );
+  }
+  if (mode === "interval") {
+    return (
+      <div className="field-row">
+        <label>
+          间隔（分钟）
+          <input
+            type="number"
+            min={1}
+            value={value.intervalMinutes ?? 360}
+            onChange={(e) =>
+              onChange({ ...value, intervalMinutes: Number(e.target.value) })
+            }
+          />
+        </label>
+      </div>
+    );
+  }
+  return null;
 }

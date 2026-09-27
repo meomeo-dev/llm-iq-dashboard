@@ -1,17 +1,21 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
 import { commandHint } from "@/core/command-hint";
-import { loadConfig } from "@/core/config";
 import { configPath } from "@/core/paths";
 import { BUILTIN_PROMPTS } from "@/core/prompt";
-import { readCachedCatalog, refreshCatalog } from "@/capabilities/catalog";
-import { probeViaRunner } from "@/core/requests";
-import { externalRunner } from "@/core/runner-link";
 import { isReadonly } from "@/core/deploy-mode";
 import { ConfigEditor } from "./ConfigEditor";
 import { DevicePanel } from "./DevicePanel";
+import { ConfigPageHeader } from "./ConfigPageHeader";
+import {
+  ConfigCatalogUnavailableAlert,
+  ConfigLoadErrorAlert,
+} from "./ConfigAlerts";
+import {
+  loadAppConfigSafely,
+  loadConfigPageCatalog,
+} from "./config-page-loader";
 
 /** 配置可能被其他进程改写，每次请求重读 */
 export const dynamic = "force-dynamic";
@@ -23,49 +27,19 @@ export default async function ConfigPage() {
   if (owner === null) redirect("/pair?next=%2Fconfig");
   const path = configPath();
 
-  let config;
-  let loadError: string | null = null;
-  try {
-    config = loadConfig(path);
-  } catch (cause) {
-    loadError = cause instanceof Error ? cause.message : String(cause);
-  }
+  const { config, loadError } = loadAppConfigSafely(path);
+  const catalog = await loadConfigPageCatalog(config?.customModels);
 
-  // 无缓存时探测一次：分容器部署交给执行器，本机就地探测
-  const catalog =
-    (await readCachedCatalog()) ??
-    (externalRunner() ? await probeViaRunner() : await refreshCatalog(config?.customModels ?? {}));
   if (catalog === null) {
-    return (
-      <main className="page">
-        <div className="alert error">
-          <strong>能力目录尚未探测</strong>
-          <p>执行器未响应。确认 runner 容器在运行（docker compose ps），稍后刷新。</p>
-        </div>
-      </main>
-    );
+    return <ConfigCatalogUnavailableAlert />;
   }
 
   return (
     <main className="page">
-      <header className="masthead">
-        <div>
-          <h1>
-            基准配置
-            <Link className="nav-link" href="/">
-              ← 看板
-            </Link>
-          </h1>
-          <p className="prompt">{path}</p>
-        </div>
-      </header>
+      <ConfigPageHeader path={path} />
 
       {loadError !== null ? (
-        <div className="alert error">
-          <strong>配置无法加载</strong>
-          <pre>{loadError}</pre>
-          <p>请直接修正该文件后刷新；界面不会在配置损坏时覆盖它。</p>
-        </div>
+        <ConfigLoadErrorAlert error={loadError} />
       ) : (
         <ConfigEditor
           initialConfig={{
