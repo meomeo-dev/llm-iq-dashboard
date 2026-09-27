@@ -1,0 +1,29 @@
+.pair-page {
+  max-width: 720px;
+}
+
+.pair-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line, #d9d9d9);
+  border-radius: 8px;
+}
+
+.pair-code {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  padding: 10px 12px;
+}
+
+.pair-card .actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pair-error {
+  color: var(--danger, #b42318);
+}

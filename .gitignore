@@ -1,0 +1,49 @@
+node_modules/
+.next/
+# TypeScript 与 Next.js 的生成物：next dev / next build 会重写 next-env.d.ts
+*.tsbuildinfo
+next-env.d.ts
+
+# 运行产物与运行态（PELICAN_DATA_DIR 默认目录）：运行记录、能力与就绪缓存、变量轮换状态、
+# 自动任务开关、调度器登记与日志、价格目录附件缓存、调用时的临时工作目录。全部由程序生成
+data/
+
+# 本机配置：首次加载时由 config/pelican.example.yaml 生成，各机器各自维护，不入库
+config/pelican.config.yaml
+config/pelican.config.yaml.staging
+
+.DS_Store
+# 凭据（如技能用的 .env.gpt-image2）不入库；示例文件除外
+.env
+.env.*
+!.env.example
+
+# 本地 worktree 产物
+.worktrees/
+.claude/worktrees/
+llm_iq_dashboard__worktrees/
+
+# 本地工具脚手架：技能库（.agents / .codex 为指向 .claude/skills 的软链接）、扩展管理器的
+# 环境清单与 issue 流程脚本，由各开发机自行安装，不入库
+.agents/
+.codex/
+.claude/README.md
+.claude/skills/
+.extension-env
+.extension-env.lock
+issues/
+scripts/issue-*.mjs
+scripts/governance/
+
+# 知识产权合规审查运行产物
+.ip-compliance/
+
+# Python 临时缓存与字节码
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 本地临时草稿与调研临时记录
+scratch/
+scratch_*.md
+

@@ -1,0 +1,189 @@
+# ==============================================================================
+# 前沿工程与前沿视觉特效基准题库：全流程调研、净室规约与自动化落地工作流
+# Frontier Benchmark Research, Clean-Room Formulation & Implementation Workflow
+# ==============================================================================
+
+version: "1.0.0"
+name: "frontier-benchmark-research"
+description: >
+  一套工业级标准化 SOP 工作流，用于指导 AI 代理与研究团队在零先验假设下，
+  系统化推进前沿科学工程（FE）与前沿视觉特效（VFX）领域的全景分类学推导、
+  小批次深度子代理学术检索（每领域 ≥30 轮）、开源净室（Clean-Room）题目规格设计、
+  纯矢量无交互 SVG 视觉标准化、四大名著式 UX 套题候选分组架构、
+  台账记录以及三重门禁自动化回归发布。
+
+# ------------------------------------------------------------------------------
+# 核心铁律与纪律准则 (Core Principles & Strict Disciplines)
+# ------------------------------------------------------------------------------
+principles:
+  zero_assumption_taxonomy:
+    title: "零预设分类学推导"
+    rule: >
+      在开始设计具体题目之前，绝对严禁人工先入为主地预设任何行业或技术偏好。
+      必须完全自下而上、从全球顶尖智库（WEF/OECD/WIPO/Gartner）、各国国家工程院（NAE/CAE/RAEng）、
+      顶级科学期刊（Nature/Science/IEEE Spectrum）以及顶级图形学会（ACM SIGGRAPH/Eurographics）
+      的官方工作大纲与征稿目录中客观交叉比对，归纳出权威的前沿技术领域全景大纲。
+
+  small_batch_serial_execution:
+    title: "严格小批次串行推进"
+    rule: >
+      绝不盲目大并发。每次最多并发 2~3 个子代理，完成一个批次后立即落地代码、更新台账、
+      编写测试并通过回归验证后方可推进下一批次，坚决避免跨批次大面积记忆压缩导致丢失上下文。
+
+  deep_continuous_search:
+    title: "三十轮深度连续学术检索"
+    rule: >
+      每个领域的专业子代理必须自主执行【至少 30 轮连续、深度的 web_search 检索】。
+      坚决抵制仅搜索 2~3 次就草草下结论的浮躁行为。必须深挖底层物理本构、微积分方程、
+      张量拓扑与最新顶会顶刊论文（含 DOI 与确切作者）。
+
+  clean_room_ip_compliance:
+    title: "开源净室合规与去专利化"
+    rule: >
+      基准用于 MIT 开源项目。严禁抄袭任何第三方商业题库、专利独占图面或私有测试集。
+      所有题目必须基于公开发表学术论文的第一性原理进行【纯净原创重述（Clean-Room Formulation）】。
+
+  pure_visual_non_interactive:
+    title: "纯直观可视对比（无交互）"
+    rule: >
+      题目必须为自闭合矢量 SVG（高精度静态剖面或内联 CSS/SMIL 连续动力学动画）。
+      【严禁包含任何交互代码】（无 click/drag/input/JS 事件），必须支持肉眼直接对比
+      以及机器自动化无损提取比较。
+
+  ux_suite_grouping:
+    title: "四大名著 UX 交互与按领域分组"
+    rule: >
+      避免平铺数十上百道题目造成界面混乱。顶层 BUILTIN_PROMPTS 仅挂载领域聚合套题
+      （Domain Suites，如 fe-ai-v1），每套题在下拉菜单中展开 10 个候选场景（candidates）；
+      单题规格通过独立 Map 字典字典化索引。
+
+# ------------------------------------------------------------------------------
+# 阶段执行流程 (Workflow Execution Phases)
+# ------------------------------------------------------------------------------
+phases:
+  - id: "phase-1-taxonomy-derivation"
+    title: "阶段一：全球宏观分类学推导 (Taxonomy Derivation)"
+    goal: "构建零预设的前沿工程与视觉计算领域分类图谱与淘汰标准"
+    inputs:
+      - "目标年份（例如 2026 年）"
+      - "评测大类（前沿工程 FE + 前沿视觉特效 VFX）"
+    steps:
+      - step: 1
+        name: "启动多维度自下而上分类学调研"
+        action: "并发派出 5 个独立的 Research 子代理，从不同宏观维度抓取官方分类框架："
+        dimensions:
+          - "全球科技战略智库（WEF, OECD, WIPO, Gartner, CSTD）"
+          - "各国国家工程院与科技资助机构（US NAE, EU Horizon Europe, CAE, RAEng, NSF EFRI）"
+          - "顶级综合科技与工程期刊展望（Nature, Science, MIT Tech Review, IEEE Spectrum）"
+          - "计算机图形学与科学可视化权威机构（ACM SIGGRAPH, Eurographics, ACM TOG, IEEE TVCG）"
+          - "国际工业专利与标准化组织（WIPO, EPO CPC Y-tags, IEEE Taxonomy, ISO/IEC）"
+        discipline: "每个子代理必须自主检索 ≥20 轮，合计 ≥100 轮检索。"
+      - step: 2
+        name: "交叉综合与边界界定"
+        action: "对齐各大维度共识，剔除已成熟传统技术（如普通平面欧氏几何、初等正弦波动画等已非前沿课题），输出结构化前沿分类大纲文档（如 frontier-taxonomy.md）。"
+
+  - id: "phase-2-batch-research"
+    title: "阶段二：小批次串行分派与子代理攻坚 (Batch Research)"
+    goal: "分批次完成所有领域的深度学术检索，精炼题目规格规范"
+    batching_strategy:
+      batch_size: "2 ~ 3 个领域/批次"
+      concurrency: "最多 3 个并发子代理"
+      subagent_type: "research"
+      retrieval_rounds: "每个领域必须执行 ≥ 30 轮深度连续检索"
+    per_domain_deliverables:
+      - "精选 10 道体现该领域极致挑战的基准题目（编号 01 至 10）"
+      - "每道题目的完整五大核心要素："
+          1. "题目中英文名称与标识符（如 FE-AI-01）"
+          2. "表现形式（静态高精度矢量 SVG 或内联 SMIL 连续动画）"
+          3. "2026 前沿技术背景与工程痛点"
+          4. "客观黄金基准 Ground Truth（确切物理偏微分方程/微观尺寸/张量场拓扑/容差极限）"
+          5. "机器与视觉客观比对判据（肉眼直观准则 + 机器解析特征提取标准）"
+          6. "权威学术与行业出处（论文作者、期刊/会议、DOI）"
+          7. "净室开源设计理念说明"
+      - "完整的 30 轮搜索关键词与检索路径清单"
+
+  - id: "phase-3-code-implementation"
+    title: "阶段三：TypeScript 模块与 UX 套题聚合实现 (Code Implementation)"
+    goal: "即时将调研报告转化为类型安全的代码模块，实现四大名著式 UX 候选下拉架构"
+    files_to_create:
+      - path: "src/core/prompts/<domain-slug>.ts"
+        structure:
+          - "10 个单题常量声明：<PREFIX>_<NN>_PROMPT: PromptSpec"
+          - "1 个单题数组聚合：<PREFIX>_INDIVIDUAL_PROMPTS"
+          - "1 个领域聚合套题：<PREFIX>_SUITE_PROMPT (包含 candidates 列表，每个 candidate 对应一题)"
+          - "1 个别名导出：<PREFIX>_PROMPTS"
+    files_to_update:
+      - path: "src/core/prompts/index.ts"
+        actions:
+          - "导出新模块的所有符号 (export * from './<domain-slug>')"
+          - "将套题注入 FRONTIER_SUITE_PROMPTS"
+          - "将单题展开注入 ALL_FRONTIER_INDIVIDUAL_PROMPTS"
+          - "更新 FRONTIER_INDIVIDUAL_PROMPT_MAP 字典"
+      - path: "src/app/components/run-control/RunOnceMenu.tsx"
+        actions:
+          - "确保 groupPrompts 函数中能够识别并归类新领域套题（如 fe- 归入工程组，vfx- 归入视效组）"
+
+  - id: "phase-4-ledger-update"
+    title: "阶段四：基准台账维护与生命周期管理 (Ledger Maintenance)"
+    goal: "在权威文档中留下不可篡改的学术追踪证据"
+    file: "docs/benchmark-provenance.md"
+    updates:
+      table_entry:
+        format: "| <全局序号> | `<题目ID>` | <中文名称> | <领域分类> | <形式: 静态/纯内联动画> | <首发年月: 2026-09> | <收录日期: YYYY-MM-DD> | <权威出处简写> |"
+      detailed_sections:
+        format: >
+          按大罗马数字小节追加，记录每道题目的呈现形式、规范引用文献、物理机理背景、
+          核心 Ground Truth 数学物理表达式及视觉判据。
+      lifecycle_renumbering:
+        rule: "确保后文的《题目生命周期与淘汰机制》与《参考资料与上游链接》章节编号顺延。"
+
+  - id: "phase-5-verification-and-commit"
+    title: "阶段五：三重门禁验证与 Git 提交 (Verification & Commit)"
+    goal: "确保零破坏性变更、零白屏风险与 100% 绿色可追溯"
+    verification_gates:
+      gate_1_unit_tests:
+        command: "pnpm test"
+        requirement: "测试用例需扩充对新领域所有单题与套题的完整性断言，所有测试必须全部通过。"
+      gate_2_type_check:
+        command: "pnpm lint"
+        requirement: "tsc --noEmit 必须零报错、零告警。"
+      gate_3_production_build:
+        command: "pnpm build"
+        requirement: "Next.js 生产编译打包必须 100% 成功生成所有静态与动态路由。"
+      gate_4_runtime_smoke:
+        command: "curl -I http://localhost:<port>"
+        requirement: "看板 HTTP 响应必须为 200 OK，API 端点正常返回，无任何白屏异常。"
+    git_commit:
+      rule: "每批次完成后必须立即提交 Git，带有规范的 Conventional Commits 格式消息。"
+
+# ------------------------------------------------------------------------------
+# 子代理 Prompt 模板库 (Prompt Templates for Subagents)
+# ------------------------------------------------------------------------------
+prompt_templates:
+  domain_research_specialist:
+    role_format: "<DOMAIN_CODE> <DOMAIN_NAME> Specialist"
+    template: |
+      你是一个专门负责【<DOMAIN_CODE>: <DOMAIN_FULL_NAME>】领域的顶级科学评测设计专家。
+
+      【核心任务与严格硬性纪律】
+      1. 检索轮次要求：你必须在本次调研中自主执行【至少 30 轮连续、深度的 web_search 搜索】！绝不能少于 30 轮！
+      2. 题目筛选数量：在该领域内深度筛选并设计【10 道高质量、直观可视的基准评测题目】（编号 <PREFIX>-01 至 <PREFIX>-10）。
+      3. 纯直观可视原则：题目表现形式必须为自闭合矢量 SVG（静态高精度切片剖面，或带内联 CSS/SMIL 连续动力学动画）；【绝不能包含任何交互式代码】（无 click/drag/input/JS 事件），结果必须可直接肉眼视觉对比！
+      4. 开源净室合规（Clean-room IP Compliance）：本项目为 MIT 开源基准。严禁抄袭任何第三方商业题库、专利保护文本或私有提示词。所有题目必须基于公开学术期刊与顶会（Nature/Science/IEEE/ACM SIGGRAPH/Cell/PNAS 等）中的真实物理/数学本构方程、微观拓扑结构进行【纯净原创的提示词撰写（Clean-room Formulation）】。
+
+      【<DOMAIN_CODE> 领域的攻坚范围参考】
+      <DOMAIN_SCOPE_BULLETS>
+
+      【输出成果要求】
+      在完成至少 30 轮连续检索后，系统整理并输出结构化成果：
+      1. 精选 10 道题目的完整规格规范，每题必须完整包含以下字段：
+         - 题目 ID：`<PREFIX>-01` 至 `<PREFIX>-10`
+         - 中文名：清晰准确的中文技术题名
+         - 英文名：规范的学术英文题名
+         - 形式：静态高精度矢量 SVG / 带内联 CSS/SMIL 连续动画矢量 SVG
+         - 2026 前沿技术背景：该课题在 2026 年的前沿突破点与工程痛点
+         - 客观黄金基准 Ground Truth：精确的解析解、微分方程、有理数常数、拓扑不变量、微观尺寸与几何公差极限
+         - 机器与视觉客观比对判据：包含视觉肉眼判读准则与机器自动化比对特征（容差百分比/RMSE）
+         - 权威学术出处：精确的论文作者、期刊/会议名、卷期页码及 DOI
+         - 净室设计理念说明：说明如何基于学术公理纯净推导、规避商业版权
+      2. 附带你执行的 30 轮搜索关键词与检索路径清单。

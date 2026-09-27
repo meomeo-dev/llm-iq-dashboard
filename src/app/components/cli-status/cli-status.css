@@ -1,0 +1,69 @@
+/* ---------- 页首 CLI 状态提示：有 CLI 暂不能调用时出现 ---------- */
+
+.cli-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.cli-banner p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.cli-banner b {
+  color: var(--text);
+}
+
+.cli-banner code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-hi);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.cli-banner button {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-hi);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 重新检查靠右；复制紧跟在命令后面 */
+.cli-banner > button {
+  margin-left: auto;
+}
+
+/* 不再提示：次要操作，只留文字 */
+.cli-banner .cli-banner-dismiss {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.cli-banner .cli-banner-dismiss:hover {
+  color: var(--text);
+}
+
+.cli-banner button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

@@ -1,0 +1,50 @@
+{
+  "name": "llm-iq-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xumetide-dev/llm-iq-dashboard.git"
+  },
+  "homepage": "https://github.com/xumetide-dev/llm-iq-dashboard#readme",
+  "description": "定时驱动 agy / codex / claude 执行鹈鹕自行车基准，并以瀑布流仪表盘呈现结果",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "tsc --noEmit",
+    "test": "tsx --test \"test/**/*.test.ts\"",
+    "run:once": "tsx src/bin/run-once.ts",
+    "scheduler": "tsx src/bin/scheduler.ts",
+    "runner": "tsx src/bin/runner.ts",
+    "pricing:sync": "tsx src/bin/pricing-sync.ts",
+    "postinstall": "tsx src/bin/pricing-sync.ts --soft",
+    "preflight": "tsx src/bin/preflight.ts",
+    "validate:prompts": "tsx src/bin/validate-prompts.ts",
+    "onboard": "tsx src/bin/onboard.ts",
+    "pair": "tsx src/bin/pair.ts",
+    "dashboard:prod": "node scripts/dashboard-prod.mjs"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "dependencies": {
+    "better-sse": "^0.16.1",
+    "chokidar": "^5.0.0",
+    "croner": "^9.0.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

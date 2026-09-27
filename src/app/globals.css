@@ -1,0 +1,101 @@
+/* 深色看板：内容是彩色 SVG，界面只用中性色，语义色仅用于状态标记。 */
+
+:root {
+  --bg: #0b0f17;
+  --surface: #10161f;
+  --surface-hi: #182030;
+  --border: #232d3d;
+  --text: #e6e8ee;
+  --text-dim: #9aa2b1;
+  --text-faint: #6b7385;
+  --accent: #4f8df7;
+
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --err: #f87171;
+
+  --radius: 10px;
+  --gap: 16px;
+
+  /* 卡片三段的固定尺寸（见 components/card/cards.css）。表头 = 上内边距 12 + 时刻 20
+     + 间距 3 + 标题 18 + 间距 8 + 两行徽章 48 + 下留白 10 + 分隔线 1 */
+  --badge-height: 21px;
+  --card-header-height: 120px;
+  --card-footer-height: 52px;
+  /* 看板布局（见 components/toolbar/toolbar.css 与 components/timeline/timeline.css） */
+  --lane-label-width: 176px;
+  /* 矩阵格子固定尺寸：列宽、行高与文件夹边长都不随列数变化（与 track-layout.ts、
+     export/timeline-svg.ts 的常量一致）。文件夹内 2×2 小图边长 = (216 - 2×16 - 12) / 2 = 86 */
+  --cell-width: 232px;
+  --cell-height: 236px;
+  --tile-size: 216px;
+  --folder-padding: 16px;
+  --folder-gap: 12px;
+  /* 时间轨道的高度，与 timeline/track-layout.ts 的常量一致 */
+  --axis-height: 56px;
+  --head-height: 30px;
+  --lane-head-height: 36px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --lane-label-width: 120px;
+    --gap: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --lane-label-width: 104px;
+    --gap: 10px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+.page {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 20px 20px 48px;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 10px 10px 32px;
+  }
+}
+
+@media (max-width: 400px) {
+  .page {
+    padding: 8px 6px 24px;
+  }
+}
+
+/* ---------- 跨页导航 ---------- */
+
+.nav-link {
+  margin-left: 14px;
+  color: var(--text-faint);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--accent);
+}

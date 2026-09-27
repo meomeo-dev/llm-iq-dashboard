@@ -1,0 +1,40 @@
+/* 配置页的能力目录面板（CapabilityPanel.tsx）：每个 CLI 一张卡片。 */
+
+.cli-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cli-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.cli-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+
+.cli-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* CLI 是否可用：配置页自带配色，不依赖看板的 status-* 类 */
+.cli-availability.ok {
+  color: var(--ok);
+}
+
+.cli-availability.error {
+  color: var(--err);
+}

@@ -1,0 +1,27 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dashboard:prod"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "dev",
+        "--port",
+        "3001"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "dashboard-attach",
+      "url": "http://localhost:3000"
+    }
+  ]
+}

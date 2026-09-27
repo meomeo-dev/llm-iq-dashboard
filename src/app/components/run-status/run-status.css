@@ -1,0 +1,268 @@
+/* ---------- 执行状态：工具栏胶囊 + 按模型分道的进度面板 ---------- */
+
+.run-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.run-dot.running {
+  background: var(--accent);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
+.run-dot.interrupted {
+  background: var(--warn);
+}
+
+.run-dot.finished {
+  background: var(--ok);
+}
+
+@keyframes run-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 141, 247, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(79, 141, 247, 0);
+  }
+}
+
+.menu-panel.run-panel {
+  display: flex;
+  flex-direction: column;
+  width: 600px;
+  max-height: 75vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.run-panel-head-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex: 0 0 auto;
+}
+
+.run-panel-title {
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.run-panel-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.run-panel-close-btn:hover {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.run-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.run-empty {
+  margin: 4px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.run-section + .run-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.run-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.run-head b {
+  color: var(--text);
+}
+
+.run-head-count {
+  margin-left: auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-note,
+.run-warn {
+  margin: 6px 0 10px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.run-warn {
+  color: var(--warn);
+}
+
+/* 进度条：整轮在标题下，单次调用在条目底部 */
+.run-bar {
+  display: block;
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--surface-hi);
+}
+
+.run-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.run-lane + .run-lane {
+  margin-top: 10px;
+}
+
+.run-lane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.run-lane-count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-calls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+@media (max-width: 768px) {
+  .menu-panel.run-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    right: auto;
+    z-index: 100;
+    width: min(580px, calc(100vw - 20px));
+    max-height: min(640px, 85vh);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+    border-radius: 12px;
+  }
+
+  .run-calls {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 440px) {
+  .run-calls {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 单次调用：左边框标状态，排队的整体压暗 */
+.run-call {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-hi);
+  font-size: 11.5px;
+}
+
+.run-call-name {
+  color: var(--text);
+}
+
+.run-call-time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-call .run-bar {
+  margin-top: 4px;
+}
+
+.run-call.queued {
+  opacity: 0.55;
+}
+
+.run-call.running {
+  border-left-color: var(--accent);
+}
+
+.run-call.done-ok {
+  border-left-color: var(--ok);
+}
+
+.run-call.done-no-svg {
+  border-left-color: var(--warn);
+}
+
+.run-call.done-error,
+.run-call.done-timeout {
+  border-left-color: var(--err);
+}
+
+/* ---------- 停止：正在停止 / 已停止 / 被取消的调用 ---------- */
+
+.run-dot.stopping {
+  background: var(--warn);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
+.run-dot.cancelled {
+  background: var(--text-faint);
+}
+
+.run-call.cancelled {
+  border-left-color: var(--text-faint);
+  opacity: 0.55;
+}
+
+.run-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 4px;
+}

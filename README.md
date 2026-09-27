@@ -1,0 +1,282 @@
+# LLM IQ Dashboard · 鹈鹕自行车基准
+
+定时调用 `agy` / `codex` / `claude` 三家命令行工具，指定模型与思考强度执行**鹈鹕自行车
+基准**（pelican-on-a-bicycle），把历次结果以 24 小时时间线的形式呈现在一个看板上。
+
+![状态](https://img.shields.io/badge/license-MIT-blue)
+
+![看板：24 小时时间线，每格是一个模型在这一轮各思考强度的作品](docs/ui/screenshots/dashboard.png)
+
+## 基准出处（Attribution）
+
+提示词逐字使用 Simon Willison 的原文：
+
+```
+Generate an SVG of a pelican riding a bicycle
+```
+
+- 官方仓库：<https://github.com/simonw/pelican-bicycle>
+- 博客标签：<https://simonwillison.net/tags/pelican-riding-a-bicycle/>
+
+完整的来源考证、提示词变体与设计意图见
+[`docs/benchmark-provenance.md`](docs/benchmark-provenance.md)。
+
+本仓库是独立实现的自动化执行与观测层，不隶属于原作者、也未获其背书。
+
+## 快速开始
+
+需要 Node 22 或更高（见 `.nvmrc`）与 pnpm 10 或更高。
+
+```bash
+pnpm install
+pnpm preflight
+```
+
+`pnpm install` 结束时按锁文件同步价格目录（见[成本](#成本api-等价)）；断网时只警告，
+之后运行 `pnpm pricing:sync` 补上即可。首次加载配置时，`config/pelican.config.yaml`
+由起步模板 [`config/pelican.example.yaml`](config/pelican.example.yaml) 生成：三家各一个
+轻量模型、low 强度、两道题，一轮 6 次调用，并设了每轮与每日的成本上限。
+
+`pnpm preflight` 逐项自查 Node 版本、配置、三家 CLI 是否已安装并登录、价格目录是否就绪，
+以及按历史估算的每轮成本；配置用到的 CLI 有问题时给出安装或登录命令，并以非零退出。
+`pnpm onboard` 逐家引导登录：没登录的就地启动该 CLI 自带的登录流程，登完立即复查。
+不用的 CLI 从配置的 `targets` 里删掉。看板页首提示上的“不再提示”只在当前浏览器隐藏该提示，
+不改配置；该 CLI 的目标每轮仍会记一条错误。
+
+先跑一轮确认调用链在你的机器上有效：
+
+```bash
+pnpm run:once
+```
+
+启动看板（<http://localhost:3000>，生产模式，适合长期挂着看）：
+
+```bash
+pnpm dashboard:prod
+```
+
+它把当前已提交的 HEAD 检出到同级目录 `../llm_iq_dashboard-deploy`，在那里安装依赖、构建并
+`next start`，产物目录与配置仍用本仓库的 `data/` 与 `config/`。未提交的改动不会进生产；
+提交后重新运行即可更新。看板有两个视角：不登录只能看结果；配置、跑一次与自动任务
+要先配对一台浏览器——在运行看板的机器上执行 `pnpm pair`，把打印的配对码填进看板的
+`/pair` 页。看板默认只监听本机（127.0.0.1），公网暴露的方案见
+[`docs/security/public-exposure-design.md`](docs/security/public-exposure-design.md)。
+修改看板代码时另开开发服务器，端口避开生产看板：
+
+```bash
+pnpm dev --port 3001
+```
+
+`next dev` 按需编译并保留调试信息，长时间运行内存会涨到数 GB，不适合当常驻看板用。
+
+启动常驻调度（独立进程，与看板互不影响）：
+
+```bash
+pnpm scheduler
+```
+
+自动任务默认关闭：调度器到点先读 `data/auto-run.json`，开关没打开就跳过，不调用任何 CLI。
+在看板工具栏上打开“自动任务”即生效；此时若没有调度器在运行，看板会在后台拉起一个
+（日志追加到 `data/scheduler.log`）。关闭只挡住之后的触发点，正在跑的一轮会跑完。
+同一时刻只允许一个调度器；手动执行与定时执行互斥，不论由哪个进程发起。
+
+前置条件：配置用到的 `claude`、`codex`、`agy` 在 `PATH` 中且已完成各自的登录。每轮开始
+前会预检：没装或未登录的 CLI 不发起调用，它的每个目标记一条带安装或登录命令的错误，
+显示在看板上；预检命令本身失败（超时、断网）时不拦截，照常发起。
+
+## Docker 部署
+
+```bash
+docker compose up -d --build
+docker exec -it llm-iq-dashboard pnpm onboard
+docker exec -it llm-iq-dashboard pnpm pair
+```
+
+看板、调度器与三家 CLI 同在一个容器。镜像不含 CLI，容器首次启动时从各家官方渠道安装；
+登录态与运行产物放在命名卷里，各家用订阅账号在容器里独立登录一次即可。卷、配置、更新与设计取舍见
+[`docs/deploy-docker.md`](docs/deploy-docker.md)。
+
+## 配置
+
+两种方式修改的是同一个文件：
+
+![配置界面：CLI 能力目录、调度与提示词](docs/ui/screenshots/config.png)
+
+- **配置界面** <http://localhost:3000/config>：选 CLI / 模型 / 思考强度、调度节奏、
+  提示词与变量、各 CLI 的超时。保存时在既有 YAML 语法树上改值并保留注释，完整校验
+  通过后原子替换；校验不通过时原文件不变。
+- **直接编辑** `config/pelican.config.yaml`。它是本机配置、不入库，首次加载时由
+  [`config/pelican.example.yaml`](config/pelican.example.yaml) 生成。
+
+| 字段 | 说明 |
+| --- | --- |
+| `schedule.cron` | cron 表达式，与 `intervalMinutes` 二选一，cron 优先；起步模板为 `0 9 * * *` 每天一轮 |
+| `schedule.intervalMinutes` | 固定间隔（分钟） |
+| `schedule.timezone` | cron 的时区，留空跟随本机 |
+| `schedule.runOnStart` | 调度器启动时是否立刻先跑一轮 |
+| `run.promptIds` | 本轮要跑的提示词条目，可多条并行 |
+| `run.concurrency` | 同时在跑的模型数上限（按模型分道，见下） |
+| `run.defaultTimeoutMs` | 全局默认超时（默认 300 秒） |
+| `run.timeoutByCli` | 按 CLI 覆盖超时，如 `codex: 600000` |
+| `run.timeoutByEffort` | 按思考强度覆盖超时，如 `max: 2700000`（45 分钟） |
+| `budget.perRoundUsd` | 每轮 API 等价成本上限（美元），见[成本](#成本api-等价)；不写即不限 |
+| `budget.perDayUsd` | 滚动 24 小时的成本上限（美元）；已达上限时整轮不开始 |
+| `retention.days` | 历史轮次保留天数（起步模板 30），更早的整轮目录在每轮开始时删除；不写即全部保留 |
+| `targets[]` | 被测矩阵，每项是 CLI × 模型 × 思考强度；`enabled: false` 可临时停用 |
+| `prompts[]` | 自定义提示词与变量 |
+| `customModels` | 探测不到的模型手填于此，按 CLI 分组 |
+
+超时优先级：`targets[].timeoutMs` > `run.timeoutByEffort[effort]` > `run.timeoutByCli[cli]`
+> `run.defaultTimeoutMs`。各家 CLI 的延迟差异大且随时段波动，因此按 CLI 设置；max 档
+的耗时取决于思考深度，因此按强度单独放宽。
+
+并发按模型分道：各 CLI 的限速按模型计算，不同模型并行，同一模型的各强度、各提示词
+在自己的道里从 low 到 max 串行。单轮耗时约等于最慢那一道的串行总和。一轮没跑完就到
+下一个触发点时，该次触发跳过、不排队；每小时一轮时，最慢那一道的串行总和
+（low + high + 45 分钟的 max）要控制在一小时以内。
+
+环境变量 `PELICAN_CONFIG` 覆盖配置文件路径，`PELICAN_DATA_DIR` 覆盖产物目录。
+
+## 提示词
+
+| 条目 | 说明 |
+| --- | --- |
+| `classic-v1` | Simon Willison 原文 `Generate an SVG of a pelican riding a bicycle`，一字不改，锁定不可编辑，是与外部结果对齐的锚点 |
+| `upgraded-v2` | Simon Willison 2025-11-18 发布的升级版原文（加州褐鹈鹕、辐条与车架、喉囊与羽毛、踩踏动作、繁殖羽），已逐字核对 |
+| `shuihu-v1` | 《水浒传》十个经典回目的名场面，候选集轮换 |
+| `xiyou-v1` | 《西游记》十个经典回目的名场面，候选集轮换 |
+| `sanguo-v1` | 《三国演义》十个经典回目的名场面，候选集轮换 |
+| `honglou-v1` | 《红楼梦》十个经典回目的名场面，候选集轮换 |
+
+起步模板启用 `classic-v1` 与 `xiyou-v1`；`run.promptIds` 缺省时只跑 `classic-v1`。
+每轮调用数为提示词条数 × 启用的 target 数，在 `run.promptIds` 里增删条目即可调整；
+看板上“跑一次”也可以临时只选其中几条。回目清单与出处见
+[`docs/benchmark-provenance.md`](docs/benchmark-provenance.md)。
+
+四大名著条目没有变量：每条候选本身就是一句完整的题面，按轮换周期从候选集里洗牌抽一条，
+一副十条取完之前不重复。多久换一次由 `run.rotation` 决定：
+
+| `period` | 行为 |
+| --- | --- |
+| `day`（默认） | 同一天的各轮共用同一条候选，同一天内的结果可以横向对照；“一天”按 `timezone` 划分，默认 `UTC` |
+| `run` | 每轮都换 |
+
+当前周期抽中的候选与洗牌顺序记录在 `data/variable-state.json`，调度器重启或一轮中途
+被打断后，同一周期内沿用同一条。每轮实际提问的完整文本写进运行记录，抽中的回目在卡片
+上以徽章显示
+（如 `回目: 第27回 三打白骨精`）。
+
+配置里的自定义提示词（`prompts:`）仍可带变量，取值方式为 `sequence` / `shuffle` / `random` /
+`fixed`，同样按 `run.rotation` 的周期换值。
+
+## 看板
+
+顶部一行工具栏，下面是**当天的 24 小时时间线**与**结果矩阵**，点开格子在模态窗里看
+完整结果。设计稿见 `docs/ui/dashboard/`。
+
+- **工具栏**：任何宽度都保持一行。左侧是品牌（窄于 1080px 时只留标识）、日期
+  （月历，跑过的日子与今天可以点，格子里标着当天的轮数）与“筛选”。筛选是两级菜单：
+  左列是 CLI / 模型 / 强度 / 提示词四个维度及各自的计数，右侧是所选维度的复选清单，
+  顶部有“全选”“反选”；有维度被筛掉时按钮徽章显示被筛维度数。右端依次是当天总计
+  （成功率 / 轮数与作品数）、执行状态胶囊、时钟与时区菜单、配置图标。
+  清单按当天数据列出，配置里停用的提示词的历史结果也能筛。状态点图例在时间线
+  标题旁，与格内位置图例并排。
+- **导出**：时间线标题右侧的“导出”菜单把当天完整的时间轴泳道存成一张图，包括整条
+  24 小时轨道、全部行与文件夹格子，不受窗口宽度和横向滚动限制，内容与当前筛选一致。
+  PNG 按 2 倍清晰度栅格化（超出画布上限时自动降倍率），SVG 为矢量原图；缩略图经与
+  看板相同的净化后各自以独立图片嵌入。
+![跑一次：按 CLI · 模型勾选强度与题目，显示调用数与预计成本](docs/ui/screenshots/run-once.png)
+
+- **跑一次**：工具栏上的“▶ 跑一次”展开后选范围（按 CLI · 模型分行，每行逐个勾选强度）
+  与题目（默认勾选配置里 `run.promptIds` 启用的条目），按钮上显示本次调用数。可选范围
+  是配置里的目标与当前可调用的 CLI 的交集。发起后在后台执行，进度见执行状态；已有一轮
+  在跑时拒绝发起。
+- **自动任务**：工具栏开关，默认关闭；打开后下行显示下一次触发时刻，调度器未运行或配置
+  里 `schedule.enabled: false` 时给出提示。
+- **执行状态**：工具栏上的胶囊显示当前轮次“执行中 12/34”，空闲时显示“空闲”。展开后
+  按模型分道列出每次调用：排队、执行中（已用 / 超时上限与进度条）、已完成（耗时，左边框
+  标成败）。执行进程写 `data/runs/<runId>/progress.json`，看板进程监听它并经
+  `GET /api/events`（SSE）推送到页面；执行进程已退出而轮次没跑完时标为“已中断”。每完成
+  一次调用，`run.json` 随之更新，结果随即出现在矩阵里。
+- **停止本轮**：执行状态面板与“跑一次”菜单里的“停止本轮”点两下生效，手动与定时发起的轮次都可停。
+  排队中的调用不再发起，执行中的调用被终止，已完成的结果保留，轮次标为“已停止”。
+- **当前时间与时区**：时钟按秒走，点一下回到今天并把时间线滚到“现在”。时区菜单
+  列出本机时区、调度时区（`schedule.timezone`）与几个常用时区，并标出 UTC 偏移；
+  切换后日期划分、轴上的时刻、卡片时间戳都按新时区重算。所选时区记在浏览器本地，
+  默认跟随本机。
+- **轴与矩阵共用一条 x 轴**：1 小时 = 320px，整天 7680px，横向滚动，不按窗口压缩。
+  每一轮是一列，列中心对准它在轴上的准确时刻；几分钟内的几轮会重叠时，后一列向右
+  推开，轴上的标记仍在准确时刻，并以一根连线指回。打开看板默认停在今天的“现在”，
+  一条蓝色虚线标出它并每分钟前移；看别的日子时停在所选的那一轮。只有换天、换时区或
+  点时钟时才重新定位，数据刷新不会移动正在浏览的视野。
+- **按模型分行，格子像 iPhone 文件夹**：行是 `cli · model`（启用多条提示词时每条
+  提示词单独一行），行标签固定在左侧不随轨道滚动。每个格子是这个模型在这一轮的全部
+  强度，排成 2×2 小图，右上角的点标成败。四个角对应的档位在当天固定（时间线标题旁
+  的“格内位置 ↖ low ↗ medium ↙ high ↘ max”图例），没跑的档位留虚线空位；当天档位
+  多于四个时，第四角显示 “+N”。
+![点开格子：同一轮各强度的完整卡片并排对照](docs/ui/screenshots/model-modal.png)
+
+- **点击格子**打开模态窗：并排列出这个模型在这一轮各强度的完整卡片。窗口固定高度，
+  卡片多了在窗内向下滚动，页面本身不动；Esc、点遮罩或右上角 × 关闭。
+- **单独查看大图**：点卡片上的作品或页脚的“大图 ↗”，在新标签页打开
+  `/view/<runId>/<svgFile>`，作品按窗口放大；页上的“原始 SVG ↗”打开模型写出的原文件。
+- 完整卡片尺寸固定：表头、4:3 图框、页脚三段各自定高，失败以同样大小的图框说明原因，
+  同一轮的结果可以并排对照。
+
+有调用完成或轮次结束时，页面随即重新载入结果。所选日期记在地址里
+（`/?day=2026-09-23`），页面只载入那一天的结果；日历按全部轮次的开始时刻标出保留期内
+每天的轮数。
+
+看板与执行的 HTTP 接口清单见 [`docs/development.md`](docs/development.md#接口)。
+
+## 成本（API 等价）
+
+每次调用的 token 用量从 CLI 原始输出解析，随 `run.json` 落盘；看板按价格目录把用量
+折算成“API 等价成本”，显示在卡片页脚与单独查看页，悬停可见逐项明细、目录版本，
+以及 claude 自报的成本（两者应一致）。
+
+- **口径**：模型厂商自营 API（anthropic-api、openai-api、gemini-api）的按量标价，
+  global 地域、基础上下文档，按调用开始时刻取当时生效的价格；与实际经订阅还是 API
+  调用无关。claude 的快速模式按 fast 档计。
+- **用量**：三家口径统一为互不重叠的计价项（input、缓存读、缓存写、output；推理 token
+  含在 output 内）。超时被终止、出错或 CLI 未输出用量的调用显示“—”，不做估算。
+  `run.json` 里没有用量的记录从 `.txt` 转录解析，不回写 `run.json`。
+- **价格来源**：公开仓库 [meomeo-dev/llm-pricing-catalog](https://github.com/meomeo-dev/llm-pricing-catalog)
+  的 Release 附件（`prices.csv`、`model_identifiers.csv`）。`config/pricing-catalog.lock.json`
+  锁定 Release tag 与各附件的 sha256，附件缓存在 `data/pricing/<tag>/`，运行时不联网。
+
+```bash
+pnpm pricing:sync            # 按锁文件下载并校验（pnpm install 时自动执行）
+pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后提交锁文件）
+```
+
+**预算**：配置 `budget.perRoundUsd` 与 `budget.perDayUsd` 后，每次发起调用前按该目标
+最近 10 次（7 天内）的平均成本预估并占位，会超出任一上限的调用不发起，原因记入
+`run.json` 的 `budgetStop` 并显示在执行状态面板；调用结束后以实际成本结算。已发起的
+调用会跑完，因此实际花费可能略超上限。近 24 小时已达每日上限时整轮不开始，手动执行
+与定时调度都会报出原因。没有历史成本或无法计价的调用按 0 计，不受上限约束。
+“跑一次”面板按所选范围与题目显示预计成本与剩余额度；`pnpm preflight` 显示整轮的预计。
+
+## 设计要点
+
+CLI 能力探测与强度折叠、考题与考场规则分离、每次调用一个干净工作目录、SVG 净化、失败
+分类与诊断、三家 CLI 的调用方式及其可比性差异，见 [`docs/design-notes.md`](docs/design-notes.md)。
+
+## 目录结构
+
+各目录的职责、运行产物的文件布局与 `runId` 规则见
+[`docs/development.md`](docs/development.md#目录结构)。
+
+## 开发
+
+```bash
+pnpm lint   # tsc 类型检查，含 test/
+pnpm test   # node:test 单元测试，不调用 CLI、不读本机 data/
+```
+
+新增一家 CLI 的步骤、测试范围与测试依赖（jsdom）的选型记录见
+[`docs/development.md`](docs/development.md)。
+
+## 许可证
+
+[MIT](LICENSE)

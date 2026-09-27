@@ -1,0 +1,40 @@
+import type { NextConfig } from "next";
+
+/**
+ * 页面的安全响应头。脚本与样式允许同源内联：Next.js 的水合脚本是内联的，
+ * 去掉 'unsafe-inline' 需要 nonce 中间件。`/art` 返回原始 SVG，自带更严的沙箱策略，
+ * 不套本表。
+ */
+const DEV = process.env.NODE_ENV === "development";
+
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  // 开发模式的热更新运行时靠 eval 与 WebSocket；生产构建没有
+  `script-src 'self' 'unsafe-inline'${DEV ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  `connect-src 'self'${DEV ? " ws: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*" : ""}`,
+  "frame-src 'self'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "no-referrer" },
+];
+
+// 页面每次动态读取 data/ 下的运行结果，因此不启用静态导出（output: "export"）
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  async headers() {
+    return [{ source: "/((?!art/).*)", headers: SECURITY_HEADERS }];
+  },
+};
+
+export default nextConfig;

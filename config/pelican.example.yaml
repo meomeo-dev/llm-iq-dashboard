@@ -1,0 +1,110 @@
+# 鹈鹕自行车基准的起步配置（starter）。
+#
+# config/pelican.config.yaml 不存在时，首次加载会把本文件复制过去；之后只改那一份，
+# 它不入库，本文件保持为起步模板。起步矩阵刻意取便宜的组合：三家各一个轻量模型、
+# low 强度、两道题，一轮 6 次调用，按 API 等价成本约 $0.5。确认调用链都通了，再按
+# 需要加模型、加强度、加题目，并同步调整下方 budget。
+#
+# 某家 CLI 没装或没登录时，每轮开始前的预检会拦下它的调用，看板上给出安装或登录
+# 命令；不打算用的 CLI 直接删掉对应的 targets 项即可。`pnpm preflight` 可随时自查。
+
+schedule:
+  enabled: true
+
+  # cron 与 intervalMinutes 二选一，cron 优先。五段式：分 时 日 月 周。
+  # 起步为每天 9 点一轮。自动任务默认关闭，在看板工具栏上打开“自动任务”后才会
+  # 按这个节奏跑（没有调度器在运行时看板会拉起一个）。
+  cron: "0 9 * * *"
+  # intervalMinutes: 360
+
+  # cron 的时区；留空则跟随本机时区。
+  # timezone: "Asia/Shanghai"
+
+  # 调度器启动时是否立刻先跑一轮。
+  runOnStart: false
+
+run:
+  # 本轮要跑的提示词条目，登记在 src/core/prompt.ts，也可在下方 prompts: 自定义。
+  # 每轮的调用次数 = 提示词条数 × 启用的 targets 数。
+  # - classic-v1 / upgraded-v2  Simon Willison 公开发布的原文，逐字不改，与外部公开结果对齐。
+  # - leijun-v1                 雷军骑自行车，包含输入的参考图片（Image-to-SVG 本地测试题）。
+  # - 前沿硬核工程与科技视觉：
+  #     * jwst-deployment-v1    航天前沿：韦伯空间望远镜主镜与5层遮阳帆空间展开架构
+  #     * tokamak-plasma-v1     核物理前沿：托卡马克核聚变 D 形真空室与磁约束等离子体芯（动态）
+  #     * gaa-nanosheet-v1      半导体前沿：2nm GAA 全环绕栅极纳米片晶体管与背面供电（BSPDN）
+  #     * crispr-cas9-rloop-v1  蛋白质与医疗前沿：CRISPR-Cas9 基因剪刀与靶向 DNA R-Loop 解旋复合体
+  #     * pulsar-jet-v1         天体物理与纯特效：脉冲星相对论准直双向喷流与灯塔风星云（动态）
+  # - 四大名著候选集：
+  #     * shuihu-v1 / xiyou-v1 / sanguo-v1 / honglou-v1
+  #     四大名著候选集，按下方 rotation 的周期抽一条，避免背答案。
+  promptIds:
+    - classic-v1
+    - jwst-deployment-v1
+    - tokamak-plasma-v1
+    - gaa-nanosheet-v1
+    - crispr-cas9-rloop-v1
+    - pulsar-jet-v1
+
+  # 候选集多久换一次：day 为同一天各轮共用一条（按 timezone 划分），run 为每轮都换。
+  rotation:
+    period: day
+    timezone: UTC
+
+  # 同时在跑的模型数上限。按模型分道：不同模型并行，同一模型的各强度、各提示词
+  # 在自己的道里串行。取启用的模型数即全部并行。
+  concurrency: 3
+
+  # 全局默认超时（毫秒）。
+  defaultTimeoutMs: 1800000
+
+  # 按 CLI 覆盖超时。
+  # 优先级：targets[].timeoutMs > timeoutByEffort[effort] > timeoutByCli[cli] > defaultTimeoutMs。
+  timeoutByCli:
+    claude: 600000
+    agy: 600000
+    codex: 600000
+
+  # 按思考强度分段覆盖超时：high 及以下（low, medium, high）600 秒；high 以上（xhigh, max, ultra）1800 秒。
+  timeoutByEffort:
+    low: 600000
+    medium: 600000
+    high: 600000
+    xhigh: 1800000
+    max: 1800000
+    ultra: 1800000
+
+# 成本上限，按 API 等价成本（厂商自营 API 标价折算，与是否经订阅调用无关）计。
+# 每次发起调用前按该目标最近几次的平均成本预估，超出上限的调用不发起；已发起的
+# 调用会跑完，因此实际花费可能略超。近 24 小时已达每日上限时整轮不开始。
+# 没有历史成本（首次运行）或价格目录里查不到的调用按 0 计，不受上限约束。
+# 删掉这一段即不限。
+budget:
+  perRoundUsd: 2
+  perDayUsd: 10
+
+# 历史保留：只留最近 days 天的轮次，更早的整轮目录在每轮开始时删除。
+# 删掉这一段即全部保留。
+retention:
+  days: 30
+
+# 被测矩阵：每一项是一个 CLI × 模型 × 思考强度的组合，也就是看板上的一格。
+# effort 统一取 low / medium / high / xhigh / max / ultra 六档；各模型实际支持哪些档位
+# 由 CLI 实时探测（见 /config 页），请求超出时折叠到不高于它的最高可用档。
+# enabled: false 可临时停用某一项而不必删除配置。
+targets:
+  - cli: claude
+    model: claude-sonnet-5
+    effort: low
+    label: Claude Sonnet 5 · low
+
+  # agy 的 gemini-* 填基名，适配器传 `--model <基名> --effort <档>`；
+  # 无强度变体的模型（如 claude-sonnet-4-6）effort 仅用于看板分组。
+  - cli: agy
+    model: gemini-3.8-flash
+    effort: low
+    label: Gemini 3.8 Flash · low
+
+  - cli: codex
+    model: gpt-6-luna
+    effort: low
+    label: Codex gpt-6-luna · low

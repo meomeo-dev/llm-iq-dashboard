@@ -1,0 +1,56 @@
+# 用法见 docs/deploy-docker.md：
+#   docker compose up -d --build              （在仓库目录执行）
+#   docker exec -it llm-iq-runner pnpm onboard  （任意目录执行）
+#   docker exec -it llm-iq-runner pnpm pair
+#
+# 两个容器共用一个镜像：web 只跑看板、开端口、只挂数据卷；runner 装三家 CLI、挂凭据卷、
+# 不开端口，负责调度与执行。看板发起的一轮经数据卷里的请求文件交给 runner。
+# 项目名与容器名固定，不随克隆目录名变化：卷名恒为 llm-iq-dashboard_*。
+name: llm-iq-dashboard
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: llm-iq-dashboard
+    container_name: llm-iq-web
+    command: ["web"]
+    init: true
+    restart: unless-stopped
+    environment:
+      # 不在本进程执行调用、不拉起调度器，一切交给 runner
+      PELICAN_RUNNER: external
+    ports:
+      # 默认只对本机开放；公网暴露的接法见 docs/security/public-exposure-design.md §4.1。
+      # 宿主机 3000 端口被占用时用 PELICAN_PORT 换一个，如 PELICAN_PORT=3100 docker compose up -d
+      - "127.0.0.1:${PELICAN_PORT:-3000}:3000"
+    volumes:
+      - pelican-data:/app/data
+
+  runner:
+    image: llm-iq-dashboard
+    pull_policy: never
+    container_name: llm-iq-runner
+    command: ["runner"]
+    # 执行器拉起各家 CLI；由 init 回收它们退出后的僵尸进程
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - web
+    volumes:
+      - pelican-data:/app/data
+      - cli-tools:/opt/clis
+      - claude-auth:/home/node/.claude
+      - codex-auth:/home/node/.codex
+      - agy-auth:/home/node/.gemini
+
+volumes:
+  # 运行记录、配置（pelican.config.yaml）、价格目录、自动任务开关、设备表与请求文件
+  pelican-data:
+  # 三家 CLI 的程序文件，runner 首次启动时安装；删掉后下次启动会重新下载，不影响登录态
+  cli-tools:
+  # 各家 CLI 的登录态；删掉某个卷即退出对应 CLI 的登录
+  claude-auth:
+  codex-auth:
+  agy-auth:

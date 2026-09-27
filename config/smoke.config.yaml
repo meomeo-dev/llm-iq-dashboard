@@ -1,0 +1,46 @@
+# 冒烟配置（smoke test）：验证三家 CLI 的调用链、候选集抽取与强度折叠是否仍然有效。
+# 用法：PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once
+
+schedule:
+  enabled: false
+
+run:
+  # 两条并行，正好对照：同一模型在固定题面与轮换题面下的表现差异
+  promptIds:
+    - classic-v1
+    - xiyou-v1
+  # 并发按模型分道：不同模型并行，同一模型串行。两个 codex 模型同时在跑，
+  # 用来验证 codex app-server 在并发调用下不卡死
+  concurrency: 4
+  defaultTimeoutMs: 300000
+  timeoutByCli:
+    codex: 600000
+
+targets:
+  - cli: claude
+    model: claude-sonnet-5
+    effort: medium
+    label: Claude Sonnet 5 · medium
+
+  - cli: codex
+    model: gpt-6-astra
+    effort: low
+    label: Codex gpt-6-astra · low
+
+  - cli: codex
+    model: gpt-6-luna
+    effort: low
+    label: Codex gpt-6-luna · low
+
+  # 请求 max，但 gemini-3.8-flash 只提供到 high，用来验证折叠发生且被记录。
+  # 这个组合常把 SVG 写成文件而非内联，也用来验证从事件流取回作品。
+  - cli: agy
+    model: gemini-3.8-flash
+    effort: max
+    label: Gemini 3.8 Flash · 请求 max
+
+  # 无强度变体的模型：不传 --effort，卡片上标为“强度不可调”
+  - cli: agy
+    model: claude-sonnet-4-6
+    effort: low
+    label: Claude Sonnet 4.6 (agy) · low

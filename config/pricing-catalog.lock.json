@@ -1,0 +1,8 @@
+{
+  "repo": "meomeo-dev/llm-pricing-catalog",
+  "tag": "data-2026-09-25-5cc9926",
+  "assets": {
+    "prices.csv": "0d0ab24475eb731418fd8f21f6d4b6dc469955878c7d6a034f9ab1ac0aea4d4d",
+    "model_identifiers.csv": "384991579d2bd069e871d679bc2dfc251f1c132d40de719159d827d958f12224"
+  }
+}
