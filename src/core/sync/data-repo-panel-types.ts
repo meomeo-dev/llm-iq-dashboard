@@ -48,7 +48,7 @@ export interface DataRepoStatus {
     incomplete: number;
     /** 未完成且开始不足 6 小时的轮次数：仍在执行，结束后自动导出 */
     running?: number;
-    /** 未完成且开始超过 6 小时的轮次数：进程中途退出，不参与发布，保留期两倍后自动清理 */
+    /** 未完成且开始超过 6 小时的轮次数：进程中途退出，由执行进程启动时收尾或保留策略清理，面板不展示 */
     interrupted?: number;
     /** 台账 skipped/rejected 且本地目录仍在的 runId，新的在前 */
     rejected?: string[];

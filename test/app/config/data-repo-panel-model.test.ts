@@ -120,13 +120,14 @@ test("deriveHealthStatus - 健康等级推导", async (t) => {
     assert.strictEqual(running.level, "healthy");
     assert.strictEqual(running.reason, "1 轮正在执行，结束后自动导出");
 
+    // 中断的轮次用户无法处理，面板既不告警也不计数
     const statusInterrupted = createBaseStatus();
     statusInterrupted.local.incomplete = 2;
     statusInterrupted.local.interrupted = 2;
     const interrupted = deriveHealthStatus(statusInterrupted);
     assert.strictEqual(interrupted.level, "healthy");
-    assert.match(interrupted.reason, /2 轮中断未完成/);
-    assert.match(deriveCountsSummary(statusInterrupted).localText, /中断 2 轮/);
+    assert.strictEqual(interrupted.reason, "数据仓状态健康");
+    assert.doesNotMatch(deriveCountsSummary(statusInterrupted).localText, /中断/);
   });
 });
 
