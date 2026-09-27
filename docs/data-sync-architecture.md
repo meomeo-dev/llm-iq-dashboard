@@ -130,7 +130,7 @@ sequenceDiagram
     end
 ```
 
-1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published` 与 `skipped/unpublishable-prompt` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
+1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published`、`skipped/unpublishable-prompt` 与 `skipped/empty` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
 2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
 3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；非预演时不可发布与被拒绝轮次写入台账 `skipped` 记录；
 4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交；
@@ -149,10 +149,11 @@ sequenceDiagram
 | `exported` | - | 本地脱敏完成，已写入数据仓工作副本并生成 Git 提交 | `exportedAt`, `commit`, `redactions` | 推送后祖先校验转为 `published` |
 | `published` | - | 已推送到远程仓库，且经远程追踪分支祖先比对确认已包含 | `exportedAt`, `commit`, `publishedAt`, `redactions` | 过期后由修剪守卫安全删除 |
 | `skipped` | `unpublishable-prompt` | 整轮题目均在 `UNPUBLISHABLE_PROMPT_IDS` 清单中（如测试题 `leijun-v1`），跳过导出 | `skippedAt`, `reason` | 过期后由修剪守卫安全删除 |
+| `skipped` | `empty` | 轮次结束时一次调用都没完成（如刚开始就被取消），没有可发布内容 | `skippedAt`, `reason` | 过期后由修剪守卫安全删除 |
 | `skipped` | `rejected` | 命中敏感绝对路径、私钥或令牌样式规则，泄漏扫描拦截拒绝发布 | `skippedAt`, `reason`, `details`（仅含文件与规则名） | **永不自动删除**，需人工核实处理 |
 | `skipped` | `abandoned` | 残轮（缺 `run.json` 或 `inProgress: true` 超过保留期两倍），自动标记废弃 | `skippedAt`, `reason` | 标记的同时物理删除释放空间 |
 
-> **注**：已是 `exported` 或 `published` 的记录严禁被覆盖为 `skipped`；处于 `skipped` 的轮次在后续同步时会重新评估，若题目或扫描规则变更后判定为可导出，则正常导出并覆盖为 `exported`。
+> **注**：执行进程（runner / scheduler）启动时先由 `src/core/run/recover-interrupted.ts` 收尾上次没跑完的轮次——有 `run.json` 的按已停止收尾并自动导出，只有 `progress.json` 的空目录删除——因此 `abandoned` 只剩有产物却缺 `run.json` 的目录。已是 `exported` 或 `published` 的记录严禁被覆盖为 `skipped`；处于 `skipped` 的轮次在后续同步时会重新评估，若题目或扫描规则变更后判定为可导出，则正常导出并覆盖为 `exported`。
 
 ### 3.3.2 历史轮次修剪分级表（Tiered Pruning Matrix）
 
@@ -289,7 +290,7 @@ meomeo-dev/llm-iq-data/
    * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--confirm-published`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
 3. **执行引擎与修剪守护**：
    * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
-   * `src/core/retention.ts`：实施修剪分级守卫（过期且 published 或 skipped/unpublishable-prompt 执行物理删除，rejected 永不自动删除，残轮超 2 倍标记 abandoned 后清理，未发布轮次安全熔断保留）。
+   * `src/core/retention.ts`：实施修剪分级守卫（过期且 published、skipped/unpublishable-prompt 或 skipped/empty 执行物理删除，rejected 永不自动删除，残轮超 2 倍标记 abandoned 后清理，未发布轮次安全熔断保留）。
 4. **所有者看板网页入口与 API（ACR-010）**：
    * `GET /api/data-repo`：所有者聚合查询数据仓工作副本健康度、清单、台账与本地未同步轮次；
    * `POST /api/data-repo/sync`：所有者触发同步动作，支持 dry-run / export / confirm / push 模式，带并发互斥锁与 push 二次提交确认；

@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | done |
 | 日期 | 2026-09-27 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：所有者希望在网页上完成数据仓同步，并查看数据健康与同步状态，不再手输 CLI |
@@ -42,7 +42,27 @@
 | src/bin/runner.ts | modify | 执行器认领 `sync-data` 请求，调用 `syncDataRepo` / `confirmPublished` 并写回报告 | no |
 | src/app/api/data-repo/route.ts | add | `GET`：所有者会话下返回聚合状态；只读部署 403 | no |
 | src/app/api/data-repo/sync/route.ts | add | `POST`：所有者动作，按部署形态就地执行或经请求通道交给执行器；`push` 模式要求请求体携带面板生成的确认令牌与轮次清单摘要；容器部署下 `push` 返回 409 并说明改在宿主机推送 | no |
-| src/app/config/DataRepoPanel.tsx | add | `/config` 页新增「数据仓」区块：状态卡片、被拦截轮次列表、四个动作按钮；推送前弹出确认框列出将公开的轮次 | no |
+| src/app/config/DataRepoPanel.tsx | add | `/config` 页新增「数据仓」区块：状态卡片、被拦截轮次列表、动作区；推送前弹出确认框列出将公开的轮次 | no |
+| src/app/config/DataRepoCards.tsx | add | 面板拆出的状态卡片、问题清单与推送确认框 | no |
+| src/app/config/DataRepoIssuesList.tsx | add | 面板拆出的状态卡片、问题清单与推送确认框 | no |
+| src/app/config/DataRepoPushDialog.tsx | add | 面板拆出的状态卡片、问题清单与推送确认框 | no |
+| src/app/config/DataRepoPipeline.tsx | add | 三段流水线动作区与单一主按钮（最初为四个并列按钮 DataRepoActionsBar，394b966 改为流水线） | no |
+| src/app/config/data-repo-pipeline-model.ts | add | 流水线阶段、主按钮与推送能力判断的纯函数 | no |
+| src/app/config/config-data-repo.css | add | 面板样式 | no |
+| src/app/config/config-data-repo-pipeline.css | add | 面板样式 | no |
+| src/app/config/config.css | modify | 面板样式 | no |
+| src/app/api/data-repo/sync/sync-request.ts | add | 同步请求体校验与确认令牌比对 | no |
+| src/core/sync/data-repo-action-lock.ts | add | 数据仓动作互斥锁（文件锁 + 进程内标记），面板动作与修剪共用 | no |
+| src/core/sync/data-repo-index.ts | add | 清单与日索引读取抽成共享模块，状态聚合与远程数据源共用 | no |
+| src/core/data-repo/contract.ts | modify | 清单与日索引读取抽成共享模块，状态聚合与远程数据源共用 | no |
+| src/core/data-source/remote.ts | modify | 清单与日索引读取抽成共享模块，状态聚合与远程数据源共用 | no |
+| src/core/deploy-mode.ts | modify | 部署形态判断补充只读与分容器 | no |
+| package.json | modify | 冒烟断言：只读模式下数据仓接口 403 | no |
+| scripts/showcase-smoke/assertions.ts | modify | 冒烟断言：只读模式下数据仓接口 403 | no |
+| README.md | modify | 面板入口与数据仓规则说明 | no |
+| CHANGELOG.md | modify | 面板入口与数据仓规则说明 | no |
+| AGENTS.md | modify | 面板入口与数据仓规则说明 | no |
+| docs/deploy-public-showcase.md | modify | 面板入口与数据仓规则说明 | no |
 | src/app/config/data-repo-panel-model.ts | add | 面板的状态归约、确认令牌与展示文案纯函数 | no |
 | src/app/config/use-data-repo-actions.ts | add | 调用同步接口并轮询结果的 hook | no |
 | src/app/config/page.tsx | modify | 装载数据仓状态并渲染面板 | no |
@@ -67,11 +87,11 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
-| `pnpm test` | 单元与集成测试 | pass | - | | 变更前 505 项 |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式下新接口 403、面板不渲染 | pass | - | | 变更前尚无新接口断言 |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | ad3a5ce | |
+| `pnpm test` | 单元与集成测试 | pass | pass | ad3a5ce | 变更前 505 项，变更后 686 项 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | ad3a5ce | |
+| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式下新接口 403、面板不渲染 | pass | pass | ad3a5ce | 变更前尚无新接口断言 |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | ad3a5ce | |
 
 ## 分步实施
 
@@ -108,6 +128,6 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §2 §4 §6 | 看板与执行器的请求类型增加 sync-data；数据仓状态与动作的网页入口；推送须经面板二次确认，容器部署下不可推送 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-010 | 待回填 |
-| ADR（/adr-curator） | 不适用：非难逆转，按步 revert 即恢复 | 待回填 |
+| architecture.md §2 §4 §6 | 看板与执行器的请求类型增加 sync-data；数据仓状态与动作的网页入口；推送须经面板二次确认，容器部署下不可推送 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-010 | 已回填 |
+| ADR（/adr-curator） | 不适用：非难逆转，按步 revert 即恢复 | 已回填 |

@@ -2,13 +2,13 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | done |
 | 日期 | 2026-09-27 |
 | 变更类型 | deployment-change |
 | 触发来源 | 口头：所有者要求在网页上完成单次运行、导出提交与推送发布，授权像 Vercel 一样在浏览器里完成，不用终端、不手工配置令牌 |
 | 基线 | ARCH-001 |
 | 影响章节 | §6 §8 |
-| 改造面上限 | 6 个模块（源码 3 个：src/core、src/app、src/bin；docker/ 只新增一个 askpass 脚本；test/core 与 test/app 只新增测试，不改既有断言） |
+| 改造面上限 | 9 个模块（源码 3 个：src/core、src/app、src/bin；docker/ 下镜像、忽略清单、入口脚本与 askpass 脚本各计 1 个，都是同一部署细节、随同一 commit 回滚；test/core 与 test/app 只新增测试，不改既有断言） |
 | 取代 / 被取代 | 无 |
 
 ## 动机
@@ -61,6 +61,16 @@
 | src/core/github-auth/credential-store.ts | add | 凭据目录 `PELICAN_SECRETS_DIR`（默认 `{数据目录}/secrets`）内原子读写，目录 700、文件 600；访问令牌单独成文件供 askpass 读取 | no |
 | src/core/github-auth/push-env.ts | add | 生成仅对推送生效的 git 环境：`GIT_ASKPASS`、`GIT_TERMINAL_PROMPT=0`、`-c credential.helper=` 清空其它 helper；远程须为 `https://github.com/` 且与授权仓库一致 | no |
 | docker/git-askpass.sh | add | 用户名固定输出 `x-access-token`，密码从访问令牌文件读取 | no |
+| docker/Dockerfile | modify | 镜像内建 `/app/secrets` 并归属 node | no |
+| docker/Dockerfile.dockerignore | modify | askpass 脚本不被 dockerignore 排除 | no |
+| docker/entrypoint.sh | modify | 入口修正凭据目录权限 | no |
+| next.config.ts | modify | CSP `form-action` 允许提交到 github.com（清单注册表单） | no |
+| src/app/api/data-repo/github/github-helpers.ts | add | 授权路由共用：以 Host 头推导回跳地址、state cookie 读写 | no |
+| src/core/github-auth/index.ts | add | 模块出口与连接状态读取 | no |
+| src/core/github-auth/status.ts | add | 模块出口与连接状态读取 | no |
+| src/app/config/DataRepoPanel.tsx | modify | 装载 GitHub 卡片，台账文案改为"待发布 N 轮，已发布 M 轮" | no |
+| src/app/config/DataRepoCards.tsx | modify | 装载 GitHub 卡片，台账文案改为"待发布 N 轮，已发布 M 轮" | no |
+| src/app/config/config-data-repo.css | modify | 装载 GitHub 卡片，台账文案改为"待发布 N 轮，已发布 M 轮" | no |
 | src/core/sync/data-repo-git.ts | modify | `pushCurrentBranch` 接受可选推送环境 | no |
 | src/core/requests.ts | modify | 新增请求 `github-app-convert`、`github-token-exchange`、`github-disconnect`；结果只含 `slug`、`login`、状态，不含任何密钥 | no |
 | src/core/sync/data-repo-status.ts | modify | 状态增加 `github`（未连接 / 应用已建未安装 / 已连接 {login} / 需重新连接）与 `pushCapability`（`github-app` / `host-credentials` / `unavailable`） | no |
@@ -94,11 +104,11 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
-| `pnpm test` | 单元与集成测试 | pass | - | | 变更前 566 项 |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式下数据仓与 GitHub 授权接口 403 | pass | - | | |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | ad3a5ce | |
+| `pnpm test` | 单元与集成测试 | pass | pass | ad3a5ce | 变更前 566 项，变更后 686 项 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | ad3a5ce | |
+| `pnpm showcase:smoke` | 端到端冒烟：只读远程模式下数据仓与 GitHub 授权接口 403 | pass | pass | ad3a5ce | |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | ad3a5ce | |
 
 ## 分步实施
 
@@ -135,6 +145,6 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §6 §8 | 执行器可持有经网页授权、仅限数据仓的 GitHub App 用户令牌（专用卷），web 仍无凭据；推送须经面板确认 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-011 | 待回填 |
-| ADR（/adr-curator） | 不适用：撤销授权并删除应用即恢复，非难逆转 | 待回填 |
+| architecture.md §6 §8 | 执行器可持有经网页授权、仅限数据仓的 GitHub App 用户令牌（专用卷），web 仍无凭据；推送须经面板确认 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-011 | 已回填 |
+| ADR（/adr-curator） | 不适用：撤销授权并删除应用即恢复，非难逆转 | 已回填 |

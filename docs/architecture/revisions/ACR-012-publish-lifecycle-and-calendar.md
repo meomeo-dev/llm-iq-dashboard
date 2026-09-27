@@ -2,13 +2,13 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | done |
 | 日期 | 2026-09-27 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：阶段审查发现不可发布轮次永不修剪、面板误报待导出，展台日历请求量随天数增长 |
 | 基线 | ARCH-001 |
 | 影响章节 | §4 |
-| 改造面上限 | 4 个模块（源码 2 个：src/core、src/app；test/core 与 test/app 只新增测试，不改既有断言） |
+| 改造面上限 | 5 个模块（源码 3 个：src/core、src/app、src/bin——执行器与调度器入口各加一行启动收尾调用；test/core 与 test/app 只新增测试，不改既有断言） |
 | 取代 / 被取代 | 无 |
 
 ## 动机
@@ -34,7 +34,14 @@
 
 | 路径 | 动作 | 改什么 | 影响既有行为 |
 |---|---|---|---|
-| src/core/sync/sync-ledger.ts | modify | `SyncStatus` 增加 `skipped`，记录 `reason`（`unpublishable-prompt` / `rejected` / `abandoned`）与 `skippedAt`；旧台账无该字段时兼容读取 | no |
+| src/core/sync/sync-ledger.ts | modify | `SyncStatus` 增加 `skipped`，记录 `reason`（`unpublishable-prompt` / `rejected` / `abandoned` / `empty`）与 `skippedAt`；旧台账无该字段时兼容读取 | no |
+| src/core/sync/ledger-skip.ts | add | 台账 skipped 记录写入辅助：已导出 / 已发布的记录不被覆盖 | no |
+| src/core/sync/export-run.ts | modify | 一次调用都没完成的轮次跳过导出（`empty`） | yes |
+| src/core/run/recover-interrupted.ts | add | 执行进程启动时收尾上次没跑完的轮次（按已停止收尾、保留已完成调用、自动导出），空目录删除 | yes |
+| src/bin/runner.ts | modify | 启动时调用收尾 | yes |
+| src/bin/scheduler.ts | modify | 启动时调用收尾 | yes |
+| src/core/types.ts | modify | `cancelledAt` 语义扩展到重启收尾 | no |
+| src/app/config/DataRepoCards.tsx | modify | 展示不可发布 / 被拒绝计数 | no |
 | src/core/sync/sync-orchestrator.ts | modify | 非预演同步时，把 `unpublishable-prompt` 与 `rejected` 结果写入台账为 `skipped`；`rejected` 不自动清理，需人工处理 | yes |
 | src/core/retention.ts | modify | 过期且 `skipped/unpublishable-prompt` 可删；过期超过保留期两倍仍 `inProgress` 或缺 `run.json` 的残轮标记 `abandoned` 后可删；`rejected` 永不自动删，汇总记日志 | yes |
 | src/core/sync/data-repo-status.ts | modify | `pending` 排除 `skipped`；新增 `skipped` 计数与 `rejected` 清单 | yes |
@@ -59,11 +66,11 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
-| `pnpm test` | 单元与集成测试 | pass | - | | 变更前 569 项 |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `pnpm showcase:smoke` | 端到端冒烟：远程日历与首页渲染 | pass | - | | |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | ad3a5ce | |
+| `pnpm test` | 单元与集成测试 | pass | pass | ad3a5ce | 变更前 569 项，变更后 686 项 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | ad3a5ce | |
+| `pnpm showcase:smoke` | 端到端冒烟：远程日历与首页渲染 | pass | pass | ad3a5ce | |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | ad3a5ce | |
 
 ## 分步实施
 
@@ -100,6 +107,6 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §4 | 台账三态与修剪分级；远程日历拉取范围 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-012 | 待回填 |
-| ADR（/adr-curator） | 不适用：按步 revert 即恢复，非难逆转 | 待回填 |
+| architecture.md §4 | 台账三态与修剪分级；远程日历拉取范围 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-012 | 已回填 |
+| ADR（/adr-curator） | 不适用：按步 revert 即恢复，非难逆转 | 已回填 |

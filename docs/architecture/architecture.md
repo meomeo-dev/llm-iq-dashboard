@@ -20,6 +20,9 @@
 | [ACR-007](revisions/ACR-007-owner-pairing-auth.md) | 2026-09-27 | 所有者配对登录，公开视角只读 | §1 §2 §6 |
 | [ACR-008](revisions/ACR-008-split-web-runner.md) | 2026-09-27 | 看板与执行器分容器，凭据只在执行器 | §2 §8 |
 | [ACR-009](revisions/ACR-009-public-data-repo-showcase.md) | 2026-09-27 | 运行结果脱敏同步到公开数据仓，只读展台读远程数据 | §4 §6 §8 |
+| [ACR-010](revisions/ACR-010-web-data-repo-panel.md) | 2026-09-27 | 配置页数据仓面板：状态聚合、预演 / 导出 / 确认 / 推送经请求通道交给执行器 | §2 §4 §6 |
+| [ACR-011](revisions/ACR-011-data-repo-push-token.md) | 2026-09-27 | 网页授权 GitHub App，执行器持仅限数据仓的用户令牌完成推送 | §6 §8 |
+| [ACR-012](revisions/ACR-012-publish-lifecycle-and-calendar.md) | 2026-09-27 | 台账 skipped 状态与修剪分级，中断轮次启动收尾，展台日历拉取上界 | §4 |
 
 ## 0. 技术选型总览
 
@@ -79,13 +82,14 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 | dashboard | web | `pnpm dashboard:prod`（生产，:3000）/ `pnpm dev --port 3001`（开发） | 看板读者、配置维护者 | timeline, run-status, run-control, config-editor, art-viewer, export |
 | scheduler | worker | `pnpm scheduler`（`src/bin/scheduler.ts`） | 无人值守 | schedule, auto-run-switch, orchestration, retention |
 | run-once | cli | `pnpm run:once`（`src/bin/run-once.ts`） | 仓库所有者 | orchestration |
-| runner | worker | `pnpm runner`（`src/bin/runner.ts`），分容器部署时代替 scheduler | 无人值守 | schedule, requests, orchestration |
+| runner | worker | `pnpm runner`（`src/bin/runner.ts`），分容器部署时代替 scheduler | 无人值守 | schedule, requests, orchestration, sync, github-auth |
 | pair | cli | `pnpm pair`（`src/bin/pair.ts`） | 仓库所有者 | auth |
 
 各端都是 TypeScript：看板为 Next.js 15 + React 19；其余为 Node 22 + tsx，与看板共用 `src/core`。
 看板分两个视角（ACR-007）：公开只读结果；配对过的浏览器是所有者，可配置、跑一次与开关自动任务。
 分容器部署时看板不在进程内执行调用（`PELICAN_RUNNER=external`），把请求写成 `data/requests/`
-下的文件交给 runner（ACR-008）。
+下的文件交给 runner（ACR-008）。数据仓动作（预演 / 导出 / 确认发布 / 推送）、CLI 就绪检查与
+GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有动作互斥锁与结果（ACR-010、ACR-011）。
 
 ## 3. 领域模块与硬约束
 
@@ -111,12 +115,17 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   `attempts`，第一次的原因记为 `budgetStop`。
 - 运行态：`auto-run.json`（自动任务开关，不存在即关闭）、`scheduler.json`（调度器 pid）、
   `variable-state.json`（候选集与变量的轮换状态）、`capabilities.json`。
-- JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制，修剪只删已发布到数据仓的轮次
-  （ACR-009）。
+- JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制，修剪按台账分级：过期且
+  `published`、`skipped/unpublishable-prompt`、`skipped/empty` 删除；`skipped/rejected` 永不自动删；
+  缺 `run.json` 的残轮超过保留期两倍记 `skipped/abandoned` 后删除；其余未发布轮次保留（ACR-009、ACR-012）。
+- 执行进程启动时先收尾上次没跑完的轮次：有 `run.json` 的按已停止收尾（保留已完成调用）并自动导出，
+  只有 `progress.json` 的空目录删除（ACR-012）。
 - 公开数据仓 `meomeo-dev/llm-iq-data`：`pnpm sync:data` 把已结束轮次脱敏导出为
   `runs/YYYY/MM/DD/<runId>/`（UTC 分区，只追加），不含原始转录；布局契约是
-  `src/core/data-repo/contract.ts`。台账 `sync-state.json` 记 exported / published，推送并确认
-  远端包含后才为 published。仅供本地测试的题目永不发布（见仓库根 `AGENTS.md`）。
+  `src/core/data-repo/contract.ts`。台账 `sync-state.json` 记 exported / published / skipped（原因
+  `unpublishable-prompt` / `rejected` / `abandoned` / `empty`），推送并确认远端包含后才为 published；
+  一次调用都没完成的轮次不导出。仅供本地测试的题目永不发布（见仓库根 `AGENTS.md`）。
+  只读展台的日历只拉取最近 62 天的日索引，更早按清单计数（ACR-012）。
 
 ## 5. 配置与运行参数
 
@@ -137,6 +146,9 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
 - 发布前对 run.json 与 SVG 做泄漏规则与凭据指纹双重扫描，命中的作品不发布；数据仓 CI 再校验一次。
 - `PELICAN_READONLY=1` 在服务端强制只读：不承认会话、写接口 403、配对 404、不拉起调度器（ACR-009）。
+- 数据仓推送凭据是所有者在浏览器里注册并安装的 GitHub App 用户令牌（仅授权数据仓一个仓库），
+  只存在 runner 专用卷 `runner-secrets`（目录 700 / 文件 600），经 `GIT_ASKPASS` 只在推送时交给 git；
+  web 容器不挂该卷、不持有任何凭据。推送前面板列出将公开的提交由所有者确认（ACR-010、ACR-011）。
 
 ## 7. 目录结构
 
@@ -191,8 +203,9 @@ llm_iq_dashboard/
   run.json，作品由服务端 `/art` 代理；只展示、不运行评测，适合 serverless 托管（如 Vercel）。
   `pnpm showcase:smoke` 端到端自检，`/api/health` 报告数据仓连通性；见
   `docs/deploy-public-showcase.md`。
-- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner，容器只导出
-  与本地提交、不持有 GitHub 凭据；推送由宿主机完成，容器以 `--confirm-published` 回填发布状态。
+- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner；轮次结束后
+  runner 自动导出并本地提交，推送在配置页数据仓面板确认后由 runner 用 GitHub App 令牌完成
+  （ACR-010、ACR-011）；未连接 GitHub 时仍可在宿主机推送并以 `--confirm-published` 回填发布状态。
 - K8s：no。单机单用户的两个进程。复议条件：需要多人共用一套部署，或常驻进程增加到 5 个以上。
 
 ## 9. 待确认事项
