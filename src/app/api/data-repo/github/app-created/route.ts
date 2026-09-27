@@ -9,7 +9,12 @@ import { readCookie, requireOwner } from "@/core/auth/guard";
 import { SESSION_COOKIE } from "@/core/auth/session";
 import { isReadonly } from "@/core/deploy-mode";
 import { verifyState } from "@/core/github-auth";
-import { getStateCookie, performAppConvert, renderBouncePage } from "../github-helpers";
+import {
+  getStateCookie,
+  performAppConvert,
+  renderBouncePage,
+  requestOrigin,
+} from "../github-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +52,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       302,
     );
   } catch {
-    const redirectUrl = new URL("/config?github=error&reason=app_convert_failed", url.origin);
+    const redirectUrl = new URL("/config?github=error&reason=app_convert_failed", requestOrigin(request));
     return NextResponse.redirect(redirectUrl, 302);
   }
 }

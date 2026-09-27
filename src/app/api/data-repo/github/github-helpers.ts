@@ -31,6 +31,22 @@ export function htmlEscape(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/**
+ * 浏览器实际访问的站点源（协议 + 主机[:端口]）。
+ * 容器内 request.url 反映的是监听地址（如 0.0.0.0:3000），不能用于对外回跳地址；
+ * 以 Host 头为准，反向代理场景取 X-Forwarded-* 头。
+ */
+export function requestOrigin(request: Request): string {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const host = forwardedHost ?? request.headers.get("host");
+  if (!host) {
+    return new URL(request.url).origin;
+  }
+  const proto = forwardedProto ?? new URL(request.url).protocol.replace(":", "");
+  return `${proto}://${host}`;
+}
+
 export function renderBouncePage(request: Request): NextResponse {
   const url = new URL(request.url);
   const target = `${url.pathname}${url.search}`;

@@ -13,6 +13,7 @@ import {
   GITHUB_COOKIE_PATH,
   GITHUB_STATE_COOKIE,
   htmlEscape,
+  requestOrigin,
   resolveExistingApp,
 } from "../github-helpers";
 
@@ -76,8 +77,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return handleExistingAppRedirect(app);
   }
 
-  const reqUrl = new URL(request.url);
-  const origin = reqUrl.origin;
+  const origin = requestOrigin(request);
   const manifest = buildManifest(origin, DEFAULT_REPOSITORY_URL);
   const state = createState();
   const html = renderAutoSubmitForm(state, JSON.stringify(manifest));

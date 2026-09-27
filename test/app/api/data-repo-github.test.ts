@@ -186,6 +186,18 @@ dataRepo:
       assert.ok(setCookie.includes("Path=/api/data-repo/github"));
     });
 
+    it("清单回跳地址以 Host 头为准，而非服务监听地址", async () => {
+      const req = new Request("http://0.0.0.0:3000/api/data-repo/github/connect", {
+        headers: { cookie: `${SESSION_COOKIE}=${sessionCookie}`, host: "localhost:3000" },
+      });
+      const res = await connectGET(req);
+      assert.equal(res.status, 200);
+
+      const html = await res.text();
+      assert.ok(html.includes("http://localhost:3000/api/data-repo/github/app-created"));
+      assert.ok(!html.includes("0.0.0.0"));
+    });
+
     it("已有应用时直接 302 重定向至安装页", async () => {
       await writeGithubApp(
         {

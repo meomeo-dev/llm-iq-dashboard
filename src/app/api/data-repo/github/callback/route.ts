@@ -18,6 +18,7 @@ import {
   getStateCookie,
   performTokenExchange,
   renderBouncePage,
+  requestOrigin,
   resolveExistingAppSlug,
 } from "../github-helpers";
 
@@ -49,30 +50,30 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   if (state) {
     if (!verifyState(expectedState, state)) {
-      return errorRedirect(url.origin, "state_mismatch");
+      return errorRedirect(requestOrigin(request), "state_mismatch");
     }
   } else {
     const existingSlug = await resolveExistingAppSlug();
     if (!existingSlug || !expectedState) {
-      return errorRedirect(url.origin, "invalid_session");
+      return errorRedirect(requestOrigin(request), "invalid_session");
     }
   }
 
   if (!code) {
-    return errorRedirect(url.origin, "missing_code");
+    return errorRedirect(requestOrigin(request), "missing_code");
   }
 
   try {
     const full = loadConfig(configPath());
     await performTokenExchange(code, full.dataRepo?.path);
 
-    const redirectRes = NextResponse.redirect(new URL("/config#data-repo", url.origin), 302);
+    const redirectRes = NextResponse.redirect(new URL("/config#data-repo", requestOrigin(request)), 302);
     redirectRes.cookies.delete({
       name: GITHUB_STATE_COOKIE,
       path: GITHUB_COOKIE_PATH,
     });
     return redirectRes;
   } catch {
-    return errorRedirect(url.origin, "exchange_failed");
+    return errorRedirect(requestOrigin(request), "exchange_failed");
   }
 }
