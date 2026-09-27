@@ -10,33 +10,12 @@ import { costTitle, formatBytes, formatCost, formatDuration, rawSvgHref, STATUS_
  * 图框说明原因，并排比较时高度差不会被误读为结果多寡。
  */
 export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
-  const href = viewHref(card);
   // 抽出了 SVG 才有作品地址；源码在进入视口时再取（见 ACR-003）
   const art = rawSvgHref(card);
   const isRedacted = card.status === "ok" && card.svgFile === null;
   return (
     <article className="card">
-      <header>
-        {/* 执行时刻作主标题，用于区分结果来自哪一轮 */}
-        <h2 className="timestamp" suppressHydrationWarning>
-          {formatZonedDateTime(new Date(card.startedAt), timeZone)}
-        </h2>
-        <p className="subject" title={card.label}>
-          {card.label}
-        </p>
-        <div className="badges">
-          <span className="badge cli">{card.cli}</span>
-          <span className="badge">{card.model}</span>
-          <EffortBadge card={card} />
-          <span className="badge prompt-id">{card.promptId}</span>
-          {/* 变量取值上徽章：不知道本轮问的是什么动物就无法判读作品 */}
-          {Object.entries(card.bindings).map(([name, value]) => (
-            <span key={name} className="badge binding" title={`${name}: ${value}`}>
-              {name}: {value}
-            </span>
-          ))}
-        </div>
-      </header>
+      <CardHeader card={card} timeZone={timeZone} />
 
       {art !== null ? (
         <ArtFrame card={card} art={art} />
@@ -46,28 +25,60 @@ export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone:
         <FailureFrame card={card} />
       )}
 
-      {/* 两行定高：第一行结果与开销，第二行附属信息与入口 */}
-      <footer>
-        <div className="footer-row">
-          <span className={`status-text ${isRedacted ? "status-redacted" : `status-${card.status}`}`}>
-            {isRedacted ? "已脱敏，未发布" : STATUS_TEXT[card.status]}
-          </span>
-          <span>耗时 {formatDuration(card.durationMs)}</span>
-          <span className="card-cost" title={costTitle(card)}>
-            {formatCost(card.cost)}
-          </span>
-        </div>
-        <div className="footer-row">
-          {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
-          <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
-          {href !== null && (
-            <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
-              大图 ↗
-            </a>
-          )}
-        </div>
-      </footer>
+      <CardFooter card={card} isRedacted={isRedacted} />
     </article>
+  );
+}
+
+function CardHeader({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
+  return (
+    <header>
+      {/* 执行时刻作主标题，用于区分结果来自哪一轮 */}
+      <h2 className="timestamp" suppressHydrationWarning>
+        {formatZonedDateTime(new Date(card.startedAt), timeZone)}
+      </h2>
+      <p className="subject" title={card.label}>
+        {card.label}
+      </p>
+      <div className="badges">
+        <span className="badge cli">{card.cli}</span>
+        <span className="badge">{card.model}</span>
+        <EffortBadge card={card} />
+        <span className="badge prompt-id">{card.promptId}</span>
+        {/* 变量取值上徽章：不知道本轮问的是什么动物就无法判读作品 */}
+        {Object.entries(card.bindings).map(([name, value]) => (
+          <span key={name} className="badge binding" title={`${name}: ${value}`}>
+            {name}: {value}
+          </span>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boolean }) {
+  const href = viewHref(card);
+  return (
+    <footer>
+      <div className="footer-row">
+        <span className={`status-text ${isRedacted ? "status-redacted" : `status-${card.status}`}`}>
+          {isRedacted ? "已脱敏，未发布" : STATUS_TEXT[card.status]}
+        </span>
+        <span>耗时 {formatDuration(card.durationMs)}</span>
+        <span className="card-cost" title={costTitle(card)}>
+          {formatCost(card.cost)}
+        </span>
+      </div>
+      <div className="footer-row">
+        {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
+        <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
+        {href !== null && (
+          <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
+            大图 ↗
+          </a>
+        )}
+      </div>
+    </footer>
   );
 }
 

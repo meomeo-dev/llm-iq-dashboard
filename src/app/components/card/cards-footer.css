@@ -1,0 +1,68 @@
+/* ---------- 页脚：两行定高 ---------- */
+
+.card footer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  height: var(--card-footer-height);
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 页脚的状态文字；与状态点（.status-dot.status-*）各自限定，互不染色 */
+.status-text.status-ok {
+  color: var(--ok);
+}
+
+.status-text.status-no-svg {
+  color: var(--warn);
+}
+
+.status-text.status-error,
+.status-text.status-timeout {
+  color: var(--err);
+}
+
+.status-text.status-redacted {
+  color: var(--accent);
+}
+
+/* 单独查看大图的两个入口：点作品本身，或页脚右端的链接 */
+.card-frame-link {
+  display: block;
+  cursor: zoom-in;
+}
+
+.card-frame-link:hover .frame-art {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.card-open {
+  margin-left: auto;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.card-open:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}

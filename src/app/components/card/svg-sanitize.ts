@@ -95,23 +95,27 @@ export function normalizeXmlWellFormedness(svg: string): string {
   });
 
   // 3. 开始标签内的重复属性去重
-  normalized = normalized.replace(/<([a-zA-Z0-9:-]+)(\s+[^>]*?)(\/?>)/g, (_match, tagName: string, attrs: string, closing: string) => {
-    const seen = new Set<string>();
-    const cleanedAttrs = attrs.replace(
-      /([a-zA-Z0-9:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g,
-      (attrMatch: string, name: string) => {
-        const lower = name.toLowerCase();
-        if (seen.has(lower)) {
-          return "";
-        }
-        seen.add(lower);
-        return attrMatch;
-      },
-    );
-    return `<${tagName}${cleanedAttrs}${closing}`;
-  });
+  normalized = normalized.replace(
+    /<([a-zA-Z0-9:-]+)(\s+[^>]*?)(\/?>)/g,
+    (_match, tagName: string, attrs: string, closing: string) => `<${tagName}${dedupeTagAttributes(attrs)}${closing}`,
+  );
 
   return normalized;
+}
+
+function dedupeTagAttributes(attrs: string): string {
+  const seen = new Set<string>();
+  return attrs.replace(
+    /([a-zA-Z0-9:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g,
+    (attrMatch: string, name: string) => {
+      const lower = name.toLowerCase();
+      if (seen.has(lower)) {
+        return "";
+      }
+      seen.add(lower);
+      return attrMatch;
+    },
+  );
 }
 
 function scrubAttributes(node: Element): void {
