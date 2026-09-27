@@ -1,0 +1,4 @@
+/* 不进定时任务的目标：仍属被测矩阵，淡化显示 */
+.matrix tr.row-unscheduled td:not(:first-child) {
+  opacity: 0.55;
+}

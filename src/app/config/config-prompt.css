@@ -1,0 +1,72 @@
+/* ---------- 提示词 ---------- */
+
+.prompt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prompt-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.prompt-item:hover {
+  background: var(--surface-hi);
+}
+
+.prompt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-head code {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+.prompt-template {
+  margin-top: 3px;
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+/* 候选集的全部条目，即轮换可能抽到的题目 */
+.prompt-candidates {
+  margin-top: 3px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.badge.lock {
+  color: var(--warn);
+}
+
+.custom-prompt {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.variable-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.variable-row input[type="text"]:last-of-type {
+  flex: 1;
+  min-width: 220px;
+}

@@ -1,0 +1,68 @@
+/* ---------- 操作与状态 ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.status {
+  font-size: 12.5px;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.error {
+  color: var(--err);
+}
+
+.status.busy {
+  color: var(--text-dim);
+}
+
+.alert {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--err);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.alert pre {
+  overflow-x: auto;
+  margin: 10px 0;
+  color: var(--err);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.device-table th,
+.device-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.device-table th {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.device-current {
+  color: var(--text-dim);
+}
+
+.device-error {
+  margin: 8px 0 0;
+  color: var(--danger, #b42318);
+}
