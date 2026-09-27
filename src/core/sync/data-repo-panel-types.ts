@@ -26,6 +26,12 @@ export interface DataRepoStatus {
   ledger: {
     exported: number;
     published: number;
+    skipped?: number;
+    skippedByReason?: {
+      "unpublishable-prompt": number;
+      rejected: number;
+      abandoned: number;
+    };
     lastExportedAt: string | null;
     lastPublishedAt: string | null;
   };
@@ -36,6 +42,8 @@ export interface DataRepoStatus {
     pending: string[];
     /** 仍在进行或缺 run.json 的轮次数 */
     incomplete: number;
+    /** 台账 skipped/rejected 且本地目录仍在的 runId，新的在前 */
+    rejected?: string[];
   };
   /** 最近一次面板动作的结果；无则 null */
   lastAction: SyncActionResult | null;

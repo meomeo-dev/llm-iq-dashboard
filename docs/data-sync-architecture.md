@@ -49,14 +49,14 @@ flowchart TB
 
     subgraph 云端展示台 ["云端只读展示台 (Vercel Edge Showcase)"]
         direction TB
-        C1["Vercel 部署看板<br/>(开启 NEXT_PUBLIC_READONLY=true)"]
-        C2["边缘缓存与增量静态再生 (ISR)<br/>通过 jsDelivr / GitHub Raw 拉取数据"]
+        C1["Vercel 部署看板<br/>(开启 PELICAN_READONLY=1 或 PELICAN_DATA_SOURCE=remote)"]
+        C2["边缘缓存与增量静态再生 (ISR)<br/>通过 GitHub Raw 拉取数据"]
         C3["公众/同行浏览器<br/>(时间线瀑布流、作品大图、模态窗对比)"]
         C1 --> C2 --> C3
     end
 
     A5 -->|"Git Push (仅 run.json + svg)"| B1
-    B1 -.->|"HTTP CDN 实时分发"| C1
+    B1 -.->|"GitHub Raw 实时分发"| C1
 ```
 
 ---
@@ -99,17 +99,20 @@ sequenceDiagram
     participant Ledger as 同步台账 (sync-state.json)
     participant Guard as 修剪守卫 (pruneExpiredRuns)
 
-    Runner->>HotDir: 1. 评测每轮结束前，由 executeRun 触发修剪守卫
+    Runner->>HotDir: 1. 评测每轮开始前，由 executeRun 经 prepareRunStorage 触发修剪守卫
     Runner->>Guard: 触发过期修剪巡检
     Guard->>Ledger: 读取各轮同步状态 (不存在等同于全部未发布)
-    alt 超过 retentionDays 且 台账状态为 published
+    alt 超过 retentionDays 且 台账为 published 或 skipped/unpublishable-prompt
         Guard->>HotDir: 安全物理擦除 (rm -rf)，释放热区磁盘
-    else 超过 retentionDays 但 尚未 published (或未在台账中)
-        Guard->>HotDir: 【安全熔断】安全保留并汇总记一行日志！
+    else 超过 retentionDays 且 台账为 skipped/rejected
+        Guard->>HotDir: 【安全保留】永不自动删除，汇总日志提示需人工处理
+    else 超过 2 × retentionDays 且 (缺 run.json 或 inProgress: true)
+        Guard->>Ledger: 写入 skipped/abandoned 标记废弃
+        Guard->>HotDir: 安全物理擦除残轮 (rm -rf)
     else 超过 retentionDays 且 目录为空
         Guard->>HotDir: 清理过期空目录
-    else 超过 retentionDays 但 仅有 progress.json 缺 run.json
-        Guard->>HotDir: 过程目录安全保留
+    else 超过 retentionDays 但 未发布 (exported 或无台账记录)
+        Guard->>HotDir: 【安全熔断】安全保留并汇总记一行日志！
     end
     Runner->>HotDir: 2. 评测完成，最终落盘 runId/ (run.json, svg, txt)
     Note over HotDir: 本地热数据即刻可见
@@ -118,7 +121,7 @@ sequenceDiagram
         Hook->>Hook: usage 回填、SVG 泄漏脱敏、run.json 路径替换与校验
         Hook->>ColdRepo: 写入 runs/YYYY/MM/DD/<runId>/ 并更新 DayIndex 与 index.json
         Hook->>ColdRepo: Git 提交 chore(data): sync <N> run(s)
-        Hook->>Ledger: 记录状态 status: exported 与 commit
+        Hook->>Ledger: 记录状态 status: exported 与 commit（或记录 skipped）
         opt push 为 true
             Hook->>ColdRepo: git push 推送至远端
             Hook->>ColdRepo: git merge-base --is-ancestor 验证远端包含
@@ -127,9 +130,9 @@ sequenceDiagram
     end
 ```
 
-1. **执行前修剪（Retention Guard）**：每轮评测开始时由 `executeRun` 调用 `pruneExpiredRuns`，**仅对台账中确认为 `published` 的过期轮次执行删除**。未发布的轮次熔断保留，防止网络异常导致数据永久丢失；
+1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published` 与 `skipped/unpublishable-prompt` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
 2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
-3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；
+3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；非预演时不可发布与被拒绝轮次写入台账 `skipped` 记录；
 4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交；
 5. **发布确认模式（Confirm Published）与宿主机/容器分工**：
    - **容器安全凭据隔离**：容器内不存放任何 GitHub Token 或 SSH 凭据，runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；
@@ -137,13 +140,46 @@ sequenceDiagram
    - **发布确认回填**：执行 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓的匿名 `git fetch` 拉取远端引用，基于 `git merge-base --is-ancestor` 校验提交是否已被远端上游分支包含；若已包含，则将台账中对应轮次安全转换为 `status: published` 并记录 `publishedAt`；此模式不导出、不提交、不推送，与 `--push` 互斥，fetch 失败或无上游分支时报错中止且台账不变；
    - **网页同步面板与请求通道（ACR-010）**：所有者看板 `/config` 页新增数据仓面板，支持网页端直接查看健康状态、执行演练（dry-run）、脱敏导出（export）、发布确认（confirm）与带二次确认的推送（push）；分容器部署下经 `data/requests/` 通道由 runner 代办，容器内禁推，须在宿主机推送。
 
+### 3.3.1 同步台账状态表（Sync Ledger States）
+
+台账持久化于 `<PELICAN_DATA_DIR>/sync-state.json`，是本地轮次同步生命周期的唯一事实来源：
+
+| 状态 (`status`) | 原因 (`reason`) | 触发场景与业务含义 | 关键字段 | 下一步流转 |
+| :--- | :--- | :--- | :--- | :--- |
+| `exported` | - | 本地脱敏完成，已写入数据仓工作副本并生成 Git 提交 | `exportedAt`, `commit`, `redactions` | 推送后祖先校验转为 `published` |
+| `published` | - | 已推送到远程仓库，且经远程追踪分支祖先比对确认已包含 | `exportedAt`, `commit`, `publishedAt`, `redactions` | 过期后由修剪守卫安全删除 |
+| `skipped` | `unpublishable-prompt` | 整轮题目均在 `UNPUBLISHABLE_PROMPT_IDS` 清单中（如测试题 `leijun-v1`），跳过导出 | `skippedAt`, `reason` | 过期后由修剪守卫安全删除 |
+| `skipped` | `rejected` | 命中敏感绝对路径、私钥或令牌样式规则，泄漏扫描拦截拒绝发布 | `skippedAt`, `reason`, `details`（仅含文件与规则名） | **永不自动删除**，需人工核实处理 |
+| `skipped` | `abandoned` | 残轮（缺 `run.json` 或 `inProgress: true` 超过保留期两倍），自动标记废弃 | `skippedAt`, `reason` | 标记的同时物理删除释放空间 |
+
+> **注**：已是 `exported` 或 `published` 的记录严禁被覆盖为 `skipped`；处于 `skipped` 的轮次在后续同步时会重新评估，若题目或扫描规则变更后判定为可导出，则正常导出并覆盖为 `exported`。
+
+### 3.3.2 历史轮次修剪分级表（Tiered Pruning Matrix）
+
+修剪守卫在每轮评测开始前（`prepareRunStorage`）执行，时间依据为 **runId 时刻**（即从紧凑 UTC 目录名解析出的时刻 `runIdTime`），依据保留期天数 `retentionDays` 严格分级：
+
+| 目录与轮次类型 | 台账状态 | 触发条件（以 runId 时刻为准） | 动作与台账变更 | 汇总日志文案 |
+| :--- | :--- | :--- | :--- | :--- |
+| 正常已完成轮次 | `published` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 正常不可发布轮次 | `skipped/unpublishable-prompt` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 泄漏拦截轮次 | `skipped/rejected` | 任意超期时长 | **安全保留，绝不自动删除** | `保留 N 个被拒绝的过期轮次（需人工处理）` |
+| 残轮（缺 run.json 或 inProgress 为 true） | 未记录或非受保护状态 | `now - runIdTime > 2 × retentionDays` | 删除前重读最新台账合并 `skipped/abandoned` 原子保存，物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 残轮（缺 run.json 或 inProgress 为 true） | 未记录或非受保护状态 | `now - runIdTime ≤ 2 × retentionDays` | 安全保留 | 无独立日志（静默保留） |
+| 读取失败（EACCES 等）或 JSON 损坏 | 任意 | 任意超期时长 | 安全保留，不走残轮分支 | 日志输出具体读取/损坏错误信息 |
+| 曾记 abandoned 但 run.json 完整且非 inProgress | `skipped/abandoned` | `now - runIdTime > retentionDays` | 安全保留（按普通未发布轮次保留） | 计入`保留 N 个未发布的过期轮次` |
+| 过期空目录 | 无 | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 未同步或未发布轮次 | `exported` 或未记录 | `now - runIdTime > retentionDays` | **安全熔断保留** | `保留 N 个未发布的过期轮次` |
+| 台账文件不存在 | - | - | 等价于全部未发布，全部保留 | `保留 N 个未发布的过期轮次` |
+
+> **注**：台账已有 `exported`、`published` 或 `skipped(rejected)` 记录的轮次不走 abandoned 分支，不得被改写；修剪复用数据仓动作锁（`data-repo-action-lock`），持锁冲突时跳过本轮修剪。
 
 ---
 
 ### 3.4 历史数据按需下钻（On-Demand Cold Lookup）
-对于部署在 Vercel 上的在线看板：
-* **常态加载**：前端仅从 `llm-iq-data` 的根目录 `index.json` 中拉取最近 7 天的精简索引，瞬时完成渲染；
-* **历史追溯**：日历组件解析 `index.json` 中的历史日期存在标记；当访客点击历史上某一天时（如 `2026-06-15`），前端**按需单次直接加载**对应日期目录 `runs/2026/06/15/` 的数据，既实现了“任意历史无限期可查”，又杜绝了一次性将冷数据塞满浏览器内存。
+对于部署在 Vercel 上的在线看板（远程只读模式）：
+* **服务端拉取与缓存**：服务端请求时从 GitHub Raw 拉取数据，请求配置 Next.js `revalidate` 60 秒，另受 GitHub Raw CDN 自身约 5 分钟缓存影响；单件矢量作品（`/art`）缓存 24 小时；
+* **日历计数拉取上界**：日历通过 `listRunStarts` 获取时刻，仅对根清单 `index.json` 中最近 62 天（`CALENDAR_DETAIL_DAYS`）的日期拉取日索引以获得精确时刻；更早的远期日期直接按清单 `days[].runs` 计数合成 UTC 正午时刻（`<date>T12:00:00.000Z`，避免多数时区跨日），将全量日历请求数严格控制在常数上界（≤ 62 次请求）；单个日索引拉取失败时自动降级回退到清单计数合成，不丢弃轮次；
+* **历史追溯**：日历组件解析历史日期；当访客点击历史上某一天时（如 `2026-06-15`），前端**按需单次直接加载**对应日期目录 `runs/2026/06/15/` 的数据，既实现了“任意历史无限期可查”，又杜绝了一次性将冷数据塞满浏览器内存。
 
 
 ---
@@ -245,7 +281,7 @@ meomeo-dev/llm-iq-data/
    * `leak-scan.ts`：共享泄漏扫描与本机绝对路径脱敏替换；
    * `export-run.ts`：构建 `PublicRunRecord`、旧版记录规范化、用量解析回填与 SVG 脱敏；
    * `data-repo-index.ts`：维护 `DayIndex`、迁移与更新根目录 `DataRepoManifest`；
-   * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账；
+   * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账（支持 exported、published 与 skipped 三态及三种 skip reason）；
    * `data-repo-git.ts`：Git 工作区检查、提交身份校验、规范提交与安全推送；
    * `confirm-published.ts`：基于匿名 fetch 与祖先关系比对的安全发布确认；
    * `sync-orchestrator.ts`：串联候选过滤、幂等判定、冲突检测与完整同步流水线。
@@ -253,7 +289,7 @@ meomeo-dev/llm-iq-data/
    * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--confirm-published`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
 3. **执行引擎与修剪守护**：
    * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
-   * `src/core/retention.ts`：仅对台账确认为 `published` 的过期轮次执行物理删除，未发布轮次安全熔断保留。
+   * `src/core/retention.ts`：实施修剪分级守卫（过期且 published 或 skipped/unpublishable-prompt 执行物理删除，rejected 永不自动删除，残轮超 2 倍标记 abandoned 后清理，未发布轮次安全熔断保留）。
 4. **所有者看板网页入口与 API（ACR-010）**：
    * `GET /api/data-repo`：所有者聚合查询数据仓工作副本健康度、清单、台账与本地未同步轮次；
    * `POST /api/data-repo/sync`：所有者触发同步动作，支持 dry-run / export / confirm / push 模式，带并发互斥锁与 push 二次提交确认；

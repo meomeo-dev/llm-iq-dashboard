@@ -104,36 +104,59 @@ export async function readDataRepoManifest(
   }
 }
 
+function createEmptyLedgerMetrics(): DataRepoStatus["ledger"] {
+  return {
+    exported: 0,
+    published: 0,
+    skipped: 0,
+    skippedByReason: {
+      "unpublishable-prompt": 0,
+      rejected: 0,
+      abandoned: 0,
+    },
+    lastExportedAt: null,
+    lastPublishedAt: null,
+  };
+}
+
+function summarizeLedgerRecords(rawLedger: SyncLedger): DataRepoStatus["ledger"] {
+  const metrics = createEmptyLedgerMetrics();
+  const byReason = metrics.skippedByReason!;
+
+  for (const record of Object.values(rawLedger)) {
+    if (record.status === "exported") metrics.exported += 1;
+    else if (record.status === "published") metrics.published += 1;
+    else if (record.status === "skipped") {
+      metrics.skipped = (metrics.skipped ?? 0) + 1;
+      if (record.reason in byReason) {
+        byReason[record.reason as keyof typeof byReason] += 1;
+      }
+    }
+    if (record.exportedAt && (!metrics.lastExportedAt || record.exportedAt > metrics.lastExportedAt)) {
+      metrics.lastExportedAt = record.exportedAt;
+    }
+    if (record.publishedAt && (!metrics.lastPublishedAt || record.publishedAt > metrics.lastPublishedAt)) {
+      metrics.lastPublishedAt = record.publishedAt;
+    }
+  }
+  return metrics;
+}
+
 async function collectLedgerMetrics(
   dataDir: string,
   notices: string[],
 ): Promise<{ ledger: DataRepoStatus["ledger"]; rawLedger: SyncLedger }> {
   try {
     const rawLedger = await loadSyncLedger(dataDir);
-    let exported = 0;
-    let published = 0;
-    let lastExportedAt: string | null = null;
-    let lastPublishedAt: string | null = null;
-
-    for (const record of Object.values(rawLedger)) {
-      if (record.status === "exported") exported += 1;
-      if (record.status === "published") published += 1;
-      if (record.exportedAt && (!lastExportedAt || record.exportedAt > lastExportedAt)) {
-        lastExportedAt = record.exportedAt;
-      }
-      if (record.publishedAt && (!lastPublishedAt || record.publishedAt > lastPublishedAt)) {
-        lastPublishedAt = record.publishedAt;
-      }
-    }
     return {
-      ledger: { exported, published, lastExportedAt, lastPublishedAt },
+      ledger: summarizeLedgerRecords(rawLedger),
       rawLedger,
     };
   } catch (cause) {
     const msg = cause instanceof Error ? cause.message : String(cause);
     notices.push(`读取同步台账失败: ${msg}`);
     return {
-      ledger: { exported: 0, published: 0, lastExportedAt: null, lastPublishedAt: null },
+      ledger: createEmptyLedgerMetrics(),
       rawLedger: {},
     };
   }
@@ -168,17 +191,23 @@ async function collectLocalRuns(
     const entries = await readdir(runsDir, { withFileTypes: true });
     const dirNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     const pending: string[] = [];
+    const rejected: string[] = [];
     let incomplete = 0;
 
     for (const runId of dirNames) {
       const outcome = await checkSingleRunDir(join(runsDir, runId), runId, rawLedger);
       if (outcome.isIncomplete) incomplete += 1;
       if (outcome.isPending) pending.push(runId);
+      const ledgerEntry = rawLedger[runId];
+      if (ledgerEntry?.status === "skipped" && ledgerEntry.reason === "rejected") {
+        rejected.push(runId);
+      }
     }
     pending.sort((a, b) => b.localeCompare(a));
-    return { totalRuns: dirNames.length, pending, incomplete };
+    rejected.sort((a, b) => b.localeCompare(a));
+    return { totalRuns: dirNames.length, pending, incomplete, rejected };
   } catch {
-    return { totalRuns: 0, pending: [], incomplete: 0 };
+    return { totalRuns: 0, pending: [], incomplete: 0, rejected: [] };
   }
 }
 

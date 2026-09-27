@@ -25,6 +25,12 @@ export function DataRepoCards({ health, counts }: DataRepoCardsProps) {
         <div className="data-repo-card">
           <span className="data-repo-card-title">同步台账</span>
           <span className="data-repo-card-value">{counts.ledgerText}</span>
+          {counts.unpublishableText && (
+            <span className="data-repo-card-value">{counts.unpublishableText}</span>
+          )}
+          {counts.rejectedText && (
+            <span className="data-repo-card-value">{counts.rejectedText}</span>
+          )}
         </div>
         <div className="data-repo-card">
           <span className="data-repo-card-title">公开清单</span>
