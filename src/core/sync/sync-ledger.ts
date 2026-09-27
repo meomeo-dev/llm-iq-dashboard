@@ -12,15 +12,30 @@ import { dirname, join } from "node:path";
 import { dataRoot } from "../paths";
 import type { Redaction } from "../data-repo/contract";
 
-export type SyncStatus = "exported" | "published";
+export type SyncStatus = "exported" | "published" | "skipped";
 
-export interface RunSyncRecord {
-  status: SyncStatus;
+export type SkipReason = "unpublishable-prompt" | "rejected" | "abandoned";
+
+export interface NormalRunSyncRecord {
+  status: "exported" | "published";
   exportedAt: string;
   commit?: string;
   publishedAt?: string;
   redactions: Redaction[];
 }
+
+export interface SkippedRunSyncRecord {
+  status: "skipped";
+  reason: SkipReason;
+  skippedAt: string;
+  details?: Array<{ file: string; reason: string }>;
+  exportedAt?: string;
+  commit?: string;
+  publishedAt?: string;
+  redactions?: Redaction[];
+}
+
+export type RunSyncRecord = NormalRunSyncRecord | SkippedRunSyncRecord;
 
 export type SyncLedger = Record<string, RunSyncRecord>;
 
@@ -29,6 +44,41 @@ export const SYNC_LEDGER_FILE = "sync-state.json";
 export function syncLedgerPath(customDataDir?: string): string {
   const root = customDataDir ?? dataRoot();
   return join(root, SYNC_LEDGER_FILE);
+}
+
+const VALID_SKIP_REASONS = new Set<string>([
+  "unpublishable-prompt",
+  "rejected",
+  "abandoned",
+]);
+
+function validateLedgerRecord(
+  runId: string,
+  record: unknown,
+  filePath: string,
+): void {
+  if (record === null || typeof record !== "object" || Array.isArray(record)) {
+    throw new Error(`同步台账 ${filePath} 格式错误: 记录 ${runId} 不是有效对象`);
+  }
+  const rec = record as Record<string, unknown>;
+  const status = rec.status;
+  if (status !== "exported" && status !== "published" && status !== "skipped") {
+    throw new Error(
+      `同步台账 ${filePath} 格式错误: 记录 ${runId} 包含未知的 status "${String(status)}"`,
+    );
+  }
+  if (status === "skipped") {
+    if (typeof rec.reason !== "string" || !VALID_SKIP_REASONS.has(rec.reason)) {
+      throw new Error(
+        `同步台账 ${filePath} 格式错误: 记录 ${runId} skipped 缺少有效 reason "${String(rec.reason)}"`,
+      );
+    }
+    if (typeof rec.skippedAt !== "string" || rec.skippedAt.trim() === "") {
+      throw new Error(
+        `同步台账 ${filePath} 格式错误: 记录 ${runId} skipped 缺少 skippedAt`,
+      );
+    }
+  }
 }
 
 /**
@@ -50,7 +100,11 @@ export async function loadSyncLedger(
       throw new Error(`同步台账 ${filePath} JSON 损坏: ${msg}`);
     }
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as SyncLedger;
+      const ledgerObj = parsed as Record<string, unknown>;
+      for (const [runId, record] of Object.entries(ledgerObj)) {
+        validateLedgerRecord(runId, record, filePath);
+      }
+      return ledgerObj as SyncLedger;
     }
     throw new Error(`同步台账 ${filePath} 格式错误，期望 JSON 对象`);
   } catch (error) {

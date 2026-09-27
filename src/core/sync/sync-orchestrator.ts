@@ -41,6 +41,10 @@ import {
   saveSyncLedger,
   type SyncLedger,
 } from "./sync-ledger";
+import {
+  recordSkippedRejected,
+  recordSkippedUnpublishable,
+} from "./ledger-skip";
 export {
   confirmPublished,
   type ConfirmPublishedOptions,
@@ -127,7 +131,10 @@ async function backfillIdempotentLedger(
   ledger: SyncLedger,
   newlyExported: string[],
 ): Promise<void> {
-  if (ledger[runId] !== undefined) return;
+  const existing = ledger[runId];
+  if (existing?.status === "exported" || existing?.status === "published") {
+    return;
+  }
 
   const dirCommit = await getDirectoryLatestCommit(repoPath, relativeRunDir);
   ledger[runId] = {
@@ -177,15 +184,26 @@ async function evaluateSingleCandidate(
   dryRun: boolean,
   ledger: SyncLedger,
   newlyExportedRunIds: string[],
+  newlySkippedRunIds: string[],
   report: SyncReport,
 ): Promise<{ ready?: ReadyExportResult; redactions?: Redaction[] }> {
   const res = await exportRun(runId, exportOpts);
   if (res.status === "skipped") {
     report.skipped.push({ runId, reason: res.reason });
+    if (!dryRun && res.reason === "unpublishable-prompt") {
+      if (recordSkippedUnpublishable(ledger, runId)) {
+        newlySkippedRunIds.push(runId);
+      }
+    }
     return {};
   }
   if (res.status === "rejected") {
     report.rejected.push({ runId, reasons: res.reasons });
+    if (!dryRun) {
+      if (recordSkippedRejected(ledger, runId, res.reasons)) {
+        newlySkippedRunIds.push(runId);
+      }
+    }
     return {};
   }
   const relativeRunDir = runDirPath(runId);
@@ -217,6 +235,7 @@ async function evaluateCandidates(
   dryRun: boolean,
   ledger: SyncLedger,
   newlyExportedRunIds: string[],
+  newlySkippedRunIds: string[],
   report: SyncReport,
 ): Promise<{ readyToExport: ReadyExportResult[]; allRedactions: RunRedactionGroup[] }> {
   const readyToExport: ReadyExportResult[] = [];
@@ -230,6 +249,7 @@ async function evaluateCandidates(
       dryRun,
       ledger,
       newlyExportedRunIds,
+      newlySkippedRunIds,
       report,
     );
     if (outcome.redactions && outcome.redactions.length > 0) {
@@ -385,6 +405,35 @@ async function resolveSyncContext(options: SyncOptions): Promise<SyncContext> {
   return { dryRun, push, repoPath, dataDirPath, runsDir, leakGuard };
 }
 
+/** 持久化产物、更新台账并在必要时执行推送 */
+async function finalizeSyncData(
+  ctx: SyncContext,
+  readyToExport: readonly ReadyExportResult[],
+  ledger: SyncLedger,
+  newlyExportedRunIds: string[],
+  newlySkippedRunIds: string[],
+  newlyPublishedRunIds: string[],
+  report: SyncReport,
+): Promise<void> {
+  const { exportedRunIds, commitSha } = await persistExportedData(
+    ctx.repoPath,
+    readyToExport,
+    ledger,
+    ctx.dataDirPath,
+    newlyExportedRunIds,
+  );
+  report.exported = exportedRunIds;
+  report.commit = commitSha;
+
+  if (newlySkippedRunIds.length > 0 && newlyExportedRunIds.length === 0) {
+    await saveSyncLedger(ledger, ctx.dataDirPath);
+  }
+
+  if (ctx.push) {
+    await executePushStep(ctx.repoPath, ledger, ctx.dataDirPath, newlyPublishedRunIds, report);
+  }
+}
+
 /**
  * 执行数据仓同步流水线。
  */
@@ -397,6 +446,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
 
   const ledger: SyncLedger = await loadSyncLedger(ctx.dataDirPath);
   const newlyExportedRunIds: string[] = [];
+  const newlySkippedRunIds: string[] = [];
   const newlyPublishedRunIds: string[] = [];
   const exportOpts: ExportOptions = { runsDir: ctx.runsDir, leakGuard: ctx.leakGuard };
 
@@ -407,6 +457,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
     ctx.dryRun,
     ledger,
     newlyExportedRunIds,
+    newlySkippedRunIds,
     report,
   );
   report.redactions = allRedactions;
@@ -416,19 +467,15 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
     return report;
   }
 
-  const { exportedRunIds, commitSha } = await persistExportedData(
-    ctx.repoPath,
+  await finalizeSyncData(
+    ctx,
     readyToExport,
     ledger,
-    ctx.dataDirPath,
     newlyExportedRunIds,
+    newlySkippedRunIds,
+    newlyPublishedRunIds,
+    report,
   );
-  report.exported = exportedRunIds;
-  report.commit = commitSha;
-
-  if (ctx.push) {
-    await executePushStep(ctx.repoPath, ledger, ctx.dataDirPath, newlyPublishedRunIds, report);
-  }
 
   report.ledgerTransitions = {
     exported: newlyExportedRunIds,

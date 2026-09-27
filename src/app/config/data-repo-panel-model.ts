@@ -57,6 +57,8 @@ export interface DataRepoCountsSummary {
   ledgerText: string;
   manifestText: string;
   repoText: string;
+  unpublishableText: string | null;
+  rejectedText: string | null;
 }
 
 export interface RejectedIssue {
@@ -299,10 +301,16 @@ function createEmptyStatus(): DataRepoStatus {
     ledger: {
       exported: 0,
       published: 0,
+      skipped: 0,
+      skippedByReason: {
+        "unpublishable-prompt": 0,
+        rejected: 0,
+        abandoned: 0,
+      },
       lastExportedAt: null,
       lastPublishedAt: null,
     },
-    local: { totalRuns: 0, pending: [], incomplete: 0 },
+    local: { totalRuns: 0, pending: [], incomplete: 0, rejected: [] },
     lastAction: null,
     notice: null,
   };
@@ -449,6 +457,8 @@ export function deriveCountsSummary(
       ledgerText: "未加载",
       manifestText: "未加载",
       repoText: "未加载",
+      unpublishableText: null,
+      rejectedText: null,
     };
   }
   const incompleteText =
@@ -463,5 +473,24 @@ export function deriveCountsSummary(
     ? `分支 ${repo.branch ?? "未知"}，上游 ${repo.upstream ?? "未配置"}，领先 ${repo.ahead ?? 0}，落后 ${repo.behind ?? 0}`
     : "无仓库信息";
 
-  return { localText, ledgerText, manifestText, repoText };
+  const byReason = status.ledger.skippedByReason;
+  const unpublishableCount = byReason
+    ? (byReason["unpublishable-prompt"] ?? 0) + (byReason.abandoned ?? 0)
+    : Math.max(0, (status.ledger.skipped ?? 0) - (status.local.rejected?.length ?? 0));
+  const rejectedCount = byReason
+    ? (byReason.rejected ?? 0)
+    : (status.local.rejected?.length ?? 0);
+  const unpublishableText =
+    unpublishableCount > 0 ? `不可发布 ${unpublishableCount} 轮` : null;
+  const rejectedText =
+    rejectedCount > 0 ? `被拒绝 ${rejectedCount} 轮（需人工处理）` : null;
+
+  return {
+    localText,
+    ledgerText,
+    manifestText,
+    repoText,
+    unpublishableText,
+    rejectedText,
+  };
 }

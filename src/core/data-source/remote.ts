@@ -27,6 +27,8 @@ import { FetchPool } from "./fetch-pool";
 import type { DataRepoHealth, DataSource } from "./interface";
 import { utcDatesBetween } from "./utc-partitions";
 
+export const CALENDAR_DETAIL_DAYS = 62;
+
 export type FetchFn = (
   input: string | URL | Request,
   init?: RequestInit,
@@ -63,14 +65,33 @@ export class RemoteDataSource implements DataSource {
   }
 
   /** 全部轮次的开始时刻（ISO），新的在前，供日历计数 */
-  async listRunStarts(): Promise<string[]> {
+  async listRunStarts(refDate = new Date()): Promise<string[]> {
     try {
       const manifest = await this.fetchManifest();
-      const dayIndices = await Promise.all(
-        manifest.days.map((day) => this.fetchDayIndex(day.path).catch(() => null)),
+      const refUtcStr = refDate.toISOString().slice(0, 10);
+      const refUtcTime = Date.parse(`${refUtcStr}T00:00:00.000Z`);
+      const msPerDay = 24 * 60 * 60 * 1000;
+
+      const results = await Promise.all(
+        manifest.days.map(async (day) => {
+          const dayUtcTime = Date.parse(`${day.date}T00:00:00.000Z`);
+          const diffDays = Math.floor((refUtcTime - dayUtcTime) / msPerDay);
+          const isRecent = diffDays >= 0 && diffDays < CALENDAR_DETAIL_DAYS;
+
+          if (isRecent) {
+            try {
+              const dayIndex = await this.fetchDayIndex(day.path);
+              return extractRunStartsFromDayIndex(dayIndex);
+            } catch {
+              return synthesizeRunStarts(day.date, day.runs);
+            }
+          }
+          return synthesizeRunStarts(day.date, day.runs);
+        }),
       );
       this.notice = null;
-      return extractRunStarts(dayIndices);
+      const allStarts = results.flat();
+      return allStarts.sort((a, b) => b.localeCompare(a));
     } catch (err) {
       this.handleError("获取轮次开始时间列表失败", err);
       return [];
@@ -366,19 +387,22 @@ function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-function extractRunStarts(dayIndices: readonly (DayIndex | null)[]): string[] {
+export function synthesizeRunStarts(date: string, runsCount: number): string[] {
+  const count = Math.max(0, runsCount);
+  const iso = `${date}T12:00:00.000Z`;
+  return Array.from({ length: count }, () => iso);
+}
+
+function extractRunStartsFromDayIndex(dayIndex: DayIndex): string[] {
   const starts: string[] = [];
-  for (const dayIndex of dayIndices) {
-    if (dayIndex === null) continue;
-    for (const run of dayIndex.runs) {
-      const at = runIdTime(run.runId);
-      if (at !== null) {
-        starts.push(at.toISOString());
-      } else if (run.startedAt) {
-        starts.push(run.startedAt);
-      }
+  for (const run of dayIndex.runs) {
+    const at = runIdTime(run.runId);
+    if (at !== null) {
+      starts.push(at.toISOString());
+    } else if (run.startedAt) {
+      starts.push(run.startedAt);
     }
   }
-  return starts.sort().reverse();
+  return starts;
 }
 
