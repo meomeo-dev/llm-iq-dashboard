@@ -18,7 +18,8 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // 数据仓面板"连接 GitHub"以表单 POST 清单到 github.com 注册 GitHub App
+  "form-action 'self' https://github.com",
 ].join("; ");
 
 const SECURITY_HEADERS = [

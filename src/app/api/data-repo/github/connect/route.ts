@@ -29,7 +29,8 @@ function renderAutoSubmitForm(state: string, manifestJson: string): string {
   <body>
     <form action="${targetUrl}" method="post">
       <input type="hidden" name="manifest" value="${htmlEscape(manifestJson)}">
-      <noscript><button type="submit">点击继续前往 GitHub</button></noscript>
+      <p>正在跳转至 GitHub 创建应用；若未自动跳转，请点击下方按钮。</p>
+      <button type="submit">前往 GitHub</button>
     </form>
     <script>document.forms[0].submit();</script>
   </body>
