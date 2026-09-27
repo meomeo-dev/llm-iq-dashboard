@@ -148,11 +148,17 @@ function deriveWarningOrHealthy(status: DataRepoStatus): HealthInfo {
       reason: `最近一次操作失败: ${status.lastAction.error ?? "执行异常"}`,
     };
   }
-  if (status.local.incomplete > 0) {
+  const running = status.local.running ?? 0;
+  const interrupted = status.local.interrupted ?? 0;
+  if (running > 0) {
+    return { level: "healthy", label: "正常", reason: `${running} 轮正在执行，结束后自动导出` };
+  }
+  if (interrupted > 0) {
+    // 中断的轮次不阻塞发布，只提示会被保留策略清理
     return {
-      level: "warning",
-      label: "注意",
-      reason: `有 ${status.local.incomplete} 轮执行未完成或缺少结果`,
+      level: "healthy",
+      label: "正常",
+      reason: `${interrupted} 轮中断未完成（缺 run.json 或未收尾），不参与发布，超过保留期两倍后自动清理`,
     };
   }
   return { level: "healthy", label: "正常", reason: "数据仓状态健康" };
@@ -454,9 +460,12 @@ export function deriveCountsSummary(
       rejectedText: null,
     };
   }
-  const incompleteText =
-    status.local.incomplete > 0 ? `，未完成 ${status.local.incomplete} 轮` : "";
-  const localText = `总计 ${status.local.totalRuns} 轮，待导出 ${status.local.pending.length} 轮${incompleteText}`;
+  const runningText = (status.local.running ?? 0) > 0 ? `，执行中 ${status.local.running} 轮` : "";
+  const interruptedText =
+    (status.local.interrupted ?? 0) > 0 ? `，中断 ${status.local.interrupted} 轮` : "";
+  const localText =
+    `总计 ${status.local.totalRuns} 轮，待导出 ${status.local.pending.length} 轮` +
+    `${runningText}${interruptedText}`;
   // 台账 exported 只计尚未发布的轮次
   const ledgerText = `待发布 ${status.ledger.exported} 轮，已发布 ${status.ledger.published} 轮`;
   const manifestText = status.manifest

@@ -112,9 +112,21 @@ test("deriveHealthStatus - 健康等级推导", async (t) => {
     statusNotice.notice = "网络波动警告";
     assert.strictEqual(deriveHealthStatus(statusNotice).level, "warning");
 
-    const statusIncomplete = createBaseStatus();
-    statusIncomplete.local.incomplete = 2;
-    assert.strictEqual(deriveHealthStatus(statusIncomplete).level, "warning");
+    // 未完成的轮次不再算告警：执行中提示等待，中断的提示会被自动清理
+    const statusRunning = createBaseStatus();
+    statusRunning.local.incomplete = 1;
+    statusRunning.local.running = 1;
+    const running = deriveHealthStatus(statusRunning);
+    assert.strictEqual(running.level, "healthy");
+    assert.strictEqual(running.reason, "1 轮正在执行，结束后自动导出");
+
+    const statusInterrupted = createBaseStatus();
+    statusInterrupted.local.incomplete = 2;
+    statusInterrupted.local.interrupted = 2;
+    const interrupted = deriveHealthStatus(statusInterrupted);
+    assert.strictEqual(interrupted.level, "healthy");
+    assert.match(interrupted.reason, /2 轮中断未完成/);
+    assert.match(deriveCountsSummary(statusInterrupted).localText, /中断 2 轮/);
   });
 });
 

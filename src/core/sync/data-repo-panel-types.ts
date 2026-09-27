@@ -44,8 +44,12 @@ export interface DataRepoStatus {
     totalRuns: number;
     /** 已完成（有 run.json 且非 inProgress）但台账里没有记录的轮次，新的在前 */
     pending: string[];
-    /** 仍在进行或缺 run.json 的轮次数 */
+    /** 未完成的轮次数 = running + interrupted */
     incomplete: number;
+    /** 未完成且开始不足 6 小时的轮次数：仍在执行，结束后自动导出 */
+    running?: number;
+    /** 未完成且开始超过 6 小时的轮次数：进程中途退出，不参与发布，保留期两倍后自动清理 */
+    interrupted?: number;
     /** 台账 skipped/rejected 且本地目录仍在的 runId，新的在前 */
     rejected?: string[];
   };

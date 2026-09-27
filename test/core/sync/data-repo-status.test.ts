@@ -180,20 +180,26 @@ describe("data-repo-status 状态聚合", () => {
     await mkdir(run2Dir, { recursive: true });
     await writeFile(join(run2Dir, "run.json"), JSON.stringify({ inProgress: false }), "utf8");
 
-    // 3. 还在执行中 (inProgress: true) -> incomplete
+    // 3. 早已开始却仍标 inProgress -> interrupted
     const runInProgDir = join(runsDir, "20260927T040000Z");
     await mkdir(runInProgDir, { recursive: true });
     await writeFile(join(runInProgDir, "run.json"), JSON.stringify({ inProgress: true }), "utf8");
 
-    // 4. 缺 run.json 过程目录 -> incomplete
+    // 4. 早已开始却缺 run.json -> interrupted
     const runMissingDir = join(runsDir, "20260927T050000Z");
     await mkdir(runMissingDir, { recursive: true });
+
+    // 5. 刚开始、只有过程文件 -> running
+    const runFreshId = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    await mkdir(join(runsDir, runFreshId), { recursive: true });
 
     const config = mockBaseConfig();
     const status = await collectDataRepoStatus(config, { dataDir: testDataDir });
 
-    assert.strictEqual(status.local.totalRuns, 4);
-    assert.strictEqual(status.local.incomplete, 2);
+    assert.strictEqual(status.local.totalRuns, 5);
+    assert.strictEqual(status.local.incomplete, 3);
+    assert.strictEqual(status.local.running, 1);
+    assert.strictEqual(status.local.interrupted, 2);
     assert.deepStrictEqual(status.local.pending, ["20260927T030000Z"]);
   });
 

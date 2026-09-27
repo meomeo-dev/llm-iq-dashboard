@@ -13,6 +13,7 @@ import type { AppConfig } from "../config";
 import { isReadonly } from "../deploy-mode";
 import { configPath as defaultAppConfigPath, dataRoot } from "../paths";
 import { requestRunnerDataRepoStatus } from "../requests";
+import { runIdTime } from "../store";
 import { externalRunner } from "../runner-link";
 import { inspectGitRepo } from "./data-repo-git";
 import type {
@@ -168,22 +169,35 @@ async function collectLedgerMetrics(
   }
 }
 
+/** 开始后不超过这个时长的未完成轮次视为仍在执行；更早的视为已中断（进程退出、未收尾） */
+const RUNNING_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+type LocalRunState = "completed" | "running" | "interrupted";
+
+/** 未完成轮次按开始时刻分成"仍在执行"与"已中断"，目录名不含时刻的一律视为中断 */
+function classifyUnfinished(runId: string, now: number): LocalRunState {
+  const startedAt = runIdTime(runId);
+  if (startedAt === null) return "interrupted";
+  return now - startedAt.getTime() <= RUNNING_WINDOW_MS ? "running" : "interrupted";
+}
+
 async function checkSingleRunDir(
   runDir: string,
   runId: string,
   rawLedger: SyncLedger,
-): Promise<{ isPending: boolean; isIncomplete: boolean }> {
+  now: number,
+): Promise<{ isPending: boolean; state: LocalRunState }> {
   const runJsonPath = join(runDir, "run.json");
   try {
     const text = await readFile(runJsonPath, "utf8");
     const run = JSON.parse(text) as { inProgress?: boolean };
     if (run.inProgress === true) {
-      return { isPending: false, isIncomplete: true };
+      return { isPending: false, state: classifyUnfinished(runId, now) };
     }
     const isPending = rawLedger[runId] === undefined;
-    return { isPending, isIncomplete: false };
+    return { isPending, state: "completed" };
   } catch {
-    return { isPending: false, isIncomplete: true };
+    return { isPending: false, state: classifyUnfinished(runId, now) };
   }
 }
 
@@ -198,11 +212,14 @@ async function collectLocalRuns(
     const dirNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     const pending: string[] = [];
     const rejected: string[] = [];
-    let incomplete = 0;
+    let running = 0;
+    let interrupted = 0;
+    const now = Date.now();
 
     for (const runId of dirNames) {
-      const outcome = await checkSingleRunDir(join(runsDir, runId), runId, rawLedger);
-      if (outcome.isIncomplete) incomplete += 1;
+      const outcome = await checkSingleRunDir(join(runsDir, runId), runId, rawLedger, now);
+      if (outcome.state === "running") running += 1;
+      if (outcome.state === "interrupted") interrupted += 1;
       if (outcome.isPending) pending.push(runId);
       const ledgerEntry = rawLedger[runId];
       if (ledgerEntry?.status === "skipped" && ledgerEntry.reason === "rejected") {
@@ -211,9 +228,16 @@ async function collectLocalRuns(
     }
     pending.sort((a, b) => b.localeCompare(a));
     rejected.sort((a, b) => b.localeCompare(a));
-    return { totalRuns: dirNames.length, pending, incomplete, rejected };
+    return {
+      totalRuns: dirNames.length,
+      pending,
+      incomplete: running + interrupted,
+      running,
+      interrupted,
+      rejected,
+    };
   } catch {
-    return { totalRuns: 0, pending: [], incomplete: 0, rejected: [] };
+    return { totalRuns: 0, pending: [], incomplete: 0, running: 0, interrupted: 0, rejected: [] };
   }
 }
 
