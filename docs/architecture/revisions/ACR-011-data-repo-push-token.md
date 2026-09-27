@@ -8,7 +8,7 @@
 | 触发来源 | 口头：所有者要求在网页上完成单次运行、导出提交与推送发布，授权像 Vercel 一样在浏览器里完成，不用终端、不手工配置令牌 |
 | 基线 | ARCH-001 |
 | 影响章节 | §6 §8 |
-| 改造面上限 | 9 个模块（源码 3 个：src/core、src/app、src/bin；docker/ 下镜像、忽略清单、入口脚本与 askpass 脚本各计 1 个，都是同一部署细节、随同一 commit 回滚；test/core 与 test/app 只新增测试，不改既有断言） |
+| 改造面上限 | 8 个模块（源码 3 个：src/core、src/app、src/bin；docker/ 下镜像、入口脚本与 askpass 脚本各计 1 个，都是同一部署细节、随同一 commit 回滚；test/core 与 test/app 只新增测试，不改既有断言） |
 | 取代 / 被取代 | 无 |
 
 ## 动机
@@ -61,8 +61,7 @@
 | src/core/github-auth/credential-store.ts | add | 凭据目录 `PELICAN_SECRETS_DIR`（默认 `{数据目录}/secrets`）内原子读写，目录 700、文件 600；访问令牌单独成文件供 askpass 读取 | no |
 | src/core/github-auth/push-env.ts | add | 生成仅对推送生效的 git 环境：`GIT_ASKPASS`、`GIT_TERMINAL_PROMPT=0`、`-c credential.helper=` 清空其它 helper；远程须为 `https://github.com/` 且与授权仓库一致 | no |
 | docker/git-askpass.sh | add | 用户名固定输出 `x-access-token`，密码从访问令牌文件读取 | no |
-| docker/Dockerfile | modify | 镜像内建 `/app/secrets` 并归属 node | no |
-| docker/Dockerfile.dockerignore | modify | askpass 脚本不被 dockerignore 排除 | no |
+| docker/Dockerfile | modify | 镜像内建 `/app/secrets` 并归属 node；同目录的 `Dockerfile.dockerignore` 放行 askpass 脚本 | no |
 | docker/entrypoint.sh | modify | 入口修正凭据目录权限 | no |
 | next.config.ts | modify | CSP `form-action` 允许提交到 github.com（清单注册表单） | no |
 | src/app/api/data-repo/github/github-helpers.ts | add | 授权路由共用：以 Host 头推导回跳地址、state cookie 读写 | no |
