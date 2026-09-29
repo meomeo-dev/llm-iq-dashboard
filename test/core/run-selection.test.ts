@@ -149,6 +149,23 @@ test("profiles：组合 × 上游展开，矩阵已有的沿用、没有的按�
   assert.equal(matrix.targets.length, 4, "原配置不被改动");
 });
 
+test("profiles：只勾第三方上游、不勾登录态时，不支持上游的 CLI 仍跑登录态一次", async () => {
+  const path = join(workdir, "profile-matrix.yaml");
+  await writeFile(path, PROFILE_MATRIX_YAML, "utf8");
+  const matrix = loadConfig(path);
+
+  const round = narrowConfig(matrix, {
+    targetIds: ["codex__m__low", "claude__c__low"],
+    promptIds: ["classic-v1"],
+    profiles: ["relay-a", "relay-b"],
+  });
+  assert.deepEqual(
+    round.targets.map((target) => target.id),
+    ["codex__m__low__relay-a", "codex__m__low__relay-b", "claude__c__low"],
+  );
+  assert.equal(round.targets.find((target) => target.cli === "claude")?.profile, undefined);
+});
+
 test("profiles：停用、模型不在清单、未登记、未选上游都拒绝；组合 id 须是矩阵里的组合", async () => {
   const path = join(workdir, "profile-matrix.yaml");
   await writeFile(path, PROFILE_MATRIX_YAML, "utf8");

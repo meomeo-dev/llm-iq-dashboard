@@ -100,16 +100,24 @@ function expandProfiles(
 
   const byId = new Map(config.targets.map((target) => [target.id, target]));
   const picked = new Set(comboIds);
+  const ordered = orderProfiles(config.profiles, profiles);
   const targets: Target[] = [];
   for (const [id, template] of templates) {
     if (!picked.has(id)) continue;
-    for (const profile of orderProfiles(config.profiles, profiles)) {
-      const target = targetForProfile(config, template, profile, byId);
-      if (target !== null) targets.push(target);
+    for (const profile of profilesForCombo(template, ordered)) {
+      targets.push(targetForProfile(config, template, profile, byId));
     }
   }
-  if (targets.length === 0) throw new Error("所选组合与上游没有可跑的目标");
   return targets;
+}
+
+/**
+ * 某组合本轮要跑的上游：支持上游的 CLI 按所选上游展开；不支持的只跑登录态一次，
+ * 与是否勾选登录态无关——上游选择只作用于支持上游的 CLI（与看板的调用数口径一致）。
+ */
+function profilesForCombo(template: Target, ordered: readonly string[]): readonly string[] {
+  const supportsProfiles = (PROFILE_CLIS as readonly string[]).includes(template.cli);
+  return supportsProfiles ? ordered : [DEFAULT_PROFILE];
 }
 
 /** 登录态在前，其余按配置顺序 */
@@ -120,17 +128,15 @@ function orderProfiles(configured: readonly ProfileConfig[], picked: readonly st
 
 /**
  * 某组合在某上游下的目标：矩阵里已登记的沿用，否则按模板合成。
- * CLI 不支持上游时只跑登录态（返回 null 表示该上游对此组合不适用）。
+ * 上游是否适用于该 CLI 由 profilesForCombo 先行决定。
  */
 function targetForProfile(
   config: AppConfig,
   template: Target,
   profile: string,
   byId: ReadonlyMap<string, Target>,
-): Target | null {
+): Target {
   const { cli, model, effort } = template;
-  const supportsProfiles = (PROFILE_CLIS as readonly string[]).includes(cli);
-  if (profile !== DEFAULT_PROFILE && !supportsProfiles) return null;
   if (profile !== DEFAULT_PROFILE) assertProfileUsable(config, cli, model, profile);
 
   const id = buildTargetId(cli, model, effort, profile);

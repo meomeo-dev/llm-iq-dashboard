@@ -23,6 +23,10 @@ describe("run-once-grouping", () => {
       assert.equal(classifyPrompt({ id: "honglou-daiyu", label: "黛玉", defaultSelected: false }), "四大名著（文学与叙事构图）");
     });
 
+    test("世界地标分类", () => {
+      assert.equal(classifyPrompt({ id: "landmarks-v1", label: "地标", defaultSelected: false }), "世界地标（微缩景观）");
+    });
+
     test("前沿工程与前沿特效分类", () => {
       assert.equal(classifyPrompt({ id: "fe-1-cad", label: "CAD", defaultSelected: false }), "2026 前沿工程评测 (FE-1 ~ FE-8)");
       assert.equal(classifyPrompt({ id: "vfx-particle", label: "粒子", defaultSelected: false }), "2026 前沿视觉特效 (VFX)");

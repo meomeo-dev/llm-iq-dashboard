@@ -17,7 +17,8 @@ import {
   type PromptValidationError,
 } from "../core/prompt-schema";
 
-const FRONTIER_SUITE_IDS = [
+/** 候选集逐条带独立 standard 的套题：14 套前沿领域套题 + 城市地标套题 */
+const CANDIDATE_STANDARD_SUITE_IDS = [
   "fe-ai-v1",
   "fe-semi-v1",
   "fe-quantum-v1",
@@ -32,6 +33,7 @@ const FRONTIER_SUITE_IDS = [
   "vfx-scivis-v1",
   "vfx-motion-v1",
   "vfx-sys-v1",
+  "landmarks-v1",
 ];
 
 function formatErrors(errors: readonly PromptValidationError[]): string {
@@ -76,11 +78,12 @@ function validateIndividualStep(): { count: number; errorCount: number } {
 }
 
 function validateCandidateStep(): { count: number; errorCount: number } {
-  console.log("\x1b[1m[3/3] 校验 14 套前沿套题 candidate 级特异性标准...\x1b[0m");
+  const suiteCount = CANDIDATE_STANDARD_SUITE_IDS.length;
+  console.log(`\x1b[1m[3/3] 校验 ${suiteCount} 套带候选集的套题 candidate 级特异性标准...\x1b[0m`);
   const candidateErrors: PromptValidationError[] = [];
   let candidateCount = 0;
 
-  for (const sid of FRONTIER_SUITE_IDS) {
+  for (const sid of CANDIDATE_STANDARD_SUITE_IDS) {
     const suite = resolvePrompt(sid);
     candidateCount += suite.candidates.length;
     const res = validatePromptSpec(suite, {
@@ -92,7 +95,9 @@ function validateCandidateStep(): { count: number; errorCount: number } {
   }
 
   if (candidateErrors.length === 0) {
-    console.log(`  \x1b[32m✔\x1b[0m 14 套题共 ${candidateCount} 个候选条目均具备独立针对性标准\n`);
+    console.log(
+      `  \x1b[32m✔\x1b[0m ${suiteCount} 套题共 ${candidateCount} 个候选条目均具备独立针对性标准\n`,
+    );
     return { count: 0, errorCount: 0 };
   }
   console.log(`  \x1b[31m✖ 候选标准发现 ${candidateErrors.length} 项违规：\x1b[0m`);

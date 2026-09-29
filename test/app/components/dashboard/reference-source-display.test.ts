@@ -48,6 +48,36 @@ describe("ReferenceSourceDisplay 特征测试", () => {
     assert.equal(html, fixture("reference-source-display-plain-text"));
   });
 
+  test("「 · 」分隔的多条出处逐段成链，仓库路径不成链", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ReferenceSourceDisplay, {
+        source:
+          "https://en.wikipedia.org/wiki/Tower_Bridge · Wikidata Q83125 · " +
+          "docs/research/landmarks/02-london-tower-bridge.md",
+      })
+    );
+    const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+    assert.deepEqual(hrefs, [
+      "https://en.wikipedia.org/wiki/Tower_Bridge",
+      "https://www.wikidata.org/wiki/Q83125",
+    ]);
+    assert.match(html, />Wikidata Q83125 ↗</);
+    assert.match(
+      html,
+      /<span class="source-citation-text">docs\/research\/landmarks\/02-london-tower-bridge\.md<\/span>/
+    );
+  });
+
+  test("URL 开头但后接说明文字时，href 只取 URL 本身", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ReferenceSourceDisplay, {
+        source: "https://example.com/paper.pdf (accessed 2026)",
+      })
+    );
+    const hrefs = [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+    assert.deepEqual(hrefs, ["https://example.com/paper.pdf"]);
+  });
+
   test("空字符串或空白字符串返回空", () => {
     const html = renderToStaticMarkup(
       React.createElement(ReferenceSourceDisplay, { source: "   " })

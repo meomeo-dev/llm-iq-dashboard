@@ -13,6 +13,7 @@ export interface ModelGroup {
 export type GroupKey =
   | "经典基准"
   | "四大名著（文学与叙事构图）"
+  | "世界地标（微缩景观）"
   | "2026 前沿工程评测 (FE-1 ~ FE-8)"
   | "2026 前沿视觉特效 (VFX)"
   | "微观物理与前沿探索"
@@ -67,6 +68,7 @@ export function classifyPrompt(p: PromptOption): GroupKey {
   ) {
     return "四大名著（文学与叙事构图）";
   }
+  if (p.id.startsWith("landmarks-")) return "世界地标（微缩景观）";
   if (p.id.startsWith("fe-")) return "2026 前沿工程评测 (FE-1 ~ FE-8)";
   if (p.id.startsWith("vfx-")) return "2026 前沿视觉特效 (VFX)";
   if (MICROPHYSICS_PROMPT_IDS.has(p.id)) return "微观物理与前沿探索";
@@ -77,6 +79,7 @@ export function groupPrompts(promptList: readonly PromptOption[]): PromptGroup[]
   const groups: Record<GroupKey, PromptOption[]> = {
     "经典基准": [],
     "四大名著（文学与叙事构图）": [],
+    "世界地标（微缩景观）": [],
     "2026 前沿工程评测 (FE-1 ~ FE-8)": [],
     "2026 前沿视觉特效 (VFX)": [],
     "微观物理与前沿探索": [],
