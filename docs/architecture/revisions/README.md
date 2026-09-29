@@ -75,4 +75,6 @@ node $R validate
 | [ACR-012](ACR-012-publish-lifecycle-and-calendar.md) | 不可发布轮次的台账状态与展台日历计数 | done | 2026-09-27 | new-module | 自研 | 5 包 | ✓ 2026-09-27 | 5/5 | — |
 | [ACR-013](ACR-013-codex-profile-config-model.md) | codex 多 profile：配置模型与目标标识 | done | 2026-09-29 | structure-change | 自研 | 3 包 | ✓ 2026-09-29 | 5/5 | — |
 | [ACR-014](ACR-014-codex-profile-runtime.md) | codex 多 profile：按 profile 隔离的 app-server 运行时 | done | 2026-09-29 | structure-change | 每个 profile 一个 codex app-server 进程：独立临时 CODEX_HOME 与 HOME，生成的 config.toml 以 model_providers 指向上游，env_key 从该进程环境读 key | 4 包 | ✓ 2026-09-29 | 5/6 | — |
+| [ACR-015](ACR-015-run-once-profiles.md) | 跑一次多选上游 profile | done | 2026-09-29 | structure-change | 自研 | 4 包 | ✓ 2026-09-29 | 5/5 | — |
+| [ACR-016](ACR-016-profile-compare-view.md) | 上游 profile 的对比视图与信息卡 | approved | 2026-09-29 | structure-change | 自研 | 4 包 | ✓ 2026-09-29 | 0/5 | — |
 <!-- acr-index:end -->

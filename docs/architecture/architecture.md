@@ -25,6 +25,7 @@
 | [ACR-012](revisions/ACR-012-publish-lifecycle-and-calendar.md) | 2026-09-27 | 台账 skipped 状态与修剪分级，中断轮次启动收尾，展台日历拉取上界 | §4 |
 | [ACR-013](revisions/ACR-013-codex-profile-config-model.md) | 2026-09-29 | codex 多 profile 的配置模型与目标标识；运行时另见 ACR-014 | §3 §5 |
 | [ACR-014](revisions/ACR-014-codex-profile-runtime.md) | 2026-09-29 | 每个 codex profile 一个 app-server 进程与临时 home，profile 间并行 | §3 §5 §6 |
+| [ACR-015](revisions/ACR-015-run-once-profiles.md) | 2026-09-29 | 跑一次：开始前多选上游，服务端按组合 × 上游展开本轮目标 | §1 §3 §5 |
 
 ## 0. 技术选型总览
 
@@ -68,6 +69,9 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
 - 看板分公开与所有者两个视角（ACR-007）：没有设备 cookie 的请求只能读结果；配置、发起与停止
   执行、自动任务开关要求配对过的设备。
 - 手动执行与定时执行互斥：看板与调度器都先查进度文件里有无存活的未结束轮次。
+- “跑一次”的范围是组合（`cli · model · effort`）× 题目 × 上游：范围里有支持上游的 CLI 且可用
+  上游不止一个时，开始前在二级模态里勾选上游；服务端把组合 × 上游展开成本轮目标，矩阵没有的
+  按组合合成，合成目标只存在于本轮、不写回配置（ACR-015）。
 - 两种轮次读同一份配置、同一时机：都在发起时读。调度器每个触发点重读配置按最新的定时目标与
   题目开轮，节奏（cron / 间隔 / 时区）每 30 秒核对一次、变了即重建定时器，不必重启。
   `schedule` 只定节奏，到点是否执行只看 `auto-run.json`。
@@ -106,6 +110,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   key），key 只进该进程环境，会话结束删除目录。会话池与分道按 `cli × profile` 分开，
   profile 组间并行、组内按模型分道；停用、未登记或缺 key 的 profile 调用记 error 不发起，
   不回落到登录态。
+- `RunSelection.profiles`（ACR-015）：`default` 表示登录态；每个上游须已登记、启用、CLI 支持上游，
+  且组合的模型在其模型清单里（清单为空不限）；不支持上游的 CLI 只跑登录态一次。不带该字段时
+  `targetIds` 即目标 id，与引入上游之前相同。
 - `src/core`：编排（提示词 × 目标，按 profile × 模型分道并发、道内串行）、强度折叠“不越级加码”、
   提示词登记（Simon Willison 原文与四大名著候选集，均不可编辑）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
@@ -142,7 +149,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - `config/pelican.config.yaml`：调度节奏、提示词、并发、超时、轮换周期、成本上限、上游类型
   清单 `upstreamTypes`、第三方上游 `profiles`（名字、CLI、上游类型、分组、官网、接口地址、模型、
   倍率与手填单价、启停；API key 不在配置里）、被测目标（`targets[].profile` 缺省为登录态）、
-  同时在跑的 profile 数上限 `run.profileConcurrency`（缺省 5，登录态也算一个）；
+  同时在跑的 profile 数上限 `run.profileConcurrency`（缺省 5，登录态也算一个）；“跑一次”的范围、
+  题目与上游勾选只记在浏览器本地存储，不进配置；
   `PELICAN_CONFIG` 覆盖路径。本机配置不入库，不存在时由同目录的
   `pelican.example.yaml`（起步模板）生成。配置页写回时在 YAML 语法树上改值，保留注释，
   先校验后替换。
