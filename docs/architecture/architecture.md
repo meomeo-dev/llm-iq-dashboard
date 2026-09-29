@@ -24,6 +24,7 @@
 | [ACR-011](revisions/ACR-011-data-repo-push-token.md) | 2026-09-27 | 网页授权 GitHub App，执行器持仅限数据仓的用户令牌完成推送 | §6 §8 |
 | [ACR-012](revisions/ACR-012-publish-lifecycle-and-calendar.md) | 2026-09-27 | 台账 skipped 状态与修剪分级，中断轮次启动收尾，展台日历拉取上界 | §4 |
 | [ACR-013](revisions/ACR-013-codex-profile-config-model.md) | 2026-09-29 | codex 多 profile 的配置模型与目标标识；运行时另见 ACR-014 | §3 §5 |
+| [ACR-014](revisions/ACR-014-codex-profile-runtime.md) | 2026-09-29 | 每个 codex profile 一个 app-server 进程与临时 home，profile 间并行 | §3 §5 §6 |
 
 ## 0. 技术选型总览
 
@@ -99,9 +100,13 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   每轮开始前预检各 CLI 是否已安装、已登录，只拦确定的问题。
 - 目标身份是 `cli × profile × model × effort`，profile 缺省为该 CLI 的登录态（`default`），
   不进目标 id；非默认 profile 是配置里登记的第三方上游，id 追加一段（ACR-013）。首期只有
-  codex 允许登记 profile，其运行时（每 profile 一个 `CODEX_HOME` 与进程）见 ACR-014，落地前
-  非默认 profile 的调用在放行前被拦下。
-- `src/core`：编排（提示词 × 目标，按模型分道并发、道内串行）、强度折叠“不越级加码”、
+  codex 允许登记 profile。
+- 每个非默认 profile 一个独立的 `codex app-server` 进程（ACR-014）：临时目录同时作
+  `CODEX_HOME` 与 `HOME`，内有生成的 `config.toml`（唯一 provider 指向该上游、`env_key` 读
+  key），key 只进该进程环境，会话结束删除目录。会话池与分道按 `cli × profile` 分开，
+  profile 组间并行、组内按模型分道；停用、未登记或缺 key 的 profile 调用记 error 不发起，
+  不回落到登录态。
+- `src/core`：编排（提示词 × 目标，按 profile × 模型分道并发、道内串行）、强度折叠“不越级加码”、
   提示词登记（Simon Willison 原文与四大名著候选集，均不可编辑）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
 - 失败分类：`ok` / `no-svg` / `error` / `timeout` 分开记录。
@@ -136,7 +141,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 
 - `config/pelican.config.yaml`：调度节奏、提示词、并发、超时、轮换周期、成本上限、上游类型
   清单 `upstreamTypes`、第三方上游 `profiles`（名字、CLI、上游类型、分组、官网、接口地址、模型、
-  倍率与手填单价、启停；API key 不在配置里）、被测目标（`targets[].profile` 缺省为登录态）；
+  倍率与手填单价、启停；API key 不在配置里）、被测目标（`targets[].profile` 缺省为登录态）、
+  同时在跑的 profile 数上限 `run.profileConcurrency`（缺省 5，登录态也算一个）；
   `PELICAN_CONFIG` 覆盖路径。本机配置不入库，不存在时由同目录的
   `pelican.example.yaml`（起步模板）生成。配置页写回时在 YAML 语法树上改值，保留注释，
   先校验后替换。
@@ -147,7 +153,10 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 
 - 模型产物不可信：SVG 经净化后展示，`/art` 路由以 CSP 沙箱返回原图。
 - 每次调用一个空的临时工作目录，避免 CLI 读到仓库里的 `CLAUDE.md` / `AGENTS.md`。
-- 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）。
+- 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）；
+  指纹同时覆盖全部已登记 profile 的 API key（ACR-014）。
+- profile 的 API key 只存在 `PELICAN_SECRETS_DIR` 下（目录 700 / 文件 600），运行时只交给该
+  profile 的子进程环境；非默认 profile 的调用在公开数据仓契约支持前不导出（ACR-014）。
 - 写操作与配置类读取只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
   `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
