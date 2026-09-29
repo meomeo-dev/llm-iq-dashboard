@@ -97,7 +97,7 @@ targets:
 | `website` | https URL | 公开 |
 | `baseUrl` | https URL，必填 | **不公开** |
 | `queryParams` | 字符串映射，仅用于 Azure 的 `api-version` 等 | 不公开 |
-| `models` | 非空 | 公开 |
+| `models` | 可空：新建 profile 先保存、写 key，再从上游 `/models` 同步或手填 | 公开 |
 | `pricing` | 见 §7 | 公开 |
 | `enabled` | 缺省 true | 不导出 |
 | API key | 不在 YAML 中，见 §5 | 永不公开 |

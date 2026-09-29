@@ -79,8 +79,8 @@ function parseProfileItem(
   const upstreamType = parseEnum(node.upstreamType, upstreamTypes, `${where}.upstreamType`, errors);
   const baseUrl = parseHttpsUrl(node.baseUrl, `${where}.baseUrl`, errors);
   if (node.baseUrl === undefined) errors.push(`${where}.baseUrl 缺失`);
+  // 可以为空：先保存 profile、写 key，再从上游同步模型；空清单只让矩阵里没有可选模型
   const models = parseModels(node.models, where, errors);
-  if (models.length === 0) errors.push(`${where}.models 缺失：第三方上游探测不到模型，须手工列出`);
   if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
     errors.push(`${where}.enabled 必须是布尔值`);
   }

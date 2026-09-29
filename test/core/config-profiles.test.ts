@@ -173,7 +173,6 @@ test("loadConfig: profiles 的每类错误都被报出，目标引用不存在�
       "profiles[2].cli 目前只支持 codex",
       "profiles[3].baseUrl 缺失",
       "profiles[4].baseUrl 必须是 https 地址",
-      "profiles[5].models 缺失",
       "profiles[6].upstreamType 必须是 chatgpt-plus，当前为 reseller",
       "profiles[7].pricing.multiplier 必须是大于 0 的数",
       "profiles[8].enabled 必须是布尔值",
@@ -182,6 +181,8 @@ test("loadConfig: profiles 的每类错误都被报出，目标引用不存在�
     ]) {
       assert.match(message, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
+    // 没有 models 的 profile 可以保存：先写 key 再从上游同步
+    assert.doesNotMatch(message, /profiles\[5\]/);
   });
 });
 

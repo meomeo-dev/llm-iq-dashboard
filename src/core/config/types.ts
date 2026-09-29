@@ -105,7 +105,7 @@ export interface ProfileConfig {
   baseUrl: string;
   /** 追加到接口地址的查询参数，如 Azure 的 api-version */
   queryParams: Record<string, string>;
-  /** 该上游可用的模型；第三方上游探测不到，须手工维护 */
+  /** 该上游可用的模型：从上游 /models 同步或手填；新建时可以为空 */
   models: string[];
   pricing: ProfilePricing;
   /** 停用后该 profile 的目标不进定时任务、不可手动选，配置与目标保留 */

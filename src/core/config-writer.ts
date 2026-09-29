@@ -138,7 +138,7 @@ function serializeProfile(profile: ProfileConfig): Record<string, unknown> {
   if (profile.website !== null) node.website = profile.website;
   node.baseUrl = profile.baseUrl;
   if (Object.keys(profile.queryParams).length > 0) node.queryParams = profile.queryParams;
-  node.models = [...profile.models];
+  if (profile.models.length > 0) node.models = [...profile.models];
   const hasOverrides = Object.keys(profile.pricing.overrides).length > 0;
   if (profile.pricing.multiplier !== 1 || hasOverrides) {
     node.pricing = { multiplier: profile.pricing.multiplier, overrides: profile.pricing.overrides };

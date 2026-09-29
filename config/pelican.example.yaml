@@ -97,7 +97,8 @@ retention:
 
 # profile（可选）：一家 CLI 通往某个第三方上游的一套配置，用来同时对比不同上游，目前只支持 codex。
 # 不写即只有隐式的 default profile，也就是该 CLI 的登录态；名字 default 保留，不能登记。
-# baseUrl 与 models 必填；API key 不写在这里，在 /config 页填入后存到凭据目录。
+# baseUrl 必填；models 可先留空，填好 API key 后在 /config 页从上游同步。API key 不写在这里，
+# 在 /config 页填入后存到凭据目录。
 # upstreamType 取 upstreamTypes 之一，只用于展示与数据仓记录。pricing.multiplier 是相对官价的倍率
 # （缺省价 = 官价 × 倍率，计价项与官方一致），overrides 按模型、计价项手填每百万 token 的美元单价，
 # 优先于缺省价。enabled: false 停用该上游：其目标不进定时任务、不可手动选，配置保留。
