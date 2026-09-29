@@ -17,6 +17,7 @@ import {
 
 const profile = (name: string, models: string[] = ["gpt-5.5"]): ProfileConfig => ({
   name,
+  label: null,
   cli: "codex",
   upstreamType: "compatible",
   group: null,

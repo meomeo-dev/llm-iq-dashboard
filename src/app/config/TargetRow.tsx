@@ -128,7 +128,7 @@ function TargetProfileCell({
       <option value={DEFAULT_PROFILE}>登录态</option>
       {choices.map((choice) => (
         <option key={choice.name} value={choice.name}>
-          {choice.name}
+          {choice.label ?? choice.name}
           {choice.enabled ? "" : "（已停用）"}
         </option>
       ))}

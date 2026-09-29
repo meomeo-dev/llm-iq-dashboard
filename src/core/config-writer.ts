@@ -51,7 +51,7 @@ export async function applyConfigPatch(
     reconcileSequence(doc, ["profiles"], patch.profiles.map(serializeProfile), {
       identityOf: (item) => String(item.name),
       // 这些字段全由界面编辑，提交里缺失即删除
-      managedKeys: ["group", "website", "queryParams", "pricing", "enabled"],
+      managedKeys: ["label", "group", "website", "queryParams", "pricing", "enabled"],
     });
   }
   if (patch.targets !== undefined) {
@@ -133,6 +133,7 @@ function serializeProfile(profile: ProfileConfig): Record<string, unknown> {
     cli: profile.cli,
     upstreamType: profile.upstreamType,
   };
+  if (profile.label !== null) node.label = profile.label;
   if (profile.group !== null) node.group = profile.group;
   if (profile.website !== null) node.website = profile.website;
   node.baseUrl = profile.baseUrl;

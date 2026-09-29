@@ -90,8 +90,10 @@ export interface ProfilePricing {
  * CLI 配置，不进入记录与接口响应。
  */
 export interface ProfileConfig {
-  /** 全局唯一，kebab-case；`default` 保留给隐式 profile */
+  /** 全局唯一，kebab-case；`default` 保留给隐式 profile。同时是目标 id 与 key 文件名的一段 */
   name: string;
+  /** 页面与记录上的显示名，自由文本（可含中文与标点）；未填为 null，显示时退回 name */
+  label: string | null;
   cli: CliKind;
   /** 取 upstreamTypes 之一 */
   upstreamType: string;

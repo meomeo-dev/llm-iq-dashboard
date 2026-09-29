@@ -62,6 +62,7 @@ export function ConfigEditor({
       <ProfileSection
         draft={draft}
         savedNames={savedNames}
+        onEnsureSaved={save}
         credentials={credentials}
         onUpstreamTypes={(next) => patch("upstreamTypes", next)}
         onProfiles={(profiles, targets) =>
@@ -186,7 +187,7 @@ function ConfigEditorActions({
 }: {
   status: ConfigEditorStatus;
   busy: boolean;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
   onRunNow: () => void;
 }) {
   return (

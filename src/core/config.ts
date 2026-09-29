@@ -15,5 +15,5 @@ export type {
 } from "./config/types";
 
 export { DEFAULT_UPSTREAM_TYPES, hasRhythm } from "./config/types";
-export { PROFILE_CLIS, profileExists } from "./config/profiles";
+export { PROFILE_CLIS, profileDisplayName, profileExists } from "./config/profiles";
 export { loadConfig } from "./config/loader";

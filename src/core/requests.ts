@@ -36,7 +36,8 @@ export type RequestKind =
   | "github-app-convert"
   | "github-token-exchange"
   | "github-disconnect"
-  | "profile-credential";
+  | "profile-credential"
+  | "profile-models";
 export type RequestState = "pending" | "claimed" | "done" | "failed";
 
 export interface RunnerRequest {
@@ -54,6 +55,8 @@ export interface RunnerRequest {
   githubAction?: { code: string | null } | null;
   /** kind 为 profile-credential 时的载荷，处理完或等待超时后 apiKey 覆写为 null */
   profileCredential?: ProfileCredentialAction | null;
+  /** kind 为 profile-models 时要拉模型清单的 profile；只读，不含 key */
+  profileTarget?: { cli: CliKind; name: string } | null;
   /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；github 为 githubConnection */
   result: {
     runId?: string;
@@ -68,6 +71,8 @@ export interface RunnerRequest {
     };
     githubConnection?: GithubConnection;
     githubDisconnectResult?: { revoked: boolean; revokeError?: string };
+    /** profile-models：上游返回的模型标识 */
+    profileModels?: string[];
   } | null;
 }
 
@@ -121,6 +126,19 @@ export async function requestRunnerProfileCredential(
   return { ok: false, error: settled?.result?.error ?? "执行器未响应，API key 未保存" };
 }
 
+const PROFILE_MODELS_TIMEOUT_MS = 30_000;
+
+/** 让执行器用凭据目录里的 key 拉上游模型清单；载荷只有 profile 名，不含 key */
+export async function requestRunnerProfileModels(
+  target: Pick<ProfileCredentialAction, "cli" | "name">,
+  timeoutMs: number = PROFILE_MODELS_TIMEOUT_MS,
+): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
+  const req = await enqueueRequest("profile-models", { profileTarget: target });
+  const settled = await waitForRequest(req.id, timeoutMs);
+  if (settled?.state === "done") return { ok: true, models: settled.result?.profileModels ?? [] };
+  return { ok: false, error: settled?.result?.error ?? "执行器未响应，未能拉取模型清单" };
+}
+
 async function scrubProfileKey(id: string): Promise<void> {
   const current = await readRequest(id);
   if (current?.profileCredential?.apiKey) {
@@ -168,6 +186,7 @@ export interface EnqueuePayload {
   syncAction?: SyncActionRequest | null;
   githubAction?: { code: string | null } | null;
   profileCredential?: ProfileCredentialAction | null;
+  profileTarget?: { cli: CliKind; name: string } | null;
 }
 
 export async function enqueueRequest(
@@ -179,12 +198,14 @@ export async function enqueueRequest(
   let syncAction: SyncActionRequest | null = null;
   let githubAction: { code: string | null } | null = null;
   let profileCredential: ProfileCredentialAction | null = null;
+  let profileTarget: { cli: CliKind; name: string } | null = null;
 
   if (payload !== null) {
     if (
       "syncAction" in payload ||
       "githubAction" in payload ||
       "profileCredential" in payload ||
+      "profileTarget" in payload ||
       ("selection" in payload && payload.selection !== undefined)
     ) {
       const p = payload as EnqueuePayload;
@@ -192,6 +213,7 @@ export async function enqueueRequest(
       syncAction = p.syncAction ?? null;
       githubAction = p.githubAction ?? null;
       profileCredential = p.profileCredential ?? null;
+      profileTarget = p.profileTarget ?? null;
     } else {
       selection = payload as RunSelection;
     }
@@ -208,6 +230,7 @@ export async function enqueueRequest(
     ...(syncAction !== null ? { syncAction } : {}),
     ...(githubAction !== null ? { githubAction } : {}),
     ...(profileCredential !== null ? { profileCredential } : {}),
+    ...(profileTarget !== null ? { profileTarget } : {}),
     result: null,
   };
   await mkdir(requestsDir(), { recursive: true });

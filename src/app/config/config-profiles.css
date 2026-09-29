@@ -111,3 +111,9 @@
 .profile-card input.invalid {
   border-color: var(--err);
 }
+
+.profile-models {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

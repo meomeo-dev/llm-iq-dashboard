@@ -1,11 +1,19 @@
 /* ---------- 操作与状态 ---------- */
 
+/* 编辑区很长，保存与执行常驻视口底部，不必滚到页尾 */
 .actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding-bottom: 20px;
+  padding: 12px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 -6px 16px rgb(0 0 0 / 35%);
 }
 
 .status {

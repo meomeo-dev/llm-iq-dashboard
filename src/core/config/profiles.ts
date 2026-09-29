@@ -88,6 +88,7 @@ function parseProfileItem(
 
   return {
     name,
+    label: optionalString(node.label),
     cli,
     upstreamType,
     group: optionalString(node.group),
@@ -235,6 +236,11 @@ function parseOverrides(
     }
   }
   return result;
+}
+
+/** 页面与目标默认显示名用的 profile 名称：填了显示名用显示名，否则用 name */
+export function profileDisplayName(profile: Pick<ProfileConfig, "name" | "label">): string {
+  return profile.label ?? profile.name;
 }
 
 /** 目标引用的 profile 是否存在：默认 profile 对每家 CLI 都存在，其余按 (cli, name) 查 */

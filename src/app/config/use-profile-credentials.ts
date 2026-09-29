@@ -7,6 +7,23 @@ import { describeError } from "./config-editor-model";
 const ENDPOINT = "/api/profiles/credential";
 
 export type CredentialOutcome = { ok: true } | { ok: false; error: string };
+export type ModelSyncOutcome = { ok: true; models: string[] } | { ok: false; error: string };
+
+/** 向上游拉模型清单；只读，不改配置 */
+async function requestModelSync(cli: CliKind, name: string): Promise<ModelSyncOutcome> {
+  try {
+    const response = await actionFetch("/api/profiles/models", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cli, name }),
+    });
+    const payload = (await response.json()) as { error?: string; models?: string[] };
+    if (!response.ok) return { ok: false, error: payload.error ?? "同步失败" };
+    return { ok: true, models: payload.models ?? [] };
+  } catch (cause) {
+    return { ok: false, error: describeError(cause) };
+  }
+}
 
 /**
  * profile 的 API key 状态与写入。key 立即提交，不随"保存配置"走：
@@ -38,5 +55,6 @@ export function useProfileCredentials(initial: ProfileCredentialTable) {
     credentials,
     saveKey: (cli: CliKind, name: string, apiKey: string) => send("PUT", { cli, name, apiKey }),
     deleteKey: (cli: CliKind, name: string) => send("DELETE", { cli, name }),
+    syncModels: requestModelSync,
   };
 }

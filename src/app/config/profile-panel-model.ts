@@ -7,11 +7,11 @@ import type { CapabilitySnapshot, ModelOption } from "@/capabilities/types";
 import type { ProfileConfig } from "@/core/config";
 import { DEFAULT_PROFILE, type CliKind, type Target } from "@/core/types";
 
-/** 与服务端 NAME_PATTERN 相同：小写字母与数字，连字符分隔 */
+/** 与服务端 NAME_PATTERN 相同：小写字母与数字，连字符分隔；首尾空白由服务端去掉 */
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export function isKebabName(value: string): boolean {
-  return KEBAB.test(value);
+  return KEBAB.test(value.trim());
 }
 
 /** 新 profile 的占位名取第一个未被占用的 profile-N；baseUrl 与 models 留给用户填 */
@@ -21,6 +21,7 @@ export function createProfile(profiles: readonly ProfileConfig[], upstreamTypes:
   while (taken.has(`profile-${serial}`)) serial += 1;
   return {
     name: `profile-${serial}`,
+    label: null,
     cli: "codex",
     upstreamType: upstreamTypes[0] ?? "compatible",
     group: null,

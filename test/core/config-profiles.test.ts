@@ -226,3 +226,32 @@ test("applyConfigPatch: 删掉 profile 后引用它的目标校验失败，原�
     assert.equal(await readFile(path, "utf8"), before);
   });
 });
+
+test("profile 显示名：可含中文与标点，目标默认显示名用它；写回时原样保留", async () => {
+  const yaml = `run:
+  promptIds: [classic-v1]
+profiles:
+  - name: kedaya-tehui-005
+    label: kedaya-我又来了特惠0.05
+    cli: codex
+    upstreamType: compatible
+    group: 我又来了特惠0.05
+    baseUrl: https://api.example.com/v1
+    models: [gpt-5.5]
+targets:
+  - cli: codex
+    profile: kedaya-tehui-005
+    model: gpt-5.5
+    effort: low
+`;
+  await withConfig(yaml, async (path) => {
+    const config = loadConfig(path);
+    assert.equal(config.profiles[0]!.label, "kedaya-我又来了特惠0.05");
+    assert.equal(config.targets[0]!.id, "codex__gpt-5.5__low__kedaya-tehui-005");
+    assert.equal(config.targets[0]!.label, "gpt-5.5 · low · kedaya-我又来了特惠0.05");
+
+    const saved = await applyConfigPatch(path, { profiles: config.profiles, targets: config.targets });
+    assert.equal(saved.profiles[0]!.label, "kedaya-我又来了特惠0.05");
+    assert.equal(saved.profiles[0]!.group, "我又来了特惠0.05");
+  });
+});

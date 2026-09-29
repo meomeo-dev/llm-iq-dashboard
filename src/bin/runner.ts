@@ -16,7 +16,7 @@ import { findActiveRun } from "../core/progress";
 import { claimNextRequest, cleanStaleGithubRequestCodes, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
 import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
-import { handleProfileCredential } from "../core/profile-credential-request";
+import { handleProfileCredential, handleProfileModels } from "../core/profile-credential-request";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
@@ -159,6 +159,9 @@ export async function handle(request: RunnerRequest): Promise<void> {
       return;
     case "profile-credential":
       await handleProfileCredential(request, full);
+      return;
+    case "profile-models":
+      await handleProfileModels(request, full);
       return;
   }
 }

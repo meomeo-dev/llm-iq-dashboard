@@ -42,15 +42,17 @@ export function useConfigEditor(draft: EditableConfig) {
   const [status, setStatus] = useState<ConfigEditorStatus>({ kind: "idle" });
   const router = useRouter();
 
-  const save = async (): Promise<void> => {
+  /** 返回是否保存成功，供"先存配置再写 key"这类连续操作判断 */
+  const save = async (): Promise<boolean> => {
     setStatus({ kind: "busy", message: "正在保存…" });
     const result = await requestSaveConfig(draft);
     if (!result.ok) {
       setStatus({ kind: "error", message: result.error });
-      return;
+      return false;
     }
     setStatus({ kind: "ok", message: "已保存。调度器会在下一次触发前重新读取配置。" });
     router.refresh();
+    return true;
   };
 
   const runNow = async (): Promise<void> => {

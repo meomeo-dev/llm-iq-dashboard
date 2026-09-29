@@ -8,7 +8,7 @@ import {
 } from "../types";
 import type { ProfileConfig, RunConfig } from "./types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
-import { profileExists } from "./profiles";
+import { profileDisplayName, profileExists } from "./profiles";
 
 export function parseExtraArgs(raw: unknown, where: string, errors: string[]): string[] {
   if (raw === undefined || raw === null) return [];
@@ -56,10 +56,12 @@ function validateTargetFields(
   return { cli, profile, model, effort };
 }
 
-/** 默认 profile 的显示名与引入 profile 之前相同，非默认的把 profile 名附在最后 */
-function defaultLabel(fields: TargetFields): string {
+/** 默认 profile 的显示名与引入 profile 之前相同，非默认的把 profile 的显示名附在最后 */
+function defaultLabel(fields: TargetFields, profiles: readonly ProfileConfig[]): string {
   const base = `${fields.model} · ${fields.effort}`;
-  return fields.profile === DEFAULT_PROFILE ? base : `${base} · ${fields.profile}`;
+  if (fields.profile === DEFAULT_PROFILE) return base;
+  const profile = profiles.find((item) => item.cli === fields.cli && item.name === fields.profile);
+  return `${base} · ${profile === undefined ? fields.profile : profileDisplayName(profile)}`;
 }
 
 function resolveTargetTimeout(
@@ -110,7 +112,7 @@ function parseTargetItem(item: unknown, index: number, ctx: TargetParseContext):
     ...(profile === DEFAULT_PROFILE ? {} : { profile }),
     model,
     effort,
-    label: optionalString(node.label) ?? defaultLabel(fields),
+    label: optionalString(node.label) ?? defaultLabel(fields, profiles),
     timeoutMs: resolveTargetTimeout(node, run, cli, effort),
     extraArgs: parseExtraArgs(node.extraArgs, where, errors),
     enabled: node.enabled !== false,

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { ProfileConfig } from "@/core/config";
 import type { ProfileCredentialStatus } from "@/core/profile-credentials";
-import { isKebabName, parseModelList } from "./profile-panel-model";
+import { isKebabName } from "./profile-panel-model";
+import { ProfileModelsField } from "./ProfileModelsField";
 import { ProfileCredentialField } from "./ProfileCredentialField";
-import type { CredentialOutcome } from "./use-profile-credentials";
+import type { CredentialOutcome, ModelSyncOutcome } from "./use-profile-credentials";
 
 export interface ProfileCardProps {
   profile: ProfileConfig;
@@ -16,8 +17,10 @@ export interface ProfileCardProps {
   onChange: (changes: Partial<ProfileConfig>) => void;
   onRename: (name: string) => void;
   onRemove: () => void;
+  onEnsureSaved: () => Promise<boolean>;
   onSaveKey: (apiKey: string) => Promise<CredentialOutcome>;
   onDeleteKey: () => Promise<CredentialOutcome>;
+  onSyncModels: () => Promise<ModelSyncOutcome>;
 }
 
 export function ProfileCard(props: ProfileCardProps) {
@@ -45,6 +48,7 @@ export function ProfileCard(props: ProfileCardProps) {
       <ProfileCredentialField
         saved={saved}
         status={props.credential}
+        onEnsureSaved={props.onEnsureSaved}
         onSave={props.onSaveKey}
         onDelete={props.onDeleteKey}
       />
@@ -56,24 +60,28 @@ function ProfileNameField({ name, locked, onRename }: { name: string; locked: bo
   if (locked) return <strong className="profile-name" title="已保存的 profile 不能改名：API key 按名字存放">{name}</strong>;
   return (
     <label>
-      名字（kebab-case，如 kedaya-group-a）
+      名字（标识用：小写字母、数字、连字符，如 kedaya-tehui-005）
       <input
         type="text"
         value={name}
         className={isKebabName(name) ? undefined : "invalid"}
-        onChange={(e) => onRename(e.target.value.trim())}
+        onChange={(e) => onRename(e.target.value)}
       />
     </label>
   );
 }
 
-function ProfileFields({ profile, upstreamTypes, onChange }: ProfileCardProps) {
-  // 模型与倍率保留原始输入，逗号或小数点打到一半时不被解析结果回写覆盖
-  const [modelsText, setModelsText] = useState(profile.models.join(", "));
+function ProfileFields(props: ProfileCardProps) {
+  const { profile, upstreamTypes, onChange } = props;
+  // 倍率保留原始输入，小数点打到一半时不被解析结果回写覆盖
   const [multiplierText, setMultiplierText] = useState(String(profile.pricing.multiplier));
 
   return (
     <div className="profile-fields">
+      <label className="profile-wide">
+        显示名（页面上展示，可含中文，如 kedaya-我又来了特惠0.05；留空则用名字）
+        <input type="text" value={profile.label ?? ""} onChange={(e) => onChange({ label: e.target.value || null })} />
+      </label>
       <label>
         上游类型
         <select value={profile.upstreamType} onChange={(e) => onChange({ upstreamType: e.target.value })}>
@@ -84,7 +92,7 @@ function ProfileFields({ profile, upstreamTypes, onChange }: ProfileCardProps) {
       </label>
       <label>
         分组
-        <input type="text" value={profile.group ?? ""} onChange={(e) => onChange({ group: e.target.value.trim() || null })} />
+        <input type="text" value={profile.group ?? ""} onChange={(e) => onChange({ group: e.target.value || null })} />
       </label>
       <label>
         官网
@@ -92,7 +100,7 @@ function ProfileFields({ profile, upstreamTypes, onChange }: ProfileCardProps) {
           type="text"
           value={profile.website ?? ""}
           placeholder="https://"
-          onChange={(e) => onChange({ website: e.target.value.trim() || null })}
+          onChange={(e) => onChange({ website: e.target.value || null })}
         />
       </label>
       <label className="profile-wide">
@@ -101,21 +109,15 @@ function ProfileFields({ profile, upstreamTypes, onChange }: ProfileCardProps) {
           type="text"
           value={profile.baseUrl}
           placeholder="https://api.example.com/v1"
-          onChange={(e) => onChange({ baseUrl: e.target.value.trim() })}
+          onChange={(e) => onChange({ baseUrl: e.target.value })}
         />
       </label>
-      <label className="profile-wide">
-        模型（逗号或空格分隔）
-        <input
-          type="text"
-          value={modelsText}
-          placeholder="gpt-5.5, gpt-6-mini"
-          onChange={(e) => {
-            setModelsText(e.target.value);
-            onChange({ models: parseModelList(e.target.value) });
-          }}
-        />
-      </label>
+      <ProfileModelsField
+        models={profile.models}
+        canSync={props.saved && props.credential !== undefined}
+        onChange={(models) => onChange({ models })}
+        onSync={props.onSyncModels}
+      />
       <label>
         倍率（官价 ×）
         <input

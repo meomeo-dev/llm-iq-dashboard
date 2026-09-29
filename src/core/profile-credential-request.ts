@@ -7,6 +7,7 @@
 import type { AppConfig } from "./config";
 import { deleteProfileKey, validateApiKey, writeProfileKey } from "./profile-credentials";
 import { completeRequest, failRequest, type ProfileCredentialAction, type RunnerRequest } from "./requests";
+import { fetchUpstreamModels } from "./upstream-models";
 
 export async function applyProfileCredential(
   action: ProfileCredentialAction,
@@ -37,5 +38,16 @@ export async function handleProfileCredential(request: RunnerRequest, config: Ap
     error: cause instanceof Error ? cause.message : String(cause),
   }));
   if (outcome.ok) await completeRequest(request.id, {});
+  else await failRequest(request.id, outcome.error);
+}
+
+export async function handleProfileModels(request: RunnerRequest, config: AppConfig): Promise<void> {
+  const target = request.profileTarget;
+  if (target === undefined || target === null) {
+    await failRequest(request.id, "缺少 profile 载荷");
+    return;
+  }
+  const outcome = await fetchUpstreamModels(target.cli, target.name, config);
+  if (outcome.ok) await completeRequest(request.id, { profileModels: outcome.models });
   else await failRequest(request.id, outcome.error);
 }

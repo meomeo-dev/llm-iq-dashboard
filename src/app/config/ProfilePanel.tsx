@@ -12,6 +12,8 @@ export interface ProfilePanelProps {
   /** 已写进配置文件的 profile 名 */
   savedNames: ReadonlySet<string>;
   credentials: ReturnType<typeof useProfileCredentials>;
+  /** 保存整份配置；未落盘的 profile 填 key 前先调用它 */
+  onEnsureSaved: () => Promise<boolean>;
   onUpstreamTypes: (next: string[]) => void;
   /** profile 与目标一起提交：改名要同步改掉引用它的目标 */
   onProfiles: (profiles: ProfileConfig[], targets?: Target[]) => void;
@@ -24,6 +26,7 @@ export function ProfilePanel({
   targets,
   savedNames,
   credentials,
+  onEnsureSaved,
   onUpstreamTypes,
   onProfiles,
 }: ProfilePanelProps) {
@@ -51,8 +54,10 @@ export function ProfilePanel({
           onChange={(changes) => update(index, changes)}
           onRename={(name) => rename(index, name)}
           onRemove={() => onProfiles(profiles.filter((_, i) => i !== index))}
+          onEnsureSaved={onEnsureSaved}
           onSaveKey={(apiKey) => credentials.saveKey(profile.cli, profile.name, apiKey)}
           onDeleteKey={() => credentials.deleteKey(profile.cli, profile.name)}
+          onSyncModels={() => credentials.syncModels(profile.cli, profile.name)}
         />
       ))}
       <div className="field-row">
