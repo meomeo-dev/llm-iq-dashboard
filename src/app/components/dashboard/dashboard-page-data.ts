@@ -7,6 +7,7 @@ import {
   type PromptSpec,
   type PromptStandard,
 } from "@/core/prompt";
+import { toProfileViews, type ProfileView } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -30,16 +31,27 @@ export function sortNewestFirst(cards: readonly DashboardCard[]): DashboardCard[
   return [...cards].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 }
 
+export interface DashboardSettings {
+  prompts: readonly PromptSpec[];
+  scheduleTimeZone: string | null;
+  /** 上游 profile 的公开视图（无接口地址与 key）；配置缺失时为空 */
+  profiles: readonly ProfileView[];
+}
+
 /**
  * 提示词显示名取全部已登记条目（含已停用的），保证历史结果在筛选里显示正确名称。
- * 配置缺失或损坏时退回内置条目、不带调度时区，页面仍能呈现历史。
+ * 配置缺失或损坏时退回内置条目、不带调度时区与上游，页面仍能呈现历史。
  */
-export function readDashboardSettings(): { prompts: readonly PromptSpec[]; scheduleTimeZone: string | null } {
+export function readDashboardSettings(): DashboardSettings {
   try {
     const config = loadConfig(configPath());
-    return { prompts: listPrompts(config.customPrompts), scheduleTimeZone: config.schedule.timezone };
+    return {
+      prompts: listPrompts(config.customPrompts),
+      scheduleTimeZone: config.schedule.timezone,
+      profiles: toProfileViews(config.profiles),
+    };
   } catch {
-    return { prompts: BUILTIN_PROMPTS, scheduleTimeZone: null };
+    return { prompts: BUILTIN_PROMPTS, scheduleTimeZone: null, profiles: [] };
   }
 }
 

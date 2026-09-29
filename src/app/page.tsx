@@ -33,7 +33,7 @@ export default async function Page({ searchParams }: PageProps) {
   const cards = sortNewestFirst(await loadCardsBetween(range.from, range.to));
 
   const remoteNotice = getRemoteNotice();
-  const { prompts, scheduleTimeZone } = readDashboardSettings();
+  const { prompts, scheduleTimeZone, profiles } = readDashboardSettings();
   const promptLabels = Object.fromEntries(prompts.map((spec) => [spec.id, spec.label]));
   const promptStandards = buildPromptStandards(prompts);
 
@@ -61,6 +61,7 @@ export default async function Page({ searchParams }: PageProps) {
         promptLabels={promptLabels}
         promptStandards={promptStandards}
         scheduleTimeZone={scheduleTimeZone}
+        profiles={profiles}
       />
     </div>
   );

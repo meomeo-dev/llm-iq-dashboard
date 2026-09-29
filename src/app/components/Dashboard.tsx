@@ -1,7 +1,9 @@
 "use client";
 
+import type { ProfileView } from "@/core/profile-view";
 import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
+import { ProfilesProvider } from "./profile/profiles-context";
 import { DashboardBoard } from "./dashboard/DashboardBoard";
 import { DashboardModal } from "./dashboard/DashboardModal";
 import { DashboardToolbar } from "./dashboard/DashboardToolbar";
@@ -16,6 +18,7 @@ import "./card/cards.css";
 import "./model-modal/model-modal.css";
 import "./run-status/run-status.css";
 import "./run-control/run-control.css";
+import "./profile/profile.css";
 
 export interface DashboardProps {
   /** 所有者视角（有效的设备 cookie），决定是否显示操作控件 */
@@ -34,6 +37,8 @@ export interface DashboardProps {
   promptStandards?: Readonly<Record<string, PromptStandard>>;
   /** 调度器 cron 的时区；配置里留空时为 null */
   scheduleTimeZone: string | null;
+  /** 配置里的上游 profile 公开视图；缺省为空，页面不出现任何上游元素 */
+  profiles?: readonly ProfileView[];
 }
 
 /**
@@ -50,6 +55,7 @@ export function Dashboard(props: DashboardProps) {
   }
 
   return (
+    <ProfilesProvider value={{ profiles: props.profiles ?? [], owner: props.owner }}>
     <div className="workspace">
       <DashboardToolbar
         owner={props.owner}
@@ -92,5 +98,6 @@ export function Dashboard(props: DashboardProps) {
         onClose={() => state.setOpenCell(null)}
       />
     </div>
+    </ProfilesProvider>
   );
 }

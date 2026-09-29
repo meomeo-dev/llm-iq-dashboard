@@ -1,0 +1,155 @@
+/* 上游名字按钮（ProfileName.tsx）与信息卡浮层（ProfileInfoCard.tsx） */
+
+.profile-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.profile-name-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.profile-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-name:hover,
+.profile-name[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-hi);
+}
+
+.profile-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.profile-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 桌面：锚定在名字下方的浮层 */
+.profile-card {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 300;
+  width: 320px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 18px;
+  text-align: left;
+  white-space: normal;
+  cursor: default;
+}
+
+.profile-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-card-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.profile-card-close {
+  flex: none;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.profile-card-id {
+  margin: 2px 0 8px 16px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.profile-card-gone {
+  color: var(--warn);
+}
+
+.profile-card-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0 0 8px 16px;
+}
+
+.profile-card-facts dt {
+  color: var(--text-dim);
+}
+
+.profile-card-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-card-facts a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.profile-card-work {
+  margin: 0 0 4px 16px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-card-edit {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: right;
+  text-decoration: none;
+}
+
+.profile-card-edit:hover {
+  color: var(--text);
+}
+
+/* 窄屏：底部抽屉 */
+@media (max-width: 767px) {
+  .profile-card {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    border-radius: 12px 12px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}

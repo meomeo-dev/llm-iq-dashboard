@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | implementing |
 | 日期 | 2026-09-29 |
 | 变更类型 | structure-change |
 | 触发来源 | 口头：profile 怎么显示、点它要出信息卡，首页、模态弹窗、大图详情页如何展示；设计见 docs/profiles/profile-display-ux.md §3–§8，前置 ACR-015 |
@@ -34,7 +34,8 @@
 | `src/core/profile-view.ts` | add | `ProfileView`（名字、显示名、CLI、上游类型、分组、官网、倍率、启用）与从配置组装的函数；不含接口地址、查询参数、key | no |
 | `src/app/components/dashboard/dashboard-page-data.ts` | modify | `readDashboardSettings` 增 `profiles` | no |
 | `src/app/page.tsx` | modify | 把 `profiles` 传给看板 | no |
-| `src/app/components/Dashboard.tsx` | modify | `profiles` 属性下传到工具栏、网格、弹窗 | no |
+| `src/app/components/Dashboard.tsx` | modify | 用 `ProfilesProvider` 把 `profiles` 与 `owner` 提供给工具栏、网格、弹窗与进度面板 | no |
+| `src/app/components/profile/profiles-context.tsx` | add | 上游清单与所有者视角的 React context，避免逐层透传 | no |
 | `src/app/components/profile/ProfileName.tsx` | add | 上游名按钮（色点 + 显示名，`aria-haspopup="dialog"`）；点击打开信息卡 | no |
 | `src/app/components/profile/ProfileInfoCard.tsx` | add | 信息卡：显示名、标识与类型、分组、倍率、官网、本件耗时与成本、配对设备的"在配置页编辑" | no |
 | `src/app/components/profile/profile-color.ts` | add | 名字散列到固定调色板 | no |
