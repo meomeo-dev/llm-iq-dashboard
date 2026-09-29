@@ -180,7 +180,7 @@
 | 166 | `VFX-SYS-08` | 裸眼3D光场显示倾斜柱镜光栅(Slanted Lenticular)微透镜光线转向与子像素视差切片拓扑 | 虚拟制片与异构图形系统 | 静态 | 2026-09 | 2026-09-27 | - Cees van Berkel |
 | 167 | `VFX-SYS-09` | 现代广色域动态范围感知量化(PQ) SMPTE ST 2084 EOTF响应与Barten阶梯标尺 | 虚拟制片与异构图形系统 | 静态 | 2026-09 | 2026-09-27 | - SMPTE ST 2084:2014 |
 | 168 | `VFX-SYS-10` | 屏幕空间时域抗锯齿(TAA/TSR)亚像素 Halton 抖动与历史样本方差裁剪 | 虚拟制片与异构图形系统 | 纯内联动画 | 2026-09 | 2026-09-27 | - Brian Karis (Epic Games |
-| 169 | `landmarks-v1` | 城市地标·微缩景观十景 | 世界地标 | 静态轮换 | 2026-09 | 2026-09-29 | [选择规则与逐景事实表](research/landmarks/selection-rules.md)（Wikidata CC0 / Wikipedia 事实） |
+| 169 | `landmarks-v1` | 城市地标·微缩景观二十景 | 世界地标 | 静态轮换 | 2026-09 | 2026-09-29 | [选择规则与逐景事实表](research/landmarks/selection-rules.md)（Wikidata CC0 / Wikipedia 事实） |
 
 ---
 
@@ -227,7 +227,7 @@
 
 ## 四、 世界地标微缩景观（`landmarks-v1`）
 
-* **出处依据**：十座城市各一处地标，事实取自 Wikidata（CC0）与 Wikipedia 条目；每景一份事实表、
+* **出处依据**：二十座城市各一处地标，事实取自 Wikidata（CC0）与 Wikipedia 条目；每景一份事实表、
   六项准入判定与参考 QID，见 [docs/research/landmarks/](research/landmarks/selection-rules.md)。
 * **准入规则**：版权已过期、外形无商标、不以真实人物为主体、所在国无文物图像权、主权与政治中立、
   全程纯文字。题面只写城市不写国家；有夜间灯光版权的地标只画日景。
