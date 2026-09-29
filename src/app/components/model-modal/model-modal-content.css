@@ -32,12 +32,17 @@
 }
 
 /* 对比弹窗：列 = 上游、行 = 强度（ProfileMatrix.tsx） */
+/* 列宽只由列数与窗宽决定，不随作品的固有尺寸撑开；列数多到放不下时整体在 .modal-body 里横向滚动 */
 .profile-matrix {
   display: grid;
   grid-template-columns: 56px repeat(var(--upstream-count), minmax(260px, 1fr));
   gap: var(--gap);
   align-items: start;
-  min-width: max-content;
+  min-width: 0;
+}
+
+.profile-matrix > .card {
+  min-width: 0;
 }
 
 .profile-matrix-col {
