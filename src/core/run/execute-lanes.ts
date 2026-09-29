@@ -1,12 +1,42 @@
 /**
- * 模型分道并行执行编排
+ * 模型分道并行执行编排：先按 profile 分组、组间并行，组内再按模型分道并行。
+ * 每个 profile 一个独立的 CLI 进程，组间并行不会让它们共享任何状态。
  */
 
 import { mapWithConcurrency } from "../concurrency";
-import type { Attempt } from "../types";
-import { openSessionPool } from "../../adapters/index";
+import { DEFAULT_PROFILE, type Attempt } from "../types";
+import { openSessionPool, type ProfileLaunch } from "../../adapters/index";
 import { buildAttempt, runAttempt, type AttemptContext } from "../run-attempt";
 import type { Job, LaneItem } from "../run-plan";
+
+/** 两级并行上限：同时在跑的 profile 数、每个 profile 内同时在跑的道数 */
+export interface LaneLimits {
+  profiles: number;
+  lanesPerProfile: number;
+}
+
+/** 一轮的执行环境：调用上下文之外，另带本轮放行的非默认 profile 启动参数 */
+export type RoundContext = Omit<AttemptContext, "sessions"> & {
+  profileLaunches: ReadonlyMap<string, ProfileLaunch>;
+};
+
+/** 带全局道号的道；进度文件按全局道号定位，分组不能改变道号 */
+interface IndexedLane {
+  lane: readonly LaneItem[];
+  laneIndex: number;
+}
+
+/** 按道首目标的 profile 分组，组的顺序即 profile 首次出现的顺序 */
+export function groupLanesByProfile(lanes: readonly LaneItem[][]): IndexedLane[][] {
+  const groups = new Map<string, IndexedLane[]>();
+  lanes.forEach((lane, laneIndex) => {
+    const profile = lane[0]?.job.target.profile ?? DEFAULT_PROFILE;
+    const group = groups.get(profile) ?? [];
+    group.push({ lane, laneIndex });
+    groups.set(profile, group);
+  });
+  return [...groups.values()];
+}
 
 export type Admission = null | { kind: "fail"; error: string } | { kind: "skip"; reason: string };
 
@@ -63,22 +93,24 @@ async function executeSingleLane(
 }
 
 /**
- * 各道并行、道内串行地跑完全部调用，每次发起前经 hooks.admit 放行；
- * signal 触发后余下的调用全部取消。
+ * profile 组间并行、组内各道并行、道内串行地跑完全部调用，每次发起前经 hooks.admit
+ * 放行；signal 触发后余下的调用全部取消。
  */
 export async function executeLanes(
   lanes: readonly LaneItem[][],
-  laneLimit: number,
-  round: Omit<AttemptContext, "sessions">,
+  limits: LaneLimits,
+  round: RoundContext,
   hooks: LaneHooks,
 ): Promise<void> {
-  const { signal } = round;
+  const { profileLaunches, ...attemptRound } = round;
   // codex 的 app-server 是长驻进程，无论本轮成败都要关闭
-  const sessions = openSessionPool();
-  const context: AttemptContext = { ...round, sessions };
+  const sessions = openSessionPool(profileLaunches);
+  const context: AttemptContext = { ...attemptRound, sessions };
   try {
-    await mapWithConcurrency(lanes, laneLimit, async (lane, laneIndex) => {
-      await executeSingleLane(lane, laneIndex, context, hooks);
+    await mapWithConcurrency(groupLanesByProfile(lanes), limits.profiles, async (group) => {
+      await mapWithConcurrency(group, limits.lanesPerProfile, async ({ lane, laneIndex }) => {
+        await executeSingleLane(lane, laneIndex, context, hooks);
+      });
     });
   } finally {
     await sessions.closeAll();

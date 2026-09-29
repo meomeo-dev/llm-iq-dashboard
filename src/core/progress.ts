@@ -35,6 +35,8 @@ export interface CallProgress {
 export interface LaneProgress {
   cli: CliKind;
   model: string;
+  /** 非默认 profile 的道才写；默认 profile 的进度文件与引入 profile 之前相同 */
+  profile?: string;
   calls: CallProgress[];
 }
 

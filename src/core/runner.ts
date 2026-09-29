@@ -1,18 +1,21 @@
 /**
  * 一轮鹈鹕基准的编排：工作量为 `提示词 × 目标`，只依赖适配器与存储契约。
  *
- * 单个目标失败收敛为一条失败记录，不影响同批其他目标。并发按 CLI × 模型分道（lane）：
- * 不同模型并行；同一模型的调用在道内串行，避免挤占该模型的限速并保持耗时可比。
+ * 单个目标失败收敛为一条失败记录，不影响同批其他目标。并发按 CLI × profile × 模型分道
+ * （lane）：不同模型并行；同一模型的调用在道内串行，避免挤占该模型的限速并保持耗时可比。
+ * 非默认 profile 各起一个独立进程，profile 之间并行，上限 run.profileConcurrency。
  */
 
+import type { ProfileLaunch } from "../adapters/index";
 import type { AppConfig } from "./config";
+import { profileKeyPath, readProfileKey } from "./profile-credentials";
 import { createProgressTracker, type ProgressTracker } from "./progress";
 import { createSerialWriter, type SerialWriter } from "./serial-writes";
 import { watchCancel, type CancelWatch } from "./run-cancel";
 import { saveRun } from "./store";
-import type { Attempt, RunRecord } from "./types";
-import { buildLeakGuard, type LeakGuard } from "./leak-guard";
-import { describeProgress, type LaneItem } from "./run-plan";
+import type { Attempt, CliKind, RunRecord } from "./types";
+import { buildLeakGuard, credentialFiles, type LeakGuard } from "./leak-guard";
+import { describeProgress, laneIdentity, type LaneItem } from "./run-plan";
 import type { RenderedPrompt } from "./variables";
 import { discardScratch } from "./scratch-cleanup";
 import { executeLanes, type LaneHooks } from "./run/execute-lanes";
@@ -59,9 +62,49 @@ function setupCancelWatch(runId: string, log: Logger, progress: ProgressTracker,
   return cancel;
 }
 
+/** 开轮前查出的拦截原因：按 CLI（预检未通过）与按 profile（停用、未登记、缺 key） */
+interface CallBlockers {
+  cli: ReadonlyMap<CliKind, string>;
+  profile: ReadonlyMap<string, string>;
+}
+
+interface ProfileGate {
+  launches: Map<string, ProfileLaunch>;
+  blockers: Map<string, string>;
+}
+
+/** 一个 profile 的放行检查：可调用时返回启动参数，否则返回拦截原因 */
+async function launchFor(config: AppConfig, name: string): Promise<ProfileLaunch | string> {
+  const profile = config.profiles.find((candidate) => candidate.name === name);
+  if (profile === undefined) return `profile ${name} 未登记，未发起调用`;
+  if (!profile.enabled) return `profile ${name} 已停用，未发起调用`;
+  const apiKey = await readProfileKey(profile.cli, name);
+  if (apiKey === null) return `profile ${name} 还没有填 API key，未发起调用`;
+  return { name, baseUrl: profile.baseUrl, queryParams: profile.queryParams, apiKey };
+}
+
+/**
+ * 为本轮用到的非默认 profile 读 key、组启动参数。key 只进内存与该 profile 的子进程
+ * 环境；拦下的 profile 其调用记 error，不回落到登录态。
+ */
+async function prepareProfileLaunches(config: AppConfig, lanes: readonly LaneItem[][], log: Logger): Promise<ProfileGate> {
+  const used = new Set(lanes.map((lane) => laneIdentity(lane).profile).filter((name) => name !== undefined));
+  const gate: ProfileGate = { launches: new Map(), blockers: new Map() };
+  for (const name of used) {
+    const launch = await launchFor(config, name);
+    if (typeof launch === "string") {
+      gate.blockers.set(name, launch);
+      log(launch);
+    } else {
+      gate.launches.set(name, launch);
+    }
+  }
+  return gate;
+}
+
 function buildLaneHooks(
   runId: string,
-  blockers: ReadonlyMap<string, string>,
+  blockers: CallBlockers,
   budget: BudgetGate | null,
   slots: (Attempt | undefined)[],
   progress: ProgressTracker,
@@ -72,11 +115,8 @@ function buildLaneHooks(
 ): LaneHooks {
   return {
     admit: (job) => {
-      // 非默认 profile 的调用链尚未落地：在此拦下，避免错拿登录态调用并把结果记在该 profile 名下
-      if (job.target.profile !== undefined) {
-        return { kind: "fail", error: `profile ${job.target.profile} 的运行时尚未实现，未发起调用` };
-      }
-      const blocker = blockers.get(job.target.cli);
+      const { cli, profile } = job.target;
+      const blocker = blockers.cli.get(cli) ?? (profile === undefined ? undefined : blockers.profile.get(profile));
       if (blocker !== undefined) return { kind: "fail", error: blocker };
       const refusal = budget?.admit(job.target.id) ?? null;
       return refusal === null ? null : { kind: "skip", reason: refusal };
@@ -92,7 +132,7 @@ function buildLaneHooks(
     onStart: (lane, call) => progress.markRunning(lane, call),
     onDone: (lane, call, { job, index }, attempt) => {
       log(`[${runId}] ${attempt.targetId} @${job.prompt.promptId} → ${attempt.status} (${attempt.durationMs}ms)`);
-      if (!blockers.has(attempt.cli)) budget?.settle(attempt.targetId, costOf(attempt));
+      if (!blockers.cli.has(attempt.cli)) budget?.settle(attempt.targetId, costOf(attempt));
       slots[index] = attempt;
       progress.markDone(lane, call, attempt);
       writer.enqueue(() => saveRun(snapshot(true)));
@@ -101,8 +141,10 @@ function buildLaneHooks(
   };
 }
 
-async function setupLeakGuard(runId: string, log: Logger): Promise<LeakGuard> {
-  const guard = await buildLeakGuard();
+/** 指纹覆盖三家 CLI 的登录凭据与全部已登记 profile 的 key，不论本轮是否用到 */
+async function setupLeakGuard(runId: string, config: AppConfig, log: Logger): Promise<LeakGuard> {
+  const profileKeys = config.profiles.map((profile) => profileKeyPath(profile.cli, profile.name));
+  const guard = await buildLeakGuard([...credentialFiles(), ...profileKeys]);
   if (guard.size === 0) log(`[${runId}] 未读到任何凭据文件，本轮不做输出泄漏比对`);
   return guard;
 }
@@ -178,7 +220,8 @@ export async function executeRun(
 
   log(
     `[${runId}] 开始，${prompts.length} 条提示词 × ${config.targets.length} 个目标 = ${jobs.length} 次调用，` +
-      `${lanes.length} 个模型分道，同时最多 ${config.run.concurrency} 道`,
+      `${lanes.length} 个模型分道，同时最多 ${config.run.profileConcurrency} 个 profile、` +
+      `每个 profile 最多 ${config.run.concurrency} 道`,
   );
 
   const slots = new Array<Attempt | undefined>(jobs.length);
@@ -190,13 +233,16 @@ export async function executeRun(
     runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
   );
 
-  const blockers = await preflight(lanes, log);
-  const leakGuard = await setupLeakGuard(runId, log);
+  const profiles = await prepareProfileLaunches(config, lanes, log);
+  const blockers: CallBlockers = { cli: await preflight(lanes, log), profile: profiles.blockers };
+  const leakGuard = await setupLeakGuard(runId, config, log);
   const cancel = setupCancelWatch(runId, log, progress, state);
 
   try {
     const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
-    await executeLanes(lanes, config.run.concurrency, { runId, signal: cancel.signal, leakGuard }, hooks);
+    const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
+    const round = { runId, signal: cancel.signal, leakGuard, profileLaunches: profiles.launches };
+    await executeLanes(lanes, limits, round, hooks);
   } finally {
     cancel.stop();
   }

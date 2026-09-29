@@ -79,7 +79,7 @@ export async function runAttempt(job: Job, context: AttemptContext): Promise<Att
 
   try {
     await prepareAttemptWorkspace(workdir);
-    const reply = await sessions.sessionFor(target.cli).ask({
+    const reply = await sessions.sessionFor(target.cli, target.profile).ask({
       target,
       promptText: prompt.text,
       workdir,

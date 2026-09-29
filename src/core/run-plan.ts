@@ -7,7 +7,7 @@ import type { AppConfig } from "./config";
 import type { RunProgress } from "./progress";
 import { resolvePrompt, type PromptCandidate, type PromptSpec } from "./prompt";
 import type { Logger } from "./runner";
-import { EFFORT_LEVELS, foldEffort, type CliKind, type EffortLevel, type RunRecord, type Target } from "./types";
+import { DEFAULT_PROFILE, EFFORT_LEVELS, foldEffort, type CliKind, type EffortLevel, type RunRecord, type Target } from "./types";
 import {
   pickCandidate,
   renderPrompt,
@@ -170,13 +170,14 @@ export function buildJobs(
 }
 
 /**
- * 按 CLI × 模型分道，道内按强度从低到高排列（同强度保持原顺序），
- * 低档先出结果，耗时最长的 max 放在最后。
+ * 按 CLI × profile × 模型分道，道内按强度从低到高排列（同强度保持原顺序），
+ * 低档先出结果，耗时最长的 max 放在最后。同一模型经不同上游是不同的道：
+ * 限速按上游计，彼此不必排队。
  */
 export function groupIntoLanes(jobs: readonly Job[]): LaneItem[][] {
   const lanes = new Map<string, LaneItem[]>();
   jobs.forEach((job, index) => {
-    const key = `${job.target.cli}::${job.target.model}`;
+    const key = `${job.target.cli}::${job.target.profile ?? DEFAULT_PROFILE}::${job.target.model}`;
     const lane = lanes.get(key) ?? [];
     lane.push({ job, index });
     lanes.set(key, lane);
@@ -186,11 +187,19 @@ export function groupIntoLanes(jobs: readonly Job[]): LaneItem[][] {
   return [...lanes.values()].map((lane) => lane.sort((a, b) => rank(a) - rank(b) || a.index - b.index));
 }
 
-/** 道的 CLI 与模型；groupIntoLanes 不产出空道，遇到空道直接抛错 */
-export function laneIdentity(lane: readonly LaneItem[]): { cli: CliKind; model: string } {
+export interface LaneIdentity {
+  cli: CliKind;
+  model: string;
+  /** 非默认 profile 才有；默认 profile 的道与引入 profile 之前逐字相同 */
+  profile?: string;
+}
+
+/** 道的 CLI、模型与 profile；groupIntoLanes 不产出空道，遇到空道直接抛错 */
+export function laneIdentity(lane: readonly LaneItem[]): LaneIdentity {
   const head = lane[0];
   if (head === undefined) throw new Error("分道为空：groupIntoLanes 的不变量被破坏");
-  return { cli: head.job.target.cli, model: head.job.target.model };
+  const { cli, model, profile } = head.job.target;
+  return profile === undefined ? { cli, model } : { cli, model, profile };
 }
 
 /** 进度文件的初始形态：全部调用排队中，顺序与实际执行顺序一致 */
