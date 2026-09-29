@@ -203,14 +203,10 @@ run:
 
 ## 9. 看板呈现
 
-- 时间线行键 `rowKeyOf` 与格子定位 `effort-slots.ts` 加入 `profile`，否则两个 profile
-  同模型同强度会互相覆盖。
-- 行标题：`default` 不显示 profile；非默认显示为 `codex · gpt-5.5 · kedaya-groupA`。
-- 筛选条 `FILTER_KEYS` 加 `profile`；模型弹窗头部显示 `upstreamType`、`group`、
-  `website` 链接与倍率。
-- "跑一次"菜单按 `cli/profile/model` 分组，profile 维度可多选。
-- 配置页新增 "Profile" 段：列表、新建、编辑、启停、填 key、删除、同步官价，以及
-  `upstreamTypes` 清单的增删；`TargetRow` 增加 profile 下拉，按 CLI 过滤。
+首页时间线、模型弹窗、结果卡片、大图详情页与"跑一次"的上游呈现与交互见
+[`profile-display-ux.md`](profile-display-ux.md)。配置页的"上游 Profile"段已随 ACR-013 之后的
+配置页改动落地：列表、新建、编辑、启停、填 key、从上游同步模型、`upstreamTypes` 清单增删，
+矩阵 `TargetRow` 显示上游列。
 
 ## 10. 公开数据仓
 
