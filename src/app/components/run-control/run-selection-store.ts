@@ -8,6 +8,8 @@
  */
 
 export const SELECTION_STORAGE_KEY = "pelican.runOnce.selection.v3";
+/** 上游勾选单独存：范围与题目的缓存格式不变 */
+export const PROFILE_STORAGE_KEY = "pelican.runOnce.profiles.v1";
 
 export interface StoredRunSelection {
   readonly targets: readonly string[];
@@ -187,4 +189,29 @@ export function resolveRunSelection(
     prompts: new Set(resolvePromptsSelection(available.prompts, currentPrompts, stored?.prompts)),
     candidateOverrides: resolveCandidateOverrides(available.prompts, currentOverrides, stored?.candidateOverrides),
   };
+}
+
+/** 上次勾选的上游；没存过（首次打开）返回 null，由调用方默认勾全部可用项 */
+export function readStoredProfiles(storage?: Storage): string[] | null {
+  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!s) return null;
+  try {
+    const raw = s.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredProfiles(profiles: Iterable<string>, storage?: Storage): void {
+  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
+  if (!s) return;
+  try {
+    s.setItem(PROFILE_STORAGE_KEY, JSON.stringify([...profiles]));
+  } catch {
+    // 写入失败（如隐私模式或存储超额）静默忽略
+  }
 }

@@ -42,15 +42,20 @@ export async function postRun(
   targetIds: string[],
   promptIds: string[],
   candidateOverrides?: Record<string, string>,
+  profiles?: readonly string[],
 ): Promise<{ runId: string; calls: number } | { error: string }> {
   try {
-    const payload: { targetIds: string[]; promptIds: string[]; candidateOverrides?: Record<string, string> } = {
-      targetIds,
-      promptIds,
-    };
+    const payload: {
+      targetIds: string[];
+      promptIds: string[];
+      candidateOverrides?: Record<string, string>;
+      profiles?: string[];
+    } = { targetIds, promptIds };
     if (candidateOverrides && Object.keys(candidateOverrides).length > 0) {
       payload.candidateOverrides = candidateOverrides;
     }
+    // 不涉及上游时不带该字段，请求与引入上游之前逐字相同
+    if (profiles !== undefined) payload.profiles = [...profiles];
     const response = await actionFetch("/api/run", {
       method: "POST",
       headers: { "content-type": "application/json" },

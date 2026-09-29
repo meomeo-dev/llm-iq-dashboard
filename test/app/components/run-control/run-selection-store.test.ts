@@ -210,3 +210,17 @@ describe("run-selection-store", () => {
     assert.deepEqual(resolved.candidateOverrides, overrides);
   });
 });
+
+describe("上游勾选的记忆", () => {
+  test("没存过返回 null；存过按原样还原；损坏的缓存返回 null", async () => {
+    const { readStoredProfiles, writeStoredProfiles, PROFILE_STORAGE_KEY } = await import(
+      "@/app/components/run-control/run-selection-store"
+    );
+    const storage = createMockStorage();
+    assert.equal(readStoredProfiles(storage), null);
+    writeStoredProfiles(["default", "relay-a"], storage);
+    assert.deepEqual(readStoredProfiles(storage), ["default", "relay-a"]);
+    storage.setItem(PROFILE_STORAGE_KEY, "{bad");
+    assert.equal(readStoredProfiles(storage), null);
+  });
+});

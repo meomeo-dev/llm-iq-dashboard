@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
 import type { RunOptionsView } from "@/app/api/run/route";
 import { getCachedRunOptions } from "./run-once-api";
-import { reconcileRunSelection, resolveRunSelection, writeStoredSelection } from "./run-selection-store";
+import {
+  readStoredProfiles, reconcileRunSelection, resolveRunSelection, writeStoredProfiles, writeStoredSelection,
+} from "./run-selection-store";
 
 interface SelectionRefs {
   targets: MutableRefObject<ReadonlySet<string>>;
@@ -84,6 +86,13 @@ export function useRunOnceSelection() {
   const [targets, setTargets] = useState<ReadonlySet<string>>(initial.targets);
   const [prompts, setPrompts] = useState<ReadonlySet<string>>(initial.prompts);
   const [candidateOverrides, setCandidateOverrides] = useState<Record<string, string>>(initial.candidateOverrides);
+  // 上游勾选：null 表示没有记忆，模态打开时默认勾全部可用项
+  const [profiles, setProfiles] = useState<readonly string[] | null>(() => readStoredProfiles());
+  const updateProfiles = useCallback((next: ReadonlySet<string>) => {
+    const list = [...next];
+    setProfiles(list);
+    writeStoredProfiles(list);
+  }, []);
 
   const targetsRef = useRef(targets);
   const promptsRef = useRef(prompts);
@@ -110,6 +119,8 @@ export function useRunOnceSelection() {
     prompts,
     candidateOverrides,
     candidateOverridesRef: overridesRef,
+    profiles,
+    updateProfiles,
     ...actions,
   };
 }

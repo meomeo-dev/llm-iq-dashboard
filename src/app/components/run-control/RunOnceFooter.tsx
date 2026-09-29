@@ -2,6 +2,7 @@
 
 import type { RunOptionsView } from "@/app/api/run/route";
 import { RunForecast } from "./RunForecast";
+import type { StartMode } from "./run-once-profiles";
 import { StopRunButton } from "./StopRunButton";
 
 export type Notice = { kind: "ok" | "error"; text: string } | null;
@@ -15,8 +16,18 @@ interface RunOnceFooterProps {
   ownRunActive: boolean;
   stopping: boolean;
   busy: boolean;
-  calls: number;
+  /** 开始按钮的形态：直接开始 / 先选上游 / 没有可用上游 */
+  mode: StartMode;
   onStart: () => void;
+}
+
+/** 按钮文字：直接开始时带调用数，多上游时提示先选，一个都不可用时写原因 */
+function startLabel(mode: StartMode, busy: boolean, ownRunActive: boolean): string {
+  if (busy) return "发起中…";
+  if (ownRunActive) return "本轮执行中…";
+  if (mode.kind === "choose") return "选择 Profile 后开始";
+  if (mode.kind === "none") return mode.reason;
+  return `开始（${mode.calls} 次调用）`;
 }
 
 export function RunOnceFooter({
@@ -28,9 +39,10 @@ export function RunOnceFooter({
   ownRunActive,
   stopping,
   busy,
-  calls,
+  mode,
   onStart,
 }: RunOnceFooterProps) {
+  const nothingToRun = mode.kind === "none" || (mode.kind === "direct" && mode.calls === 0);
   return (
     <footer className="run-once-foot">
       {options !== null && (
@@ -45,10 +57,10 @@ export function RunOnceFooter({
       <button
         type="button"
         className="run-once-start"
-        disabled={busy || calls === 0 || activeRunId !== null}
+        disabled={busy || nothingToRun || activeRunId !== null}
         onClick={onStart}
       >
-        {busy ? "发起中…" : ownRunActive ? "本轮执行中…" : `开始（${calls} 次调用）`}
+        {startLabel(mode, busy, ownRunActive)}
       </button>
     </footer>
   );

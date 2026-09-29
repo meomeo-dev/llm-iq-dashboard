@@ -4,13 +4,17 @@ import { useCallback, useState } from "react";
 import type { RunOptionsView } from "@/app/api/run/route";
 import { Menu } from "../menu/Menu";
 import { prefetchRunOptions } from "./run-once-api";
+import { PROFILE_CLIS } from "@/core/config/profiles";
+import { describeRound } from "./run-once-profiles";
 import { RunOnceFooter } from "./RunOnceFooter";
 import { RunOnceHeadBar } from "./RunOnceHeadBar";
 import { ModelRows } from "./RunOnceModelRows";
 import { RunOncePrompts } from "./RunOncePrompts";
+import { RunOnceProfileModal } from "./RunOnceProfileModal";
 import { UnavailableNote } from "./UnavailableNote";
 import { useRunOnceLauncher } from "./use-run-once-launcher";
 import { useRunOnceOptions } from "./use-run-once-options";
+import { useRunOnceProfiles } from "./use-run-once-profiles";
 import { useActiveRunId, useIsStopping } from "./use-run-once-progress";
 import { useRunOnceSelection } from "./use-run-once-selection";
 
@@ -22,26 +26,42 @@ interface RunOnceMenuProps {
   onClose: () => void;
 }
 
+/** 范围里不支持上游、只跑登录态的组合 */
+function loginOnlyNote(options: RunOptionsView, picked: ReadonlySet<string>): string | null {
+  const names = options.targets
+    .filter((target) => picked.has(target.id) && !(PROFILE_CLIS as readonly string[]).includes(target.cli))
+    .map((target) => `${target.cli} ${target.model}`);
+  if (names.length === 0) return null;
+  return `${[...new Set(names)].join("、")} 只跑登录态`;
+}
+
 /**
  * “跑一次”：选范围（CLI · 模型 × 强度）与题目，发起一轮单次批任务。
  * 前端缓存（localStorage）记住用户的最后一次选择；
  * 首次进入/无缓存时默认模型全选，题目仅勾选“动态鹈鹕车”。
+ * 范围里的 codex 组合有多个可用上游时，开始前先在二级模态里勾选上游。
  */
 export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
   const selection = useRunOnceSelection();
   const launcher = useRunOnceLauncher(selection.targets, selection.prompts, selection.candidateOverridesRef);
   const { applyResolved } = selection;
-  const onResolved = useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]);
-  const { options } = useRunOnceOptions(open, onResolved, launcher.setNotice);
+  const { options } = useRunOnceOptions(open, useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]), launcher.setNotice);
   const [mobileTab, setMobileTab] = useState<"models" | "prompts">("models");
 
   const activeRunId = useActiveRunId(options, launcher.startedRunId);
   const ownRunActive = activeRunId !== null && activeRunId === launcher.startedRunId;
   const stopping = useIsStopping(activeRunId);
-  const calls = selection.targets.size * selection.prompts.size;
+  const profiles = useRunOnceProfiles({
+    options,
+    targets: selection.targets,
+    promptCount: selection.prompts.size,
+    storedProfiles: selection.profiles,
+    start: launcher.start,
+    onClosePanel: onClose,
+  });
 
   return (
-    <Menu label={<span className="run-once-label">▶ 跑一次</span>} align="right" panelClassName="run-once-panel" open={open} onToggle={onToggle} onClose={onClose}>
+    <Menu label={<span className="run-once-label">▶ 跑一次</span>} align="right" panelClassName="run-once-panel" open={open} onToggle={onToggle} onClose={profiles.closePanel}>
       {options === null && launcher.notice === null && <p className="run-empty">正在读取可选范围…</p>}
       {options !== null && (
         <>
@@ -82,9 +102,22 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
         ownRunActive={ownRunActive}
         stopping={stopping}
         busy={launcher.busy}
-        calls={calls}
-        onStart={() => void launcher.start()}
+        mode={profiles.mode}
+        onStart={profiles.onStart}
       />
+      {profiles.choosing && options !== null && (
+        <RunOnceProfileModal
+          round={describeRound(options, selection.targets, selection.prompts)}
+          choices={profiles.choices}
+          picked={profiles.pickedProfiles}
+          calls={profiles.chosenCalls}
+          loginOnlyNote={loginOnlyNote(options, selection.targets)}
+          busy={launcher.busy}
+          onPick={selection.updateProfiles}
+          onStart={profiles.startChosen}
+          onCancel={profiles.closeModal}
+        />
+      )}
     </Menu>
   );
 }
