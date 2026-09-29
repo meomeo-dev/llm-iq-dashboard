@@ -73,4 +73,5 @@ node $R validate
 | [ACR-010](ACR-010-web-data-repo-panel.md) | 所有者看板内的数据仓同步面板 | done | 2026-09-27 | new-module | 自研 | 5 包 | ✓ 2026-09-27 | 5/5 | — |
 | [ACR-011](ACR-011-data-repo-push-token.md) | 执行器经网页授权的 GitHub App 推送数据仓 | done | 2026-09-27 | deployment-change | 自研 | 8 包 | ✓ 2026-09-27 | 5/5 | — |
 | [ACR-012](ACR-012-publish-lifecycle-and-calendar.md) | 不可发布轮次的台账状态与展台日历计数 | done | 2026-09-27 | new-module | 自研 | 5 包 | ✓ 2026-09-27 | 5/5 | — |
+| [ACR-013](ACR-013-codex-profile-config-model.md) | codex 多 profile：配置模型与目标标识 | done | 2026-09-29 | structure-change | 自研 | 3 包 | ✓ 2026-09-29 | 5/5 | — |
 <!-- acr-index:end -->
