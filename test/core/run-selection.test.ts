@@ -98,3 +98,72 @@ targets:
     /profile 均已停用/,
   );
 });
+
+const PROFILE_MATRIX_YAML = `run:
+  promptIds: [classic-v1]
+profiles:
+  - { name: relay-a, cli: codex, upstreamType: compatible, baseUrl: "https://a.example/v1", models: [m, n] }
+  - { name: relay-b, cli: codex, upstreamType: compatible, baseUrl: "https://b.example/v1" }
+  - { name: relay-off, cli: codex, upstreamType: compatible, baseUrl: "https://c.example/v1", enabled: false }
+  - { name: relay-narrow, cli: codex, upstreamType: compatible, baseUrl: "https://d.example/v1", models: [other] }
+targets:
+  - { cli: codex, model: m, effort: low, label: 自定义名 }
+  - { cli: codex, model: m, effort: low, profile: relay-a, timeoutMs: 5000 }
+  - { cli: codex, model: n, effort: high, profile: relay-b }
+  - { cli: claude, model: c, effort: low }
+`;
+
+test("profiles：组合 × 上游展开，矩阵已有的沿用、没有的按模板合成，登录态在前", async () => {
+  const path = join(workdir, "profile-matrix.yaml");
+  await writeFile(path, PROFILE_MATRIX_YAML, "utf8");
+  const matrix = loadConfig(path);
+
+  const round = narrowConfig(matrix, {
+    targetIds: ["codex__m__low", "codex__n__high", "claude__c__low"],
+    promptIds: ["classic-v1"],
+    profiles: ["relay-b", "relay-a", "default"],
+  });
+  assert.deepEqual(
+    round.targets.map((target) => target.id),
+    [
+      "codex__m__low",
+      "codex__m__low__relay-a",
+      "codex__m__low__relay-b",
+      "codex__n__high",
+      "codex__n__high__relay-a",
+      "codex__n__high__relay-b",
+      "claude__c__low",
+    ],
+  );
+  const byId = new Map(round.targets.map((target) => [target.id, target]));
+  // 矩阵里登记过的目标原样沿用（含它自己的超时与显示名）
+  assert.equal(byId.get("codex__m__low__relay-a")?.timeoutMs, 5000);
+  assert.equal(byId.get("codex__m__low")?.label, "自定义名");
+  // 合成的目标：显示名按默认规则，登录态目标没有 profile 字段
+  assert.equal(byId.get("codex__m__low__relay-b")?.label, "m · low · relay-b");
+  assert.equal(byId.get("codex__m__low__relay-b")?.profile, "relay-b");
+  assert.equal(byId.get("codex__n__high")?.profile, undefined);
+  assert.equal(byId.get("codex__n__high")?.label, "n · high");
+  // claude 不支持上游：只跑登录态一次
+  assert.equal(round.targets.filter((target) => target.cli === "claude").length, 1);
+  assert.equal(matrix.targets.length, 4, "原配置不被改动");
+});
+
+test("profiles：停用、模型不在清单、未登记、未选上游都拒绝；组合 id 须是矩阵里的组合", async () => {
+  const path = join(workdir, "profile-matrix.yaml");
+  await writeFile(path, PROFILE_MATRIX_YAML, "utf8");
+  const matrix = loadConfig(path);
+  const base = { targetIds: ["codex__m__low"], promptIds: ["classic-v1"] };
+
+  assert.throws(() => narrowConfig(matrix, { ...base, profiles: ["relay-off"] }), /relay-off 已停用/);
+  assert.throws(() => narrowConfig(matrix, { ...base, profiles: ["relay-narrow"] }), /relay-narrow 的模型清单里没有 m/);
+  assert.throws(() => narrowConfig(matrix, { ...base, profiles: ["nope"] }), /没有 codex 的上游 nope/);
+  assert.throws(() => narrowConfig(matrix, { ...base, profiles: [] }), /至少选择一个上游/);
+  assert.throws(
+    () => narrowConfig(matrix, { targetIds: ["codex__m__low__relay-a"], promptIds: ["classic-v1"], profiles: ["default"] }),
+    /配置里没有：目标 codex__m__low__relay-a/,
+  );
+  // 不带 profiles 时目标 id 仍按字面对应，矩阵里的 profile 目标可直接选
+  const literal = narrowConfig(matrix, { targetIds: ["codex__m__low__relay-a"], promptIds: ["classic-v1"] });
+  assert.deepEqual(literal.targets.map((target) => target.id), ["codex__m__low__relay-a"]);
+});

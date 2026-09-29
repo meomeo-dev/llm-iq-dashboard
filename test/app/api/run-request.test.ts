@@ -68,3 +68,16 @@ describe("parseRunRequestBody 纯逻辑测试", () => {
     assert.throws(() => parseRunRequestBody("{ invalid json"), SyntaxError);
   });
 });
+
+describe("parseRunRequestBody 的 profiles", () => {
+  test("带 profiles 时原样透传；不带时不出现该字段", () => {
+    const withProfiles = parseRunRequestBody(JSON.stringify({ targetIds: ["t"], promptIds: ["p"], profiles: ["default", "relay-a"] }));
+    assert.deepEqual(withProfiles, { targetIds: ["t"], promptIds: ["p"], profiles: ["default", "relay-a"] });
+    const without = parseRunRequestBody(JSON.stringify({ targetIds: ["t"], promptIds: ["p"] }));
+    assert.equal(without !== null && "profiles" in without, false);
+  });
+
+  test("profiles 不是字符串数组时拒绝", () => {
+    assert.throws(() => parseRunRequestBody(JSON.stringify({ targetIds: ["t"], promptIds: ["p"], profiles: "relay-a" })), /profiles 须为 string\[\]/);
+  });
+});

@@ -6,16 +6,27 @@
  * 目标与提示词（内置或自定义）必须已在配置中登记。
  *
  * 两种轮次都剔除已停用 profile 的目标：停用即表示该上游暂不接受调用。
+ *
+ * “跑一次”另可按上游展开（`RunSelection.profiles`）：此时 `targetIds` 只表示
+ * `cli · model · effort` 组合，本轮目标 = 组合 × 上游。矩阵里已登记同 id 的目标沿用，
+ * 没有的按组合合成，合成目标只存在于本轮、不写回配置。
  */
 
-import type { AppConfig } from "./config";
-import type { Target } from "./types";
+import type { AppConfig, ProfileConfig } from "./config";
+import { PROFILE_CLIS } from "./config/profiles";
+import { defaultLabel } from "./config/targets";
 import { listPrompts } from "./prompt";
+import { buildTargetId, DEFAULT_PROFILE, type Target } from "./types";
 
 export interface RunSelection {
   targetIds: readonly string[];
   promptIds: readonly string[];
   candidateOverrides?: Readonly<Record<string, string>>;
+  /**
+   * 本轮要跑的上游；`default` 表示登录态。有值时 `targetIds` 视为组合（默认 profile 的
+   * 目标 id）；缺省时 `targetIds` 就是要跑的目标 id，与引入上游之前相同。
+   */
+  profiles?: readonly string[];
 }
 
 /** 目标所属的 profile 是否可调用；默认 profile 总是可调用 */
@@ -38,31 +49,121 @@ export function narrowConfig(config: AppConfig, selection: RunSelection): AppCon
   if (promptIds.length === 0) throw new Error("至少选择一道题目");
 
   const promptSpecs = listPrompts(config.customPrompts);
-  const knownTargets = new Set(config.targets.map((target) => target.id));
   const knownPrompts = new Set(promptSpecs.map((spec) => spec.id));
-  const unknown = [
-    ...targetIds.filter((id) => !knownTargets.has(id)).map((id) => `目标 ${id}`),
-    ...promptIds.filter((id) => !knownPrompts.has(id)).map((id) => `题目 ${id}`),
-  ];
+  const unknownPrompts = promptIds.filter((id) => !knownPrompts.has(id)).map((id) => `题目 ${id}`);
+  const targets =
+    selection.profiles === undefined
+      ? pickTargets(config, targetIds, unknownPrompts)
+      : expandProfiles(config, targetIds, unique(selection.profiles), unknownPrompts);
+  validateCandidateOverrides(promptSpecs, selection.candidateOverrides);
+
+  return { ...config, targets, run: { ...config.run, promptIds: [...promptIds] } };
+}
+
+/** 不带上游的选择：目标 id 逐个对应矩阵里的目标，保持配置顺序 */
+function pickTargets(config: AppConfig, targetIds: readonly string[], unknownPrompts: string[]): Target[] {
+  const knownTargets = new Set(config.targets.map((target) => target.id));
+  const unknown = [...targetIds.filter((id) => !knownTargets.has(id)).map((id) => `目标 ${id}`), ...unknownPrompts];
   if (unknown.length > 0) throw new Error(`配置里没有：${unknown.join("、")}`);
 
-  if (selection.candidateOverrides) {
-    const promptMap = new Map(promptSpecs.map((spec) => [spec.id, spec]));
-    for (const [pId, cId] of Object.entries(selection.candidateOverrides)) {
-      if (!cId) continue;
-      const spec = promptMap.get(pId);
-      if (spec && !spec.candidates.some((c) => c.id === cId)) {
-        throw new Error(`题目 ${pId} 没有候选 ${cId}`);
-      }
+  // 保持配置中的顺序，使分道与进度面板的排列与定时执行一致
+  const picked = new Set(targetIds);
+  const active = profileActive(config);
+  const targets = config.targets.filter((target) => picked.has(target.id) && active(target));
+  if (targets.length === 0) throw new Error("所选目标的上游 profile 均已停用");
+  return targets;
+}
+
+/** 组合 id：去掉 profile 段的目标 id */
+function comboId(target: Target): string {
+  return buildTargetId(target.cli, target.model, target.effort);
+}
+
+/**
+ * 带上游的选择：每个组合取矩阵里第一个同组合的目标作模板（不论它登记在哪个上游），
+ * 再按上游逐个落成本轮目标。
+ */
+function expandProfiles(
+  config: AppConfig,
+  comboIds: readonly string[],
+  profiles: readonly string[],
+  unknownPrompts: string[],
+): Target[] {
+  const templates = new Map<string, Target>();
+  for (const target of config.targets) {
+    const id = comboId(target);
+    if (!templates.has(id)) templates.set(id, target);
+  }
+  const unknown = [...comboIds.filter((id) => !templates.has(id)).map((id) => `目标 ${id}`), ...unknownPrompts];
+  if (unknown.length > 0) throw new Error(`配置里没有：${unknown.join("、")}`);
+  if (profiles.length === 0) throw new Error("至少选择一个上游");
+
+  const byId = new Map(config.targets.map((target) => [target.id, target]));
+  const picked = new Set(comboIds);
+  const targets: Target[] = [];
+  for (const [id, template] of templates) {
+    if (!picked.has(id)) continue;
+    for (const profile of orderProfiles(config.profiles, profiles)) {
+      const target = targetForProfile(config, template, profile, byId);
+      if (target !== null) targets.push(target);
     }
   }
+  if (targets.length === 0) throw new Error("所选组合与上游没有可跑的目标");
+  return targets;
+}
 
-  // 保持配置中的顺序，使分道与进度面板的排列与定时执行一致
-  const pickedTargets = new Set(targetIds);
-  const active = profileActive(config);
-  const targets = config.targets.filter((target) => pickedTargets.has(target.id) && active(target));
-  if (targets.length === 0) throw new Error("所选目标的上游 profile 均已停用");
-  return { ...config, targets, run: { ...config.run, promptIds: [...promptIds] } };
+/** 登录态在前，其余按配置顺序 */
+function orderProfiles(configured: readonly ProfileConfig[], picked: readonly string[]): string[] {
+  const order = new Map(configured.map((profile, index) => [profile.name, index + 1]));
+  return [...picked].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+}
+
+/**
+ * 某组合在某上游下的目标：矩阵里已登记的沿用，否则按模板合成。
+ * CLI 不支持上游时只跑登录态（返回 null 表示该上游对此组合不适用）。
+ */
+function targetForProfile(
+  config: AppConfig,
+  template: Target,
+  profile: string,
+  byId: ReadonlyMap<string, Target>,
+): Target | null {
+  const { cli, model, effort } = template;
+  const supportsProfiles = (PROFILE_CLIS as readonly string[]).includes(cli);
+  if (profile !== DEFAULT_PROFILE && !supportsProfiles) return null;
+  if (profile !== DEFAULT_PROFILE) assertProfileUsable(config, cli, model, profile);
+
+  const id = buildTargetId(cli, model, effort, profile);
+  const existing = byId.get(id);
+  if (existing !== undefined) return existing;
+
+  const { profile: _profile, ...base } = template;
+  const label = defaultLabel({ cli, profile, model, effort }, config.profiles);
+  return { ...base, id, label, ...(profile === DEFAULT_PROFILE ? {} : { profile }) };
+}
+
+function assertProfileUsable(config: AppConfig, cli: Target["cli"], model: string, name: string): void {
+  const profile = config.profiles.find((item) => item.cli === cli && item.name === name);
+  if (profile === undefined) throw new Error(`配置里没有 ${cli} 的上游 ${name}`);
+  if (!profile.enabled) throw new Error(`上游 ${name} 已停用`);
+  if (profile.models.length > 0 && !profile.models.includes(model)) {
+    throw new Error(`上游 ${name} 的模型清单里没有 ${model}`);
+  }
+}
+
+function validateCandidateOverrides(
+  promptSpecs: ReturnType<typeof listPrompts>,
+  overrides: RunSelection["candidateOverrides"],
+): void {
+  if (!overrides) return;
+  const promptMap = new Map(promptSpecs.map((spec) => [spec.id, spec]));
+  for (const [pId, cId] of Object.entries(overrides)) {
+    if (!cId) continue;
+    const spec = promptMap.get(pId);
+    if (spec && !spec.candidates.some((c) => c.id === cId)) {
+      throw new Error(`题目 ${pId} 没有候选 ${cId}`);
+    }
+  }
 }
 
 function unique(values: readonly string[]): string[] {

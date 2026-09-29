@@ -19,11 +19,15 @@ import type { BudgetConfig } from "@/core/budget";
 import { loadCostHistory } from "@/core/cost-history";
 import { configPath } from "@/core/paths";
 import { findActiveRun } from "@/core/progress";
+import { readCredentialStatus } from "@/core/profile-credentials";
 import { listPrompts } from "@/core/prompt";
 import { enqueueRequest, waitForRequest } from "@/core/requests";
 import { narrowConfig, scheduledRound, type RunSelection } from "@/core/run-selection";
 import { executeRun } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
+import {
+  dedupeCombos, keepProfileCapable, listProfileOptions, type RunProfileOption, type RunTargetOption,
+} from "./run-options";
 import { parseRunRequestBody } from "./run-request";
 
 export const dynamic = "force-dynamic";
@@ -53,12 +57,16 @@ export interface RunPromptOption {
 
 export interface RunOptionsView {
   /**
-   * 被测矩阵中当前能调用的目标（见 capabilities/callable-targets.ts）；
-   * defaultSelected：进入定时任务的目标（enabled），与题目的 defaultSelected 对称
+   * 被测矩阵中当前能调用的组合 cli · model · effort（见 capabilities/callable-targets.ts 与
+   * run-options.ts）；defaultSelected：进入定时任务的目标（enabled），与题目的 defaultSelected 对称
    */
-  targets: { id: string; label: string; cli: string; model: string; effort: string; defaultSelected: boolean }[];
+  targets: RunTargetOption[];
   /** 因 CLI 没装或没登录而暂不列出的，按 CLI 汇总；登录后自动回到 targets */
   unavailable: UnavailableCli[];
+  /** 已登记的上游；本轮目标 = 组合 × 上游，见 core/run-selection.ts */
+  profiles: RunProfileOption[];
+  /** 登录态被预检拦下、只能经上游调用的 CLI */
+  loginUnavailable: string[];
   /** defaultSelected：配置里 run.promptIds 启用的条目；多候选题目带候选清单 */
   prompts: RunPromptOption[];
   activeRunId: string | null;
@@ -74,12 +82,14 @@ export async function GET(request: Request): Promise<NextResponse> {
     const enabled = new Set(config.run.promptIds);
     const active = await findActiveRun();
     const history = await loadCostHistory();
-    const { callable, unavailable } = splitByReadiness(config.targets, await readReadiness());
+    const profiles = listProfileOptions(config, await readCredentialStatus());
+    const split = splitByReadiness(config.targets, await readReadiness());
+    const { callable, unavailable, loginUnavailable } = keepProfileCapable(config, split.callable, split.unavailable, profiles);
     const view: RunOptionsView = {
-      targets: callable.map(({ id, label, cli, model, effort, enabled }) => ({
-        id, label, cli, model, effort, defaultSelected: enabled,
-      })),
+      targets: dedupeCombos(callable, config.profiles),
       unavailable,
+      profiles,
+      loginUnavailable,
       prompts: listPrompts(config.customPrompts).map(({ id, label, candidates }) => ({
         id,
         label,

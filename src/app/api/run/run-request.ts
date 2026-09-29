@@ -5,7 +5,7 @@ import type { RunSelection } from "@/core/run-selection";
  *
  * 请求体为空时返回 null，由调用方按默认配置执行整轮。
  * 非空时必须满足 `{ targetIds: string[], promptIds: string[] }` 契约，
- * 可选带有 `candidateOverrides`。
+ * 可选带有 `candidateOverrides` 与 `profiles`（本轮上游，见 core/run-selection.ts）。
  */
 export function parseRunRequestBody(text: string): RunSelection | null {
   if (text.trim() === "") return null;
@@ -13,11 +13,15 @@ export function parseRunRequestBody(text: string): RunSelection | null {
   if (!isStringArray(body.targetIds) || !isStringArray(body.promptIds)) {
     throw new Error("请求体须为 { targetIds: string[], promptIds: string[] }");
   }
+  if (body.profiles !== undefined && !isStringArray(body.profiles)) {
+    throw new Error("profiles 须为 string[]");
+  }
   const candidateOverrides = parseCandidateOverrides(body.candidateOverrides);
   return {
     targetIds: body.targetIds,
     promptIds: body.promptIds,
     ...(candidateOverrides !== undefined ? { candidateOverrides } : {}),
+    ...(body.profiles !== undefined ? { profiles: body.profiles } : {}),
   };
 }
 

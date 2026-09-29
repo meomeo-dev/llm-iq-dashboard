@@ -19,7 +19,7 @@ export function parseExtraArgs(raw: unknown, where: string, errors: string[]): s
   return raw as string[];
 }
 
-interface TargetFields {
+export interface TargetFields {
   cli: CliKind;
   profile: string;
   model: string;
@@ -57,7 +57,7 @@ function validateTargetFields(
 }
 
 /** 默认 profile 的显示名与引入 profile 之前相同，非默认的把 profile 的显示名附在最后 */
-function defaultLabel(fields: TargetFields, profiles: readonly ProfileConfig[]): string {
+export function defaultLabel(fields: TargetFields, profiles: readonly ProfileConfig[]): string {
   const base = `${fields.model} · ${fields.effort}`;
   if (fields.profile === DEFAULT_PROFILE) return base;
   const profile = profiles.find((item) => item.cli === fields.cli && item.name === fields.profile);
