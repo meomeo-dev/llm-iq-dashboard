@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { PromptStandard } from "@/core/prompt";
 import type { Moment } from "../timeline/moments";
 import type { Row } from "../timeline/rows";
@@ -14,6 +14,8 @@ interface ModelModalHeaderProps {
   okCount: number;
   /** 这一格出现的上游数（含登录态）；多于 1 时副标题按上游计数 */
   upstreamCount?: number;
+  /** 头部动作区里测评标准按钮之前的附加控件（如导出菜单） */
+  actions?: ReactNode;
   showStandard: boolean;
   onToggleStandard: () => void;
   closeRef: RefObject<HTMLButtonElement | null>;
@@ -27,6 +29,7 @@ export function ModelModalHeader({
   cardsCount,
   okCount,
   upstreamCount = 1,
+  actions,
   showStandard,
   onToggleStandard,
   closeRef,
@@ -55,6 +58,7 @@ export function ModelModalHeader({
         </p>
       </div>
       <div className="modal-head-actions">
+        {actions}
         {standard && (
           <button
             type="button"

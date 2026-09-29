@@ -265,6 +265,6 @@ function text(x: number, y: number, content: string, fill: string, size: number,
   return `<text x="${x}" y="${y}" fill="${fill}" font-size="${size}" ${extra}>${escapeXml(content)}</text>`;
 }
 
-function escapeXml(value: string): string {
+export function escapeXml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }

@@ -8,6 +8,7 @@ import { useProfiles } from "../profile/profiles-context";
 import { folderCell, upstreamOf } from "../timeline/effort-slots";
 import type { Moment } from "../timeline/moments";
 import type { Row } from "../timeline/rows";
+import { ModelExportMenu } from "./ModelExportMenu";
 import { ModelModalHeader } from "./ModelModalHeader";
 import { ModelStandardPanel } from "./ModelStandardPanel";
 import { ProfileMatrix } from "./ProfileMatrix";
@@ -46,6 +47,11 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
           cardsCount={cards.length}
           okCount={okCount}
           upstreamCount={upstreams.length}
+          actions={
+            cards.length > 0 && (
+              <ModelExportMenu moment={moment} row={row} cards={cards} upstreams={upstreams} efforts={efforts} timeZone={timeZone} />
+            )
+          }
           showStandard={showStandard}
           onToggleStandard={() => setShowStandard((prev) => !prev)}
           closeRef={closeButton}
