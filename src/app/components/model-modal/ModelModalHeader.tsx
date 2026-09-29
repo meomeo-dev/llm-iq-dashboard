@@ -12,6 +12,8 @@ interface ModelModalHeaderProps {
   standard?: PromptStandard | null;
   cardsCount: number;
   okCount: number;
+  /** 这一格出现的上游数（含登录态）；多于 1 时副标题按上游计数 */
+  upstreamCount?: number;
   showStandard: boolean;
   onToggleStandard: () => void;
   closeRef: RefObject<HTMLButtonElement | null>;
@@ -24,6 +26,7 @@ export function ModelModalHeader({
   standard,
   cardsCount,
   okCount,
+  upstreamCount = 1,
   showStandard,
   onToggleStandard,
   closeRef,
@@ -48,7 +51,7 @@ export function ModelModalHeader({
               {standard.coreKey}
             </button>
           )}
-          {" "}· {cardsCount} 个强度 · 成功 {okCount}
+          {" "}· {upstreamCount > 1 ? `${upstreamCount} 个上游` : `${cardsCount} 个强度`} · 成功 {okCount}
         </p>
       </div>
       <div className="modal-head-actions">

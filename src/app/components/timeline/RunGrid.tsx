@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { profileLabel } from "@/core/profile-view";
+import type { DashboardCard } from "@/core/types";
+import { profileColor } from "../profile/profile-color";
+import { useProfiles } from "../profile/profiles-context";
 import { FolderTile } from "./FolderTile";
 import { TimelineAxis, type NowMark } from "./TimelineAxis";
-import { folderCell, planSlots } from "./effort-slots";
+import { cellUpstreams, folderCell, planSlots } from "./effort-slots";
 import type { Moment } from "./moments";
-import { listRows } from "./rows";
+import { listRows, rowKeyOf, type Row } from "./rows";
 import { CELL_WIDTH, layoutColumns, timeX } from "./track-layout";
 
 /** 打开的格子：哪一轮的哪一行 */
@@ -32,6 +36,7 @@ interface RunGridProps {
  * 格子共用同一条 x 轴，每格是该模型在该轮的全部强度。
  */
 export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent }: RunGridProps) {
+  const { profiles } = useProfiles();
   const cards = moments.flatMap((moment) => moment.cards);
   const showPrompt = new Set(cards.map((card) => card.promptId)).size > 1;
   const rows = listRows(cards);
@@ -55,6 +60,7 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
               {row.cli} · {row.model}
             </span>
             {showPrompt && <span className="row-label-prompt">{row.promptId}</span>}
+            <RowUpstreams row={row} cards={cards} />
           </div>
         ))}
       </div>
@@ -65,7 +71,7 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
           {rows.map((row) => (
             <div key={row.key} className="row-track">
               {columns.map(({ moment, x }) => {
-                const cell = folderCell(moment, row, slots, efforts);
+                const cell = folderCell(moment, row, slots, efforts, profiles);
                 if (cell === null) return null;
                 const open = (): void => onOpen({ runId: moment.runId, rowKey: row.key });
                 return <FolderTile key={moment.runId} row={row} cell={cell} slots={slots} x={x} onOpen={open} />;
@@ -76,6 +82,20 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
       </div>
       {moments.length === 0 && <p className="matrix-empty">{emptyContent ?? "没有符合筛选的结果"}</p>}
     </div>
+  );
+}
+
+/** 行标题下的一排色点：这一行出现过的第三方上游，悬停显示名字；只有登录态时不渲染 */
+function RowUpstreams({ row, cards }: { row: Row; cards: readonly DashboardCard[] }) {
+  const { profiles } = useProfiles();
+  const names = cellUpstreams(cards.filter((card) => rowKeyOf(card) === row.key), profiles);
+  if (names.length === 0) return null;
+  return (
+    <span className="row-label-profiles" aria-label={`上游：${names.map((name) => profileLabel(name, profiles)).join("、")}`}>
+      {names.map((name) => (
+        <span key={name} className="profile-dot" style={{ background: profileColor(name) }} title={profileLabel(name, profiles)} />
+      ))}
+    </span>
   );
 }
 

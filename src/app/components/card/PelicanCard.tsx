@@ -9,13 +9,22 @@ import { costTitle, formatBytes, formatCost, formatDuration, rawSvgHref, STATUS_
  * 单次调用的结果卡片。表头、图框、页脚各自定高（见 cards.css），失败时用同尺寸
  * 图框说明原因，并排比较时高度差不会被误读为结果多寡。
  */
-export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
+export function PelicanCard({
+  card,
+  timeZone,
+  subject,
+}: {
+  card: DashboardCard;
+  timeZone: string;
+  /** 副标题；缺省用目标显示名。对比矩阵里列标题已写上游，这里只留 `model · effort` */
+  subject?: string;
+}) {
   // 抽出了 SVG 才有作品地址；源码在进入视口时再取（见 ACR-003）
   const art = rawSvgHref(card);
   const isRedacted = card.status === "ok" && card.svgFile === null;
   return (
     <article className="card">
-      <CardHeader card={card} timeZone={timeZone} />
+      <CardHeader card={card} timeZone={timeZone} subject={subject ?? card.label} />
 
       {art !== null ? (
         <ArtFrame card={card} art={art} />
@@ -30,15 +39,15 @@ export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone:
   );
 }
 
-function CardHeader({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
+function CardHeader({ card, timeZone, subject }: { card: DashboardCard; timeZone: string; subject: string }) {
   return (
     <header>
       {/* 执行时刻作主标题，用于区分结果来自哪一轮 */}
       <h2 className="timestamp" suppressHydrationWarning>
         {formatZonedDateTime(new Date(card.startedAt), timeZone)}
       </h2>
-      <p className="subject" title={card.label}>
-        {card.label}
+      <p className="subject" title={subject}>
+        {subject}
       </p>
       <div className="badges">
         <span className="badge cli">{card.cli}</span>
@@ -66,6 +75,7 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
         </span>
         <span>耗时 {formatDuration(card.durationMs)}</span>
         <span className="card-cost" title={costTitle(card)}>
+          {card.profile !== undefined && "官价 "}
           {formatCost(card.cost)}
         </span>
       </div>

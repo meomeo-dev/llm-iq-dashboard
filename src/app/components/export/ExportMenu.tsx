@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { ProfileView } from "@/core/profile-view";
 import { Menu } from "../menu/Menu";
+import { useProfiles } from "../profile/profiles-context";
 import type { Moment } from "../timeline/moments";
 import type { NowMark } from "../timeline/TimelineAxis";
 import { formatDayLabel, formatZonedDateTime, offsetLabel } from "../timeline/zoned-time";
@@ -22,6 +24,7 @@ interface ExportMenuProps {
 
 /** 导出完整的 24 小时轨道与全部泳道，不受视口与横向滚动限制 */
 export function ExportMenu(props: ExportMenuProps) {
+  const { profiles } = useProfiles();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<Format | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,7 @@ export function ExportMenu(props: ExportMenuProps) {
     setBusy(format);
     setError(null);
     try {
-      const rendered = await render(props);
+      const rendered = await render(props, profiles);
       const filename = `pelican-timeline-${props.dayKey}-${props.timeZone.replaceAll("/", "_")}.${format}`;
       if (format === "svg") downloadSvg(rendered, filename);
       else await downloadPng(rendered, filename);
@@ -72,7 +75,10 @@ function ExportRow({
   );
 }
 
-async function render({ moments, efforts, now, dayKey, timeZone, filtered }: ExportMenuProps): Promise<RenderedSvg> {
+async function render(
+  { moments, efforts, now, dayKey, timeZone, filtered }: ExportMenuProps,
+  profiles: readonly ProfileView[],
+): Promise<RenderedSvg> {
   const results = moments.reduce((sum, moment) => sum + moment.cards.length, 0);
   const subtitle = [
     `${formatDayLabel(dayKey)}（${dayKey}）`,
@@ -88,5 +94,6 @@ async function render({ moments, efforts, now, dayKey, timeZone, filtered }: Exp
     now,
     thumbnails: await buildThumbnails(moments),
     palette: readPalette(),
+    profiles,
   });
 }

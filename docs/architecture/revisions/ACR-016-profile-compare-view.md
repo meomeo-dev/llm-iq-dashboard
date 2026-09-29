@@ -44,6 +44,7 @@
 | `src/app/components/timeline/FolderTile.tsx` | modify | 角上 `×N` 计数标 | no |
 | `src/app/components/timeline/RunGrid.tsx` | modify | 行标题右侧上游色点 | no |
 | `src/app/components/export/timeline-svg.ts` | modify | 导出图画色点与 `×N` | no |
+| `src/app/components/export/ExportMenu.tsx` | modify | 从 context 取上游清单传给导出图 | no |
 | `src/app/components/model-modal/ModelModal.tsx` | modify | 多上游时改为列 = 上游、行 = 强度的矩阵 | yes |
 | `src/app/components/model-modal/ModelModalHeader.tsx` | modify | 副标题按上游数与可见列计数 | no |
 | `src/app/components/model-modal/ProfileMatrix.tsx` | add | 矩阵布局与列标题 | no |

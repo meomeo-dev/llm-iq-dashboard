@@ -42,10 +42,12 @@ export function formatCost(cost: DashboardCard["cost"]): string {
 }
 
 /** 成本的悬停说明：口径、逐项明细、目录版本，以及 CLI 自报成本（可对照） */
-export function costTitle(card: Pick<DashboardCard, "cost" | "usage">): string {
+export function costTitle(card: Pick<DashboardCard, "cost" | "usage" | "profile">): string {
   const { cost, usage } = card;
   const lines = [
     "API 等价成本：按模型厂商自营 API 标价折算（global、按量、基础上下文档）",
+    // 第三方上游的倍率只在信息卡里显示，这里的数字不乘倍率
+    card.profile === undefined ? null : `经上游 ${card.profile}：显示官价，未乘倍率`,
     cost.modelId === null ? null : `${cost.channelId ?? "?"} · ${cost.modelId} · ${cost.serviceTier}`,
     ...cost.lines.map(
       (line) => `${line.meter}  ${line.tokens.toLocaleString("en-US")} tok × $${line.unitPrice}/M = $${line.usd.toFixed(4)}`,

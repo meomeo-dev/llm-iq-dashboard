@@ -1,7 +1,7 @@
 "use client";
 
 import { Thumb } from "./Thumb";
-import { OVERFLOW_SLOT, SLOT_CORNERS, type FolderCell } from "./effort-slots";
+import { OVERFLOW_SLOT, SLOT_CORNERS, slotCount, type FolderCell } from "./effort-slots";
 import type { Row } from "./rows";
 
 interface FolderTileProps {
@@ -38,10 +38,16 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
         }
         const card = cell.slotCards[index] ?? null;
         if (card === null) return <span key={slot} className="folder-slot folder-empty" title={`${slot}：未运行`} />;
+        const count = slotCount(cell, slot);
         return (
           <span key={slot} className="folder-slot">
             <Thumb card={card} />
             <span className={`folder-status status-dot status-${card.status}`} />
+            {count > 1 && (
+              <span className="folder-count" title={`${count} 个上游`}>
+                ×{count}
+              </span>
+            )}
           </span>
         );
       })}

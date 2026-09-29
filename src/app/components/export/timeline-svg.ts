@@ -4,10 +4,20 @@
  * 各自成为独立文档：id 不会冲突，残留脚本也不会执行。
  */
 
+import type { ProfileView } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
-import { folderCell, OVERFLOW_SLOT, planSlots, SLOT_CORNERS, type FolderCell } from "../timeline/effort-slots";
+import { profileColor } from "../profile/profile-color";
+import {
+  cellUpstreams,
+  folderCell,
+  OVERFLOW_SLOT,
+  planSlots,
+  SLOT_CORNERS,
+  slotCount,
+  type FolderCell,
+} from "../timeline/effort-slots";
 import { momentHealth, type Moment } from "../timeline/moments";
-import { listRows, type Row } from "../timeline/rows";
+import { listRows, rowKeyOf, type Row } from "../timeline/rows";
 import type { NowMark } from "../timeline/TimelineAxis";
 import {
   AXIS_HEIGHT,
@@ -61,6 +71,8 @@ export interface TimelineExport {
   /** 成功作品的 data URI，键见 thumbnailKey */
   thumbnails: ReadonlyMap<string, string>;
   palette: Palette;
+  /** 配置里的上游，决定色点顺序与每角的代表作品；缺省为空 */
+  profiles?: readonly ProfileView[];
 }
 
 export interface RenderedSvg {
@@ -166,15 +178,21 @@ function matrixHead({ input, width, slots, trackLeft }: TrackContext, rowCount: 
 }
 
 function rowSvg(context: TrackContext, row: Row, top: number): string {
-  const { palette } = context.input;
+  const { palette, profiles = [] } = context.input;
   const nameY = context.showPrompt ? top + ROW_HEIGHT / 2 - 3 : top + ROW_HEIGHT / 2 + 4;
   const parts = [
     line(0, top + ROW_HEIGHT, context.width, top + ROW_HEIGHT, palette.border, 0.5),
     text(PAD, nameY, `${row.cli} · ${row.model}`, palette.text, 12),
   ];
   if (context.showPrompt) parts.push(text(PAD, nameY + 16, row.promptId, palette.textFaint, 11));
+  // 行标题下的上游色点，与看板一致；只有登录态时不画
+  const rowCards = context.input.moments.flatMap((moment) => moment.cards).filter((card) => rowKeyOf(card) === row.key);
+  cellUpstreams(rowCards, profiles).forEach((name, index) => {
+    const dotY = nameY + (context.showPrompt ? 28 : 14);
+    parts.push(`<circle cx="${PAD + 4 + index * 12}" cy="${dotY}" r="4" fill="${profileColor(name)}"/>`);
+  });
   for (const { moment, x } of context.columns) {
-    const cell = folderCell(moment, row, context.slots, context.input.efforts);
+    const cell = folderCell(moment, row, context.slots, context.input.efforts, profiles);
     if (cell === null) continue;
     parts.push(folderSvg(context, cell, context.trackLeft + x - TILE_SIZE / 2, top + (ROW_HEIGHT - TILE_SIZE) / 2));
   }
@@ -213,7 +231,19 @@ function miniSvg(context: TrackContext, cell: FolderCell, slot: string, index: n
       : `<rect ${box} fill="#fff"/><image href="${escapeXml(art)}" x="${x + 2}" y="${y + 2}" ` +
         `width="${MINI_SIZE - 4}" height="${MINI_SIZE - 4}" preserveAspectRatio="xMidYMid meet"/>`;
   const dot = `<circle cx="${x + MINI_SIZE - 10}" cy="${y + 10}" r="5" fill="${statusColor(card, palette)}" stroke="${palette.surfaceHi}" stroke-width="2"/>`;
-  return content + dot;
+  return content + dot + countBadge(cell, slot, x, y, palette);
+}
+
+/** 这一角有多个上游的结果时，左下角标 `×N` */
+function countBadge(cell: FolderCell, slot: string, x: number, y: number, palette: Palette): string {
+  const count = slotCount(cell, slot);
+  if (count <= 1) return "";
+  const label = `×${count}`;
+  const width = 10 + label.length * 7;
+  return (
+    `<rect x="${x + 6}" y="${y + MINI_SIZE - 22}" width="${width}" height="16" rx="8" fill="${palette.bg}" fill-opacity="0.8"/>` +
+    text(x + 6 + width / 2, y + MINI_SIZE - 10, label, palette.text, 11, 'text-anchor="middle" font-weight="600"')
+  );
 }
 
 function healthColor(moment: Moment, palette: Palette): string {
