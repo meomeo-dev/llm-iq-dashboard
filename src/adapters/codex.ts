@@ -1,7 +1,9 @@
 /**
  * Codex CLI 适配器，经由 `codex app-server`。
  *
- * 一轮一个 app-server 进程（第一次提问时惰性启动，close 时终止），每次提问开一个
+ * 每个会话一个 app-server 进程（第一次提问时惰性启动，close 时终止）：默认 profile
+ * 一轮一个会话，非默认 profile 各一个会话、各在自己的临时 home 里运行（见
+ * codex-profile-home.ts）。每次提问开一个
  * ephemeral thread：`thread/start → turn/start → 等待 turn/completed`。
  * 不用 `codex exec` 的原因见 codex-app-server.ts。
  *
@@ -12,18 +14,18 @@
 
 import { CodexAppServer, EXIT_METHOD } from "./codex-app-server";
 import { asArray, asRecord, asString, recordAt, type JsonRecord } from "./json-lines";
-import type { AgentAdapter, AgentReply, AgentRequest, AgentSession } from "./types";
+import type { AgentAdapter, AgentReply, AgentRequest, AgentSession, ProfileLaunch } from "./types";
 
 /** 超时后中断 turn 的等待上限；中断失败不影响本次记为超时 */
 const INTERRUPT_TIMEOUT_MS = 10_000;
 
 export const codexAdapter: AgentAdapter = {
-  openSession(): AgentSession {
+  openSession(profile?: ProfileLaunch): AgentSession {
     let server: Promise<CodexAppServer> | null = null;
 
     return {
       async ask(request) {
-        server ??= CodexAppServer.start();
+        server ??= CodexAppServer.start(profile);
         return askCodex(await server, request);
       },
       async close() {

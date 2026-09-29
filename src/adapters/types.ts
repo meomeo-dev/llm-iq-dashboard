@@ -3,6 +3,8 @@
  *
  * 契约以会话为单位：codex 一轮内共用一个长驻 app-server，claude / agy 每次调用各起
  * 一个进程，两者统一为 `openSession → ask × N → close`。
+ *
+ * 非默认 profile 各开一个会话（见 index.ts 的会话池），会话持有该 profile 的启动参数。
  */
 
 import type { EffortLevel, Target } from "../core/types";
@@ -66,7 +68,21 @@ export interface AgentSession {
   close(): Promise<void>;
 }
 
+/**
+ * 非默认 profile 的启动参数：上游地址与 key。由编排层在开轮时组装，key 只进该会话的
+ * 子进程环境，不写盘、不进日志。
+ */
+export interface ProfileLaunch {
+  name: string;
+  baseUrl: string;
+  queryParams: Record<string, string>;
+  apiKey: string;
+}
+
 export interface AgentAdapter {
-  /** 一轮开始时调用；进程在第一次 ask 时才启动 */
-  openSession(): AgentSession;
+  /**
+   * 一轮开始时调用；进程在第一次 ask 时才启动。
+   * 不传 profile 即默认 profile：继承宿主机的登录态。
+   */
+  openSession(profile?: ProfileLaunch): AgentSession;
 }

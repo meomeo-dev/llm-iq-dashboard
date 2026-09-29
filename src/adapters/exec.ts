@@ -124,13 +124,14 @@ export async function execStreaming(
 /**
  * 以独立进程组启动（detached），信号可送达整个进程组。
  * CI / NO_COLOR 关闭交互式渲染与颜色码，保持输出可解析。
+ * `extraEnv` 叠加在宿主机环境之上（profile 的 home 与 key），只作用于这一个子进程。
  */
-export function spawnDetached(command: Command, cwd: string) {
+export function spawnDetached(command: Command, cwd: string, extraEnv: Record<string, string> = {}) {
   return spawn(command.binary, command.args, {
     cwd,
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, NO_COLOR: "1", CI: "1" },
+    env: { ...process.env, ...extraEnv, NO_COLOR: "1", CI: "1" },
   });
 }
 

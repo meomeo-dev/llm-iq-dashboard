@@ -8,8 +8,10 @@
  * 只实现基准需要的子集：请求/响应配对、按 threadId 分发通知、拒绝全部审批。
  */
 
+import { createProfileHome, type ProfileHome } from "./codex-profile-home";
 import { LineSplitter, spawnDetached, terminateGroup } from "./exec";
 import { asRecord, asString, parseJsonLine, recordAt, type JsonRecord } from "./json-lines";
+import type { ProfileLaunch } from "./types";
 
 /** 分发给订阅者的消息；进程意外退出时会收到一条合成的 EXIT_METHOD 消息 */
 export type ThreadListener = (message: JsonRecord) => void;
@@ -54,21 +56,36 @@ export class CodexAppServer {
   private exitError: Error | null = null;
   private stderrTail = "";
 
-  private constructor(private readonly child: ServerProcess) {}
+  private constructor(
+    private readonly child: ServerProcess,
+    /** 非默认 profile 的临时 home；默认 profile 为 null，沿用宿主机登录态 */
+    private readonly home: ProfileHome | null,
+  ) {}
 
-  static async start(): Promise<CodexAppServer> {
-    const child = spawnDetached({ binary: "codex", args: ["app-server"] }, process.cwd());
-    const server = new CodexAppServer(child);
+  /**
+   * 启动并完成握手。传 profile 时进程在该 profile 的临时 home 里运行，环境只多出
+   * 该 profile 的 key；不传则参数与环境同默认 profile 一贯的做法。
+   * 握手失败时终止进程并删除 home，再把错误抛给调用方。
+   */
+  static async start(launch?: ProfileLaunch): Promise<CodexAppServer> {
+    const home = launch === undefined ? null : await createProfileHome(launch);
+    const child = spawnDetached({ binary: "codex", args: ["app-server"] }, process.cwd(), home?.env);
+    const server = new CodexAppServer(child, home);
     server.wire();
 
-    await server.request(
-      "initialize",
-      {
-        clientInfo: { name: "pelican-bench", version: "1.0.0" },
-        capabilities: { optOutNotificationMethods: OPTED_OUT_NOTIFICATIONS },
-      },
-      INITIALIZE_TIMEOUT_MS,
-    );
+    try {
+      await server.request(
+        "initialize",
+        {
+          clientInfo: { name: "pelican-bench", version: "1.0.0" },
+          capabilities: { optOutNotificationMethods: OPTED_OUT_NOTIFICATIONS },
+        },
+        INITIALIZE_TIMEOUT_MS,
+      );
+    } catch (cause) {
+      await server.close().catch(() => undefined);
+      throw cause;
+    }
     server.send({ method: "initialized" });
     return server;
   }
@@ -106,13 +123,18 @@ export class CodexAppServer {
     return () => this.listeners.delete(threadId);
   }
 
-  /** 结束长驻进程并终止整个进程组，避免残留子进程继续消耗配额 */
+  /**
+   * 结束长驻进程并终止整个进程组，避免残留子进程继续消耗配额；
+   * 进程退出后再删 profile 的临时 home（进程已意外退出时直接删）。
+   */
   async close(): Promise<void> {
-    if (this.exitError !== null) return;
-    const closed = new Promise<void>((resolve) => this.child.once("close", () => resolve()));
-    this.child.stdin.end();
-    terminateGroup(this.child.pid);
-    await closed;
+    if (this.exitError === null) {
+      const closed = new Promise<void>((resolve) => this.child.once("close", () => resolve()));
+      this.child.stdin.end();
+      terminateGroup(this.child.pid);
+      await closed;
+    }
+    await this.home?.dispose();
   }
 
   private wire(): void {
