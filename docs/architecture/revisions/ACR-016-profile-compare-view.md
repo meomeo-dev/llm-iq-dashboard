@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-29 |
 | 变更类型 | structure-change |
 | 触发来源 | 口头：profile 怎么显示、点它要出信息卡，首页、模态弹窗、大图详情页如何展示；设计见 docs/profiles/profile-display-ux.md §3–§8，前置 ACR-015 |
@@ -67,6 +67,8 @@
 | `test/app/components/run-status/lane-groups.test.ts` | add | 分道按上游分组 | no |
 | `test/app/components/toolbar/filter-badge.test.ts` | modify | 筛选夹具补 `profile` 维度 | no |
 | `test/app/components/toolbar/filter-menu.test.ts` | modify | 筛选夹具补 `profile` 维度 | no |
+| `docs/profiles/profile-display-ux.md` | modify | 信息卡编辑链接改指配置页 profiles 一节 | no |
+| `docs/architecture/architecture.md` | modify | §1 §3 与变更记录回填 | no |
 
 **不动的东西**：
 
@@ -80,13 +82,17 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | - | | 6797610 |
-| `pnpm test` | node:test 全量 | pass | - | | 6797610，722 项 |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | 6797610 |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | bd14e0d |
-| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车），产出供看板核对 | pass | - | | 轮次 20260929T140327Z |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | pass | 7e64a2d | 变更前 6797610 |
+| `pnpm test` | node:test 全量 | pass | pass | 7e64a2d | 变更前 6797610 为 722 项，变更后 750 项 |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | 7e64a2d | 变更前 6797610 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | 7e64a2d | 变更前 bd14e0d；`NEXT_DIST_DIR=tmp/acr016` |
+| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车），产出供看板核对 | pass | pass | 7e64a2d | 变更前轮次 20260929T140327Z；变更后轮次 20260929T150913Z（3/3 ok） |
 
-看板呈现在分步实施里用开发服务器与截图核对：三上游格子计数、弹窗矩阵、信息卡不含接口地址、大图页切换。
+看板呈现已在开发服务器（:3001）核对：三上游格子标 `×3`、行标题三个色点；弹窗为 3 列 × 1 行的矩阵，
+副标题"3 个上游 · 成功 3"，卡片副标题 `gpt-5.5 · low`、成本行"官价 $…"；点列标题打开信息卡（显示名、
+标识 · 类型、分组、倍率、官网域名、本件耗时与折算），Esc 只关信息卡且焦点回到名字；大图页标题带上游名，
+切换条三项、→ 键跳到下一上游、页面标题带上游显示名；筛选"上游"一节隐藏一个上游后计数变 `×2`、
+色点变两个；进度面板按上游分组、组标题为显示名。
 
 ## 分步实施
 
@@ -123,7 +129,7 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §1 | 看板：多上游时弹窗为上游 × 强度矩阵，大图页可切同轮上游 | 待回填 |
-| architecture.md §3 | 页数据只下发上游公开字段 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-016 | 待回填 |
-| ADR（/adr-curator） | 不适用：非难逆转 | 待回填 |
+| architecture.md §1 | 看板：多上游时弹窗为上游 × 强度矩阵，大图页可切同轮上游 | 已回填 |
+| architecture.md §3 | 页数据只下发上游公开字段 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-016 | 已回填 |
+| ADR（/adr-curator） | 不适用：非难逆转 | 不适用 |
