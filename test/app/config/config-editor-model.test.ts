@@ -32,6 +32,8 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
       timeoutByCli: {},
       rotation: { period: "day", timeZone: "UTC" },
     },
+    upstreamTypes: ["compatible"],
+    profiles: [],
     targets: [],
     customPrompts: [],
     customModels: { claude: ["m1"] },
@@ -42,6 +44,8 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
   assert.deepStrictEqual(parsed.schedule, draft.schedule);
   assert.deepStrictEqual(parsed.run, draft.run);
   assert.deepStrictEqual(parsed.targets, draft.targets);
+  assert.deepStrictEqual(parsed.upstreamTypes, draft.upstreamTypes);
+  assert.deepStrictEqual(parsed.profiles, draft.profiles);
   assert.deepStrictEqual(parsed.prompts, draft.customPrompts);
   assert.deepStrictEqual(parsed.customModels, draft.customModels);
 });

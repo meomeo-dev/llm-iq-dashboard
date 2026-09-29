@@ -219,6 +219,7 @@ test("TargetTable markup matches fixtures", async (t) => {
   await t.test("default scenario with enabled/disabled rows and custom model", () => {
     const html = ReactDOMServer.renderToStaticMarkup(
       React.createElement(TargetTable, {
+        profiles: [],
         targets: [
           {
             id: "claude__opus__high",
@@ -253,6 +254,7 @@ test("TargetTable markup matches fixtures", async (t) => {
   await t.test("model with no effort choices", () => {
     const html = ReactDOMServer.renderToStaticMarkup(
       React.createElement(TargetTable, {
+        profiles: [],
         targets: [
           {
             id: "agy__gemini__medium",

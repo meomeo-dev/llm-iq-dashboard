@@ -5,6 +5,7 @@ import { commandHint } from "@/core/command-hint";
 import { configPath } from "@/core/paths";
 import { BUILTIN_PROMPTS } from "@/core/prompt";
 import { isReadonly } from "@/core/deploy-mode";
+import { readCredentialStatus } from "@/core/profile-credentials";
 import { ConfigEditor } from "./ConfigEditor";
 import { DataRepoPanel } from "./DataRepoPanel";
 import { DevicePanel } from "./DevicePanel";
@@ -31,6 +32,7 @@ export default async function ConfigPage() {
 
   const { config, loadError } = loadAppConfigSafely(path);
   const catalog = await loadConfigPageCatalog(config?.customModels);
+  const credentials = await readCredentialStatus();
 
   if (catalog === null) {
     return <ConfigCatalogUnavailableAlert />;
@@ -49,12 +51,15 @@ export default async function ConfigPage() {
             initialConfig={{
               schedule: config!.schedule,
               run: config!.run,
+              upstreamTypes: config!.upstreamTypes,
+              profiles: config!.profiles,
               targets: config!.targets,
               customPrompts: config!.customPrompts,
               customModels: config!.customModels,
             }}
             builtinPrompts={[...BUILTIN_PROMPTS]}
             initialCatalog={catalog}
+            initialCredentials={credentials}
           />
         )}
         <DataRepoPanel />

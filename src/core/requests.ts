@@ -13,6 +13,7 @@ import { readCachedCatalog } from "../capabilities/catalog";
 import type { CapabilitySnapshot } from "../capabilities/types";
 import { dataRoot } from "./paths";
 import type { RunSelection } from "./run-selection";
+import type { CliKind } from "./types";
 import type {
   DataRepoStatus,
   GithubConnection,
@@ -34,7 +35,8 @@ export type RequestKind =
   | "data-repo-status"
   | "github-app-convert"
   | "github-token-exchange"
-  | "github-disconnect";
+  | "github-disconnect"
+  | "profile-credential";
 export type RequestState = "pending" | "claimed" | "done" | "failed";
 
 export interface RunnerRequest {
@@ -50,6 +52,8 @@ export interface RunnerRequest {
   syncAction?: SyncActionRequest | null;
   /** kind 为 github-* 时的授权载荷，完成处理后 code 覆写为 null */
   githubAction?: { code: string | null } | null;
+  /** kind 为 profile-credential 时的载荷，处理完或等待超时后 apiKey 覆写为 null */
+  profileCredential?: ProfileCredentialAction | null;
   /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；github 为 githubConnection */
   result: {
     runId?: string;
@@ -94,6 +98,36 @@ export async function requestRunnerDataRepoStatus(
 
 const GITHUB_REQUEST_TIMEOUT_MS = 60_000;
 
+/** 写入或删除某个 profile 的 API key；分容器时只有执行器能写凭据目录 */
+export interface ProfileCredentialAction {
+  op: "set" | "delete";
+  cli: CliKind;
+  name: string;
+  /** op 为 set 时的 key；落盘后即抹掉，不在请求文件里久留 */
+  apiKey: string | null;
+}
+
+const PROFILE_CREDENTIAL_TIMEOUT_MS = 15_000;
+
+/** 让执行器代写 profile 的 API key；未在时限内完成时抹掉请求里的 key 并返回错误 */
+export async function requestRunnerProfileCredential(
+  action: ProfileCredentialAction,
+  timeoutMs: number = PROFILE_CREDENTIAL_TIMEOUT_MS,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const req = await enqueueRequest("profile-credential", { profileCredential: action });
+  const settled = await waitForRequest(req.id, timeoutMs);
+  if (settled?.state === "done") return { ok: true };
+  await scrubProfileKey(req.id).catch(() => {});
+  return { ok: false, error: settled?.result?.error ?? "执行器未响应，API key 未保存" };
+}
+
+async function scrubProfileKey(id: string): Promise<void> {
+  const current = await readRequest(id);
+  if (current?.profileCredential?.apiKey) {
+    await save({ ...current, profileCredential: { ...current.profileCredential, apiKey: null } });
+  }
+}
+
 /** 让执行器代办 GitHub App 授权动作；超时或失败返回错误描述 */
 export async function requestRunnerGithubAction(
   kind: "github-app-convert" | "github-token-exchange" | "github-disconnect",
@@ -133,6 +167,7 @@ export interface EnqueuePayload {
   selection?: RunSelection | null;
   syncAction?: SyncActionRequest | null;
   githubAction?: { code: string | null } | null;
+  profileCredential?: ProfileCredentialAction | null;
 }
 
 export async function enqueueRequest(
@@ -143,17 +178,20 @@ export async function enqueueRequest(
   let selection: RunSelection | null = null;
   let syncAction: SyncActionRequest | null = null;
   let githubAction: { code: string | null } | null = null;
+  let profileCredential: ProfileCredentialAction | null = null;
 
   if (payload !== null) {
     if (
       "syncAction" in payload ||
       "githubAction" in payload ||
+      "profileCredential" in payload ||
       ("selection" in payload && payload.selection !== undefined)
     ) {
       const p = payload as EnqueuePayload;
       selection = p.selection ?? null;
       syncAction = p.syncAction ?? null;
       githubAction = p.githubAction ?? null;
+      profileCredential = p.profileCredential ?? null;
     } else {
       selection = payload as RunSelection;
     }
@@ -169,6 +207,7 @@ export async function enqueueRequest(
     selection,
     ...(syncAction !== null ? { syncAction } : {}),
     ...(githubAction !== null ? { githubAction } : {}),
+    ...(profileCredential !== null ? { profileCredential } : {}),
     result: null,
   };
   await mkdir(requestsDir(), { recursive: true });
@@ -252,12 +291,16 @@ async function settle(
   const githubAction = current.githubAction
     ? { ...current.githubAction, code: null }
     : undefined;
+  const profileCredential = current.profileCredential
+    ? { ...current.profileCredential, apiKey: null }
+    : undefined;
   await save({
     ...current,
     state,
     finishedAt: now.toISOString(),
     result,
     ...(githubAction !== undefined ? { githubAction } : {}),
+    ...(profileCredential !== undefined ? { profileCredential } : {}),
   });
 }
 

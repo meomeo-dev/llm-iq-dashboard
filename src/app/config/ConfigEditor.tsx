@@ -12,6 +12,9 @@ import { CapabilityPanel } from "./CapabilityPanel";
 import { RotationForm } from "./RotationForm";
 import { TimeoutForm } from "./TimeoutForm";
 import { ConfigSection } from "./ConfigSection";
+import { ProfilePanel, type ProfilePanelProps } from "./ProfilePanel";
+import type { ProfileCredentialTable } from "@/core/profile-credentials";
+import { useProfileCredentials } from "./use-profile-credentials";
 import {
   type EditableConfig,
   type ConfigEditorStatus,
@@ -24,14 +27,19 @@ export function ConfigEditor({
   initialConfig,
   builtinPrompts,
   initialCatalog,
+  initialCredentials,
 }: {
   initialConfig: EditableConfig;
   builtinPrompts: PromptSpec[];
   initialCatalog: CapabilitySnapshot;
+  initialCredentials: ProfileCredentialTable;
 }) {
   const [draft, setDraft] = useState<EditableConfig>(initialConfig);
   const [catalog, setCatalog] = useState(initialCatalog);
   const { status, save, runNow } = useConfigEditor(draft);
+  const credentials = useProfileCredentials(initialCredentials);
+  // 保存后页面刷新，initialConfig 随之更新：以它为准判断哪些 profile 已落盘
+  const savedNames = new Set(initialConfig.profiles.map((profile) => profile.name));
 
   const patch = <K extends keyof EditableConfig>(key: K, value: EditableConfig[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -51,8 +59,19 @@ export function ConfigEditor({
         onPatchCustomPrompts={(prompts) => patch("customPrompts", prompts)}
       />
 
+      <ProfileSection
+        draft={draft}
+        savedNames={savedNames}
+        credentials={credentials}
+        onUpstreamTypes={(next) => patch("upstreamTypes", next)}
+        onProfiles={(profiles, targets) =>
+          setDraft((current) => ({ ...current, profiles, targets: targets ?? current.targets }))
+        }
+      />
+
       <MatrixSection
         targets={draft.targets}
+        profiles={draft.profiles}
         catalog={catalog}
         customModels={draft.customModels}
         onTargets={(targets) => patch("targets", targets)}
@@ -115,14 +134,31 @@ function PromptSection({
   );
 }
 
+function ProfileSection({
+  draft,
+  ...panel
+}: { draft: EditableConfig } & Omit<ProfilePanelProps, "upstreamTypes" | "profiles" | "targets">) {
+  return (
+    <ConfigSection
+      id="profiles"
+      title="上游 Profile"
+      hint="codex 经第三方上游调用的配置，与登录态并列对比。名字、类型、分组、官网、倍率随结果公开；接口地址与 API key 不公开。"
+    >
+      <ProfilePanel upstreamTypes={draft.upstreamTypes} profiles={draft.profiles} targets={draft.targets} {...panel} />
+    </ConfigSection>
+  );
+}
+
 function MatrixSection({
   targets,
+  profiles,
   catalog,
   customModels,
   onTargets,
   onCustomModels,
 }: {
   targets: Target[];
+  profiles: EditableConfig["profiles"];
   catalog: CapabilitySnapshot;
   customModels: Partial<Record<CliKind, string[]>>;
   onTargets: (targets: Target[]) => void;
@@ -132,6 +168,7 @@ function MatrixSection({
     <ConfigSection id="matrix" title="被测矩阵" hint="强度只列出该模型支持的档位。">
       <TargetTable
         targets={targets}
+        profiles={profiles}
         catalog={catalog}
         customModels={customModels}
         onTargets={onTargets}

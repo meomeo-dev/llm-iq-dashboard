@@ -1,0 +1,113 @@
+/* 上游 Profile 段：上游类型清单与每个 profile 一张卡片 */
+
+.upstream-types {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upstream-type-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.upstream-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-hi);
+  font-size: 12.5px;
+}
+
+.upstream-type-chip button {
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.profile-card.profile-disabled {
+  opacity: 0.6;
+}
+
+.profile-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.profile-card-head .danger {
+  margin-left: auto;
+}
+
+.profile-name {
+  font-size: 14px;
+}
+
+.profile-cli {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.profile-fields .profile-wide {
+  grid-column: 1 / -1;
+}
+
+.profile-key {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.profile-key input[type="password"] {
+  max-width: 420px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.profile-key-state {
+  color: var(--text-faint);
+}
+
+.profile-key-hint {
+  margin: 0;
+}
+
+.profile-card input.invalid {
+  border-color: var(--err);
+}

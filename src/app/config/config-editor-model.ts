@@ -1,3 +1,4 @@
+import type { ProfileConfig } from "@/core/config";
 import type { PromptSpec } from "@/core/prompt";
 import type { CliKind, EffortLevel, Target } from "@/core/types";
 import type { RotationConfig } from "@/core/variables";
@@ -13,6 +14,8 @@ export interface EditableConfig {
     timeoutByEffort?: Partial<Record<EffortLevel, number>>;
     rotation: RotationConfig;
   };
+  upstreamTypes: string[];
+  profiles: ProfileConfig[];
   targets: Target[];
   customPrompts: PromptSpec[];
   customModels: Partial<Record<CliKind, string[]>>;
@@ -32,6 +35,8 @@ export function buildConfigPatchBody(draft: EditableConfig): string {
   return JSON.stringify({
     schedule: draft.schedule,
     run: draft.run,
+    upstreamTypes: draft.upstreamTypes,
+    profiles: draft.profiles,
     targets: draft.targets,
     prompts: draft.customPrompts,
     customModels: draft.customModels,

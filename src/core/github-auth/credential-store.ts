@@ -46,7 +46,8 @@ async function ensureDirSecure(dir: string): Promise<void> {
   await chmod(dir, 0o700).catch(() => {});
 }
 
-async function secureWriteFile(filePath: string, content: string): Promise<void> {
+/** 目录 0700、文件 0600，临时文件后原子替换；profile 的 API key 也用它写（见 core/profile-credentials.ts） */
+export async function secureWriteFile(filePath: string, content: string): Promise<void> {
   const dir = dirname(filePath);
   await ensureDirSecure(dir);
 
