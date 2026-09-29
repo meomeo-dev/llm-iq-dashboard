@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 import { profileColor } from "./profile-color";
@@ -24,10 +24,14 @@ export function ProfileName({ name, cards = [], className = "" }: ProfileNamePro
   const root = useRef<HTMLSpanElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
-  useInfoCardDismiss(open, root, () => setOpen(false));
+  const close = useCallback(() => setOpen(false), []);
+  useInfoCardDismiss(open, root, close);
+  // 打开时焦点移进信息卡；关闭后还给名字。首次挂载不算"关闭"，不抢页面焦点
+  const wasOpen = useRef(false);
   useEffect(() => {
     if (open) closeButton.current?.focus();
-    else if (document.activeElement === document.body) button.current?.focus();
+    else if (wasOpen.current && document.activeElement === document.body) button.current?.focus();
+    wasOpen.current = open;
   }, [open]);
 
   const label = profileLabel(name, profiles);
@@ -52,7 +56,7 @@ export function ProfileName({ name, cards = [], className = "" }: ProfileNamePro
           cards={cards}
           owner={owner}
           closeRef={closeButton}
-          onClose={() => setOpen(false)}
+          onClose={close}
         />
       )}
     </span>

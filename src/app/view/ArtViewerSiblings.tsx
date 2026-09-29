@@ -18,8 +18,9 @@ interface ArtViewerSiblingsProps {
 export function ArtViewerSiblings({ current, siblings }: ArtViewerSiblingsProps) {
   const { profiles } = useProfiles();
   const index = siblings.findIndex((card) => card.targetId === current.targetId);
-  const prev = siblings[index - 1] ?? null;
-  const next = siblings[index + 1] ?? null;
+  // 当前作品不在清单里（载入窗口没覆盖到这一轮）时不提供切换
+  const prev = index === -1 ? null : (siblings[index - 1] ?? null);
+  const next = index === -1 ? null : (siblings[index + 1] ?? null);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -31,7 +32,7 @@ export function ArtViewerSiblings({ current, siblings }: ArtViewerSiblingsProps)
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [prev, next]);
-  if (siblings.length < 2) return null;
+  if (index === -1 || siblings.length < 2) return null;
 
   return (
     <nav className="viewer-siblings" aria-label="同轮上游切换">

@@ -56,48 +56,48 @@ export function Dashboard(props: DashboardProps) {
 
   return (
     <ProfilesProvider value={{ profiles: props.profiles ?? [], owner: props.owner }}>
-    <div className="workspace">
-      <DashboardToolbar
-        owner={props.owner}
-        readonly={state.readonly}
-        remote={state.remote}
-        cards={state.dayCards}
-        promptLabels={props.promptLabels}
-        days={data.days}
-        dayKey={data.dayKey}
-        todayKey={data.todayKey}
-        timeZone={timeZone}
-        timeZones={state.timeZones}
-        hidden={state.hidden}
-        onHidden={state.onHidden}
-        onPickTimeZone={state.onPickTimeZone}
-        onJumpToNow={state.onJumpToNow}
-        onPickDay={state.onPickDay}
-      />
-      <DashboardBoard
-        moments={data.visible}
-        efforts={data.efforts}
-        nowMark={data.nowMark}
-        dayKey={data.dayKey}
-        timeZone={timeZone}
-        hidden={state.hidden}
-        runStarts={props.runStarts}
-        dayMomentsCount={data.dayMoments.length}
-        days={data.days}
-        todayKey={data.todayKey}
-        jumpCount={state.jumpCount}
-        onOpenCell={state.setOpenCell}
-        onPickDay={data.setPickedDay}
-      />
-      <DashboardModal
-        openCell={state.openCell}
-        visible={data.visible}
-        efforts={data.efforts}
-        timeZone={timeZone}
-        promptStandards={props.promptStandards}
-        onClose={() => state.setOpenCell(null)}
-      />
-    </div>
+      <div className="workspace">
+        <DashboardToolbar
+          owner={props.owner}
+          readonly={state.readonly}
+          remote={state.remote}
+          cards={state.dayCards}
+          promptLabels={props.promptLabels}
+          days={data.days}
+          dayKey={data.dayKey}
+          todayKey={data.todayKey}
+          timeZone={timeZone}
+          timeZones={state.timeZones}
+          hidden={state.hidden}
+          onHidden={state.onHidden}
+          onPickTimeZone={state.onPickTimeZone}
+          onJumpToNow={state.onJumpToNow}
+          onPickDay={state.onPickDay}
+        />
+        <DashboardBoard
+          moments={data.visible}
+          efforts={data.efforts}
+          nowMark={data.nowMark}
+          dayKey={data.dayKey}
+          timeZone={timeZone}
+          hidden={state.hidden}
+          runStarts={props.runStarts}
+          dayMomentsCount={data.dayMoments.length}
+          days={data.days}
+          todayKey={data.todayKey}
+          jumpCount={state.jumpCount}
+          onOpenCell={state.setOpenCell}
+          onPickDay={data.setPickedDay}
+        />
+        <DashboardModal
+          openCell={state.openCell}
+          visible={data.visible}
+          efforts={data.efforts}
+          timeZone={timeZone}
+          promptStandards={props.promptStandards}
+          onClose={() => state.setOpenCell(null)}
+        />
+      </div>
     </ProfilesProvider>
   );
 }
