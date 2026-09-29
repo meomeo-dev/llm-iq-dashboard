@@ -39,6 +39,8 @@ export interface ReadyExportResult {
   jsonText: string;
   svgFiles: SvgExportItem[];
   redactions: Redaction[];
+  /** 未导出的非默认 profile 调用数，见 withoutProfileAttempts */
+  withheldProfileAttempts: number;
 }
 
 export interface SkippedExportResult {
@@ -104,6 +106,15 @@ export function withoutUnpublishablePrompts(run: RunRecord): RunRecord | null {
   return { ...run, prompts, attempts };
 }
 
+/**
+ * 剔除非默认 profile 的调用。公开数据仓契约尚无 profile 字段，照原样导出会被 CI 拒收，
+ * 去掉字段导出又会把第三方上游的结果冒充登录态；契约落地前一律留在本机。
+ */
+export function withoutProfileAttempts(run: RunRecord): { run: RunRecord; withheld: number } {
+  const attempts = run.attempts.filter((attempt) => attempt.profile === undefined);
+  return { run: { ...run, attempts }, withheld: run.attempts.length - attempts.length };
+}
+
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path);
@@ -152,7 +163,7 @@ async function resolveUsage(
 async function loadRunRecord(
   runId: string,
   options: ExportOptions,
-): Promise<{ dir: string; run: RunRecord } | SkippedExportResult> {
+): Promise<{ dir: string; run: RunRecord; withheldProfileAttempts: number } | SkippedExportResult> {
   if (dayPartition(runId) === null) {
     return { status: "skipped", runId, reason: "invalid-run-id" };
   }
@@ -176,12 +187,17 @@ async function loadRunRecord(
   if (localRun.attempts.length === 0) {
     return { status: "skipped", runId, reason: "empty" };
   }
-  const run = withoutUnpublishablePrompts(localRun);
-  if (run === null) {
+  const publishable = withoutUnpublishablePrompts(localRun);
+  if (publishable === null) {
     return { status: "skipped", runId, reason: "unpublishable-prompt" };
   }
+  // 全是 profile 调用的轮次没有可发布的内容，与空轮次同样处理
+  const { run, withheld } = withoutProfileAttempts(publishable);
+  if (run.attempts.length === 0) {
+    return { status: "skipped", runId, reason: "empty" };
+  }
 
-  return { dir, run };
+  return { dir, run, withheldProfileAttempts: withheld };
 }
 
 /** 扫描并处理单项 attempt 的 SVG 文件，命中泄漏则生成 redaction 并置空文件名 */
@@ -304,7 +320,7 @@ export async function exportRun(
     return loaded;
   }
 
-  const { dir, run } = loaded;
+  const { dir, run, withheldProfileAttempts } = loaded;
   const { publicAttempts, svgFiles, redactions } = await processAttempts(
     dir,
     run.attempts,
@@ -333,6 +349,7 @@ export async function exportRun(
     jsonText,
     svgFiles,
     redactions,
+    withheldProfileAttempts,
   };
 }
 
