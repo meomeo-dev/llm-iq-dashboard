@@ -17,6 +17,9 @@ importers:
       croner:
         specifier: ^9.0.0
         version: 9.1.0
+      modern-gif:
+        specifier: ^2.1.0
+        version: 2.1.0
       next:
         specifier: ^15.1.0
         version: 15.5.25(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -581,6 +584,12 @@ packages:
   mdn-data@2.27.1:
     resolution: {integrity: sha512-9Yubnt3e8A0OKwxYSXyhLymGW4sCufcLG6VdiDdUGVkPhpqLxlvP5vl1983gQjJl3tqbrM731mjaZaP68AgosQ==}
 
+  modern-gif@2.1.0:
+    resolution: {integrity: sha512-9ZGD5b4jNUge0fvFP1bd9Hsqz5CSZI1al3EhCJ+WFkZgmn5NO1yvVwXJA/LTqro85l2Gt0+S0dDFgVYhYtLLWg==}
+
+  modern-palette@2.0.0:
+    resolution: {integrity: sha512-wKZcom2QzK6sS6h5RLYHEkd3V3maQLzgkI+ekDCimlk7dfXa63aekZcy+7KS+8JEqIDeY/yV1CAvA7l+7u6QHA==}
+
   nanoid@3.3.19:
     resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -1132,6 +1141,12 @@ snapshots:
   lru-cache@11.5.3: {}
 
   mdn-data@2.27.1: {}
+
+  modern-gif@2.1.0:
+    dependencies:
+      modern-palette: 2.0.0
+
+  modern-palette@2.0.0: {}
 
   nanoid@3.3.19: {}
 

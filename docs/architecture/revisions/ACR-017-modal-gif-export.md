@@ -45,6 +45,7 @@
 | `package.json` | modify | dependencies 增 `modern-gif` | no |
 | `pnpm-lock.yaml` | modify | 锁定 modern-gif 与 modern-palette | no |
 | `src/app/components/export/result-set-svg.ts` | add | 结果集合成图（标题 + 卡片；多上游为上游 × 强度矩阵），纯函数，PNG / SVG / GIF 共用 | no |
+| `src/app/components/export/result-set-export.ts` | add | PNG / SVG / GIF 三条流水线的入口，作品源码只取一次、只净化一次 | no |
 | `src/app/components/export/result-set-gif.ts` | add | 取帧与编码：静态层（标题、卡片框、文字）栅格化一次；每帧把时刻烘进各作品副本（SMIL `begin` 减 t、CSS 负延时并暂停）解码后画进作品框；10 fps × 4 秒共 40 帧交 modern-gif 编码；帧面积 × 帧数超上限时降倍率 | no |
 | `src/app/components/export/export-image.ts` | modify | 抽出"SVG 字符串 → 画布"的栅格化函数供 GIF 复用；`downloadBlob` 导出 | no |
 | `src/app/components/export/timeline-svg.ts` | modify | 导出 `escapeXml` 供结果集合成图复用 | no |

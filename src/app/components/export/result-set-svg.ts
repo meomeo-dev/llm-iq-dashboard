@@ -30,6 +30,21 @@ export interface ResultSetExport {
   /** 成功作品的 data URI，键见 thumbnailKey */
   thumbnails: ReadonlyMap<string, string>;
   palette: Palette;
+  /** `embed` 把作品嵌进图里（PNG / SVG）；`blank` 只留白底框并报告位置，帧由 GIF 录制逐帧画上 */
+  artMode?: "embed" | "blank";
+}
+
+/** 一件作品在合成图里的内框（已扣掉图框内边距），GIF 逐帧把作品画在这里 */
+export interface ArtFrame {
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface RenderedResultSet extends RenderedSvg {
+  artFrames: ArtFrame[];
 }
 
 const PAD = 32;
@@ -49,7 +64,7 @@ const CARDS_PER_ROW = 4;
 const FONT = "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif";
 const STRIPES_ID = "result-set-stripes";
 
-export function renderResultSetSvg(input: ResultSetExport): RenderedSvg {
+export function renderResultSetSvg(input: ResultSetExport): RenderedResultSet {
   const efforts = input.efforts.filter((effort) => input.cards.some((card) => card.effort === effort));
   const matrix = input.columns.length > 1;
   const cells = matrix ? matrixCells(input, efforts) : rowCells(input, efforts);
@@ -60,6 +75,7 @@ export function renderResultSetSvg(input: ResultSetExport): RenderedSvg {
   const width = gridLeft + columns * (CARD_WIDTH + GAP) - GAP + PAD;
   const height = gridTop + Math.max(rows, 1) * (CARD_HEIGHT + GAP) - GAP + PAD;
   const { palette } = input;
+  const artFrames: ArtFrame[] = [];
 
   const body = [
     stripesPattern(palette),
@@ -72,12 +88,12 @@ export function renderResultSetSvg(input: ResultSetExport): RenderedSvg {
   for (const cell of cells) {
     const x = gridLeft + cell.column * (CARD_WIDTH + GAP);
     const y = gridTop + cell.row * (CARD_HEIGHT + GAP);
-    body.push(cell.card === null ? emptyCell(x, y, palette) : cardSvg(input, cell.card, x, y));
+    body.push(cell.card === null ? emptyCell(x, y, palette) : cardSvg(input, cell.card, x, y, artFrames));
   }
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
     `viewBox="0 0 ${width} ${height}" font-family="${FONT}">${body.join("")}</svg>`;
-  return { svg, width, height };
+  return { svg, width, height, artFrames };
 }
 
 interface Cell {
@@ -124,7 +140,7 @@ function emptyCell(x: number, y: number, palette: Palette): string {
 }
 
 /** 一张卡片：表头（时刻、副标题、徽章）、图框、页脚 */
-function cardSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number): string {
+function cardSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number, artFrames: ArtFrame[]): string {
   const { palette } = input;
   const subject = `${card.model} · ${card.effort}`;
   const badges = [card.cli, card.model, `effort: ${effortText(card)}`, card.promptId, ...Object.entries(card.bindings).map(([k, v]) => `${k}: ${v}`)];
@@ -133,7 +149,7 @@ function cardSvg(input: ResultSetExport, card: DashboardCard, x: number, y: numb
     text(x + CARD_PAD, y + 26, formatZonedDateTime(new Date(card.startedAt), input.timeZone), palette.text, 14.5, 'font-weight="600"') +
     text(x + CARD_PAD, y + 46, clip(subject, CARD_WIDTH - CARD_PAD * 2, 12.5), palette.textDim, 12.5) +
     badgeRow(badges, x + CARD_PAD, y + 58, CARD_WIDTH - CARD_PAD * 2, palette) +
-    frameSvg(input, card, x, y + CARD_HEAD) +
+    frameSvg(input, card, x, y + CARD_HEAD, artFrames) +
     footerSvg(card, x, y + CARD_HEAD + FRAME_HEIGHT, palette)
   );
 }
@@ -160,14 +176,19 @@ function badgeRow(labels: readonly string[], x: number, y: number, maxWidth: num
 }
 
 /** 图框：成功的作品白底等比居中；失败或已脱敏的用条纹底写原因 */
-function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number): string {
+function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number, artFrames: ArtFrame[]): string {
   const { palette } = input;
-  const art = input.thumbnails.get(thumbnailKey(card));
+  const key = thumbnailKey(card);
+  const art = input.thumbnails.get(key);
   if (art !== undefined) {
+    const inner = { key, x: x + FRAME_PAD, y: y + FRAME_PAD, width: CARD_WIDTH - FRAME_PAD * 2, height: FRAME_HEIGHT - FRAME_PAD * 2 };
+    artFrames.push(inner);
+    const white = `<rect x="${x}" y="${y}" width="${CARD_WIDTH}" height="${FRAME_HEIGHT}" fill="#fff"/>`;
+    if (input.artMode === "blank") return white;
     return (
-      `<rect x="${x}" y="${y}" width="${CARD_WIDTH}" height="${FRAME_HEIGHT}" fill="#fff"/>` +
-      `<image href="${escapeXml(art)}" x="${x + FRAME_PAD}" y="${y + FRAME_PAD}" width="${CARD_WIDTH - FRAME_PAD * 2}" ` +
-      `height="${FRAME_HEIGHT - FRAME_PAD * 2}" preserveAspectRatio="xMidYMid meet"/>`
+      white +
+      `<image href="${escapeXml(art)}" x="${inner.x}" y="${inner.y}" width="${inner.width}" height="${inner.height}" ` +
+      `preserveAspectRatio="xMidYMid meet"/>`
     );
   }
   const redacted = card.status === "ok";

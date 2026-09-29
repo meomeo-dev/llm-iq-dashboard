@@ -21,19 +21,30 @@ const PNG_SCALE = 2;
  * 取不到的作品跳过。XMLSerializer 会补上 xmlns，缺它的 SVG 作为图片加载时是空白。
  */
 export async function buildThumbnails(moments: readonly Moment[]): Promise<Map<string, string>> {
-  const serializer = new XMLSerializer();
-  const thumbnails = new Map<string, string>();
-  const cards = moments.flatMap((moment) => moment.cards);
-  const sources = await Promise.all(cards.map(readSource));
+  return thumbnailsFrom(await buildArtSources(moments.flatMap((moment) => moment.cards)));
+}
+
+/** 净化并适配到框的作品元素，键见 thumbnailKey；取不到或净化后为空的作品不在其中 */
+export async function buildArtSources(cards: readonly DashboardCard[]): Promise<Map<string, SVGElement>> {
+  const sources = new Map<string, SVGElement>();
+  const raws = await Promise.all(cards.map(readSource));
   for (const [index, card] of cards.entries()) {
-    const raw = sources[index];
+    const raw = raws[index];
     if (raw === null || raw === undefined) continue;
     const { element } = sanitizeSvg(raw);
     if (element === null) continue;
-    const source = serializer.serializeToString(fitToFrame(element));
-    thumbnails.set(thumbnailKey(card), `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`);
+    sources.set(thumbnailKey(card), fitToFrame(element));
   }
-  return thumbnails;
+  return sources;
+}
+
+export function thumbnailsFrom(sources: ReadonlyMap<string, SVGElement>): Map<string, string> {
+  const serializer = new XMLSerializer();
+  return new Map([...sources].map(([key, element]) => [key, svgDataUri(serializer.serializeToString(element))]));
+}
+
+export function svgDataUri(source: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
 }
 
 async function readSource(card: DashboardCard): Promise<string | null> {
@@ -71,7 +82,11 @@ export function downloadSvg(rendered: RenderedSvg, filename: string): void {
 
 /** SVG 作为图片解码后画进画布，再编码为 PNG */
 export async function downloadPng(rendered: RenderedSvg, filename: string): Promise<void> {
-  const scale = pngScale(rendered);
+  downloadBlob(await canvasToPng(await rasterize(rendered, pngScale(rendered))), filename);
+}
+
+/** SVG 字符串按倍率画进新画布；画布底色由 SVG 自己的背景矩形决定 */
+export async function rasterize(rendered: RenderedSvg, scale: number): Promise<HTMLCanvasElement> {
   const url = URL.createObjectURL(new Blob([rendered.svg], { type: "image/svg+xml" }));
   try {
     const image = new Image();
@@ -83,7 +98,7 @@ export async function downloadPng(rendered: RenderedSvg, filename: string): Prom
     const context = canvas.getContext("2d");
     if (context === null) throw new Error("浏览器无法创建画布");
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    downloadBlob(await canvasToPng(canvas), filename);
+    return canvas;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -99,7 +114,7 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
