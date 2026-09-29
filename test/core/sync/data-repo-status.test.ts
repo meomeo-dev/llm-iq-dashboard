@@ -34,6 +34,8 @@ function mockBaseConfig(): AppConfig {
     },
     retention: { days: null },
     budget: { perRoundUsd: null, perDayUsd: null },
+    upstreamTypes: [],
+    profiles: [],
     targets: [],
     customPrompts: [],
     customModels: {},

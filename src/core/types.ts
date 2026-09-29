@@ -46,15 +46,24 @@ export function foldEffort(
 }
 
 /**
+ * 隐式 profile 的名字：每家 CLI 的 OAuth 登录态。目标不写 profile 即指它，
+ * 其目标 id 不带 profile 段，与历史产物一致。
+ */
+export const DEFAULT_PROFILE = "default";
+
+/**
  * 由 CLI、模型、强度派生目标标识，同时用作产物文件名。
  * 服务端配置加载与浏览器配置界面共用此规则，保证 id 与历史产物一致。
+ * 非默认 profile 追加第四段，默认 profile 的 id 与引入 profile 之前逐字相同。
  */
 export function buildTargetId(
   cli: CliKind,
   model: string,
   effort: EffortLevel,
+  profile: string = DEFAULT_PROFILE,
 ): string {
-  return `${cli}__${sanitizeSegment(model)}__${effort}`;
+  const base = `${cli}__${sanitizeSegment(model)}__${effort}`;
+  return profile === DEFAULT_PROFILE ? base : `${base}__${sanitizeSegment(profile)}`;
 }
 
 /** 折叠路径不安全的字符，使 id 可以直接当文件名用 */
@@ -74,6 +83,8 @@ export interface Target {
   /** 稳定标识，形如 `claude__claude-opus-5__high`，同时用作产物文件名 */
   id: string;
   cli: CliKind;
+  /** 通往哪个上游：profiles 中登记的名字；缺省即 DEFAULT_PROFILE，该 CLI 的登录态 */
+  profile?: string;
   model: string;
   effort: EffortLevel;
   /** 仪表盘上显示的人类可读名称 */
@@ -99,6 +110,8 @@ export interface Attempt {
   /** 本次用的提示词条目；一轮可以同时跑多条提示词 */
   promptId: string;
   cli: CliKind;
+  /** 非默认 profile 的名字；默认 profile 不写，旧记录也没有此字段 */
+  profile?: string;
   model: string;
   /** 用户请求的强度档 */
   effort: EffortLevel;

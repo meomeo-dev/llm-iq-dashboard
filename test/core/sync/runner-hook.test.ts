@@ -56,6 +56,8 @@ describe("runner 自动同步挂钩与失败隔离", () => {
       },
       retention: { days: null },
       budget: { perRoundUsd: null, perDayUsd: null },
+      upstreamTypes: [],
+      profiles: [],
       targets: [
         {
           id: "claude__test-model__low",
@@ -64,6 +66,7 @@ describe("runner 自动同步挂钩与失败隔离", () => {
           effort: "low",
           label: "Test",
           timeoutMs: 1000,
+          profile: "default",
           extraArgs: [],
           enabled: true,
         },

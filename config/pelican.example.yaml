@@ -95,12 +95,32 @@ retention:
 #   autoSync: false
 #   push: false
 
+# profile（可选）：一家 CLI 通往某个第三方上游的一套配置，用来同时对比不同上游，目前只支持 codex。
+# 不写即只有隐式的 default profile，也就是该 CLI 的登录态；名字 default 保留，不能登记。
+# baseUrl 与 models 必填；API key 不写在这里，在 /config 页填入后存到凭据目录。
+# upstreamType 取 upstreamTypes 之一，只用于展示与数据仓记录。pricing.multiplier 是相对官价的倍率
+# （缺省价 = 官价 × 倍率，计价项与官方一致），overrides 按模型、计价项手填每百万 token 的美元单价，
+# 优先于缺省价。enabled: false 停用该上游：其目标不进定时任务、不可手动选，配置保留。
+# upstreamTypes 不写即起步清单：chatgpt-plus / chatgpt-pro / chatgpt-pro-5x / chatgpt-team /
+# chatgpt-enterprise / official-api-key / azure / compatible；写了即以此为准，可增删。
+# upstreamTypes: [chatgpt-pro-5x, official-api-key]
+# profiles:
+#   - name: kedaya-group-a
+#     cli: codex
+#     upstreamType: chatgpt-pro-5x
+#     group: group-a
+#     website: https://kedaya.ai/
+#     baseUrl: https://api.kedaya.ai/v1
+#     models: [gpt-5.5, gpt-6-mini]
+#     pricing:
+#       multiplier: 0.08
 
 # 被测矩阵：每一项是一个 CLI × 模型 × 思考强度的组合，也就是看板上的一格。
 # effort 统一取 low / medium / high / xhigh / max / ultra 六档；各模型实际支持哪些档位
 # 由 CLI 实时探测（见 /config 页），请求超出时折叠到不高于它的最高可用档。
 # targets 是被测矩阵：“跑一次”可以从中任选。enabled: false 的条目不进定时任务，
 # 在“跑一次”里也不默认勾选，但仍可手动选（与 run.promptIds 对题目的作用相同）。
+# profile 缺省为 default；写上 profiles 里登记的名字即经该上游调用，目标 id 随之多出一段。
 targets:
   - cli: claude
     model: claude-sonnet-5

@@ -62,6 +62,54 @@ export interface RunConfig {
   rotation: RotationConfig;
 }
 
+/**
+ * 上游类型的起步清单，只用于展示与数据仓记录。配置里写了 upstreamTypes 即以配置为准，
+ * 用户可增删；profiles[].upstreamType 必须取其中之一。
+ */
+export const DEFAULT_UPSTREAM_TYPES: readonly string[] = [
+  "chatgpt-plus",
+  "chatgpt-pro",
+  "chatgpt-pro-5x",
+  "chatgpt-team",
+  "chatgpt-enterprise",
+  "official-api-key",
+  "azure",
+  "compatible",
+];
+
+export interface ProfilePricing {
+  /** 相对价格目录官价的倍率；缺省价 = 官价 × 倍率 */
+  multiplier: number;
+  /** 逐模型逐计价项手填的每百万 token 单价（USD），优先于缺省价 */
+  overrides: Record<string, Record<string, number>>;
+}
+
+/**
+ * 一家 CLI 通往某个第三方上游的一套完整配置，凭据是 API key（经凭据目录注入）。
+ * 默认 profile（登录态）不在此列表里；baseUrl 与 queryParams 只用于生成该 profile 的
+ * CLI 配置，不进入记录与接口响应。
+ */
+export interface ProfileConfig {
+  /** 全局唯一，kebab-case；`default` 保留给隐式 profile */
+  name: string;
+  cli: CliKind;
+  /** 取 upstreamTypes 之一 */
+  upstreamType: string;
+  /** 上游侧分组名，自由文本；未填为 null */
+  group: string | null;
+  /** 上游官网，https；未填为 null */
+  website: string | null;
+  /** 上游接口地址，https */
+  baseUrl: string;
+  /** 追加到接口地址的查询参数，如 Azure 的 api-version */
+  queryParams: Record<string, string>;
+  /** 该上游可用的模型；第三方上游探测不到，须手工维护 */
+  models: string[];
+  pricing: ProfilePricing;
+  /** 停用后该 profile 的目标不进定时任务、不可手动选，配置与目标保留 */
+  enabled: boolean;
+}
+
 export interface RetentionConfig {
   /** 历史轮次保留的天数，更早的整轮删除；null 表示全部保留 */
   days: number | null;
@@ -73,6 +121,10 @@ export interface AppConfig {
   retention: RetentionConfig;
   /** 成本上限；不写即不限 */
   budget: BudgetConfig;
+  /** 上游类型清单，profiles[].upstreamType 的取值范围；未配置时为起步清单 */
+  upstreamTypes: string[];
+  /** 登记的非默认 profile；targets[].profile 只能引用这里的名字或 DEFAULT_PROFILE */
+  profiles: ProfileConfig[];
   targets: Target[];
   /** 用户自定义的提示词条目，与内置预设合并 */
   customPrompts: PromptSpec[];

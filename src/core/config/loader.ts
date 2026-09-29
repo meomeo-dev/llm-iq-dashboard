@@ -20,6 +20,7 @@ import type {
   ScheduleConfig,
 } from "./types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
+import { parseProfiles, parseUpstreamTypes } from "./profiles";
 import { parseTargets } from "./targets";
 
 const DEFAULT_TIMEOUT_MS = 1_800_000;
@@ -43,6 +44,8 @@ interface RawConfig {
   run?: unknown;
   retention?: unknown;
   budget?: unknown;
+  upstreamTypes?: unknown;
+  profiles?: unknown;
   targets?: unknown;
   prompts?: unknown;
   customModels?: unknown;
@@ -273,7 +276,9 @@ export function loadConfig(path: string): AppConfig {
   const run = parseRun(raw.run, errors);
   const retention = parseRetention(raw.retention, errors);
   const budget = parseBudget(raw.budget, errors);
-  const targets = parseTargets(raw.targets, run, errors);
+  const upstreamTypes = parseUpstreamTypes(raw.upstreamTypes, errors);
+  const profiles = parseProfiles(raw.profiles, upstreamTypes, errors);
+  const targets = parseTargets(raw.targets, run, profiles, errors);
   const customPrompts = parsePrompts(raw.prompts, errors);
   const customModels = parseCustomModels(raw.customModels, errors);
   const dataRepo = parseDataRepo(raw.dataRepo, errors);
@@ -287,7 +292,10 @@ export function loadConfig(path: string): AppConfig {
 
   // 宿主机上限最后套用：预算只能在上限之下，extraArgs 默认不放行
   return applyCeiling(
-    { schedule, run, retention, budget, targets, customPrompts, customModels, dataRepo },
+    {
+      schedule, run, retention, budget, upstreamTypes, profiles, targets,
+      customPrompts, customModels, dataRepo,
+    },
     readCeiling(),
   );
 }

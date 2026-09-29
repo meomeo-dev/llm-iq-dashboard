@@ -2,9 +2,13 @@
  * 评测目标矩阵（targets）解析与超时优先级计算
  */
 
-import { buildTargetId, CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel, type Target } from "../types";
-import type { RunConfig } from "./types";
+import {
+  buildTargetId, CLI_KINDS, DEFAULT_PROFILE, EFFORT_LEVELS,
+  type CliKind, type EffortLevel, type Target,
+} from "../types";
+import type { ProfileConfig, RunConfig } from "./types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
+import { profileExists } from "./profiles";
 
 export function parseExtraArgs(raw: unknown, where: string, errors: string[]): string[] {
   if (raw === undefined || raw === null) return [];
@@ -17,6 +21,7 @@ export function parseExtraArgs(raw: unknown, where: string, errors: string[]): s
 
 interface TargetFields {
   cli: CliKind;
+  profile: string;
   model: string;
   effort: EffortLevel;
 }
@@ -24,14 +29,20 @@ interface TargetFields {
 function validateTargetFields(
   node: Record<string, unknown>,
   where: string,
+  profiles: readonly ProfileConfig[],
   errors: string[],
 ): TargetFields | null {
   const cli = optionalString(node.cli);
+  const profile = optionalString(node.profile) ?? DEFAULT_PROFILE;
   const model = optionalString(node.model);
   const effort = optionalString(node.effort);
 
   if (!isCliKind(cli)) {
     errors.push(`${where}.cli 必须是 ${CLI_KINDS.join(" / ")}，当前为 ${cli}`);
+    return null;
+  }
+  if (!profileExists(profiles, cli, profile)) {
+    errors.push(`${where}.profile 引用了 profiles 里没有的 ${cli} profile：${profile}`);
     return null;
   }
   if (model === null) {
@@ -42,7 +53,13 @@ function validateTargetFields(
     errors.push(`${where}.effort 必须是 ${EFFORT_LEVELS.join(" / ")}，当前为 ${effort}`);
     return null;
   }
-  return { cli, model, effort };
+  return { cli, profile, model, effort };
+}
+
+/** 默认 profile 的显示名与引入 profile 之前相同，非默认的把 profile 名附在最后 */
+function defaultLabel(fields: TargetFields): string {
+  const base = `${fields.model} · ${fields.effort}`;
+  return fields.profile === DEFAULT_PROFILE ? base : `${base} · ${fields.profile}`;
 }
 
 function resolveTargetTimeout(
@@ -59,13 +76,15 @@ function resolveTargetTimeout(
   );
 }
 
-function parseTargetItem(
-  item: unknown,
-  index: number,
-  run: RunConfig,
-  seen: Set<string>,
-  errors: string[],
-): Target | null {
+interface TargetParseContext {
+  run: RunConfig;
+  profiles: readonly ProfileConfig[];
+  seen: Set<string>;
+  errors: string[];
+}
+
+function parseTargetItem(item: unknown, index: number, ctx: TargetParseContext): Target | null {
+  const { run, profiles, seen, errors } = ctx;
   const where = `targets[${index}]`;
   const node = asRecord(item);
   if (!node) {
@@ -73,11 +92,11 @@ function parseTargetItem(
     return null;
   }
 
-  const fields = validateTargetFields(node, where, errors);
+  const fields = validateTargetFields(node, where, profiles, errors);
   if (!fields) return null;
 
-  const { cli, model, effort } = fields;
-  const id = buildTargetId(cli, model, effort);
+  const { cli, profile, model, effort } = fields;
+  const id = buildTargetId(cli, model, effort, profile);
   if (seen.has(id)) {
     errors.push(`${where} 与前面的条目重复：${id}`);
     return null;
@@ -87,26 +106,33 @@ function parseTargetItem(
   return {
     id,
     cli,
+    // 默认 profile 不写字段，Target 与引入 profile 之前形状相同
+    ...(profile === DEFAULT_PROFILE ? {} : { profile }),
     model,
     effort,
-    label: optionalString(node.label) ?? `${model} · ${effort}`,
+    label: optionalString(node.label) ?? defaultLabel(fields),
     timeoutMs: resolveTargetTimeout(node, run, cli, effort),
     extraArgs: parseExtraArgs(node.extraArgs, where, errors),
     enabled: node.enabled !== false,
   };
 }
 
-export function parseTargets(raw: unknown, run: RunConfig, errors: string[]): Target[] {
+export function parseTargets(
+  raw: unknown,
+  run: RunConfig,
+  profiles: readonly ProfileConfig[],
+  errors: string[],
+): Target[] {
   if (!Array.isArray(raw) || raw.length === 0) {
     errors.push("targets 必须是非空数组");
     return [];
   }
 
-  const seen = new Set<string>();
+  const ctx: TargetParseContext = { run, profiles, seen: new Set<string>(), errors };
   const targets: Target[] = [];
 
   raw.forEach((item, index) => {
-    const target = parseTargetItem(item, index, run, seen, errors);
+    const target = parseTargetItem(item, index, ctx);
     if (target) targets.push(target);
   });
 

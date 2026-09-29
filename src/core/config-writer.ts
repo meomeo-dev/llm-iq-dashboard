@@ -5,11 +5,10 @@
 
 import { readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { parseDocument } from "yaml";
-import { loadConfig, type AppConfig } from "./config";
+import { loadConfig, type AppConfig, type ProfileConfig } from "./config";
 import { deleteKeyKeepingComment, reconcileSequence } from "./yaml-nodes";
 import type { PromptSpec } from "./prompt";
-import type { Target } from "./types";
-import type { CliKind, EffortLevel } from "./types";
+import { DEFAULT_PROFILE, type CliKind, type EffortLevel, type Target } from "./types";
 import type { RotationConfig } from "./variables";
 
 /** 可写回的字段；未出现的键保持文件原样 */
@@ -28,6 +27,10 @@ export interface ConfigPatch {
     timeoutByEffort: Partial<Record<EffortLevel, number>>;
     rotation: RotationConfig;
   }>;
+  /** 上游类型清单全表 */
+  upstreamTypes?: string[];
+  /** 非默认 profile 全表；提交里缺失的条目即删除 */
+  profiles?: ProfileConfig[];
   targets?: Target[];
   prompts?: PromptSpec[];
   customModels?: Partial<Record<CliKind, string[]>>;
@@ -42,14 +45,23 @@ export async function applyConfigPatch(
 
   applySchedule(doc, patch.schedule);
   applyRun(doc, patch.run);
+  if (patch.upstreamTypes !== undefined) doc.setIn(["upstreamTypes"], patch.upstreamTypes);
+  // profiles 先于 targets 写：校验时 targets[].profile 要能在 profiles 里找到
+  if (patch.profiles !== undefined) {
+    reconcileSequence(doc, ["profiles"], patch.profiles.map(serializeProfile), {
+      identityOf: (item) => String(item.name),
+      // 这些字段全由界面编辑，提交里缺失即删除
+      managedKeys: ["group", "website", "queryParams", "pricing", "enabled"],
+    });
+  }
   if (patch.targets !== undefined) {
     reconcileSequence(doc, ["targets"], patch.targets.map(serializeTarget), {
-      // 精确身份含强度：删掉一项时，同模型的其他强度不会认领它的节点、继承它的手写 timeoutMs
-      identityOf: (item) => `${String(item.cli)}::${String(item.model)}::${String(item.effort)}`,
+      // 精确身份含 profile 与强度：删掉一项时，同模型的其他条目不会认领它的节点、继承它的手写 timeoutMs
+      identityOf: (item) => `${profileOf(item)}::${String(item.cli)}::${String(item.model)}::${String(item.effort)}`,
       // 只改了强度的一项仍复用原节点，保留其注释
-      looseIdentityOf: (item) => `${String(item.cli)}::${String(item.model)}`,
-      // enabled 由界面管理：勾回定时任务时须删掉文件里的 enabled: false
-      managedKeys: ["enabled"],
+      looseIdentityOf: (item) => `${profileOf(item)}::${String(item.cli)}::${String(item.model)}`,
+      // enabled 与 profile 由界面管理：勾回定时任务时须删掉 enabled: false，改回默认 profile 时须删掉 profile
+      managedKeys: ["enabled", "profile"],
     });
   }
   if (patch.prompts !== undefined) {
@@ -93,6 +105,11 @@ function applyRun(doc: YamlDoc, run: ConfigPatch["run"]): void {
   if (run.promptIds !== undefined) doc.deleteIn(["run", "promptId"]);
 }
 
+/** 序列化后的节点里没有 profile 键即默认 profile */
+function profileOf(item: Record<string, unknown>): string {
+  return typeof item.profile === "string" ? item.profile : DEFAULT_PROFILE;
+}
+
 /** 只写出有意义的字段，避免把内部默认值固化进用户的配置文件 */
 function serializeTarget(target: Target): Record<string, unknown> {
   const node: Record<string, unknown> = {
@@ -101,9 +118,32 @@ function serializeTarget(target: Target): Record<string, unknown> {
     effort: target.effort,
     label: target.label,
   };
+  // 默认 profile 不写出，文件与引入 profile 之前一样
+  if (target.profile !== undefined && target.profile !== DEFAULT_PROFILE) node.profile = target.profile;
   if (target.extraArgs.length > 0) node.extraArgs = target.extraArgs;
   // 缺省即进入定时任务，只写出例外
   if (!target.enabled) node.enabled = false;
+  return node;
+}
+
+/** 凭据不在配置里；倍率为 1 且没有手填单价时不写 pricing */
+function serializeProfile(profile: ProfileConfig): Record<string, unknown> {
+  const node: Record<string, unknown> = {
+    name: profile.name,
+    cli: profile.cli,
+    upstreamType: profile.upstreamType,
+  };
+  if (profile.group !== null) node.group = profile.group;
+  if (profile.website !== null) node.website = profile.website;
+  node.baseUrl = profile.baseUrl;
+  if (Object.keys(profile.queryParams).length > 0) node.queryParams = profile.queryParams;
+  node.models = [...profile.models];
+  const hasOverrides = Object.keys(profile.pricing.overrides).length > 0;
+  if (profile.pricing.multiplier !== 1 || hasOverrides) {
+    node.pricing = { multiplier: profile.pricing.multiplier, overrides: profile.pricing.overrides };
+  }
+  // 缺省启用，只写出例外
+  if (!profile.enabled) node.enabled = false;
   return node;
 }
 

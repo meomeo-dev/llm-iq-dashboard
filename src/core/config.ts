@@ -5,6 +5,8 @@
 
 export type {
   DataRepoConfig,
+  ProfileConfig,
+  ProfilePricing,
   ScheduleConfig,
   ScheduleRhythm,
   RunConfig,
@@ -12,5 +14,6 @@ export type {
   AppConfig,
 } from "./config/types";
 
-export { hasRhythm } from "./config/types";
+export { DEFAULT_UPSTREAM_TYPES, hasRhythm } from "./config/types";
+export { PROFILE_CLIS, profileExists } from "./config/profiles";
 export { loadConfig } from "./config/loader";
