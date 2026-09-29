@@ -24,7 +24,7 @@ import {
 } from "@/core/prompt";
 
 test("resolvePrompt: 全量 43 道内置题目均能被正向解析且属性完备", () => {
-  assert.equal(BUILTIN_PROMPTS.length, 42);
+  assert.equal(BUILTIN_PROMPTS.length, 43);
   for (const builtin of BUILTIN_PROMPTS) {
     const resolved = resolvePrompt(builtin.id);
     assert.equal(resolved.id, builtin.id);

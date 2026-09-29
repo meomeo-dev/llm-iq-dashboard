@@ -27,7 +27,10 @@
     "sync:data": "tsx src/bin/sync-data.ts",
     "dashboard:prod": "node scripts/dashboard-prod.mjs",
     "showcase:smoke": "tsx scripts/showcase-smoke.ts",
-    "check:length": "tsx scripts/check-code-length.ts"
+    "check:length": "tsx scripts/check-code-length.ts",
+    "issue:new": "node scripts/issue-new.mjs",
+    "issue:check": "node scripts/issue-check.mjs",
+    "issue:worktree": "node scripts/issue-worktree.mjs"
   },
   "engines": {
     "node": ">=22",
