@@ -72,6 +72,10 @@ function buildLaneHooks(
 ): LaneHooks {
   return {
     admit: (job) => {
+      // 非默认 profile 的调用链尚未落地：在此拦下，避免错拿登录态调用并把结果记在该 profile 名下
+      if (job.target.profile !== undefined) {
+        return { kind: "fail", error: `profile ${job.target.profile} 的运行时尚未实现，未发起调用` };
+      }
       const blocker = blockers.get(job.target.cli);
       if (blocker !== undefined) return { kind: "fail", error: blocker };
       const refusal = budget?.admit(job.target.id) ?? null;

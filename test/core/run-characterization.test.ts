@@ -21,6 +21,27 @@ test("formatRunId: 生成符合紧凑 UTC 规范的 runId", () => {
   assert.equal(runId, "20260927T081530Z");
 });
 
+test("buildAttempt: 非默认 profile 写入 profile 字段，默认 profile 不写", () => {
+  const base: Job = {
+    target: {
+      id: "codex__m__high", cli: "codex", model: "m", effort: "high",
+      label: "m", timeoutMs: 1000, extraArgs: [], enabled: true,
+    },
+    prompt: { promptId: "classic-v1", text: "p", bindings: {} },
+    appliedEffort: "high",
+    effortAdjustable: true,
+  };
+  const byLogin = buildAttempt(base, new Date(), { status: "ok" });
+  assert.equal("profile" in byLogin, false, "默认 profile 的记录形状与引入 profile 之前相同");
+
+  const viaProfile = buildAttempt(
+    { ...base, target: { ...base.target, id: "codex__m__high__kedaya", profile: "kedaya" } },
+    new Date(),
+    { status: "ok" },
+  );
+  assert.equal(viaProfile.profile, "kedaya");
+});
+
 test("buildAttempt: 正确填充目标元数据与计算持续时间", () => {
   const job: Job = {
     target: {

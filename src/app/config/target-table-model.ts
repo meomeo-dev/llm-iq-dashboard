@@ -72,9 +72,9 @@ export function firstModelId(catalog: CapabilitySnapshot, cli: CliKind): string 
   return findCapability(catalog, cli)?.models[0]?.id ?? "";
 }
 
-/** 按 (cli, model, effort) 重算 id；与 core 共用 buildTargetId，保证与历史产物文件名一致 */
+/** 按 (cli, profile, model, effort) 重算 id；与 core 共用 buildTargetId，保证与历史产物文件名一致 */
 export function withIdentity(target: Target): Target {
-  return { ...target, id: buildTargetId(target.cli, target.model, target.effort) };
+  return { ...target, id: buildTargetId(target.cli, target.model, target.effort, target.profile) };
 }
 
 export function createDefaultTarget(catalog: CapabilitySnapshot): Target {

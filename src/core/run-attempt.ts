@@ -10,7 +10,7 @@ import { scratchDir } from "./paths";
 import type { Job } from "./run-plan";
 import { writeArtifact } from "./store";
 import { extractSvg, extractSvgFilePath, type ExtractedSvg } from "./svg";
-import type { Attempt } from "./types";
+import { DEFAULT_PROFILE, type Attempt } from "./types";
 import type { AgentReply, SessionPool } from "../adapters/index";
 import { readWrittenFile } from "../adapters/written-files";
 import { usageFromTranscript } from "../pricing/usage";
@@ -161,6 +161,8 @@ export function buildAttempt(
     targetId: target.id,
     promptId: prompt.promptId,
     cli: target.cli,
+    // 默认 profile 不写，记录与引入 profile 之前逐字相同
+    ...(target.profile === undefined || target.profile === DEFAULT_PROFILE ? {} : { profile: target.profile }),
     model: target.model,
     effort: target.effort,
     appliedEffort,
