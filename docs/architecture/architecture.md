@@ -27,6 +27,7 @@
 | [ACR-014](revisions/ACR-014-codex-profile-runtime.md) | 2026-09-29 | 每个 codex profile 一个 app-server 进程与临时 home，profile 间并行 | §3 §5 §6 |
 | [ACR-015](revisions/ACR-015-run-once-profiles.md) | 2026-09-29 | 跑一次：开始前多选上游，服务端按组合 × 上游展开本轮目标 | §1 §3 §5 |
 | [ACR-016](revisions/ACR-016-profile-compare-view.md) | 2026-09-29 | 看板的上游对比视图与信息卡：格子计数与色点、上游 × 强度矩阵、大图页同轮切换、上游筛选 | §1 §3 |
+| [ACR-017](revisions/ACR-017-modal-gif-export.md) | 2026-09-29 | 结果集弹窗导出 PNG / SVG / GIF：合成图纯函数、时刻烘焙取帧、modern-gif 编码 | §0 §1 |
 
 ## 0. 技术选型总览
 
@@ -41,6 +42,7 @@
 | 文件监听 | chokidar | 5.0 | MIT | 看板进程监听 `data/` 运行态文件，变化后推送 |
 | 定时调度 | croner | 9.1 | MIT | 调度器进程内的 cron 触发，支持时区 |
 | 配置读写 | yaml | 2.9 | ISC | 读写 `config/*.yaml`，写回保留注释 |
+| GIF 编码 | modern-gif | 2.1 | MIT | 浏览器端把结果集的逐帧画布编成 GIF，编码在 Web Worker 里进行（ACR-017） |
 | TS 运行器 | tsx | 4.23 | MIT | 调度器、run-once 与单元测试免构建运行 |
 | 语言 | TypeScript | 5.9 | Apache-2.0 | 全仓 |
 
@@ -78,6 +80,10 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   的矩阵，列标题与大图页标题上的上游名可点开信息卡；大图页可用左右键切同一轮同组合的其余上游；
   筛选加"上游"维度（登录态记为 `default`）；进度面板的分道按上游分组。只有登录态时一切与引入
   上游之前相同。
+- 结果集弹窗可整图导出 PNG / SVG / GIF（ACR-017）：合成图是纯函数生成的 SVG，标题、卡片框、
+  文字与作品一并画进不透明底色，横向滚动看不到的列也在图里；GIF 的帧不靠实时录制，而是把时刻
+  烘进作品副本（SMIL `begin` 减 t、CSS 动画负延时并暂停）逐帧解码后画进作品框，标签页不可见时
+  也正确。作品源码走与看板相同的净化。
 - 两种轮次读同一份配置、同一时机：都在发起时读。调度器每个触发点重读配置按最新的定时目标与
   题目开轮，节奏（cron / 间隔 / 时区）每 30 秒核对一次、变了即重建定时器，不必重启。
   `schedule` 只定节奏，到点是否执行只看 `auto-run.json`。

@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-29 |
 | 变更类型 | add-dependency |
 | 触发来源 | 口头：点格子打开的结果集弹窗要能导出图片，且作品是动画，要 GIF 动图；PNG / SVG 导出已在本地实现未提交 |
@@ -46,7 +46,7 @@
 | `pnpm-lock.yaml` | modify | 锁定 modern-gif 与 modern-palette | no |
 | `src/app/components/export/result-set-svg.ts` | add | 结果集合成图（标题 + 卡片；多上游为上游 × 强度矩阵），纯函数，PNG / SVG / GIF 共用 | no |
 | `src/app/components/export/result-set-export.ts` | add | PNG / SVG / GIF 三条流水线的入口，作品源码只取一次、只净化一次 | no |
-| `src/app/components/export/result-set-gif.ts` | add | 取帧与编码：静态层（标题、卡片框、文字）栅格化一次；每帧把时刻烘进各作品副本（SMIL `begin` 减 t、CSS 负延时并暂停）解码后画进作品框；10 fps × 4 秒共 40 帧交 modern-gif 编码；帧面积 × 帧数超上限时降倍率 | no |
+| `src/app/components/export/result-set-gif.ts` | add | 取帧与编码：静态层（标题、卡片框、文字）栅格化一次；每帧把时刻烘进各作品副本（SMIL `begin` 减 t、CSS 负延时并暂停）解码后画进作品框；10 fps × 3 秒共 30 帧经 Worker 交 modern-gif 编码；单帧超 100 万像素时等比降倍率 | no |
 | `src/app/components/export/export-image.ts` | modify | 抽出"SVG 字符串 → 画布"的栅格化函数供 GIF 复用；`downloadBlob` 导出 | no |
 | `src/app/components/export/timeline-svg.ts` | modify | 导出 `escapeXml` 供结果集合成图复用 | no |
 | `src/app/components/model-modal/ModelExportMenu.tsx` | add | 弹窗头部"导出"菜单：PNG / SVG / GIF；取帧与编码期间菜单项显示进度 | no |
@@ -70,11 +70,11 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | - | | 38ef7dd |
-| `pnpm test` | node:test 全量 | pass | - | | 38ef7dd，750 项 |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | 38ef7dd |
-| `pnpm build` | Next.js 看板生产构建（含 modern-gif 打包） | pass | - | | 7e64a2d |
-| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车），产出供导出核对 | pass | - | | 轮次 20260929T150913Z |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | pass | 6bde09e | 变更前 38ef7dd |
+| `pnpm test` | node:test 全量 | pass | pass | 6bde09e | 变更前 38ef7dd 750 项，变更后 760 项 |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | 6bde09e | 变更前 38ef7dd |
+| `pnpm build` | Next.js 看板生产构建（含 modern-gif 打包） | pass | pass | 6bde09e | 变更前 7e64a2d；Worker 脚本经包的 `./*` 导出以 `new URL` 打包 |
+| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车），产出供导出核对 | pass | pass | 6bde09e | 变更前轮次 20260929T150913Z；变更只在浏览器端，冒烟不经导出代码，以变更前轮次的产物在开发看板核对 GIF：30 帧 × 100ms、循环、底色不透明、三列作品逐帧变化 |
 
 GIF 本身在分步实施里用开发服务器核对：导出的文件能在图片查看器里播放、背景不透明、作品不被截断、
 横向滚动看不到的列也在图里。
@@ -113,7 +113,7 @@ GIF 本身在分步实施里用开发服务器核对：导出的文件能在图�
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §0 | 技术栈表增 modern-gif（GIF 编码，浏览器端） | 待回填 |
-| architecture.md §1 | 看板：结果集弹窗可导出 PNG / SVG / GIF，GIF 帧由时刻烘焙取得 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-017 | 待回填 |
-| ADR（/adr-curator） | 不适用：非难逆转 | 待回填 |
+| architecture.md §0 | 技术栈表增 modern-gif（GIF 编码，浏览器端） | 已回填 |
+| architecture.md §1 | 看板：结果集弹窗可导出 PNG / SVG / GIF，GIF 帧由时刻烘焙取得 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-017 | 已回填 |
+| ADR（/adr-curator） | 不适用：非难逆转 | 不适用 |
