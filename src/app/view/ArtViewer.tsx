@@ -1,8 +1,10 @@
 "use client";
 
+import type { ProfileView } from "@/core/profile-view";
 import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
 import { SvgFrame } from "../components/card/SvgFrame";
+import { ProfilesProvider } from "../components/profile/profiles-context";
 import { ArtViewerHead } from "./ArtViewerHead";
 import { ArtViewerFoot } from "./ArtViewerFoot";
 
@@ -15,18 +17,27 @@ export function ArtViewer({
   card,
   svg,
   standard,
+  siblings = [],
+  profiles = [],
+  owner = false,
 }: {
   card: DashboardCard;
   svg: string;
   standard?: PromptStandard | null;
+  /** 同轮同模型同强度同题的作品（含当前），供上游切换 */
+  siblings?: readonly DashboardCard[];
+  profiles?: readonly ProfileView[];
+  owner?: boolean;
 }) {
   return (
-    <div className="viewer">
-      <ArtViewerHead card={card} />
-      <main className="viewer-stage">
-        <SvgFrame source={svg} className="viewer-frame" />
-      </main>
-      <ArtViewerFoot card={card} standard={standard} />
-    </div>
+    <ProfilesProvider value={{ profiles, owner }}>
+      <div className="viewer">
+        <ArtViewerHead card={card} siblings={siblings} />
+        <main className="viewer-stage">
+          <SvgFrame source={svg} className="viewer-frame" />
+        </main>
+        <ArtViewerFoot card={card} standard={standard} />
+      </div>
+    </ProfilesProvider>
   );
 }

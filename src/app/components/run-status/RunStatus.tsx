@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { CallProgress, LaneProgress, ProgressView } from "@/core/progress";
+import { orderProfileNames, profileLabel, type ProfileView } from "@/core/profile-view";
+import { DEFAULT_PROFILE } from "@/core/types";
 import { Menu } from "../menu/Menu";
+import { profileColor } from "../profile/profile-color";
+import { useProfiles } from "../profile/profiles-context";
 import { StopRunButton } from "../run-control/StopRunButton";
 import { formatZonedClock } from "../timeline/zoned-time";
 import {
@@ -111,10 +115,49 @@ function RunSection({ run, now, timeZone, owner }: { run: ProgressView; now: num
       )}
       {run.budgetStop != null && <p className="run-warn">{run.budgetStop}，其余调用未发起。</p>}
       <p className="run-note">{run.lanes.length} 个模型分道，同时最多 {run.laneLimit} 道；道内按强度从低到高串行</p>
-      {run.lanes.map((lane) => (
-        <Lane key={`${lane.cli}/${lane.model}`} lane={lane} now={now} />
-      ))}
+      <LaneGroups lanes={run.lanes} now={now} />
     </section>
+  );
+}
+
+export interface LaneGroup {
+  /** `default` 为登录态 */
+  profile: string;
+  lanes: LaneProgress[];
+}
+
+/** 分道按上游分组：登录态在前，其余按配置顺序；组内保持进度文件里的道序 */
+export function groupLanes(lanes: readonly LaneProgress[], profiles: readonly ProfileView[]): LaneGroup[] {
+  const upstream = (lane: LaneProgress): string => lane.profile ?? DEFAULT_PROFILE;
+  return orderProfileNames(lanes.map(upstream), profiles).map((profile) => ({
+    profile,
+    lanes: lanes.filter((lane) => upstream(lane) === profile),
+  }));
+}
+
+/** 只有登录态时不出现组标题，面板与引入上游之前相同 */
+function LaneGroups({ lanes, now }: { lanes: readonly LaneProgress[]; now: number }) {
+  const { profiles } = useProfiles();
+  const groups = groupLanes(lanes, profiles);
+  const grouped = groups.length > 1 || groups.some((group) => group.profile !== DEFAULT_PROFILE);
+  return (
+    <>
+      {groups.map((group) => (
+        <div key={group.profile} className="run-group">
+          {grouped && (
+            <div className="run-group-head">
+              {group.profile !== DEFAULT_PROFILE && (
+                <span className="profile-dot" style={{ background: profileColor(group.profile) }} aria-hidden="true" />
+              )}
+              {profileLabel(group.profile, profiles)}
+            </div>
+          )}
+          {group.lanes.map((lane) => (
+            <Lane key={`${lane.cli}/${group.profile}/${lane.model}`} lane={lane} now={now} />
+          ))}
+        </div>
+      ))}
+    </>
   );
 }
 

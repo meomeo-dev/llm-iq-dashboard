@@ -26,6 +26,7 @@ describe("FilterMenu 特征测试", () => {
         ],
         hidden: {
           cli: new Set<string>(),
+          profile: new Set<string>(),
           model: new Set<string>(),
           effort: new Set<string>(),
           promptId: new Set<string>(),
@@ -59,6 +60,7 @@ describe("FilterMenu 特征测试", () => {
         ],
         hidden: {
           cli: new Set<string>(["agy"]),
+          profile: new Set<string>(),
           model: new Set<string>(),
           effort: new Set<string>(),
           promptId: new Set<string>(),

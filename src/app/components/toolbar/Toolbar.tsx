@@ -8,6 +8,7 @@ import { ToolbarCenter } from "./ToolbarCenter";
 import { ToolbarMenus } from "./ToolbarMenus";
 import { ToolbarUtils } from "./ToolbarUtils";
 import { buildFilterGroups } from "./toolbar-filter-groups";
+import { useProfiles } from "../profile/profiles-context";
 import type { TimeZoneOption } from "../timeline/zoned-time";
 import type { DayOption } from "../timeline/moments";
 
@@ -54,7 +55,8 @@ export function Toolbar(props: ToolbarProps) {
     timeZone,
   } = props;
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const filterGroups = useMemo(() => buildFilterGroups(cards, promptLabels), [cards, promptLabels]);
+  const { profiles } = useProfiles();
+  const filterGroups = useMemo(() => buildFilterGroups(cards, promptLabels, profiles), [cards, promptLabels, profiles]);
   const toggleMenu = (id: string): void => setOpenMenu((current) => (current === id ? null : id));
   const closeMenus = (): void => setOpenMenu(null);
 

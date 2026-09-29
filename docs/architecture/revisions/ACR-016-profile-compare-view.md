@@ -53,15 +53,20 @@
 | `src/app/components/card/card-format.ts` | modify | 成本说明文字 | no |
 | `src/app/view/[runId]/[file]/page.tsx` | modify | 载入同轮同模型同强度同题的其余上游作品 | no |
 | `src/app/view/ArtViewer.tsx` | modify | 传上游与同轮切换 | no |
-| `src/app/view/ArtViewerHead.tsx` | modify | 标题带上游名，同轮上游切换条与左右键 | no |
+| `src/app/view/ArtViewerHead.tsx` | modify | 标题带上游名，挂同轮上游切换条 | no |
+| `src/app/view/ArtViewerSiblings.tsx` | add | 同轮上游切换条与左右键 | no |
 | `src/app/components/toolbar/filters.ts` | modify | 增 `profile` 维度（登录态记为 `default`） | no |
 | `src/app/components/toolbar/toolbar-filter-groups.tsx` | modify | "上游"一节 | no |
+| `src/app/components/toolbar/Toolbar.tsx` | modify | 从 context 取上游清单传给筛选分组 | no |
 | `src/app/components/run-status/RunStatus.tsx` | modify | 分道按上游分组，组标题为上游名 | no |
 | `test/core/profile-view.test.ts` | add | 公开字段白名单 | no |
 | `test/app/components/timeline/effort-slots-profile.test.ts` | add | 多上游落角与计数 | no |
 | `test/app/components/model-modal/profile-matrix.test.ts` | add | 矩阵行列与计数 | no |
 | `test/app/components/profile/profile-info-card.test.ts` | add | 信息卡不含接口地址与 key；配对设备才有编辑链接 | no |
 | `test/app/components/toolbar/filters-profile.test.ts` | add | 上游筛选 | no |
+| `test/app/components/run-status/lane-groups.test.ts` | add | 分道按上游分组 | no |
+| `test/app/components/toolbar/filter-badge.test.ts` | modify | 筛选夹具补 `profile` 维度 | no |
+| `test/app/components/toolbar/filter-menu.test.ts` | modify | 筛选夹具补 `profile` 维度 | no |
 
 **不动的东西**：
 

@@ -37,6 +37,7 @@ describe("filter-badge 筛选徽章纯逻辑测试", () => {
     assert.equal(
       countFilteredGroups(groups, {
         cli: new Set(["a"]),
+        profile: new Set(),
         model: new Set(),
         effort: new Set(),
         promptId: new Set(),
