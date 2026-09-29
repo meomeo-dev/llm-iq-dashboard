@@ -25,6 +25,7 @@ import { parseTargets } from "./targets";
 
 const DEFAULT_TIMEOUT_MS = 1_800_000;
 const DEFAULT_CONCURRENCY = 2;
+const DEFAULT_PROFILE_CONCURRENCY = 5;
 const STARTER_FILE = "pelican.example.yaml";
 
 function ensureConfigFile(path: string): void {
@@ -173,10 +174,14 @@ function parseTimeoutMap<K extends string>(
 export function parseRun(raw: unknown, errors: string[]): RunConfig {
   const node = asRecord(raw) ?? {};
   const concurrency = optionalNumber(node.concurrency) ?? DEFAULT_CONCURRENCY;
+  const profileConcurrency = optionalNumber(node.profileConcurrency) ?? DEFAULT_PROFILE_CONCURRENCY;
   const defaultTimeoutMs = optionalNumber(node.defaultTimeoutMs) ?? DEFAULT_TIMEOUT_MS;
 
   if (concurrency < 1) {
     errors.push(`run.concurrency 必须 >= 1，当前为 ${concurrency}`);
+  }
+  if (!Number.isInteger(profileConcurrency) || profileConcurrency < 1) {
+    errors.push(`run.profileConcurrency 必须是 >= 1 的整数，当前为 ${profileConcurrency}`);
   }
   if (defaultTimeoutMs < 1000) {
     errors.push(`run.defaultTimeoutMs 至少 1000ms，当前为 ${defaultTimeoutMs}`);
@@ -184,6 +189,7 @@ export function parseRun(raw: unknown, errors: string[]): RunConfig {
   return {
     promptIds: parsePromptIds(node, errors),
     concurrency,
+    profileConcurrency,
     defaultTimeoutMs,
     timeoutByCli: parseTimeoutMap(node.timeoutByCli, "timeoutByCli", isCliKind, errors),
     timeoutByEffort: parseTimeoutMap(node.timeoutByEffort, "timeoutByEffort", isEffortLevel, errors),

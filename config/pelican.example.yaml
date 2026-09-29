@@ -53,6 +53,10 @@ run:
   # 在自己的道里串行。取启用的模型数即全部并行。
   concurrency: 3
 
+  # 同时在跑的上游 profile 数上限（登录态也算一个，缺省 5）。每个 profile 一个独立的
+  # codex 进程，profile 之间并行，各自内部再按 concurrency 分道。
+  # profileConcurrency: 5
+
   # 全局默认超时（毫秒）。
   defaultTimeoutMs: 1800000
 

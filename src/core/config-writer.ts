@@ -22,6 +22,7 @@ export interface ConfigPatch {
   run?: Partial<{
     promptIds: string[];
     concurrency: number;
+    profileConcurrency: number;
     defaultTimeoutMs: number;
     timeoutByCli: Partial<Record<CliKind, number>>;
     timeoutByEffort: Partial<Record<EffortLevel, number>>;

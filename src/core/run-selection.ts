@@ -4,9 +4,12 @@
  * 配置登记的是全部可选项；定时任务跑 enabled 的目标与 run.promptIds 的题目
  * （scheduledRound），“跑一次”跑人工勾选的子集（narrowConfig）。只收窄不放宽：
  * 目标与提示词（内置或自定义）必须已在配置中登记。
+ *
+ * 两种轮次都剔除已停用 profile 的目标：停用即表示该上游暂不接受调用。
  */
 
 import type { AppConfig } from "./config";
+import type { Target } from "./types";
 import { listPrompts } from "./prompt";
 
 export interface RunSelection {
@@ -15,9 +18,16 @@ export interface RunSelection {
   candidateOverrides?: Readonly<Record<string, string>>;
 }
 
-/** 定时任务的一轮：只含 enabled 的目标；题目即 run.promptIds */
+/** 目标所属的 profile 是否可调用；默认 profile 总是可调用 */
+function profileActive(config: AppConfig): (target: Target) => boolean {
+  const disabled = new Set(config.profiles.filter((profile) => !profile.enabled).map((profile) => profile.name));
+  return (target) => target.profile === undefined || !disabled.has(target.profile);
+}
+
+/** 定时任务的一轮：只含 enabled 的目标，剔除已停用 profile 的目标；题目即 run.promptIds */
 export function scheduledRound(config: AppConfig): AppConfig {
-  return { ...config, targets: config.targets.filter((target) => target.enabled) };
+  const active = profileActive(config);
+  return { ...config, targets: config.targets.filter((target) => target.enabled && active(target)) };
 }
 
 /** 返回收窄后的配置；选择为空或含未知 id 时抛错，错误信息可直接给人看 */
@@ -49,11 +59,10 @@ export function narrowConfig(config: AppConfig, selection: RunSelection): AppCon
 
   // 保持配置中的顺序，使分道与进度面板的排列与定时执行一致
   const pickedTargets = new Set(targetIds);
-  return {
-    ...config,
-    targets: config.targets.filter((target) => pickedTargets.has(target.id)),
-    run: { ...config.run, promptIds: [...promptIds] },
-  };
+  const active = profileActive(config);
+  const targets = config.targets.filter((target) => pickedTargets.has(target.id) && active(target));
+  if (targets.length === 0) throw new Error("所选目标的上游 profile 均已停用");
+  return { ...config, targets, run: { ...config.run, promptIds: [...promptIds] } };
 }
 
 function unique(values: readonly string[]): string[] {

@@ -49,6 +49,7 @@ describe("runner 自动同步挂钩与失败隔离", () => {
       run: {
         promptIds: ["classic-v1"],
         concurrency: 1,
+        profileConcurrency: 5,
         defaultTimeoutMs: 1000,
         timeoutByCli: {},
         timeoutByEffort: {},

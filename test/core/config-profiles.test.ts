@@ -256,3 +256,19 @@ targets:
     assert.equal(saved.profiles[0]!.group, "我又来了特惠0.05");
   });
 });
+
+test("run.profileConcurrency：缺省 5，须为 >= 1 的整数", async () => {
+  await withConfig(PROFILE_YAML, async (path) => {
+    assert.equal(loadConfig(path).run.profileConcurrency, 5);
+  });
+  const withValue = PROFILE_YAML.replace("promptIds: [classic-v1]", "promptIds: [classic-v1]\n  profileConcurrency: 2");
+  await withConfig(withValue, async (path) => {
+    assert.equal(loadConfig(path).run.profileConcurrency, 2);
+  });
+  for (const bad of ["0", "1.5"]) {
+    const invalid = PROFILE_YAML.replace("promptIds: [classic-v1]", `promptIds: [classic-v1]\n  profileConcurrency: ${bad}`);
+    await withConfig(invalid, async (path) => {
+      assert.throws(() => loadConfig(path), /run\.profileConcurrency 必须是 >= 1 的整数/);
+    });
+  }
+});

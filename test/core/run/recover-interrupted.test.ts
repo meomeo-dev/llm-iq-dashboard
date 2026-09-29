@@ -35,6 +35,7 @@ function config(): AppConfig {
     run: {
       promptIds: ["classic-v1"],
       concurrency: 1,
+      profileConcurrency: 5,
       defaultTimeoutMs: 10000,
       timeoutByCli: {},
       timeoutByEffort: {},

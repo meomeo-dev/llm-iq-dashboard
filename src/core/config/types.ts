@@ -49,6 +49,11 @@ export interface RunConfig {
    * 同一模型的各强度、各提示词串行。
    */
   concurrency: number;
+  /**
+   * 同时在跑的 profile 数上限（默认 profile 也算一个）。每个 profile 一个独立进程，
+   * profile 之间并行，每个 profile 内部仍按 concurrency 分道。
+   */
+  profileConcurrency: number;
   /** 全局默认超时（毫秒），最低优先级 */
   defaultTimeoutMs: number;
   /**

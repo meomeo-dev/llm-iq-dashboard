@@ -70,3 +70,31 @@ test("没有任何 enabled 的目标时配置无效：定时任务至少要有�
   await writeFile(path, CONFIG_YAML.replace(/effort: (low|high|max) \}/g, "effort: $1, enabled: false }"), "utf8");
   assert.throws(() => loadConfig(path), /没有任何已启用的条目/);
 });
+
+test("停用的 profile：定时轮次与跑一次都剔除其目标，全被剔除时拒绝", async () => {
+  const path = join(workdir, "profiles.yaml");
+  await writeFile(
+    path,
+    `run:
+  promptIds: [classic-v1]
+profiles:
+  - { name: relay-on, cli: codex, upstreamType: compatible, baseUrl: "https://a.example/v1" }
+  - { name: relay-off, cli: codex, upstreamType: compatible, baseUrl: "https://b.example/v1", enabled: false }
+targets:
+  - { cli: codex, model: m, effort: low }
+  - { cli: codex, model: m, effort: low, profile: relay-on }
+  - { cli: codex, model: m, effort: low, profile: relay-off }
+`,
+    "utf8",
+  );
+  const withProfiles = loadConfig(path);
+  const [login, on, off] = withProfiles.targets.map((target) => target.id);
+
+  assert.deepEqual(scheduledRound(withProfiles).targets.map((target) => target.id), [login, on]);
+  const picked = narrowConfig(withProfiles, { targetIds: [off!, on!], promptIds: ["classic-v1"] });
+  assert.deepEqual(picked.targets.map((target) => target.id), [on]);
+  assert.throws(
+    () => narrowConfig(withProfiles, { targetIds: [off!], promptIds: ["classic-v1"] }),
+    /profile 均已停用/,
+  );
+});
