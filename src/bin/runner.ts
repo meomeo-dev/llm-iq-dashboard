@@ -58,6 +58,7 @@ import {
 import {
   confirmPublished,
   syncDataRepo,
+  syncOptionsFromConfig,
   type ConfirmPublishedReport,
   type SyncReport,
 } from "../core/sync/sync-orchestrator";
@@ -289,16 +290,17 @@ async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Pr
 
 async function executeSyncAction(
   mode: "dry-run" | "export" | "confirm",
-  repoPath: string,
+  full: AppConfig,
 ): Promise<SyncReport | ConfirmPublishedReport> {
+  const scope = syncOptionsFromConfig(full);
   if (mode === "dry-run") {
-    return syncDataRepo({ repoPath, dryRun: true });
+    return syncDataRepo({ ...scope, dryRun: true });
   }
   if (mode === "export") {
-    return syncDataRepo({ repoPath, dryRun: false, push: false });
+    return syncDataRepo({ ...scope, dryRun: false, push: false });
   }
   if (mode === "confirm") {
-    return confirmPublished({ repoPath, dryRun: false });
+    return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
   }
   throw new Error(`不支持的同步模式: ${mode}`);
 }
@@ -403,20 +405,20 @@ async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<
     await recordSyncFailure(request.id, action.mode, "数据仓未配置", startedAt);
     return;
   }
-  await performRunnerSync(request.id, action.mode, full.dataRepo.path, startedAt);
+  await performRunnerSync(request.id, action.mode, full, startedAt);
 }
 
 async function performRunnerSync(
   requestId: string,
   mode: "dry-run" | "export" | "confirm",
-  repoPath: string,
+  full: AppConfig,
   startedAt: string,
 ): Promise<void> {
   let ok = true;
   let report: SyncReport | ConfirmPublishedReport | null = null;
   let error: string | null = null;
   try {
-    report = await executeSyncAction(mode, repoPath);
+    report = await executeSyncAction(mode, full);
   } catch (cause) {
     ok = false;
     error = describe(cause);

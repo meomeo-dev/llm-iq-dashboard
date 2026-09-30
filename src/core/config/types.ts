@@ -15,6 +15,8 @@ export interface DataRepoConfig {
   autoSync: boolean;
   /** 同步提交后是否自动推送至远端 */
   push: boolean;
+  /** 允许发布的题目 id；null 表示全部。导出时不在清单里的题目连同其调用一并剔除 */
+  publishPrompts: string[] | null;
 }
 
 /**

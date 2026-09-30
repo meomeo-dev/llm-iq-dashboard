@@ -17,8 +17,8 @@ import {
   runDirPath,
   type Redaction,
 } from "../data-repo/contract";
-import { buildLeakGuard, type LeakGuard } from "../leak-guard";
-import { dataRoot } from "../paths";
+import type { ProfileConfig } from "../config/profiles";
+import type { LeakGuard } from "../leak-guard";
 import {
   assertGitUserConfigured,
   assertRepoClean,
@@ -50,6 +50,8 @@ export {
   type ConfirmPublishedOptions,
   type ConfirmPublishedReport,
 } from "./confirm-published";
+import { exportOptionsFor, resolveSyncContext, type SyncContext } from "./sync-scope";
+export { syncOptionsFromConfig, type SyncScope } from "./sync-scope";
 
 export interface SyncOptions {
   repoPath: string;
@@ -58,8 +60,16 @@ export interface SyncOptions {
   dryRun?: boolean;
   push?: boolean;
   leakGuard?: LeakGuard;
+  /**
+   * 配置里登记的 profile：其公开视图随记录发布，其 key 文件纳入泄漏指纹。
+   * 缺省为空——所有 profile 调用都扣下，指纹只含三家 CLI 的登录凭据
+   */
+  profiles?: readonly ProfileConfig[];
+  /** 允许发布的题目 id；缺省或 null 为全部 */
+  publishPrompts?: readonly string[] | null;
   log?: (message: string) => void;
 }
+
 
 export interface RunRedactionGroup {
   runId: string;
@@ -387,24 +397,6 @@ async function persistExportedData(
   return { exportedRunIds, commitSha };
 }
 
-interface SyncContext {
-  dryRun: boolean;
-  push: boolean;
-  repoPath: string;
-  dataDirPath: string;
-  runsDir: string;
-  leakGuard: LeakGuard;
-}
-
-async function resolveSyncContext(options: SyncOptions): Promise<SyncContext> {
-  const dryRun = options.dryRun === true;
-  const push = options.push === true;
-  const repoPath = options.repoPath;
-  const dataDirPath = options.dataDir ?? dataRoot();
-  const runsDir = join(dataDirPath, "runs");
-  const leakGuard = options.leakGuard ?? (await buildLeakGuard());
-  return { dryRun, push, repoPath, dataDirPath, runsDir, leakGuard };
-}
 
 /** 持久化产物、更新台账并在必要时执行推送 */
 async function finalizeSyncData(
@@ -449,7 +441,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
   const newlyExportedRunIds: string[] = [];
   const newlySkippedRunIds: string[] = [];
   const newlyPublishedRunIds: string[] = [];
-  const exportOpts: ExportOptions = { runsDir: ctx.runsDir, leakGuard: ctx.leakGuard };
+  const exportOpts = exportOptionsFor(ctx, options);
 
   const { readyToExport, allRedactions } = await evaluateCandidates(
     candidateIds,

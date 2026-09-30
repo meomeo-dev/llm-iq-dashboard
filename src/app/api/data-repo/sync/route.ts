@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwnerAction } from "@/core/auth/guard";
-import { loadConfig } from "@/core/config";
+import { loadConfig, type AppConfig } from "@/core/config";
 import { configPath } from "@/core/paths";
 import {
   enqueueRequest,
@@ -27,6 +27,7 @@ import { saveLastAction } from "@/core/sync/data-repo-status";
 import {
   confirmPublished,
   syncDataRepo,
+  syncOptionsFromConfig,
   type ConfirmPublishedReport,
   type SyncReport,
 } from "@/core/sync/sync-orchestrator";
@@ -79,22 +80,23 @@ async function startViaRunner(
 
 async function performLocalSync(
   mode: SyncActionMode,
-  repoPath: string,
+  config: AppConfig,
 ): Promise<SyncReport | ConfirmPublishedReport> {
+  const scope = syncOptionsFromConfig(config);
   if (mode === "dry-run") {
-    return syncDataRepo({ repoPath, dryRun: true });
+    return syncDataRepo({ ...scope, dryRun: true });
   }
   if (mode === "export") {
-    return syncDataRepo({ repoPath, dryRun: false, push: false });
+    return syncDataRepo({ ...scope, dryRun: false, push: false });
   }
   if (mode === "confirm") {
-    return confirmPublished({ repoPath, dryRun: false });
+    return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
   }
-  return syncDataRepo({ repoPath, dryRun: false, push: true });
+  return syncDataRepo({ ...scope, dryRun: false, push: true });
 }
 
 async function executeLocalSync(
-  repoPath: string,
+  config: AppConfig,
   mode: SyncActionMode,
   who: { deviceId: string; ip: string | null },
 ): Promise<NextResponse> {
@@ -104,7 +106,7 @@ async function executeLocalSync(
   let error: string | null = null;
 
   try {
-    report = await performLocalSync(mode, repoPath);
+    report = await performLocalSync(mode, config);
   } catch (cause) {
     ok = false;
     error = cause instanceof Error ? cause.message : String(cause);
@@ -171,7 +173,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     }
 
-    return await executeLocalSync(full.dataRepo.path, actionRequest.mode, who);
+    return await executeLocalSync(full, actionRequest.mode, who);
   } finally {
     await lock.release();
   }

@@ -78,6 +78,7 @@ describe("runner 自动同步挂钩与失败隔离", () => {
         path: repoPath,
         autoSync: true,
         push,
+        publishPrompts: null,
       },
     };
   }

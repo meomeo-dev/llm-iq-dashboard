@@ -19,12 +19,13 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { configPath } from "../core/paths";
-import { loadConfig } from "../core/config";
+import { loadConfig, type AppConfig } from "../core/config";
 import {
   confirmPublished,
   syncDataRepo,
   type ConfirmPublishedReport,
   type SyncReport,
+  type SyncScope,
 } from "../core/sync/sync-orchestrator";
 
 export interface ParsedArgs {
@@ -172,18 +173,27 @@ function formatHumanConfirmReport(
   return lines.join("\n");
 }
 
-/** 解析并确定目标数据仓本地路径 */
-function resolveRepoPath(explicitPath?: string): string | null {
-  if (explicitPath) return explicitPath;
+/** 生效配置；读不到（如只给了 --repo 的裸环境）时为 null */
+function tryLoadConfig(): AppConfig | null {
   try {
-    const config = loadConfig(configPath());
-    if (config.dataRepo?.path) {
-      return config.dataRepo.path;
-    }
+    return loadConfig(configPath());
   } catch {
-    // 忽略配置文件读取失败
+    return null;
   }
-  return null;
+}
+
+/** 同步范围：路径以 --repo 优先，profile 清单与题目白名单来自配置（没有配置时为空 / 全部） */
+function resolveSyncScope(
+  explicitPath: string | undefined,
+  config: AppConfig | null,
+): SyncScope | null {
+  const repoPath = explicitPath ?? config?.dataRepo?.path;
+  if (!repoPath) return null;
+  return {
+    repoPath,
+    profiles: config?.profiles ?? [],
+    publishPrompts: config?.dataRepo?.publishPrompts ?? null,
+  };
 }
 
 /** 执行发布确认子流程 */
@@ -214,14 +224,14 @@ async function handleConfirmCli(
 
 /** 执行数据同步子流程 */
 async function handleSyncCli(
-  repoPath: string,
+  scope: SyncScope,
   parsed: ParsedArgs,
   out: (msg: string) => void,
   err: (msg: string) => void,
 ): Promise<number> {
   try {
     const report = await syncDataRepo({
-      repoPath,
+      ...scope,
       runIds: parsed.runIds.length > 0 ? parsed.runIds : undefined,
       dryRun: parsed.dryRun,
       push: parsed.push,
@@ -230,7 +240,7 @@ async function handleSyncCli(
     if (parsed.json) {
       out(JSON.stringify(report, null, 2));
     } else {
-      out(formatHumanReport(report, repoPath));
+      out(formatHumanReport(report, scope.repoPath));
     }
 
     if (report.rejected.length > 0 || report.conflicts.length > 0) {
@@ -256,22 +266,22 @@ export async function runSyncCli(
     return 1;
   }
 
-  const repoPath = resolveRepoPath(parsed.repoPath);
-  if (!repoPath) {
+  const scope = resolveSyncScope(parsed.repoPath, tryLoadConfig());
+  if (scope === null) {
     err("错误：未指定 --repo 且配置文件中未配置 dataRepo.path");
     return 1;
   }
 
-  if (!existsSync(repoPath)) {
-    err(`错误：目标数据仓路径不存在：${repoPath}`);
+  if (!existsSync(scope.repoPath)) {
+    err(`错误：目标数据仓路径不存在：${scope.repoPath}`);
     return 1;
   }
 
   if (parsed.confirmPublished) {
-    return handleConfirmCli(repoPath, parsed, out, err);
+    return handleConfirmCli(scope.repoPath, parsed, out, err);
   }
 
-  return handleSyncCli(repoPath, parsed, out, err);
+  return handleSyncCli(scope, parsed, out, err);
 }
 
 // 直接以 CLI 执行时执行并返回对应退出码

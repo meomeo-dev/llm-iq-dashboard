@@ -94,10 +94,15 @@ retention:
 # path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析；容器部署时填 /data-repo）。
 # autoSync 为每轮评测结束后是否自动触发同步（默认 false）。
 # push 为同步提交后是否自动 git push 到远端（默认 false；容器部署建议保持 false，由宿主机人工发布后通过发布确认回填）。
+# publishPrompts 为允许发布的题目 id 清单（默认不写 = 全部）；导出时不在清单里的题目连同其调用一并剔除，
+# 整轮没有剩下的题目就跳过。数据仓只追加，一轮按清单导出后，之后放宽清单也不会补发这一轮扣下的题目。
+# 非登录态 profile 的调用随记录一起发布：记录里只带 profile 的公开视图（名字、显示名、CLI、上游类型、
+# 分组、官网、倍率、是否启用），接口地址、查询参数与 key 不会写进数据仓；配置里已删除的 profile 其调用不发布。
 # dataRepo:
 #   path: ../llm-iq-data
 #   autoSync: false
 #   push: false
+#   publishPrompts: [animated-pelican-v1]
 
 # profile（可选）：一家 CLI 通往某个第三方上游的一套配置，用来同时对比不同上游，目前只支持 codex。
 # 不写即只有隐式的 default profile，也就是该 CLI 的登录态；名字 default 保留，不能登记。

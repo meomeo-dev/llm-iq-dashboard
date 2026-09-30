@@ -83,7 +83,7 @@ describe("data-repo-status 状态聚合", () => {
   it("配置了路径但路径不可达时，标注 reachable=false 且 notice 说明原因", async () => {
     const config = mockBaseConfig();
     const missingPath = join(rootDir, "non-existent-repo");
-    config.dataRepo = { path: missingPath, autoSync: true, push: false };
+    config.dataRepo = { path: missingPath, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,
@@ -99,7 +99,7 @@ describe("data-repo-status 状态聚合", () => {
 
   it("数据仓目录有效但缺 index.json 时 manifest 为 null", async () => {
     const config = mockBaseConfig();
-    config.dataRepo = { path: testRepoDir, autoSync: true, push: false };
+    config.dataRepo = { path: testRepoDir, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,
@@ -128,7 +128,7 @@ describe("data-repo-status 状态聚合", () => {
     await writeFile(join(testRepoDir, "index.json"), JSON.stringify(manifestContent), "utf8");
 
     const config = mockBaseConfig();
-    config.dataRepo = { path: testRepoDir, autoSync: true, push: false };
+    config.dataRepo = { path: testRepoDir, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,

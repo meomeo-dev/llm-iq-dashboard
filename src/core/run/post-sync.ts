@@ -6,12 +6,12 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { AppConfig } from "../config";
 import type { Logger } from "./prepare";
-import { confirmPublished, syncDataRepo } from "../sync/sync-orchestrator";
+import { confirmPublished, syncDataRepo, syncOptionsFromConfig } from "../sync/sync-orchestrator";
 
-async function performSync(repoPath: string, runId: string, push: boolean, log: Logger): Promise<void> {
+async function performSync(config: AppConfig, runId: string, push: boolean, log: Logger): Promise<void> {
   try {
     await syncDataRepo({
-      repoPath,
+      ...syncOptionsFromConfig(config),
       runIds: [runId],
       push,
       log,
@@ -45,7 +45,7 @@ export async function postRunSync(config: AppConfig, runId: string, log: Logger)
     return;
   }
 
-  await performSync(repoPath, runId, config.dataRepo.push, log);
+  await performSync(config, runId, config.dataRepo.push, log);
   if (!config.dataRepo.push) {
     await performConfirm(repoPath, runId, log);
   }

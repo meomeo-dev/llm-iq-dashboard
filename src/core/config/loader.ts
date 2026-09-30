@@ -263,13 +263,25 @@ export function parseDataRepo(raw: unknown, errors: string[]): DataRepoConfig | 
   if (node.push !== undefined && typeof node.push !== "boolean") {
     errors.push("dataRepo.push 必须是布尔值");
   }
+  const publishPrompts = parsePublishPrompts(node.publishPrompts, errors);
 
   if (rawPath === null) return null;
   return {
     path: resolve(process.cwd(), rawPath),
     autoSync: node.autoSync === true,
     push: node.push === true,
+    publishPrompts,
   };
+}
+
+/** 题目白名单：缺省或 null 为全部；否则须是非空字符串数组 */
+function parsePublishPrompts(raw: unknown, errors: string[]): string[] | null {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw) || raw.some((item) => typeof item !== "string" || item.trim() === "")) {
+    errors.push("dataRepo.publishPrompts 必须是题目 id 的字符串数组");
+    return null;
+  }
+  return raw.map((item: string) => item.trim());
 }
 
 /** 读取并校验配置文件，任何问题都汇总后一次性抛出；文件不存在时先按起步模板生成 */

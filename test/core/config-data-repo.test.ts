@@ -103,4 +103,16 @@ dataRepo:
     );
     assert.throws(() => loadConfig(configPath), /dataRepo\.push 必须是布尔值/);
   });
+  it("publishPrompts：缺省为 null；字符串数组照收并去首尾空白；非字符串数组报错", async () => {
+    const configPath = join(tempDir, "pelican.config.yaml");
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n  publishPrompts: [" animated-pelican-v1 ", classic-v1]\n`);
+    assert.deepEqual(loadConfig(configPath).dataRepo?.publishPrompts, ["animated-pelican-v1", "classic-v1"]);
+
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n`);
+    assert.equal(loadConfig(configPath).dataRepo?.publishPrompts, null);
+
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n  publishPrompts: animated-pelican-v1\n`);
+    assert.throws(() => loadConfig(configPath), /dataRepo\.publishPrompts 必须是题目 id 的字符串数组/);
+  });
+
 });
