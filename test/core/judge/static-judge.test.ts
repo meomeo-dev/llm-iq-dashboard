@@ -90,6 +90,30 @@ describe("judgeStatic 计分", () => {
     assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [20, 12, 10, 15]);
   });
 
+  test("只转辐条、轮圈是兄弟节点，且轮子经 <use> 实例化两次：仍认出两个车轮", () => {
+    const spokes = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs>
+      <g id="wheel"><circle r="40"/><g><line x1="0" y1="-40" x2="0" y2="40"/>
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="2s" repeatCount="indefinite"/></g></g>
+    </defs>
+      <g transform="translate(100 200)"><use href="#wheel"/></g>
+      <g transform="translate(300 200)"><use href="#wheel"/></g>
+      <g transform="translate(200 190)"><line x1="0" y1="0" x2="0" y2="25"/>
+        <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1s" repeatCount="indefinite" additive="sum"/></g>
+      <!-- Near leg -->
+      <path d="M200 150 L200 190"><animate attributeName="d" values="M200 150 L200 190;M200 150 L205 200" dur="1s" repeatCount="indefinite"/></path>
+    </svg>`;
+    const j = judge(spokes);
+    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [20, 15, 10, 15]);
+    assert.match(j.criteria[1]?.reason ?? "", /在两轮之间/);
+  });
+
+  test("腿没有命名但周期与曲柄一致：C4 仍满分，理由注明待核对", () => {
+    const unnamed = GOOD.replace('<g id="leg-near">', "<g>");
+    const c4 = judge(unnamed).criteria.find((c) => c.id === "C4");
+    assert.equal(c4?.score, 15);
+    assert.match(c4?.reason ?? "", /未命名为腿/);
+  });
+
   test("只播放一次的车轮：循环项按比例扣", () => {
     const once = GOOD.replace('dur="2s" repeatCount="indefinite"', 'dur="2s" repeatCount="1"');
     assert.equal(score(once, "C3"), 7);

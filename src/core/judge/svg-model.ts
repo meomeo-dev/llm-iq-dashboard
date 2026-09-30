@@ -91,6 +91,8 @@ export function largestCircle(origin: Element): CircleHit | null {
   const consider = (hit: CircleHit | null) => {
     if (hit && (!best || hit.radius > best.radius)) best = hit;
   };
+  const tag = origin.tagName.toLowerCase();
+  if (tag === "circle" || tag === "ellipse") consider(selfCircle(origin));
   for (const el of origin.querySelectorAll("circle, ellipse")) {
     const radius = circleRadius(el);
     if (radius === null) continue;
@@ -99,6 +101,67 @@ export function largestCircle(origin: Element): CircleHit | null {
   }
   for (const use of origin.querySelectorAll("use")) consider(circleBehindUse(use, origin));
   return best;
+}
+
+export interface RenderedCircle {
+  absCenter: Measured;
+  radius: number;
+  element: Element;
+}
+
+/**
+ * 画面上直接渲染的所有圆（含经 <use> 实例化的定义里的圆），圆心换算到 viewBox 坐标。
+ * 辐条组不含轮圈时，用它按“同心”找轮圈。
+ */
+export function renderedCircles(root: Element): RenderedCircle[] {
+  const out: RenderedCircle[] = [];
+  for (const el of root.querySelectorAll("circle, ellipse")) {
+    const radius = circleRadius(el);
+    if (radius === null || insideDefs(el)) continue;
+    out.push({ absCenter: offsetBetween(el, root, { x: numberAttr(el, "cx"), y: numberAttr(el, "cy") }), radius, element: el });
+  }
+  for (const use of root.querySelectorAll("use")) {
+    if (insideDefs(use)) continue;
+    const hit = circleBehindUse(use, use);
+    if (hit) out.push({ absCenter: offsetBetween(use, root, hit.center), radius: hit.radius, element: hit.element });
+  }
+  return out;
+}
+
+/** 圆心落在 point 附近（半径 5%，至少 2 个单位）的最大的圆 */
+export function concentricCircle(circles: readonly RenderedCircle[], point: Point): RenderedCircle | null {
+  let best: RenderedCircle | null = null;
+  for (const c of circles) {
+    const tolerance = Math.max(2, c.radius * 0.05);
+    if (Math.hypot(c.absCenter.x - point.x, c.absCenter.y - point.y) > tolerance) continue;
+    if (!best || c.radius > best.radius) best = c;
+  }
+  return best;
+}
+
+/** 元素（或其最近的带 id 祖先）被哪些 <use> 实例化；不被引用时返回空数组 */
+export function useInstancesOf(el: Element, root: Element): { definition: Element; uses: Element[] }[] {
+  const out: { definition: Element; uses: Element[] }[] = [];
+  let cursor: Element | null = el;
+  while (cursor && cursor !== root) {
+    const id = cursor.getAttribute("id");
+    if (id) {
+      const uses = [...root.querySelectorAll("use")].filter((u) => (u.getAttribute("href") ?? u.getAttribute("xlink:href")) === `#${id}`);
+      if (uses.length > 0) out.push({ definition: cursor, uses });
+    }
+    cursor = cursor.parentElement;
+  }
+  return out;
+}
+
+/** 元素是否位于 <defs> 之下（不直接渲染，只经 <use> 出现） */
+export function insideDefs(el: Element): boolean {
+  return el.closest("defs") !== null;
+}
+
+/** 把 el 局部坐标里的点换算到祖先 ancestor 的局部坐标（公开给部件识别用） */
+export function pointInAncestor(el: Element, ancestor: Element, point: Point): Measured {
+  return offsetBetween(el, ancestor, point);
 }
 
 function circleBehindUse(use: Element, origin: Element): CircleHit | null {
