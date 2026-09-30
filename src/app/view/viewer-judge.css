@@ -88,3 +88,24 @@
   color: var(--text-faint);
   font-size: 11.5px;
 }
+
+.judge-sheets {
+  margin-top: 8px;
+}
+
+.judge-sheet {
+  margin: 6px 0 0;
+}
+
+.judge-sheet img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.judge-sheet figcaption {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+}

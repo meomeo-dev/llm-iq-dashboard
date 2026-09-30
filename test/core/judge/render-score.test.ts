@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import type { Matrix2D } from "@/core/judge/render-page";
 import { applyRenderResults, type FrameCapture, type RenderMeasurements } from "@/core/judge/render-score";
 import { ANIMATED_PELICAN_RUBRIC } from "@/core/judge/schema";
 import { judgeStatic } from "@/core/judge/static-judge";
@@ -21,14 +22,37 @@ const GOOD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
 </svg>`;
 const actor = { kind: "code" as const, id: "render-judge@1", judgedAt: "2026-09-30T00:00:01Z" };
 
-const frame = (timeMs: number, png: string, wheelX: number, legY: number, outside = false): FrameCapture => ({
-  timeMs, png: Buffer.from(png),
+/** 曲柄绕五通 (200,190) 转 angle 度时的根坐标变换（曲柄组本身无基变换） */
+const crankMatrix = (angle: number): Matrix2D => {
+  const rad = (angle * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return [cos, sin, -sin, cos, 200 - 200 * cos + 190 * sin, 190 - 200 * sin - 190 * cos];
+};
+
+interface FrameOptions {
+  wheelX?: number;
+  legY?: number;
+  outside?: boolean;
+  /** 首帧脚踏点搬到这一帧后离腿的距离 */
+  pedalGap?: number;
+}
+
+const frame = (timeMs: number, png: string, { wheelX = 0, legY = 0, outside = false, pedalGap = 0 }: FrameOptions = {}): FrameCapture => ({
+  timeMs, png: Buffer.from(png), details: [],
   samples: [
     { key: "wheel1", x: 100 + wheelX, y: 200, width: 80, height: 80, outside },
     { key: "wheel2", x: 300, y: 200, width: 80, height: 80, outside: false },
     { key: "crank", x: 200, y: 190, width: 30, height: 30, outside: false },
     { key: "other1", x: 200, y: 150 + legY, width: 5, height: 40, outside: false },
   ],
+  feet: {
+    crankReach: 40, crank: crankMatrix((timeMs / 1000) * 360), axle: { x: 200, y: 190 },
+    feet: [{
+      key: "leg1", foot: { x: 240, y: 190 }, hip: { x: 200, y: 100 }, anchor: { shape: 0, length: 90 },
+      pedal: { x: 240, y: 190 }, gap: 2, deviation: pedalGap,
+    }],
+  },
 });
 const measurements = (frames: FrameCapture[], closure: FrameCapture): RenderMeasurements => ({
   frames, closure, wheelRadius: new Map([["wheel1", 40], ["wheel2", 40]]), crankKey: "crank", otherKeys: ["other1"],
@@ -37,8 +61,8 @@ const measurements = (frames: FrameCapture[], closure: FrameCapture): RenderMeas
 describe("applyRenderResults", () => {
   test("全程稳定、循环闭合：渲染层不扣分，加一条 judges", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
-    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, 0, k % 2));
-    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0", 0, 0)), actor);
+    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2 }));
+    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0")), actor);
     assert.deepEqual(j.gates.map((g) => g.passed), [true, true, true, true, true]);
     assert.equal(j.total.score, 60);
     assert.equal(j.judges.length, 2);
@@ -47,8 +71,8 @@ describe("applyRenderResults", () => {
 
   test("轮心漂移一个半径：C1 取渲染分 10；末帧未闭合：C3 减半", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
-    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, k === 4 ? 40 : 0, k % 2));
-    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "zz", 6, 0)), actor);
+    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { wheelX: k === 4 ? 40 : 0, legY: k % 2 }));
+    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "zz", { wheelX: 6 })), actor);
     assert.equal(j.criteria[0]?.score, 10);
     assert.equal(j.criteria[0]?.source, "render");
     assert.equal(j.criteria[2]?.score, 5);
@@ -56,17 +80,43 @@ describe("applyRenderResults", () => {
 
   test("画面不动：G4 不通过，总分 0 判降智", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
-    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, "same", 0, 0));
-    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "same", 0, 0)), actor);
+    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, "same"));
+    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "same")), actor);
     assert.equal(j.gates.find((g) => g.id === "G4")?.passed, false);
     assert.equal(j.total.verdict, "degraded");
   });
 
   test("车轮有帧跑出画布：G5 不通过", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
-    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, 0, 0, k === 3));
-    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0", 0, 0)), actor);
+    const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { outside: k === 3 }));
+    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0")), actor);
     assert.match(j.gates.find((g) => g.id === "G5")?.evidence ?? "", /wheel1/);
     assert.equal(j.total.score, 0);
+  });
+
+  test("脚踏点随曲柄搬运后离腿的距离逐帧不变：C4 满分；离开腿一段曲柄臂：C4 零分", () => {
+    const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
+    const steady = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2, pedalGap: 3 }));
+    const good = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(steady, frame(2000, "f0")), actor);
+    assert.equal(good.criteria[3]?.score, 15);
+    assert.match(good.criteria[3]?.reason ?? "", /脚始终跟着脚踏/);
+    // 首帧贴着腿，半个周期后脚踏点离腿 36（曲柄伸出 40 的九成）
+    const swinging = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2, pedalGap: k === 4 ? 36 : 0 }));
+    const bad = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(swinging, frame(2000, "f0")), actor);
+    assert.equal(bad.criteria[3]?.score, 0);
+    assert.match(bad.criteria[3]?.reason ?? "", /脚与脚踏不同步/);
+    assert.equal(bad.total.score, 45);
+  });
+
+  test("首帧脚尖离脚踏超过半个曲柄伸出长度的腿不算踩过脚踏：C4 零分", () => {
+    const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
+    const frames = Array.from({ length: 8 }, (_, k) => {
+      const f = frame(k * 250, `f${k}`, { legY: k % 2 });
+      f.feet.feet[0]!.gap = 30;
+      return f;
+    });
+    const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0")), actor);
+    assert.equal(j.criteria[3]?.score, 0);
+    assert.match(j.criteria[3]?.reason ?? "", /没有一帧碰到脚踏/);
   });
 });

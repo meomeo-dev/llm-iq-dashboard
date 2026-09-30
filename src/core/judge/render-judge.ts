@@ -5,17 +5,20 @@
 
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Browser, Page } from "playwright-core";
+import type { Page } from "playwright-core";
 import { acquireJudgeBrowser } from "./browser";
 import { runDir } from "../paths";
-import { measureTracks, prepareStage, seekTo, type TrackSpec } from "./render-page";
+import { composeContactSheet, detailPlans, FRAME_SIZE, type DetailPlan } from "./contact-sheet";
+import {
+  measureFeet, measureRider, measureTracks, PAGE_HELPERS, prepareStage, seekTo, setViewBox, type FeetSpec, type StageInfo, type TrackSpec,
+} from "./render-page";
 import { applyRenderResults, RENDER_JUDGE_ID, type FrameCapture, type RenderMeasurements } from "./render-score";
-import type { Judgement, RubricSpec } from "./schema";
-import { identifyParts, type BikeParts } from "./static-criteria";
+import type { ContactSheetDetail, Judgement, RubricSpec } from "./schema";
+import { identifyParts, legCandidates, type BikeParts } from "./static-criteria";
 import { elementPath, parseSvgModel, type SvgModel } from "./svg-model";
 
 export const FRAME_COUNT = 8;
-export const FRAME_SIZE = 320;
+export { FRAME_SIZE } from "./contact-sheet";
 const DEFAULT_PERIOD_MS = 2000;
 
 export interface RenderJudgeInput {
@@ -38,17 +41,23 @@ export async function renderJudge(input: RenderJudgeInput): Promise<RenderOutcom
     const parts = identifyParts(parsed.model);
     const tracks = buildTracks(parts, parsed.model);
     const periodMs = periodOf(parts);
-    const measured = await captureFrames(page, input.source, tracks, periodMs);
-    const sheet = await composeContactSheet(handle.browser, measured.frames);
+    const { measured, plans } = await captureFrames(page, input.source, tracks, periodMs);
     const { runId, attemptKey } = input.judgement.subject;
-    const file = await saveContactSheet(runId, attemptKey, sheet);
+    const frames = measured.frames;
+    const file = await saveContactSheet(runId, `${attemptKey}.sheet.png`,
+      await composeContactSheet(handle.browser, frames.map((f) => f.png), (i) => `${i + 1}`));
+    const details: ContactSheetDetail[] = [];
+    for (const [index, plan] of plans.entries()) {
+      const sheet = await composeContactSheet(handle.browser, frames.map((f) => f.details[index]!), (i) => `${i + 1} · ${plan.subject} ×${plan.zoom}`);
+      details.push({ ...plan, file: await saveContactSheet(runId, `${attemptKey}.sheet.${plan.kind}.png`, sheet) });
+    }
     const judgedAt = new Date().toISOString();
     const judgement = applyRenderResults(input.judgement, input.rubric, measured, {
       kind: "code", id: RENDER_JUDGE_ID, judgedAt, durationMs: Date.now() - started,
     });
     return { ok: true, judgement: { ...judgement, contactSheet: {
       file, layout: "row", frameCount: FRAME_COUNT, frameSize: FRAME_SIZE, periodMs,
-      sampleTimesMs: measured.frames.map((f) => f.timeMs),
+      sampleTimesMs: frames.map((f) => f.timeMs), details,
     } } };
   } catch (cause) {
     return { ok: false, reason: cause instanceof Error ? cause.message.split("\n")[0] ?? "" : String(cause) };
@@ -62,6 +71,9 @@ interface TrackPlan {
   wheelRadius: Map<string, number>;
   crankKey: string | null;
   otherKeys: string[];
+  feet: FeetSpec;
+  /** 车轮与曲柄目标的元素路径：定位骑手时排除 */
+  bikeParts: number[][];
 }
 
 /** 车轮量圆心（有内圆）或包围盒中心（<use> 实例、同心轮圈），曲柄与其他元素量包围盒中心 */
@@ -82,7 +94,21 @@ function buildTracks(parts: BikeParts, model: SvgModel): TrackPlan {
     specs.push({ key, path: elementPath(other.target, model.root), point: null });
     return key;
   });
-  return { specs, wheelRadius, crankKey, otherKeys };
+  const bikeParts = [...parts.wheels.map((w) => w.instance ?? w.anim.target), ...(parts.crank ? [parts.crank.target] : [])]
+    .map((el) => elementPath(el, model.root));
+  return { specs, wheelRadius, crankKey, otherKeys, feet: buildFeet(parts, model), bikeParts };
+}
+
+/** 脚在脚踏上的量测：腿取命名或周期匹配的候选，髋是其旋转中心；曲柄的五通是其旋转中心 */
+function buildFeet(parts: BikeParts, model: SvgModel): FeetSpec {
+  const crank = parts.crank
+    ? { path: elementPath(parts.crank.target, model.root), center: localCenter(parts.crank) }
+    : null;
+  const legs = legCandidates(parts).map((leg, i) => ({
+    key: `leg${i + 1}`, path: elementPath(leg.target, model.root), hip: localCenter(leg), anchor: null, startPedal: null,
+  }));
+  const maxReach = Math.min(Number.POSITIVE_INFINITY, ...parts.wheels.map((w) => w.circle.radius));
+  return { legs, crank, maxReach, baseCrank: null };
 }
 
 /** SMIL 旋转的局部中心点：正确的动画下它应逐帧不动，动画覆盖或叠加错误时它会跑；CSS 动画量包围盒 */
@@ -97,45 +123,67 @@ function periodOf(parts: BikeParts): number {
   return durations.length > 0 ? Math.round(Math.max(...durations)) : DEFAULT_PERIOD_MS;
 }
 
-async function captureFrames(page: Page, source: string, plan: TrackPlan, periodMs: number): Promise<RenderMeasurements> {
+async function captureFrames(
+  page: Page, source: string, plan: TrackPlan, periodMs: number,
+): Promise<{ measured: RenderMeasurements; plans: DetailPlan[] }> {
   await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`, { waitUntil: "load" });
-  await page.evaluate(prepareStage, FRAME_SIZE);
-  const frames: FrameCapture[] = [];
-  for (let k = 0; k < FRAME_COUNT; k += 1) frames.push(await captureAt(page, plan.specs, Math.round((k * periodMs) / FRAME_COUNT)));
-  const closure = await captureAt(page, plan.specs, periodMs);
-  return { frames, closure, wheelRadius: plan.wheelRadius, crankKey: plan.crankKey, otherKeys: plan.otherKeys };
+  const stage = await evaluatePage(page, prepareStage, FRAME_SIZE);
+  const first = await captureAt(page, plan, 0, [], stage);
+  // 首帧定下三件事：脚尖落在腿的哪个几何、哪段弧长；离脚尖最近的脚踏点与曲柄变换（后续各帧
+  // 把它随曲柄搬过去，看是否还贴在腿上）；各类细节的取景框（部件轴心不动，各帧共用同一框才好逐帧比较）
+  const anchored: TrackPlan = { ...plan, feet: { ...plan.feet, baseCrank: first.feet.crank, legs: plan.feet.legs.map((leg) => {
+    const start = first.feet.feet.find((s) => s.key === leg.key);
+    return { ...leg, anchor: start?.anchor ?? null, startPedal: start?.pedal ?? null };
+  }) } };
+  const wheels = [...plan.wheelRadius].flatMap(([key, radius]) => {
+    const sample = first.samples.find((s) => s.key === key);
+    return sample ? [{ key, sample, radius }] : [];
+  });
+  const wheelTop = wheels.length > 0 ? Math.min(...wheels.map((w) => w.sample.y - w.radius)) : null;
+  const rider = await evaluatePage(page, measureRider, { exclude: plan.bikeParts, wheelTop });
+  const plans = detailPlans({ feet: first.feet, wheels, rider, stage });
+  first.details = await captureDetails(page, plans, stage);
+  const frames: FrameCapture[] = [first];
+  for (let k = 1; k < FRAME_COUNT; k += 1) frames.push(await captureAt(page, anchored, Math.round((k * periodMs) / FRAME_COUNT), plans, stage));
+  const closure = await captureAt(page, anchored, periodMs, [], stage);
+  return { measured: { frames, closure, wheelRadius: plan.wheelRadius, crankKey: plan.crankKey, otherKeys: plan.otherKeys }, plans };
 }
 
-async function captureAt(page: Page, specs: TrackSpec[], timeMs: number): Promise<FrameCapture> {
-  await page.evaluate(seekTo, timeMs);
-  const samples = await page.evaluate(measureTracks, specs);
+async function captureAt(
+  page: Page, plan: TrackPlan, timeMs: number, plans: readonly DetailPlan[], stage: StageInfo,
+): Promise<FrameCapture> {
+  await evaluatePage(page, seekTo, timeMs);
+  const samples = await evaluatePage(page, measureTracks, plan.specs);
+  const feet = await evaluatePage(page, measureFeet, plan.feet);
   const png = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: FRAME_SIZE, height: FRAME_SIZE } });
-  return { timeMs, samples, png };
+  return { timeMs, samples, feet, png, details: await captureDetails(page, plans, stage) };
 }
 
-/** 一行 8 帧、帧间无缝、左上角标帧号；在浏览器里拼好整体截图，不引入图像库 */
-async function composeContactSheet(browser: Browser, frames: readonly FrameCapture[]): Promise<Buffer> {
-  const cells = frames.map((frame, i) =>
-    `<div class="cell"><img src="data:image/png;base64,${frame.png.toString("base64")}" width="${FRAME_SIZE}" height="${FRAME_SIZE}"><span>${i + 1}</span></div>`);
-  const html = `<!doctype html><html><head><style>
-    body{margin:0;background:#fff}
-    .row{display:flex;width:${FRAME_SIZE * frames.length}px;height:${FRAME_SIZE}px}
-    .cell{position:relative;width:${FRAME_SIZE}px;height:${FRAME_SIZE}px}
-    .cell img{display:block}
-    .cell span{position:absolute;left:6px;top:4px;font:bold 16px/1 sans-serif;color:#fff;background:rgba(0,0,0,.55);padding:3px 7px;border-radius:4px}
-  </style></head><body><div class="row">${cells.join("")}</div></body></html>`;
-  const context = await browser.newContext({ viewport: { width: FRAME_SIZE * frames.length, height: FRAME_SIZE }, deviceScaleFactor: 1 });
+/** 动画定格不变，只把取景框依次换成各类放大区域各截一张，最后把 viewBox 换回来 */
+async function captureDetails(page: Page, plans: readonly DetailPlan[], stage: StageInfo): Promise<Buffer[]> {
+  const out: Buffer[] = [];
   try {
-    const page = await context.newPage();
-    await page.setContent(html, { waitUntil: "load" });
-    return await page.screenshot({ type: "png", fullPage: true });
+    for (const plan of plans) {
+      await evaluatePage(page, setViewBox, plan.region);
+      out.push(await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: FRAME_SIZE, height: FRAME_SIZE } }));
+    }
   } finally {
-    await context.close();
+    if (plans.length > 0) await evaluatePage(page, setViewBox, stage.viewBox);
   }
+  return out;
 }
 
-async function saveContactSheet(runId: string, attemptKey: string, png: Buffer): Promise<string> {
-  const file = `${attemptKey}.sheet.png`;
+/**
+ * 把 render-page 的函数送进页面执行：先注入 PAGE_HELPERS 的函数声明，再调用目标函数。
+ * tsx / esbuild 会给具名函数包一层 __name(...)，页面里没有这个助手，串成源码时补一个空实现。
+ */
+async function evaluatePage<A, R>(page: Page, fn: (arg: A) => R, arg: A): Promise<Awaited<R>> {
+  const helpers = PAGE_HELPERS.map((helper) => helper.toString()).join("\n");
+  const script = `(() => { const __name = (target) => target; ${helpers}\nreturn (${fn.toString()})(${JSON.stringify(arg)}); })()`;
+  return await page.evaluate(script) as Awaited<R>;
+}
+
+async function saveContactSheet(runId: string, file: string, png: Buffer): Promise<string> {
   const staging = join(runDir(runId), `${file}.staging`);
   await writeFile(staging, png);
   await rename(staging, join(runDir(runId), file));

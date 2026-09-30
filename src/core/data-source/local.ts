@@ -2,6 +2,7 @@
  * 本地数据源实现：直接委托 src/core/store.ts 的持久化读取函数。
  */
 
+import { loadContactSheet } from "../judge/judge-store";
 import { listRunStarts, loadCardsBetween, loadCard, loadArt, listRuns } from "../store";
 import type { DashboardCard, RunRecord } from "../types";
 import type { DataSource } from "./interface";
@@ -25,6 +26,10 @@ export class LocalDataSource implements DataSource {
 
   async listRuns(limit: number): Promise<RunRecord[]> {
     return listRuns(limit);
+  }
+
+  async loadContactSheet(runId: string, file: string): Promise<Buffer | null> {
+    return loadContactSheet(runId, file);
   }
 
   getNotice(): string | null {

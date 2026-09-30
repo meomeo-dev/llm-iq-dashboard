@@ -60,6 +60,11 @@ export async function listRuns(limit: number): Promise<RunRecord[]> {
   return getDataSource().listRuns(limit);
 }
 
+/** 评审联系图 PNG（帧序表或某类细节表） */
+export async function loadContactSheet(runId: string, file: string): Promise<Buffer | null> {
+  return getDataSource().loadContactSheet(runId, file);
+}
+
 /** 已读到的记录里出现过的上游 profile 视图；本地数据源为空 */
 export function knownProfiles(): readonly ProfileView[] {
   return getDataSource().knownProfiles?.() ?? [];

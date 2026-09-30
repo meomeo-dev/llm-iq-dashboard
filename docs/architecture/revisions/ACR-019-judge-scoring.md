@@ -52,11 +52,18 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 | `src/core/judge/svg-css.ts` | add | 解析 style 元素：含旋转的 @keyframes、挂动画的选择器、transform-origin 规则 | no |
 | `src/core/judge/static-criteria.ts` | add | 认出车轮 / 曲柄 / 其他部件，给 C1–C4 静态分 | no |
 | `src/core/judge/static-judge.ts` | add | 静态闸门 G1–G3 与整份评审记录的装配 | no |
-| `src/core/judge/render-judge.ts` | add | playwright-core 定格取样：G4–G5、C1–C4 渲染分、联系图（一行 8 帧） | no |
-| `src/core/judge/judge-store.ts` | add | `{attemptKey}.judge.json` 与 `.sheet.png` 的读写，原子替换 | no |
+| `src/core/judge/render-judge.ts` | add | playwright-core 定格取样：G4–G5、C1–C4 渲染分；C4 用脚踏点随曲柄搬运后是否仍贴在腿上判脚踩脚踏 | no |
+| `src/core/judge/render-page.ts` | add | 在页面里跑的量测脚本：定格、跟踪点、脚与脚踏、骑手包围盒；助手随函数注入页面 | no |
+| `src/core/judge/render-score.ts` | add | 逐帧量测换成渲染闸门与分数，与静态分取低 | no |
+| `src/core/judge/contact-sheet.ts` | add | 联系图：帧序表一行 8 帧，另按类别（鹈鹕整体、头与喙、脚踏与脚、座垫与臀、左右轮）各出一张同帧号的细节表，帧间留灰色间隔 | no |
+| `src/core/judge/judge-store.ts` | add | `{attemptKey}.judge.json` 的读写（原子替换）与 `.sheet[.<kind>].png` 的读取（文件名校验） | no |
+| `src/core/data-source/` | modify | 数据源接口增 `loadContactSheet`：本地读文件，远程恒为 null（联系图不进数据仓） | no |
 | `src/core/runner.ts` | modify | `ok` 调用落盘后同步调用代码层评审，结果不影响 `Attempt` 字段 | no |
 | `src/core/storage.ts` | modify | 读轮次时附带评审记录，供看板显示 | no |
 | `src/app/components/card/` | modify | 结果卡片显示标签（在线 / 降智 / 待复核）与分数，展开看逐条标准 | no |
+| `src/app/view/` | modify | 单件作品页的评审抽屉：闸门与标准表、帧序联系表与各类细节联系表 | no |
+| `src/app/sheet/[runId]/[file]/route.ts` | add | `GET /sheet/<runId>/<file>` 返回联系图 PNG | no |
+| `AGENTS.md` | modify | 架构速览增作品评审一条 | no |
 | `test/core/judge/` | add | 静态解析与记录读写的单元测试，用固定 SVG 夹具，不启动浏览器 | no |
 | `scripts/judge-backfill.ts` | add | `judge:backfill` 的实现：遍历 `data/runs` 评审并落盘，支持 `--dry-run` / `--limit` / `--only` | no |
 | `docs/architecture/architecture.md` | modify | §3 增评审口径、§4 增评审产物、§7 增 `src/core/judge/` | no |
@@ -92,6 +99,7 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 | 1 | `src/core/judge/schema.ts` + `static-judge.ts` + `judge-store.ts` + 单测；`judge:backfill` 脚本对本地 44 幅出分，人工核对 | revert 本 commit |
 | 2 | runner 在 `ok` 落盘后调用静态评审；`judge.enabled` 开关 | revert 本 commit |
 | 3 | 引入 playwright-core；`render-judge.ts` 定格取样、联系图、渲染分与静态分取低 | revert 本 commit，删依赖 |
+| 3b | C4 渲染层实测脚是否踩在脚踏上（周期相等只是必要条件）；联系图按类别出细节表并经 `/sheet` 路由进看板 | revert 本 commit |
 | 4 | 看板卡片显示标签与分数，展开逐条标准 | revert 本 commit |
 | 5 | 回填 architecture.md §3 §4 §7；登记 ingress-ledger | revert 本 commit |
 

@@ -159,6 +159,18 @@ export function scoreLoop(parts: BikeParts, spec: CriterionSpec): CriterionResul
 
 const LEG_NAME = /leg|foot|feet|thigh|shin|knee|calf/i;
 
+/**
+ * 渲染层要量脚的腿：命名为腿的优先，没有命名时取周期与曲柄成整数比的其他动画；
+ * 嵌在别的候选里的（大腿组里的小腿）不单算，外层子树已经包含它
+ */
+export function legCandidates(parts: BikeParts): AnimationInfo[] {
+  const timed = parts.others.filter((a) => a.durMs !== null);
+  const named = timed.filter((a) => isLegNamed(a.target));
+  const reference = parts.crank?.durMs ?? parts.wheels[0]?.anim.durMs ?? null;
+  const pool = named.length > 0 ? named : reference === null ? [] : timed.filter((a) => periodMatches(a.durMs!, reference));
+  return pool.filter((a) => !pool.some((b) => b !== a && b.target !== a.target && b.target.contains(a.target)));
+}
+
 export function scoreLegs(parts: BikeParts, spec: CriterionSpec): CriterionResult {
   const reference = parts.crank?.durMs ?? parts.wheels[0]?.anim.durMs ?? null;
   const candidates = parts.others.filter((a) => a.durMs !== null);

@@ -4,7 +4,7 @@
  */
 
 import { summarizeTotal, type CriterionResult, type GateResult, type JudgeActor, type Judgement, type RubricSpec } from "./schema";
-import type { TrackSample } from "./render-page";
+import type { FeetMeasure, TrackSample } from "./render-page";
 
 export const RENDER_JUDGE_ID = "render-judge@1";
 
@@ -12,7 +12,11 @@ export const RENDER_JUDGE_ID = "render-judge@1";
 export interface FrameCapture {
   timeMs: number;
   samples: TrackSample[];
+  /** 脚尖、脚踏与曲柄变换 */
+  feet: FeetMeasure;
   png: Buffer;
+  /** 各类细节的放大图，与取景框清单同序 */
+  details: Buffer[];
 }
 
 export interface RenderMeasurements {
@@ -86,7 +90,7 @@ function renderScore(c: CriterionResult, measured: RenderMeasurements, gateFaile
     case "C3":
       return loopClosure(measured);
     case "C4":
-      return legsMove(measured);
+      return feetOnPedals(measured);
     default:
       return null;
   }
@@ -135,6 +139,39 @@ function loopClosure(measured: RenderMeasurements): RenderVerdict {
   const worst = Math.max(...gaps);
   const closed = worst <= 1;
   return { ratio: closed ? 1 : 0.5, note: closed ? `t=${measured.closure.timeMs}ms 各部件回到首帧位置，循环闭合` : `t=${measured.closure.timeMs}ms 部件与首帧位置差 ${worst.toFixed(1)}，循环未闭合` };
+}
+
+/**
+ * 脚是否跟着脚踏走：首帧离脚尖最近的脚踏点随曲柄刚体搬到第 k 帧后，它到腿下半段的距离应与首帧一样
+ * （脚画成独立形状时这段距离是个恒定偏移，脚踝怎么转也不影响）；摆腿时脚踏点会在半个周期里离开腿。
+ * 只看至少有一帧碰到脚踏的候选腿（云朵、翅膀等同周期元素碰不到），每条腿取 8 帧里距离相对首帧的最大变化，
+ * 不超过曲柄伸出长度的 35% 满分（脚绕脚踝转、脚踏自转都在这个量级内）、达到 80% 零分（摆腿时最差的一条腿
+ * 至少 45%）；取最稳的两条腿平均。量不到脚或曲柄时退回只查位移。
+ */
+function feetOnPedals(measured: RenderMeasurements): RenderVerdict {
+  const first = measured.frames[0];
+  const reach = Math.max(0, ...measured.frames.map((f) => f.feet.crankReach));
+  const keys = first?.feet.feet.map((s) => s.key) ?? [];
+  if (!first?.feet.crank || keys.length === 0 || !(reach > 0)) {
+    const fallback = legsMove(measured);
+    return { ...fallback, note: `${fallback.note}（量不到脚或曲柄，未核对脚踏）` };
+  }
+  const full = reach * 0.35;
+  const zero = reach * 0.8;
+  const legs = keys.map((key) => {
+    const samples = measured.frames.flatMap((f) => f.feet.feet.filter((s) => s.key === key));
+    const base = samples[0]?.deviation ?? 0;
+    const deviation = Math.max(0, ...samples.map((s) => Math.abs(s.deviation - base)));
+    const nearest = Math.min(...samples.map((s) => s.gap));
+    return { key, deviation, nearest, ratio: deviation <= full ? 1 : Math.max(0, 1 - (deviation - full) / (zero - full)) };
+  });
+  const touching = legs.filter((leg) => leg.nearest <= reach * 0.5);
+  if (touching.length === 0) return { ratio: 0, note: `${keys.length} 条候选腿的脚尖没有一帧碰到脚踏（曲柄伸出 ${reach.toFixed(1)}）` };
+  const ranked = touching.sort((a, b) => b.ratio - a.ratio).slice(0, 2);
+  const ratio = ranked.reduce((sum, r) => sum + r.ratio, 0) / ranked.length;
+  const detail = ranked.map((r) => `${r.key} 脚踏点离腿的距离最多变了 ${r.deviation.toFixed(1)}`).join("，");
+  const verdict = ranked.every((r) => r.ratio === 1) ? "脚始终跟着脚踏" : ratio >= 0.9 ? "脚基本跟着脚踏" : "脚与脚踏不同步";
+  return { ratio, note: `${detail}（曲柄伸出 ${reach.toFixed(1)}，${verdict}）` };
 }
 
 /** 车轮曲柄之外的动画元素至少有一个在动 */

@@ -1,5 +1,5 @@
 import React from "react";
-import type { Judgement } from "@/core/judge/schema";
+import type { ContactSheet, Judgement } from "@/core/judge/schema";
 import { JUDGE_TEXT } from "../components/card/card-format";
 
 /** 单件作品查看页的评审抽屉（ACR-019）：结论、闸门与逐条标准的分与理由 */
@@ -38,13 +38,31 @@ export function JudgeDrawer({ judge }: { judge: Judgement }) {
             ))}
           </tbody>
         </table>
-        {judge.contactSheet && (
-          <p className="judge-sheet-note">
-            联系图：一行 {judge.contactSheet.frameCount} 帧，周期 {judge.contactSheet.periodMs}ms，
-            取样 {judge.contactSheet.sampleTimesMs.join(" / ")} ms
-          </p>
-        )}
+        {judge.contactSheet && <ContactSheets runId={judge.subject.runId} sheet={judge.contactSheet} />}
       </div>
     </details>
+  );
+}
+
+/** 帧序联系表与各类细节联系表：同帧号、同取样时刻，细节表标出取景倍数与服务的标准 */
+function ContactSheets({ runId, sheet }: { runId: string; sheet: ContactSheet }) {
+  const src = (file: string) => `/sheet/${encodeURIComponent(runId)}/${encodeURIComponent(file)}`;
+  return (
+    <div className="judge-sheets">
+      <p className="judge-sheet-note">
+        联系图：一行 {sheet.frameCount} 帧，周期 {sheet.periodMs}ms，取样 {sheet.sampleTimesMs.join(" / ")} ms；
+        细节表与帧序表同帧号
+      </p>
+      <figure className="judge-sheet">
+        <img src={src(sheet.file)} alt="帧序联系表" loading="lazy" />
+        <figcaption>帧序 · 整幅画面</figcaption>
+      </figure>
+      {sheet.details.map((d) => (
+        <figure key={d.kind} className="judge-sheet">
+          <img src={src(d.file)} alt={`${d.subject}细节联系表`} loading="lazy" />
+          <figcaption>{d.subject} ×{d.zoom} · {d.criteria.join(" ")}</figcaption>
+        </figure>
+      ))}
+    </div>
   );
 }

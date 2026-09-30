@@ -166,6 +166,11 @@ export class RemoteDataSource implements DataSource {
     }
   }
 
+  /** 联系图不进数据仓，展台没有 */
+  async loadContactSheet(): Promise<Buffer | null> {
+    return null;
+  }
+
   /** 按 runId 倒序列出运行记录，供外部工具查询 */
   async listRuns(limit: number): Promise<RunRecord[]> {
     try {

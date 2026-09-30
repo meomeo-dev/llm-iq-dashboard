@@ -35,13 +35,33 @@ export interface JudgeActor {
   rawFile?: string;
 }
 
+/** 细节联系表的类别：每类一张表，与帧序联系表同帧号、同取样时刻 */
+export type DetailKind = "pelican" | "head" | "crank" | "saddle" | "wheel-left" | "wheel-right";
+
+/** 一类关键部位的放大联系表：8 帧共用同一取景框 */
+export interface ContactSheetDetail {
+  kind: DetailKind;
+  /** 给读图者看的部位名，如「脚踏与脚」 */
+  subject: string;
+  file: string;
+  /** 取景框（viewBox 单位） */
+  region: { x: number; y: number; width: number; height: number };
+  /** 相对整幅画面的放大倍数 */
+  zoom: number;
+  /** 这张表主要服务哪些标准 */
+  criteria: string[];
+}
+
+/** 给 AI 层的图件清单：帧序联系表加各类细节联系表 */
 export interface ContactSheet {
+  /** 帧序联系表：一行 8 帧整幅画面 */
   file: string;
   layout: "row";
   frameCount: 8;
   frameSize: number;
   periodMs: number;
   sampleTimesMs: number[];
+  details: ContactSheetDetail[];
 }
 
 export interface GateResult {
@@ -110,7 +130,7 @@ export interface RubricSpec {
 /** 动态鹈鹕车的评分标准，口径来自题目自带的 standard.evaluationCriteria */
 export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
   id: "animated-pelican-v1",
-  version: 1,
+  version: 2,
   passThreshold: 60,
   gates: [
     { id: "G1", source: "static", title: "XML 合法", standard: "XML 解析零错误" },
@@ -127,7 +147,7 @@ export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
     { id: "C3", source: "render", title: "循环播放", maxScore: 10,
       standard: "repeatCount=\"indefinite\" 或 infinite，首帧与末帧接近；只播放一次或末帧跳变为零分" },
     { id: "C4", source: "render", title: "腿与曲柄同步", maxScore: 15,
-      standard: "腿部动画周期与曲柄周期相等或成整数倍，腿部有周期性位移；腿不动或周期无关为零分" },
+      standard: "腿部动画周期与曲柄周期相等或成整数倍，且渲染后脚（腿的末端）每帧都落在脚踏上；腿不动、周期无关或脚离开脚踏一段曲柄臂为零分" },
     { id: "C5", source: "ai", title: "自行车结构完整", maxScore: 10,
       standard: "车架、车把、座垫、辐条轮、脚踏、曲柄齐全且形状正确；只有轮子或缺少主要部件为零分" },
     { id: "C6", source: "ai", title: "主体是鹈鹕", maxScore: 10,

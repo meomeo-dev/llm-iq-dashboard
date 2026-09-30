@@ -30,6 +30,9 @@ export interface DataSource {
   /** 按 runId 倒序列出运行记录，供外部工具查询 */
   listRuns(limit: number): Promise<RunRecord[]>;
 
+  /** 评审联系图 PNG；远程数据源不同步联系图，恒为 null */
+  loadContactSheet(runId: string, file: string): Promise<Buffer | null>;
+
   /** 远程数据源当前的提示或报错（如有降级）；本地数据源恒为 null */
   getNotice?(): string | null;
 

@@ -140,7 +140,10 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - 作品评审（ACR-019）：有评分标准的题目（首期 `animated-pelican-v1`）在 `ok` 落盘后由 `src/core/judge`
   按题目口径打分，结果只写独立的评审记录，不改 `Attempt`。代码层分静态解析（jsdom：XML 合法、
   有动画、自包含三道闸门，车轮轴心、曲柄、循环、腿部同步四条标准）与渲染量测（playwright-core
-  驱动无头 Chromium：一个周期取 8 帧，判在动、不出画布，与静态分取低，并拼一行 8 帧联系图）；
+  驱动无头 Chromium：一个周期取 8 帧，判在动、不出画布，量轮心漂移、循环闭合与脚是否踩在脚踏上——
+  首帧脚踏点随曲柄刚体搬到各帧后应始终贴在腿上——与静态分取低）；联系图分帧序表（一行 8 帧整幅）
+  与按类别（鹈鹕整体、头与喙、脚踏与脚、座垫与臀、左右轮）各一张的细节表，同帧号、同取样时刻，
+  帧间留灰色间隔，`judge.json` 的 `contactSheet` 就是给 AI 层的图件清单；
   闸门任一不过判「降智」，总分 ≥ 60 判「智商在线」，AI 层标准未判前为「待复核」。浏览器不可用时只出
   静态分；`judge.enabled: false` 关闭评审。AI 语义层另立 ACR。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
@@ -152,8 +155,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - 纯文件存储，根目录由 `PELICAN_DATA_DIR` 覆盖，默认 `data/`。
 - `runs/{runId}/`：`run.json`（结果证据）、`progress.json`（逐调用状态与执行进程 pid）、
   每次调用的 `.svg` 与原始事件流 `.txt`；有评审的调用另有 `<attemptKey>.judge.json`（评审记录，
-  结构见 `docs/research/judge/judge.schema.json`）与 `<attemptKey>.sheet.png`（一行 8 帧联系图），
-  随轮次目录一起保留与删除，不进数据仓（ACR-019）。`runId` 由 UTC 时刻派生，字典序即时间序。
+  结构见 `docs/research/judge/judge.schema.json`）、`<attemptKey>.sheet.png`（帧序联系表）与
+  `<attemptKey>.sheet.<kind>.png`（各类细节联系表），随轮次目录一起保留与删除，不进数据仓；
+  看板经 `/sheet/<runId>/<file>` 读联系图（ACR-019）。`runId` 由 UTC 时刻派生，字典序即时间序。
   看板首页只读 `run.json`；`.svg` 由浏览器按需经 `/art` 读取，单件作品页由服务端直接读取。
   `cancel.json` 是停止请求，只写不删；被停下的轮次在 `run.json` 与 `progress.json` 里带
   `cancelledAt`，被取消的调用不进 `attempts`；因预算上限没有发起的调用同样不进
