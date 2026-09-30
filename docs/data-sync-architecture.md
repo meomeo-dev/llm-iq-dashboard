@@ -132,7 +132,7 @@ sequenceDiagram
 
 1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published`、`skipped/unpublishable-prompt` 与 `skipped/empty` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
 2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
-3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json` 与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；非预演时不可发布与被拒绝轮次写入台账 `skipped` 记录；
+3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json`（有评审的调用内嵌去掉联系图与裁判转录引用的评审记录 `judge`，ACR-020）与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；非预演时不可发布与被拒绝轮次写入台账 `skipped` 记录；
 4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交；
 5. **发布确认模式（Confirm Published）与宿主机/容器分工**：
    - **容器安全凭据隔离**：容器内不存放任何 GitHub Token 或 SSH 凭据，runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；

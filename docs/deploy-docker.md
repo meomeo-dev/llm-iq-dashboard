@@ -209,10 +209,17 @@ docker exec -it llm-iq-runner sh docker/install-clis.sh
 - **非 root 运行**：容器内以 `node` 用户运行，登录态目录与数据目录属于该用户。
 - **镜像不含 CLI**：claude 与 agy 是专有软件，条款未授予再分发权；镜像只含开源组件，
   CLI 由每个使用者在自己的容器里从官方渠道安装。
+- **作品评审在 runner 里跑**（ACR-019 / ACR-020）：镜像装了 Debian 的 chromium 给渲染层定格动画
+  与截联系图（`PELICAN_BROWSER_PATH=/usr/bin/chromium`，容器内无用户命名空间故
+  `PELICAN_BROWSER_NO_SANDBOX=1`）；AI 层的裁判就是 runner 里已登录的 CLI。评审缺省关闭，
+  在看板 `/config` 页「作品评审」区块开启并填裁判；评审记录与联系图写在数据卷里，web 容器经
+  `/sheet` 路由读联系图。
 
 ## 已知限制
 
 - codex 在容器内的登录（`codex login --device-auth`）与调用未经验证。
+- chromium 在容器内跑评审渲染层未经验证（`--no-sandbox` 与 `/dev/shm` 大小）；起不来时评审只出
+  静态分，日志里有 `渲染层跳过` 与原因。
 - codex 的只读沙箱依赖 Linux 的 Landlock 与 seccomp，在 Docker 默认安全配置下未经
   验证；出现沙箱相关错误时查看该次调用的 `.txt` 原始输出。
 - 镜像按构建机的架构生成（amd64 或 arm64）；三家 CLI 都提供这两种架构的 Linux 版。

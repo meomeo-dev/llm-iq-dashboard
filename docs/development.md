@@ -32,6 +32,9 @@ data/runs/<runId>/progress.json     逐调用的执行状态：排队 / 执行�
 data/runs/<runId>/<targetId>.svg    提取出的作品
 data/runs/<runId>/<targetId>.txt    CLI 原始事件流与 stderr，失败时的唯一线索
 data/runs/<runId>/cancel.json       停止请求（点“停止本轮”时写入）
+data/runs/<runId>/<attemptKey>.judge.json     评审记录（有评分标准的题目，ACR-019 / ACR-020）
+data/runs/<runId>/<attemptKey>.sheet.png      帧序联系表；.sheet.<kind>.png 各类细节联系表
+data/runs/<runId>/<attemptKey>.judge-ai.txt   AI 层裁判两次问答的转录
 data/auto-run.json                  自动任务开关（不存在即关闭）
 data/scheduler.json                 常驻调度器的 pid 与启动时刻
 ```

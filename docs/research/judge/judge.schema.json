@@ -289,7 +289,7 @@
           ]
         },
         "id": {
-          "description": "代码层写打分器名与版本；AI 层写 cli/model，如 codex/gpt-6-astra",
+          "description": "代码层写打分器名与版本；AI 层写 cli/model@effort，如 claude/claude-sonnet-5-5@medium",
           "type": "string"
         },
         "promptVersion": {

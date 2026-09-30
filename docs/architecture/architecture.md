@@ -30,6 +30,7 @@
 | [ACR-017](revisions/ACR-017-modal-gif-export.md) | 2026-09-29 | 结果集弹窗导出 PNG / SVG / GIF：合成图纯函数、时刻烘焙取帧、modern-gif 编码 | §0 §1 |
 | [ACR-018](revisions/ACR-018-data-repo-profile-publish.md) | 2026-09-30 | 数据仓发布 profile 结果（记录带八字段公开视图）、题目白名单、面板按轮次勾选导出 | §4 §6 §8 |
 | [ACR-019](revisions/ACR-019-judge-scoring.md) | 2026-09-30 | 动态鹈鹕车代码层评审：静态解析 + 无头 Chromium 渲染量测，卡片贴智商在线 / 降智标签，引入 playwright-core | §3 §4 §7 |
+| [ACR-020](revisions/ACR-020-judge-ai-layer.md) | 2026-09-30 | 评审 AI 语义层：适配器评审模式，轮次定稿后裁判 CLI 看联系图打 C5–C8；代码层权重降到 30 分 | §3 §4 §7 |
 
 ## 0. 技术选型总览
 
@@ -145,9 +146,18 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   与按类别（鹈鹕整体、头与喙、脚踏与脚、座垫与臀、左右轮）各一张的细节表，同帧号、同取样时刻，
   帧间留灰色间隔，`judge.json` 的 `contactSheet` 就是给 AI 层的图件清单；
   闸门任一不过判「降智」，总分 ≥ 60 判「智商在线」，AI 层标准未判前为「待复核」。浏览器不可用时只出
-  静态分；`judge.enabled: false` 关闭评审。AI 语义层另立 ACR。
+  静态分；评审缺省关闭，`judge.enabled: true` 开启（ACR-020 把缺省从开改为关）。
+- AI 语义层（ACR-020）：代码层 C1–C4 只占 30 分，C5–C8（自行车结构、主体是鹈鹕、坐姿与脚位、
+  踩踏可信）共 70 分由裁判 CLI 判，因此没有 AI 层的作品只能是「待复核」或「降智」。轮次记录定稿后
+  `src/core/judge/ai-round` 串行处理本轮通过全部闸门的「待复核」作品：取 `judge.ai.judges` 里第一个
+  厂商与作品不同的裁判，把联系图复制进临时目录，以适配器「评审模式」先只给帧序表要盲描述、再给
+  全部联系图与题目要 C5–C8 的 JSON 分（解析失败重试一次）；盲描述没认出鹈鹕则 C6 上限减半。
+  转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。`pnpm judge:backfill -- --ai`
+  / `--ai-only` 补评历史。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
-  agy 仅 `--sandbox`。
+  agy 仅 `--sandbox`。评审模式（ACR-020）是唯一例外：`AgentRequest.review` 声明工作目录里可读的
+  联系图文件，claude 改 `--tools Read`，codex 改 `never` 审批（只读沙箱内读取放行、写盘仍拦），
+  agy 不变；仍不给写盘与执行命令。
 - 宿主机上限高于配置（ACR-006）：`PELICAN_CEILING_*` 定预算上限，`extraArgs` 默认不放行。
 
 ## 4. 数据与存储
@@ -156,8 +166,11 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - `runs/{runId}/`：`run.json`（结果证据）、`progress.json`（逐调用状态与执行进程 pid）、
   每次调用的 `.svg` 与原始事件流 `.txt`；有评审的调用另有 `<attemptKey>.judge.json`（评审记录，
   结构见 `docs/research/judge/judge.schema.json`）、`<attemptKey>.sheet.png`（帧序联系表）与
-  `<attemptKey>.sheet.<kind>.png`（各类细节联系表），随轮次目录一起保留与删除，不进数据仓；
-  看板经 `/sheet/<runId>/<file>` 读联系图（ACR-019）。`runId` 由 UTC 时刻派生，字典序即时间序。
+  `<attemptKey>.sheet.<kind>.png`（各类细节联系表），随轮次目录一起保留与删除；
+  看板经 `/sheet/<runId>/<file>` 读联系图（ACR-019）。经 AI 层评审的作品另有
+  `<attemptKey>.judge-ai.txt`（裁判两次问答的转录，ACR-020）。联系图与转录不进数据仓；评审记录
+  去掉这两样后内嵌进公开 `run.json` 的对应调用（`PublicAttempt.judge`，可选字段、不升契约版本），
+  只读展台因此与本地看板显示同样的标签与逐项分，只是抽屉里没有联系图（ACR-020）。`runId` 由 UTC 时刻派生，字典序即时间序。
   看板首页只读 `run.json`；`.svg` 由浏览器按需经 `/art` 读取，单件作品页由服务端直接读取。
   `cancel.json` 是停止请求，只写不删；被停下的轮次在 `run.json` 与 `progress.json` 里带
   `cancelledAt`，被取消的调用不进 `attempts`；因预算上限没有发起的调用同样不进
@@ -197,7 +210,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   题目与上游勾选只记在浏览器本地存储，不进配置；
   `PELICAN_CONFIG` 覆盖路径。本机配置不入库，不存在时由同目录的
   `pelican.example.yaml`（起步模板）生成。配置页写回时在 YAML 语法树上改值，保留注释，
-  先校验后替换。
+  先校验后替换。作品评审 `judge`（缺省关闭）：代码层开关、AI 层开关、裁判清单
+  `judge.ai.judges[]`（`cli × model × effort`，须与被评作品厂商不同）与单次问答超时，配置页
+  「作品评审」区块可改（ACR-020）。
 - `config/pricing-catalog.lock.json`：价格目录 Release 的 tag 与附件 sha256。
 - `config/smoke.config.yaml`：端到端冒烟配置。
 
@@ -228,7 +243,7 @@ llm_iq_dashboard/
 ├── src/
 │   ├── app/            ← 看板页面与 /api 路由；components/ 按功能分目录
 │   ├── bin/            ← scheduler、run-once 入口
-│   ├── core/           ← 领域逻辑；judge/ 为作品评审（静态解析、渲染量测、记录读写）
+│   ├── core/           ← 领域逻辑；judge/ 为作品评审（静态解析、渲染量测、AI 裁判、记录读写）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检
 │   └── pricing/        ← 用量解析与成本折算
