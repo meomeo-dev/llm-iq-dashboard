@@ -2,6 +2,7 @@
 
 import type { CostEstimate, TokenUsage } from "../pricing/types";
 import type { Judgement } from "./judge/schema";
+import type { JudgeCost } from "../pricing/judge-cost";
 import type { RenderedPrompt } from "./variables";
 
 /** 被调度的命令行工具种类 */
@@ -176,4 +177,6 @@ export interface DashboardCard extends Attempt {
   cost: CostEstimate;
   /** 作品评审记录（ACR-019）；没有评分标准、尚未评审或远程数据源时为 null */
   judge: Judgement | null;
+  /** AI 层裁判的用量与 API 等价成本（ACR-020），读取时计算；没经 AI 层时为 null */
+  judgeCost: JudgeCost | null;
 }

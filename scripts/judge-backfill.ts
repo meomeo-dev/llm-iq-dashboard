@@ -22,6 +22,7 @@ import { aiEligible, carryAiResults, judgeWithAi } from "../src/core/judge/ai-ju
 import { closeJudgeBrowser } from "../src/core/judge/browser";
 import { judgeArtifact } from "../src/core/judge/judge-attempt";
 import { attemptKeyOf, loadJudgement, saveJudgement } from "../src/core/judge/judge-store";
+import { judgeCostOf } from "../src/pricing/judge-cost";
 import { rubricFor, type Judgement } from "../src/core/judge/schema";
 import { judgeStatic } from "../src/core/judge/static-judge";
 import { configPath, runDir, runsRoot } from "../src/core/paths";
@@ -79,7 +80,9 @@ function layerSummary(judgement: Judgement): string {
 
 function printJudgement(judgement: Judgement, verbose: boolean): void {
   const { subject, total } = judgement;
-  console.log(`${subject.runId}/${subject.attemptKey}  ${String(total.score).padStart(3)}  ${total.verdict}  ${layerSummary(judgement)}`);
+  const judgeCost = judgeCostOf(judgement);
+  const costNote = judgeCost === null ? "" : `，裁判 ${judgeCost.asks} 次问答 ${judgeCost.cost.usd === null ? "未计价" : `$${judgeCost.cost.usd.toFixed(4)}`}`;
+  console.log(`${subject.runId}/${subject.attemptKey}  ${String(total.score).padStart(3)}  ${total.verdict}  ${layerSummary(judgement)}${costNote}`);
   if (!verbose) return;
   for (const gate of judgement.gates) console.log(`    ${gate.id} ${gate.passed ? "✓" : "✗"} ${gate.title}：${gate.evidence}`);
   for (const c of judgement.criteria) {

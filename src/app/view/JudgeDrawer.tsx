@@ -1,9 +1,10 @@
 import React from "react";
 import type { ContactSheet, Judgement } from "@/core/judge/schema";
-import { JUDGE_TEXT } from "../components/card/card-format";
+import type { DashboardCard } from "@/core/types";
+import { formatCost, JUDGE_TEXT, judgeCostLine } from "../components/card/card-format";
 
 /** 单件作品查看页的评审抽屉（ACR-019）：结论、闸门与逐条标准的分与理由 */
-export function JudgeDrawer({ judge }: { judge: Judgement }) {
+export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; judgeCost?: DashboardCard["judgeCost"] }) {
   const { total, rubric } = judge;
   return (
     <details className="viewer-drawer viewer-judge">
@@ -15,6 +16,9 @@ export function JudgeDrawer({ judge }: { judge: Judgement }) {
         </span>
         <span className="judge-meta">
           及格线 {rubric.passThreshold} · {rubric.id} v{rubric.version} · {judge.judges.map((j) => j.id).join(" + ")}
+          {judgeCost != null && (
+            <span title={judgeCostLine(judgeCost) ?? ""}> · 裁判 {formatCost(judgeCost.cost)}</span>
+          )}
         </span>
       </summary>
       <div className="viewer-drawer-body judge-body">

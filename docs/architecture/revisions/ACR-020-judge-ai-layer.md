@@ -49,6 +49,13 @@
 | `src/core/judge/ai-prompt.ts` | add | 盲描述与逐项判定的提示词、回答 JSON 解析、C6 盲描述核对 | no |
 | `src/core/judge/ai-judge.ts` | add | 单件评审：挑裁判、准入、临时目录放联系图、两次提问、并分、落盘、转录存档 | no |
 | `src/core/judge/ai-round.ts` | add | 轮后队列：本轮通过闸门的「待复核」作品串行评审 | no |
+| `src/pricing/judge-cost.ts` | add | 裁判用量（记在 `judges[].usage`）按价格目录折算成本，读取时算 | no |
+| `src/core/types.ts` | modify | `DashboardCard.judgeCost` | no |
+| `src/core/store.ts` | modify | 本地卡片带裁判成本 | no |
+| `src/app/components/card/` | modify | 评审标签悬停显示裁判成本 | no |
+| `src/app/view/` | modify | 作品页标题行与评审抽屉显示裁判成本 | no |
+| `test/pricing/judge-cost.test.ts` | add | 裁判成本 | no |
+| `test/app/` | modify | 卡片夹具补 `judgeCost` | no |
 | `src/core/runner.ts` | modify | `finishRunRecord` 之后调用 `judgeRoundWithAi`，被停止的轮次不评 | no |
 | `src/core/config/types.ts` | modify | `JudgeConfig` 增 `ai: { enabled, judges[], timeoutMs }` | no |
 | `src/core/config/loader.ts` | modify | 解析与校验 `judge.ai`（缺省关闭；开启但无裁判报错）；`judge.enabled` 缺省改为关闭 | yes |

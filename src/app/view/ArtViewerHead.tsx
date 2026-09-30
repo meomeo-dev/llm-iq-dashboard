@@ -2,6 +2,7 @@ import React from "react";
 import type { DashboardCard } from "@/core/types";
 import {
   costTitle,
+  judgeCostLine,
   formatBytes,
   formatCost,
   formatDuration,
@@ -47,6 +48,9 @@ export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
           <span className={`status-text status-${card.status}`}>{STATUS_TEXT[card.status]}</span>
           <span>耗时 {formatDuration(card.durationMs)}</span>
           <span title={costTitle(card)}>API 等价 {formatCost(card.cost)}</span>
+          {card.judgeCost != null && (
+            <span title={judgeCostLine(card.judgeCost) ?? ""}>评审 {formatCost(card.judgeCost.cost)}</span>
+          )}
           {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
           <span>effort: {effort}</span>
           <span>{card.promptId}</span>

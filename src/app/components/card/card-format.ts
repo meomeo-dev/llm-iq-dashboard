@@ -68,8 +68,18 @@ export const JUDGE_TEXT: Record<Verdict, string> = {
   pending: "待复核",
 };
 
-/** 评审的悬停说明：闸门与每条标准的分与理由 */
-export function judgeTitle(judge: Judgement): string {
+/** 裁判成本的一行文案：谁评的、几次问答、多少 token、多少钱 */
+export function judgeCostLine(judgeCost: DashboardCard["judgeCost"]): string | null {
+  if (judgeCost === null) return null;
+  const tokens = judgeCost.usage === null
+    ? "用量未知"
+    : `${Object.values(judgeCost.usage.tokens).reduce((sum, n) => sum + n, 0).toLocaleString("en-US")} tok`;
+  return `AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答 · ${tokens} · API 等价 ${formatCost(judgeCost.cost)}`;
+}
+
+/** 评审的悬停说明：闸门与每条标准的分与理由，末尾是裁判成本 */
+export function judgeTitle(judge: Judgement, judgeCost: DashboardCard["judgeCost"] = null): string {
+  const costLine = judgeCostLine(judgeCost);
   const lines = [
     `${JUDGE_TEXT[judge.total.verdict]} ${judge.total.score}/${judge.total.maxScore}（及格线 ${judge.rubric.passThreshold}）`,
     ...judge.gates.map((g) => `${g.passed ? "✓" : "✗"} ${g.id} ${g.title}：${g.evidence}`),
@@ -78,6 +88,7 @@ export function judgeTitle(judge: Judgement): string {
         ? `${c.id} -/${c.maxScore} ${c.title}：待 AI 层判定`
         : `${c.id} ${c.score}/${c.maxScore} ${c.title}：${c.reason ?? ""}`,
     ),
+    ...(costLine === null ? [] : [costLine]),
   ];
   return lines.join("\n");
 }

@@ -24,7 +24,7 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
           </div>
         </details>
       )}
-      {card.judge != null && <JudgeDrawer judge={card.judge} />}
+      {card.judge != null && <JudgeDrawer judge={card.judge} judgeCost={card.judgeCost ?? null} />}
       {standard != null && (
         <details className="viewer-drawer viewer-standard">
           <summary>

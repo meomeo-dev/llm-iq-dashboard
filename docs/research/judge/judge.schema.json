@@ -308,6 +308,15 @@
         "rawFile": {
           "description": "AI 层原始输出，供事后排查",
           "type": "string"
+        },
+        "usage": {
+          "description": "AI 层全部问答（含重试）的 token 用量，从裁判转录解析；成本读取时按价格目录折算。解析不出为 null",
+          "type": ["object", "null"]
+        },
+        "asks": {
+          "description": "AI 层问答次数",
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

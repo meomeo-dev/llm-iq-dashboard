@@ -4,6 +4,8 @@
  * docs/research/judge/judge.schema.json 一致；代码层先写，AI 层随后填分。
  */
 
+import type { TokenUsage } from "../../pricing/types";
+
 export type JudgeSource = "static" | "render" | "ai";
 export type Verdict = "online" | "degraded" | "pending";
 
@@ -33,6 +35,10 @@ export interface JudgeActor {
   judgedAt: string;
   durationMs?: number;
   rawFile?: string;
+  /** AI 层：本次评审全部问答（含重试）的 token 用量，从裁判转录解析；成本读取时按价格目录折算 */
+  usage?: TokenUsage | null;
+  /** AI 层：问答次数 */
+  asks?: number;
 }
 
 /** 细节联系表的类别：每类一张表，与帧序联系表同帧号、同取样时刻 */

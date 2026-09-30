@@ -82,7 +82,7 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
       <div className="footer-row">
         {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
         {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
-        {card.judge != null && <JudgeTag judge={card.judge} />}
+        {card.judge != null && <JudgeTag judge={card.judge} judgeCost={card.judgeCost ?? null} />}
         <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
         {href !== null && (
           <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
@@ -95,9 +95,9 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
 }
 
 /** 评审标签（ACR-019）：标签 + 总分，悬停看逐条闸门与标准 */
-function JudgeTag({ judge }: { judge: NonNullable<DashboardCard["judge"]> }) {
+function JudgeTag({ judge, judgeCost }: { judge: NonNullable<DashboardCard["judge"]>; judgeCost: DashboardCard["judgeCost"] }) {
   return (
-    <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge)}>
+    <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge, judgeCost)}>
       {JUDGE_TEXT[judge.total.verdict]} {judge.total.score}
     </span>
   );

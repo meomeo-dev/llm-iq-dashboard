@@ -10,6 +10,8 @@ import { openSessionPool, type AgentReply, type AgentSession } from "../../adapt
 import type { JudgeAiConfig, JudgeModel } from "../config/types";
 import { runDir } from "../paths";
 import type { Target } from "../types";
+import { usageFromTranscript } from "../../pricing/usage";
+import type { TokenUsage } from "../../pricing/types";
 import {
   AI_PROMPT_VERSION, blindPrompt, blindRecognizedPelican, judgePrompt, parseJudgeReply, trimBlindDescription, type AiScore,
 } from "./ai-prompt";
@@ -86,6 +88,7 @@ async function judgeOnce(
   const rawFile = await asker.saveTranscript(judgement.subject.runId, judgement.subject.attemptKey);
   const judged = applyAiResults(judgement, rubric, scores.scores, description, {
     id: `${judge.cli}/${judge.model}@${judge.effort}`, judgedAt: new Date().toISOString(), durationMs: Date.now() - started, rawFile,
+    usage: asker.usage(), asks: asker.asks,
   });
   await saveJudgement(judged);
   return { ok: true, judgement: judged };
@@ -122,6 +125,8 @@ async function stageSheets(runId: string, sheet: ContactSheet, workdir: string):
 class JudgeAsker {
   private readonly transcripts: string[] = [];
   private readonly target: Target;
+  /** 已发出的问答次数（含解析失败后的重试） */
+  asks = 0;
 
   constructor(private readonly session: AgentSession, judge: JudgeModel, private readonly timeoutMs: number, private readonly workdir: string) {
     this.target = {
@@ -135,8 +140,14 @@ class JudgeAsker {
       target: this.target, promptText, workdir: this.workdir, appliedEffort: this.target.effort, effortAdjustable: true,
       timeoutMs: this.timeoutMs, review: { readableFiles },
     });
+    this.asks += 1;
     this.transcripts.push(`===== prompt =====\n${promptText}\n===== transcript =====\n${reply.transcript}\n===== answer =====\n${reply.text}`);
     return reply;
+  }
+
+  /** 全部问答的用量合计：用量解析按 CLI 的事件标记逐行取，拼在一起的转录照样能读 */
+  usage(): TokenUsage | null {
+    return usageFromTranscript(this.target.cli, this.transcripts.join("\n"));
   }
 
   async saveTranscript(runId: string, attemptKey: string): Promise<string> {
@@ -169,6 +180,8 @@ interface AiActorInfo {
   judgedAt: string;
   durationMs: number;
   rawFile: string;
+  usage: TokenUsage | null;
+  asks: number;
 }
 
 /** 把 AI 分并进记录：C6 受盲描述约束；judges 追加 ai 一项；总分与结论重算 */

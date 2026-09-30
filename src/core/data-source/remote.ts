@@ -21,6 +21,7 @@ import {
 } from "../data-repo/contract";
 import { getDataRepoUrl } from "../deploy-mode";
 import { usageAndCost } from "../../pricing/attempt-cost";
+import { judgeCostOf } from "../../pricing/judge-cost";
 import type { ProfileView } from "../profile-view";
 import { runIdTime } from "../store";
 import type { DashboardCard, RunRecord } from "../types";
@@ -373,6 +374,7 @@ export class RemoteDataSource implements DataSource {
         ...costInfo,
         // 公开记录内嵌的评审记录没有联系图与转录引用（ACR-020）；旧记录没有此字段
         judge: attempt.judge ?? null,
+        judgeCost: judgeCostOf(attempt.judge ?? null),
       });
     }
     return cards;

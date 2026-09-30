@@ -29,7 +29,8 @@ const config = { enabled: true, timeoutMs: 1000, judges: [
   { cli: "codex" as const, model: "gpt-5.5", effort: "medium" as const },
   { cli: "claude" as const, model: "claude-sonnet-5-5", effort: "medium" as const },
 ] };
-const actor = { id: "claude/claude-sonnet-5-5@medium", judgedAt: "2026-09-30T00:00:02Z", durationMs: 1, rawFile: "k.judge-ai.txt" };
+const usage = { tokens: { input: 40000, output: 8000 }, reasoningTokens: 7000, serviceTier: "standard" as const, reportedCostUsd: null };
+const actor = { id: "claude/claude-sonnet-5-5@medium", judgedAt: "2026-09-30T00:00:02Z", durationMs: 1, rawFile: "k.judge-ai.txt", usage, asks: 2 };
 
 describe("AI 层", () => {
   test("裁判厂商须与作品不同：codex 作品跳过 codex 裁判，其余按配置顺序备选", () => {
@@ -74,6 +75,8 @@ describe("AI 层", () => {
     assert.equal(online.total.verdict, "online");
     assert.equal(online.total.score, base.total.score + 64);
     assert.equal(online.judges.at(-1)?.kind, "ai");
+    assert.deepEqual(online.judges.at(-1)?.usage, usage);
+    assert.equal(online.judges.at(-1)?.asks, 2);
     assert.equal(online.blindDescription, "一只鹈鹕在骑自行车");
     const blind = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鸭子在骑车", actor);
     assert.equal(blind.criteria.find((c) => c.id === "C6")?.score, 7);

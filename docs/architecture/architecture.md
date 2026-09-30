@@ -152,7 +152,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `src/core/judge/ai-round` 串行处理本轮通过全部闸门的「待复核」作品：取 `judge.ai.judges` 里第一个
   厂商与作品不同的裁判，把联系图复制进临时目录，以适配器「评审模式」先只给帧序表要盲描述、再给
   全部联系图与题目要 C5–C8 的 JSON 分（解析失败重试一次）；盲描述没认出鹈鹕则 C6 上限减半。
-  转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。`pnpm judge:backfill -- --ai`
+  转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。裁判全部问答的 token 用量从转录
+  解析后记在 `judges[]` 的 AI 那条（`usage`、`asks`），成本与作品同口径按价格目录在读取时折算
+  （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。`pnpm judge:backfill -- --ai`
   / `--ai-only` 补评历史。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
   agy 仅 `--sandbox`。评审模式（ACR-020）是唯一例外：`AgentRequest.review` 声明工作目录里可读的

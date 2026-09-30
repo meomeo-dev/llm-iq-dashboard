@@ -27,6 +27,7 @@ const mockCardOk: DashboardCard = {
   runStartedAt: "2026-09-27T02:00:00Z",
   runInProgress: false,
   judge: null,
+  judgeCost: null,
   targetId: "claude/claude-3-7-sonnet/high",
   cli: "claude",
   model: "claude-3-7-sonnet",

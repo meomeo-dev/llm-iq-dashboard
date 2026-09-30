@@ -13,6 +13,7 @@ import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
 import { runDir, runsRoot } from "./paths";
 import type { Attempt, DashboardCard, RunRecord } from "./types";
 import { usageAndCost } from "../pricing/attempt-cost";
+import { judgeCostOf } from "../pricing/judge-cost";
 
 const RUN_FILE = "run.json";
 
@@ -199,7 +200,10 @@ async function cardsOfRun(run: RunRecord, attempts: readonly Attempt[]): Promise
       bindings: prompt?.bindings ?? {},
       ...(await usageAndCost(run.runId, attempt)),
       judge: attempt.svgFile === null ? null : await loadJudgement(run.runId, attemptKeyOf(attempt.svgFile)),
+      judgeCost: null,
     });
+    const last = cards[cards.length - 1]!;
+    last.judgeCost = judgeCostOf(last.judge);
   }
   return cards;
 }
