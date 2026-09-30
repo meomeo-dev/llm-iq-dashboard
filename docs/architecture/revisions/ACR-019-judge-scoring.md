@@ -56,13 +56,13 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 | `src/core/judge/render-page.ts` | add | 在页面里跑的量测脚本：定格、跟踪点、脚与脚踏、骑手包围盒；助手随函数注入页面 | no |
 | `src/core/judge/render-score.ts` | add | 逐帧量测换成渲染闸门与分数，与静态分取低 | no |
 | `src/core/judge/contact-sheet.ts` | add | 联系图：帧序表一行 8 帧，另按类别（鹈鹕整体、头与喙、脚踏与脚、座垫与臀、左右轮）各出一张同帧号的细节表，帧间留灰色间隔 | no |
-| `src/core/judge/judge-store.ts` | add | `{attemptKey}.judge.json` 的读写（原子替换）与 `.sheet[.<kind>].png` 的读取（文件名校验） | no |
+| `src/core/judge/judge-store.ts` | add | `{attemptKey}.judge.json` 的读写（原子替换）与 `.sheet.png` / `.sheet.{kind}.png` 的读取（文件名校验） | no |
 | `src/core/data-source/` | modify | 数据源接口增 `loadContactSheet`：本地读文件，远程恒为 null（联系图不进数据仓） | no |
 | `src/core/runner.ts` | modify | `ok` 调用落盘后同步调用代码层评审，结果不影响 `Attempt` 字段 | no |
 | `src/core/storage.ts` | modify | 读轮次时附带评审记录，供看板显示 | no |
 | `src/app/components/card/` | modify | 结果卡片显示标签（在线 / 降智 / 待复核）与分数，展开看逐条标准 | no |
 | `src/app/view/` | modify | 单件作品页的评审抽屉：闸门与标准表、帧序联系表与各类细节联系表 | no |
-| `src/app/sheet/[runId]/[file]/route.ts` | add | `GET /sheet/<runId>/<file>` 返回联系图 PNG | no |
+| `src/app/sheet/[runId]/[file]/route.ts` | add | `GET /sheet/{runId}/{file}` 返回联系图 PNG | no |
 | `AGENTS.md` | modify | 架构速览增作品评审一条 | no |
 | `test/core/judge/` | add | 静态解析与记录读写的单元测试，用固定 SVG 夹具，不启动浏览器 | no |
 | `scripts/judge-backfill.ts` | add | `judge:backfill` 的实现：遍历 `data/runs` 评审并落盘，支持 `--dry-run` / `--limit` / `--only` | no |
@@ -85,12 +85,12 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | d325bd2 | |
-| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | pass | d325bd2 | 813 用例 |
-| `pnpm build` | Next.js 看板生产构建 | pass | pass | d325bd2 | |
-| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | d325bd2 | |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | eb7e001 | |
+| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | pass | eb7e001 | 820 用例 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | eb7e001 | |
+| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | eb7e001 | |
 | `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | skip | | 真实调用 CLI 消耗配额，须先征得同意再跑；跑通并 pass 后状态改 done |
-| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | pass | d325bd2 | 变更前该命令不存在；本地 44 幅：34 幅 60、1 幅 45、9 幅 0 |
+| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | pass | eb7e001 | 变更前该命令不存在；本地 44 幅：15 幅 60、20 幅 45–55、9 幅 0 |
 
 ## 分步实施
 
