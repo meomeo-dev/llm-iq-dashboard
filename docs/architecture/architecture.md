@@ -114,7 +114,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 
 - `src/adapters`：每家 CLI 一个适配器，实现同一契约；codex 使用长驻 `codex app-server`。
 - `src/capabilities`：探测各 CLI 的模型与强度，结果缓存在 `data/capabilities.json`；
-  每轮开始前预检各 CLI 是否已安装、已登录，只拦确定的问题。
+  每轮开始前预检各 CLI 是否已安装、已登录，只拦确定的问题：没装拦这家的全部调用，
+  没登录只拦登录态调用，经 profile 的调用用 API key 鉴权照常发起。
 - 目标身份是 `cli × profile × model × effort`，profile 缺省为该 CLI 的登录态（`default`），
   不进目标 id；非默认 profile 是配置里登记的第三方上游，id 追加一段（ACR-013）。首期只有
   codex 允许登记 profile。

@@ -13,7 +13,7 @@ import { createProgressTracker, type ProgressTracker } from "./progress";
 import { createSerialWriter, type SerialWriter } from "./serial-writes";
 import { watchCancel, type CancelWatch } from "./run-cancel";
 import { saveRun } from "./store";
-import type { Attempt, CliKind, RunRecord } from "./types";
+import type { Attempt, RunRecord } from "./types";
 import { buildLeakGuard, credentialFiles, type LeakGuard } from "./leak-guard";
 import { describeProgress, laneIdentity, type LaneItem } from "./run-plan";
 import type { RenderedPrompt } from "./variables";
@@ -21,11 +21,13 @@ import { discardScratch } from "./scratch-cleanup";
 import { executeLanes, type LaneHooks } from "./run/execute-lanes";
 import { postRunSync } from "./run/post-sync";
 import {
+  callBlocker,
   costOf,
   openBudget,
   preflight,
   prepareRunPlan,
   prepareRunStorage,
+  type CallBlockers,
   type Logger,
 } from "./run/prepare";
 import type { BudgetGate } from "./budget";
@@ -60,12 +62,6 @@ function setupCancelWatch(runId: string, log: Logger, progress: ProgressTracker,
     { once: true },
   );
   return cancel;
-}
-
-/** 开轮前查出的拦截原因：按 CLI（预检未通过）与按 profile（停用、未登记、缺 key） */
-interface CallBlockers {
-  cli: ReadonlyMap<CliKind, string>;
-  profile: ReadonlyMap<string, string>;
 }
 
 interface ProfileGate {
@@ -115,8 +111,7 @@ function buildLaneHooks(
 ): LaneHooks {
   return {
     admit: (job) => {
-      const { cli, profile } = job.target;
-      const blocker = blockers.cli.get(cli) ?? (profile === undefined ? undefined : blockers.profile.get(profile));
+      const blocker = callBlocker(blockers, job.target);
       if (blocker !== undefined) return { kind: "fail", error: blocker };
       const refusal = budget?.admit(job.target.id) ?? null;
       return refusal === null ? null : { kind: "skip", reason: refusal };
@@ -132,7 +127,7 @@ function buildLaneHooks(
     onStart: (lane, call) => progress.markRunning(lane, call),
     onDone: (lane, call, { job, index }, attempt) => {
       log(`[${runId}] ${attempt.targetId} @${job.prompt.promptId} → ${attempt.status} (${attempt.durationMs}ms)`);
-      if (!blockers.cli.has(attempt.cli)) budget?.settle(attempt.targetId, costOf(attempt));
+      if (callBlocker(blockers, job.target) === undefined) budget?.settle(attempt.targetId, costOf(attempt));
       slots[index] = attempt;
       progress.markDone(lane, call, attempt);
       writer.enqueue(() => saveRun(snapshot(true)));
@@ -234,7 +229,7 @@ export async function executeRun(
   );
 
   const profiles = await prepareProfileLaunches(config, lanes, log);
-  const blockers: CallBlockers = { cli: await preflight(lanes, log), profile: profiles.blockers };
+  const blockers: CallBlockers = { ...(await preflight(lanes, log)), profile: profiles.blockers };
   const leakGuard = await setupLeakGuard(runId, config, log);
   const cancel = setupCancelWatch(runId, log, progress, state);
 

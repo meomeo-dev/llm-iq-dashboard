@@ -6,7 +6,7 @@ import type { AppConfig } from "../config";
 import type { Attempt, CliKind } from "../types";
 import { pruneExpiredRuns } from "../retention";
 import { ensureRunDir } from "../store";
-import { blocksCalls } from "../../capabilities/readiness";
+import { blocksCalls, type CliReadiness } from "../../capabilities/readiness";
 import { checkAndRecord } from "../../capabilities/readiness-cache";
 import { estimateCost } from "../../pricing/catalog";
 import { loadPriceCatalog } from "../../pricing/catalog-files";
@@ -76,16 +76,47 @@ export function costOf(attempt: Attempt): number {
 }
 
 /**
+ * 开轮前查出的拦截原因：
+ * - cli：CLI 没装等，这家的所有调用都拦；
+ * - login：只是没登录，只拦登录态调用——经 profile 的调用用 API key 鉴权，不依赖登录；
+ * - profile：profile 停用、未登记或缺 key，只拦经它的调用。
+ */
+export interface CallBlockers {
+  cli: ReadonlyMap<CliKind, string>;
+  login: ReadonlyMap<CliKind, string>;
+  profile: ReadonlyMap<string, string>;
+}
+
+/** 一次调用该被拦下的原因；放行时为 undefined */
+export function callBlocker(blockers: CallBlockers, target: { cli: CliKind; profile?: string }): string | undefined {
+  const whole = blockers.cli.get(target.cli);
+  if (whole !== undefined) return whole;
+  if (target.profile === undefined) return blockers.login.get(target.cli);
+  return blockers.profile.get(target.profile);
+}
+
+/** 把预检结果分成整家拦截与只拦登录态两张表（纯函数） */
+export function splitPreflight(results: readonly CliReadiness[]): Pick<CallBlockers, "cli" | "login"> {
+  const cli = new Map<CliKind, string>();
+  const login = new Map<CliKind, string>();
+  for (const readiness of results) {
+    if (!blocksCalls(readiness)) continue;
+    const reason = `预检未通过，未发起调用：${readiness.detail}`;
+    if (readiness.state === "signed-out") login.set(readiness.cli, reason);
+    else cli.set(readiness.cli, reason);
+  }
+  return { cli, login };
+}
+
+/**
  * 预检本轮用到的 CLI，返回被拦下的 CLI → 原因（含安装或登录命令）。
  * 结果同时写入看板读取的缓存；只拦确定的问题，见 capabilities/readiness.ts。
  */
-export async function preflight(lanes: readonly LaneItem[][], log: Logger): Promise<ReadonlyMap<CliKind, string>> {
+export async function preflight(lanes: readonly LaneItem[][], log: Logger): Promise<Pick<CallBlockers, "cli" | "login">> {
   const clis = [...new Set(lanes.map((lane) => laneIdentity(lane).cli))];
   const results = await checkAndRecord(clis);
-  const blockers = new Map<CliKind, string>();
   for (const readiness of results) {
     if (readiness.detail !== null) log(`预检 ${readiness.cli}：${readiness.detail}`);
-    if (blocksCalls(readiness)) blockers.set(readiness.cli, `预检未通过，未发起调用：${readiness.detail}`);
   }
-  return blockers;
+  return splitPreflight(results);
 }
