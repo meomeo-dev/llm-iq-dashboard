@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | approved |
+| 状态 | implementing |
 | 日期 | 2026-09-30 |
 | 变更类型 | add-dependency |
 | 触发来源 | 口头：动态鹈鹕车（animated-pelican-v1）的结果要打「智商在线 / 降智」标签并给百分制分数；方案见 `docs/research/judge/animated-pelican-judging.md`，记录结构见同目录 `judge.schema.json` |
@@ -45,16 +45,20 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 路径 | 动作 | 改什么 | 影响既有行为 |
 |---|---|---|---|
-| `package.json` | modify | `dependencies` 增 `playwright-core`；`scripts` 增 `judge:backfill`（对 `data/runs` 回填评审） | no |
+| `package.json` | modify | `dependencies` 增 `playwright-core`，`jsdom` 从 devDependencies 移到 dependencies（runner 运行时要用）；`scripts` 增 `judge:backfill` | no |
 | `pnpm-lock.yaml` | modify | 随依赖更新 | no |
 | `src/core/judge/schema.ts` | add | 评审记录类型与 `judge.schema.json` 的 TypeScript 对应；rubric 常量（闸门、标准、分值、阈值） | no |
-| `src/core/judge/static-judge.ts` | add | jsdom 静态解析：G1–G3、C1–C4 静态分 | no |
+| `src/core/judge/svg-model.ts` | add | jsdom 解析 SVG：解析错误、安全项、动画目标与旋转中心、圆心量测（use 引用展开一层） | no |
+| `src/core/judge/svg-css.ts` | add | 解析 style 元素：含旋转的 @keyframes、挂动画的选择器、transform-origin 规则 | no |
+| `src/core/judge/static-criteria.ts` | add | 认出车轮 / 曲柄 / 其他部件，给 C1–C4 静态分 | no |
+| `src/core/judge/static-judge.ts` | add | 静态闸门 G1–G3 与整份评审记录的装配 | no |
 | `src/core/judge/render-judge.ts` | add | playwright-core 定格取样：G4–G5、C1–C4 渲染分、联系图（一行 8 帧） | no |
 | `src/core/judge/judge-store.ts` | add | `{attemptKey}.judge.json` 与 `.sheet.png` 的读写，原子替换 | no |
 | `src/core/runner.ts` | modify | `ok` 调用落盘后同步调用代码层评审，结果不影响 `Attempt` 字段 | no |
 | `src/core/storage.ts` | modify | 读轮次时附带评审记录，供看板显示 | no |
 | `src/app/components/card/` | modify | 结果卡片显示标签（在线 / 降智 / 待复核）与分数，展开看逐条标准 | no |
 | `test/core/judge/` | add | 静态解析与记录读写的单元测试，用固定 SVG 夹具，不启动浏览器 | no |
+| `scripts/judge-backfill.ts` | add | `judge:backfill` 的实现：遍历 `data/runs` 评审并落盘，支持 `--dry-run` / `--limit` / `--only` | no |
 | `docs/architecture/architecture.md` | modify | §3 增评审口径、§4 增评审产物、§7 增 `src/core/judge/` | no |
 | `docs/research/judge/` | add | 方案与 schema（已写） | no |
 
@@ -74,12 +78,12 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | - | - | | |
-| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | - | - | | |
-| `pnpm build` | Next.js 看板生产构建 | - | - | | |
-| `pnpm check:length` | 文件与函数长度阈值 | - | - | | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | - | - | | 真实调用 CLI，须已登录 |
-| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | - | - | | 变更前不存在，记 - |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
+| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | - | | |
+| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
+| `pnpm check:length` | 文件与函数长度阈值 | pass | - | | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | - | | 真实调用 CLI 消耗配额，变更前未跑；runner 接入（第 2 步）后再跑 |
+| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | - | | 变更前该命令不存在 |
 
 ## 分步实施
 

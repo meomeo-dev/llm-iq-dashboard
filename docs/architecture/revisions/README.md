@@ -79,5 +79,5 @@ node $R validate
 | [ACR-016](ACR-016-profile-compare-view.md) | 上游 profile 的对比视图与信息卡 | done | 2026-09-29 | structure-change | 自研 | 4 包 | ✓ 2026-09-29 | 5/5 | — |
 | [ACR-017](ACR-017-modal-gif-export.md) | 结果集弹窗导出 GIF 动图 | done | 2026-09-29 | add-dependency | modern-gif：帧序列（CanvasImageSource / 像素）→ GIF，可选 Web Worker，maxColors 控制体积 | 3 包 | ✓ 2026-09-29 | 5/5 | — |
 | [ACR-018](ACR-018-data-repo-profile-publish.md) | 数据仓发布 profile 结果与题目选择 | done | 2026-09-30 | structure-change | 自研 | 5 包 | ✓ 2026-09-30 | 8/8 | — |
-| [ACR-019](ACR-019-judge-scoring.md) | 动态鹈鹕车评审打分 | approved | 2026-09-30 | add-dependency | playwright-core：无头 Chromium 定格动画、量包围盒、截联系图 | 3 包 | ✓ 2026-09-30 | 0/6 | — |
+| [ACR-019](ACR-019-judge-scoring.md) | 动态鹈鹕车评审打分 | implementing | 2026-09-30 | add-dependency | playwright-core：无头 Chromium 定格动画、量包围盒、截联系图 | 3 包 | ✓ 2026-09-30 | 0/6 | — |
 <!-- acr-index:end -->

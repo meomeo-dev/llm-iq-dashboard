@@ -28,6 +28,7 @@
     "dashboard:prod": "node scripts/dashboard-prod.mjs",
     "showcase:smoke": "tsx scripts/showcase-smoke.ts",
     "check:length": "tsx scripts/check-code-length.ts",
+    "judge:backfill": "tsx scripts/judge-backfill.ts",
     "issue:new": "node scripts/issue-new.mjs",
     "issue:check": "node scripts/issue-check.mjs",
     "issue:worktree": "node scripts/issue-worktree.mjs"
@@ -40,6 +41,7 @@
     "better-sse": "^0.16.1",
     "chokidar": "^5.0.0",
     "croner": "^9.0.0",
+    "jsdom": "^29.1.1",
     "modern-gif": "^2.1.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
@@ -50,7 +52,6 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "jsdom": "^29.1.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

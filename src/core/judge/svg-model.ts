@@ -1,0 +1,314 @@
+/**
+ * 把一幅 SVG 解析成评审用的模型：解析错误、安全项、每个动画的目标元素与旋转中心、
+ * 以及在元素树上量圆心的几何辅助。只认 translate 变换；遇到 rotate / scale / matrix
+ * 时把结果标为不精确，由渲染层兜底。
+ */
+
+import { JSDOM } from "jsdom";
+import { parseCssDuration, parseInlineAnimation, parseStyleSheet, type CssAnimationRule, type StyleSheetInfo } from "./svg-css";
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** 量出来的坐标，exact 为 false 表示路径上有非平移变换，数值只能参考 */
+export interface Measured extends Point {
+  exact: boolean;
+}
+
+export type AnimationKind = "smil-rotate" | "smil-other" | "css-rotate" | "css-other";
+
+/** 旋转中心的坐标系：local 是目标元素自身坐标，absolute 是 viewBox 坐标 */
+export type CenterMode = "local" | "absolute" | "fill-box-center" | "unknown";
+
+export interface AnimationInfo {
+  target: Element;
+  kind: AnimationKind;
+  /** 供理由文本使用的元素描述，如 g#rear-wheel */
+  name: string;
+  durMs: number | null;
+  indefinite: boolean;
+  rotateCenter: Point | null;
+  centerMode: CenterMode;
+  /** SMIL 的 additive="sum"；CSS 动画视为 true（transform 由 CSS 叠加） */
+  additive: boolean;
+}
+
+export interface SvgModel {
+  root: Element;
+  viewBox: { x: number; y: number; width: number; height: number } | null;
+  animations: AnimationInfo[];
+  hasScript: boolean;
+  hasForeignObject: boolean;
+  hasRasterImage: boolean;
+  externalRefs: string[];
+}
+
+export type ParseResult = { ok: true; model: SvgModel } | { ok: false; error: string };
+
+export function parseSvgModel(source: string): ParseResult {
+  const { window } = new JSDOM("");
+  const doc = new window.DOMParser().parseFromString(source, "image/svg+xml");
+  const parseError = doc.querySelector("parsererror");
+  if (parseError) return { ok: false, error: firstLine(parseError.textContent ?? "parse error") };
+  const root = doc.documentElement;
+  if (root.tagName.toLowerCase() !== "svg") return { ok: false, error: `根元素是 <${root.tagName}> 而非 <svg>` };
+  return {
+    ok: true,
+    model: {
+      root,
+      viewBox: parseViewBox(root.getAttribute("viewBox")),
+      animations: [...collectSmilAnimations(root), ...collectCssAnimations(root)],
+      hasScript: root.querySelector("script") !== null,
+      hasForeignObject: root.querySelector("foreignObject") !== null,
+      hasRasterImage: root.querySelector("image") !== null,
+      externalRefs: collectExternalRefs(root),
+    },
+  };
+}
+
+export function describeElement(el: Element): string {
+  const tag = el.tagName.toLowerCase();
+  const id = el.getAttribute("id");
+  if (id) return `${tag}#${id}`;
+  const cls = el.getAttribute("class");
+  return cls ? `${tag}.${cls.trim().split(/\s+/)[0]}` : tag;
+}
+
+export interface CircleHit {
+  center: Measured;
+  radius: number;
+  element: Element;
+}
+
+/**
+ * 元素子树里半径最大的圆（circle 或 ellipse），圆心换算到 origin 的局部坐标。
+ * 子树里的 <use> 按其 href 指向的定义展开一层，x / y 计入平移。
+ */
+export function largestCircle(origin: Element): CircleHit | null {
+  let best: CircleHit | null = null;
+  const consider = (hit: CircleHit | null) => {
+    if (hit && (!best || hit.radius > best.radius)) best = hit;
+  };
+  for (const el of origin.querySelectorAll("circle, ellipse")) {
+    const radius = circleRadius(el);
+    if (radius === null) continue;
+    const local = { x: numberAttr(el, "cx"), y: numberAttr(el, "cy") };
+    consider({ center: offsetBetween(el, origin, local), radius, element: el });
+  }
+  for (const use of origin.querySelectorAll("use")) consider(circleBehindUse(use, origin));
+  return best;
+}
+
+function circleBehindUse(use: Element, origin: Element): CircleHit | null {
+  const href = use.getAttribute("href") ?? use.getAttribute("xlink:href") ?? "";
+  if (!href.startsWith("#")) return null;
+  const referenced = use.ownerDocument.querySelector(`[id="${href.slice(1)}"]`);
+  if (!referenced || referenced.contains(use)) return null;
+  const inner = referenced.tagName.toLowerCase() === "circle" || referenced.tagName.toLowerCase() === "ellipse"
+    ? selfCircle(referenced)
+    : largestCircle(referenced);
+  if (!inner) return null;
+  const shifted = { x: inner.center.x + numberAttr(use, "x"), y: inner.center.y + numberAttr(use, "y") };
+  const center = offsetBetween(use, origin, shifted);
+  return { center: { ...center, exact: center.exact && inner.center.exact }, radius: inner.radius, element: inner.element };
+}
+
+function selfCircle(el: Element): CircleHit | null {
+  const radius = circleRadius(el);
+  if (radius === null) return null;
+  const t = parseTranslate(el.getAttribute("transform"));
+  return { center: { x: numberAttr(el, "cx") + t.x, y: numberAttr(el, "cy") + t.y, exact: t.exact }, radius, element: el };
+}
+
+/** 元素局部坐标系原点在 viewBox 坐标里的位置（沿祖先累加 translate） */
+export function absoluteOffset(el: Element, root: Element): Measured {
+  return offsetBetween(el, root, { x: 0, y: 0 });
+}
+
+/** 把 el 局部坐标里的点换算到祖先 ancestor 的局部坐标（含 el 自身的 transform，不含 ancestor 的） */
+function offsetBetween(el: Element, ancestor: Element, point: Point): Measured {
+  const out: Measured = { ...point, exact: true };
+  let cursor: Element | null = el;
+  while (cursor && cursor !== ancestor) {
+    const t = parseTranslate(cursor.getAttribute("transform"));
+    out.x += t.x;
+    out.y += t.y;
+    if (!t.exact) out.exact = false;
+    cursor = cursor.parentElement;
+  }
+  if (cursor !== ancestor) out.exact = false;
+  return out;
+}
+
+/** 只累加 translate；出现其他变换函数时标记不精确 */
+export function parseTranslate(transform: string | null): Measured {
+  const out: Measured = { x: 0, y: 0, exact: true };
+  if (!transform) return out;
+  for (const call of transform.split(")")) {
+    const open = call.indexOf("(");
+    if (open === -1) continue;
+    const fn = call.slice(0, open).trim();
+    const args = call.slice(open + 1).split(/[\s,]+/).filter(Boolean).map(Number);
+    if (fn === "translate") {
+      out.x += args[0] ?? 0;
+      out.y += args[1] ?? 0;
+    } else if (fn !== "" ) {
+      out.exact = false;
+    }
+  }
+  return out;
+}
+
+function collectSmilAnimations(root: Element): AnimationInfo[] {
+  const out: AnimationInfo[] = [];
+  for (const anim of root.querySelectorAll("animate, animateTransform, animateMotion, set")) {
+    const target = smilTarget(anim, root);
+    if (!target) continue;
+    const isRotate = anim.tagName === "animateTransform" && anim.getAttribute("type") === "rotate";
+    out.push({
+      target,
+      kind: isRotate ? "smil-rotate" : "smil-other",
+      name: describeElement(target),
+      durMs: parseSmilDuration(anim.getAttribute("dur")),
+      indefinite: anim.getAttribute("repeatCount") === "indefinite" || anim.getAttribute("repeatDur") === "indefinite",
+      rotateCenter: isRotate ? smilRotateCenter(anim) : null,
+      centerMode: isRotate ? "local" : "unknown",
+      additive: anim.getAttribute("additive") === "sum",
+    });
+  }
+  return out;
+}
+
+function smilTarget(anim: Element, root: Element): Element | null {
+  const href = anim.getAttribute("href") ?? anim.getAttribute("xlink:href");
+  if (href?.startsWith("#")) return root.querySelector(`[id="${href.slice(1)}"]`);
+  return anim.parentElement;
+}
+
+/** rotate 的 from / values 首项形如 "0 cx cy"；缺 cx cy 时按规范取 (0,0) */
+function smilRotateCenter(anim: Element): Point {
+  const first = anim.getAttribute("from") ?? anim.getAttribute("values")?.split(";")[0] ?? "";
+  const parts = first.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+  return { x: parts[1] ?? 0, y: parts[2] ?? 0 };
+}
+
+function collectCssAnimations(root: Element): AnimationInfo[] {
+  const styles = [...root.querySelectorAll("style")].map((s) => s.textContent ?? "").join("\n");
+  const sheet = parseStyleSheet(styles);
+  const out: AnimationInfo[] = [];
+  for (const rule of sheet.rules) {
+    for (const target of safeQuery(root, rule.selector)) out.push(cssAnimationInfo(target, rule, sheet, root));
+  }
+  for (const target of root.querySelectorAll("[style*='animation']")) {
+    const rule = parseInlineAnimation(target.getAttribute("style") ?? "");
+    if (rule) out.push(cssAnimationInfo(target, rule, sheet, root));
+  }
+  return out;
+}
+
+function cssAnimationInfo(target: Element, rule: CssAnimationRule, sheet: StyleSheetInfo, root: Element): AnimationInfo {
+  const rotates = rule.animationName !== null && sheet.keyframes.get(rule.animationName) === true;
+  const origin = rotates ? cssTransformOrigin(target, rule, sheet, root) : { center: null, mode: "unknown" as const };
+  return {
+    target,
+    kind: rotates ? "css-rotate" : "css-other",
+    name: describeElement(target),
+    durMs: rule.durationMs,
+    indefinite: rule.infinite,
+    rotateCenter: origin.center,
+    centerMode: origin.mode,
+    additive: true,
+  };
+}
+
+/** transform-origin 依次取：动画规则、行内 style、只声明原点的规则、同名 SVG 属性 */
+function cssTransformOrigin(target: Element, rule: CssAnimationRule, sheet: StyleSheetInfo, root: Element): { center: Point | null; mode: CenterMode } {
+  const inline = parseInlineAnimation(target.getAttribute("style") ?? "");
+  const sheetOrigin = sheet.origins.filter((o) => safeMatches(target, o.selector)).at(-1);
+  const origin = rule.transformOrigin ?? inline?.transformOrigin ?? sheetOrigin?.transformOrigin ?? target.getAttribute("transform-origin");
+  const box = rule.transformBox ?? inline?.transformBox ?? sheetOrigin?.transformBox ?? target.getAttribute("transform-box");
+  if (!origin) return { center: box === "fill-box" ? null : { x: 0, y: 0 }, mode: box === "fill-box" ? "fill-box-center" : "absolute" };
+  const tokens = origin.trim().split(/\s+/);
+  if (box === "fill-box") {
+    const centered = tokens.every((t) => t === "center" || t === "50%");
+    return { center: null, mode: centered ? "fill-box-center" : "unknown" };
+  }
+  const x = cssLength(tokens[0] ?? "0", root, "width");
+  const y = cssLength(tokens[1] ?? "0", root, "height");
+  if (x === null || y === null) return { center: null, mode: "unknown" };
+  return { center: { x, y }, mode: "absolute" };
+}
+
+/** px / 无单位按用户坐标；百分比按 viewBox；关键字 center 视为 50% */
+function cssLength(token: string, root: Element, axis: "width" | "height"): number | null {
+  const vb = parseViewBox(root.getAttribute("viewBox"));
+  const keyword = token === "center" ? "50%" : token;
+  if (keyword.endsWith("%")) {
+    if (!vb) return null;
+    const ratio = Number(keyword.slice(0, -1)) / 100;
+    return axis === "width" ? vb.x + vb.width * ratio : vb.y + vb.height * ratio;
+  }
+  const value = Number(keyword.endsWith("px") ? keyword.slice(0, -2) : keyword);
+  return Number.isFinite(value) ? value : null;
+}
+
+function safeMatches(el: Element, selector: string): boolean {
+  try {
+    return selector !== "" && el.matches(selector);
+  } catch {
+    return false;
+  }
+}
+
+function safeQuery(root: Element, selector: string): Element[] {
+  if (!selector) return [];
+  try {
+    return [...root.querySelectorAll(selector)];
+  } catch {
+    return [];
+  }
+}
+
+function collectExternalRefs(root: Element): string[] {
+  const refs: string[] = [];
+  for (const el of root.querySelectorAll("[href], [xlink\\:href], [src]")) {
+    const value = el.getAttribute("href") ?? el.getAttribute("xlink:href") ?? el.getAttribute("src") ?? "";
+    if (/^(https?:)?\/\//i.test(value.trim())) refs.push(value.trim());
+  }
+  return refs;
+}
+
+export function parseSmilDuration(dur: string | null): number | null {
+  if (!dur) return null;
+  const text = dur.trim();
+  if (/^[0-9.]+(s|ms)$/.test(text)) return parseCssDuration(text);
+  const bare = Number(text);
+  return Number.isFinite(bare) ? bare * 1000 : null;
+}
+
+function parseViewBox(value: string | null): SvgModel["viewBox"] {
+  if (!value) return null;
+  const parts = value.trim().split(/[\s,]+/).map(Number);
+  if (parts.length < 4 || !parts.every(Number.isFinite)) return null;
+  const [x, y, width, height] = parts as [number, number, number, number];
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
+}
+
+function circleRadius(el: Element): number | null {
+  const r = el.tagName.toLowerCase() === "circle"
+    ? numberAttr(el, "r")
+    : Math.max(numberAttr(el, "rx"), numberAttr(el, "ry"));
+  return r > 0 ? r : null;
+}
+
+function numberAttr(el: Element, name: string): number {
+  const value = Number(el.getAttribute(name) ?? "0");
+  return Number.isFinite(value) ? value : 0;
+}
+
+function firstLine(text: string): string {
+  return text.trim().split("\n")[0] ?? text;
+}

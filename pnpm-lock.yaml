@@ -17,6 +17,9 @@ importers:
       croner:
         specifier: ^9.0.0
         version: 9.1.0
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
       modern-gif:
         specifier: ^2.1.0
         version: 2.1.0
@@ -42,9 +45,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.3.0(@types/react@19.3.0)
-      jsdom:
-        specifier: ^29.1.1
-        version: 29.1.1
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
