@@ -18,6 +18,8 @@ import { buildLeakGuard, credentialFiles, type LeakGuard } from "./leak-guard";
 import { describeProgress, laneIdentity, type LaneItem } from "./run-plan";
 import type { RenderedPrompt } from "./variables";
 import { discardScratch } from "./scratch-cleanup";
+import { closeJudgeBrowser } from "./judge/browser";
+import { createAttemptJudge } from "./judge/judge-attempt";
 import { executeLanes, type LaneHooks } from "./run/execute-lanes";
 import { postRunSync } from "./run/post-sync";
 import {
@@ -236,10 +238,12 @@ export async function executeRun(
   try {
     const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
     const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
-    const round = { runId, signal: cancel.signal, leakGuard, profileLaunches: profiles.launches };
+    const judge = createAttemptJudge(config.judge.enabled, log);
+    const round = { runId, signal: cancel.signal, leakGuard, judge, profileLaunches: profiles.launches };
     await executeLanes(lanes, limits, round, hooks);
   } finally {
     cancel.stop();
+    await closeJudgeBrowser();
   }
 
   const record = await finishRunRecord(snapshot, progress, runId, config, log);

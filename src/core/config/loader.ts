@@ -16,6 +16,7 @@ import type {
   AppConfig,
   DataRepoConfig,
   RetentionConfig,
+  JudgeConfig,
   RunConfig,
   ScheduleConfig,
 } from "./types";
@@ -44,6 +45,7 @@ interface RawConfig {
   schedule?: unknown;
   run?: unknown;
   retention?: unknown;
+  judge?: unknown;
   budget?: unknown;
   upstreamTypes?: unknown;
   profiles?: unknown;
@@ -109,6 +111,15 @@ export function parseRetention(raw: unknown, errors: string[]): RetentionConfig 
     return { days: null };
   }
   return { days };
+}
+
+export function parseJudge(raw: unknown, errors: string[]): JudgeConfig {
+  const node = asRecord(raw) ?? {};
+  if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
+    errors.push("judge.enabled 必须是布尔值");
+    return { enabled: true };
+  }
+  return { enabled: node.enabled ?? true };
 }
 
 export function parseBudget(raw: unknown, errors: string[]): BudgetConfig {
@@ -293,6 +304,7 @@ export function loadConfig(path: string): AppConfig {
   const schedule = parseSchedule(raw.schedule, errors);
   const run = parseRun(raw.run, errors);
   const retention = parseRetention(raw.retention, errors);
+  const judge = parseJudge(raw.judge, errors);
   const budget = parseBudget(raw.budget, errors);
   const upstreamTypes = parseUpstreamTypes(raw.upstreamTypes, errors);
   const profiles = parseProfiles(raw.profiles, upstreamTypes, errors);
@@ -311,7 +323,7 @@ export function loadConfig(path: string): AppConfig {
   // 宿主机上限最后套用：预算只能在上限之下，extraArgs 默认不放行
   return applyCeiling(
     {
-      schedule, run, retention, budget, upstreamTypes, profiles, targets,
+      schedule, run, retention, judge, budget, upstreamTypes, profiles, targets,
       customPrompts, customModels, dataRepo,
     },
     readCeiling(),

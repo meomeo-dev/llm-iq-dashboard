@@ -42,6 +42,7 @@ function config(): AppConfig {
       rotation: { period: "day", timeZone: "UTC" },
     },
     retention: { days: null },
+    judge: { enabled: false },
     budget: { perRoundUsd: null, perDayUsd: null },
     upstreamTypes: [],
     profiles: [],

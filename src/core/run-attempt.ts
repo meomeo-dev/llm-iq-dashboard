@@ -5,6 +5,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { installHouseRules } from "./house-rules";
+import type { AttemptJudge } from "./judge/judge-attempt";
 import type { LeakGuard } from "./leak-guard";
 import { scratchDir } from "./paths";
 import type { Job } from "./run-plan";
@@ -22,6 +23,8 @@ export interface AttemptContext {
   signal: AbortSignal;
   /** 本轮开始时构建的凭据指纹，输出落盘前比对 */
   leakGuard: LeakGuard;
+  /** 作品落盘后的评审（ACR-019）；未配置或题目无评分标准时不评 */
+  judge?: AttemptJudge;
 }
 
 /** 命中凭据指纹时记录里的失败说明；作品与转录都不落盘 */
@@ -39,8 +42,9 @@ async function processAttemptReply(
   runId: string,
   artifactId: string,
   startedAt: Date,
-  leakGuard: LeakGuard,
+  context: AttemptContext,
 ): Promise<Attempt> {
+  const { leakGuard } = context;
   const usage = usageFromTranscript(job.target.cli, reply.transcript);
   if (leaks(reply, leakGuard)) {
     return buildAttempt(job, startedAt, { status: "error", error: LEAK_BLOCKED, effortHonored: reply.effortHonored, usage });
@@ -51,7 +55,7 @@ async function processAttemptReply(
 
   if (svg !== null) {
     const svgFile = await writeArtifact(runId, `${artifactId}.svg`, svg.source);
-    return buildAttempt(job, startedAt, {
+    const attempt = buildAttempt(job, startedAt, {
       status: "ok",
       rawFile,
       svgFile,
@@ -59,6 +63,9 @@ async function processAttemptReply(
       svgBytes: svg.bytes,
       usage,
     });
+    // 评审只写独立的 .judge.json，不改 Attempt；耗时不计入调用耗时
+    await context.judge?.(runId, { ...attempt, svgFile }, svg.source);
+    return attempt;
   }
 
   return buildAttempt(job, startedAt, {
@@ -71,7 +78,7 @@ async function processAttemptReply(
 
 /** 执行单个任务；所有失败路径都经 buildAttempt 返回完整记录，不抛错 */
 export async function runAttempt(job: Job, context: AttemptContext): Promise<Attempt> {
-  const { runId, sessions, signal, leakGuard } = context;
+  const { runId, sessions, signal } = context;
   const { target, prompt, appliedEffort, effortAdjustable } = job;
   const startedAt = new Date();
   const artifactId = `${target.id}__${prompt.promptId}`;
@@ -88,7 +95,7 @@ export async function runAttempt(job: Job, context: AttemptContext): Promise<Att
       timeoutMs: target.timeoutMs,
       signal,
     });
-    return await processAttemptReply(job, reply, runId, artifactId, startedAt, leakGuard);
+    return await processAttemptReply(job, reply, runId, artifactId, startedAt, context);
   } catch (cause) {
     return buildAttempt(job, startedAt, {
       status: "error",

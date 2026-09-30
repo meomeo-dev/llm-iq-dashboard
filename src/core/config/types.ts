@@ -124,10 +124,17 @@ export interface RetentionConfig {
   days: number | null;
 }
 
+export interface JudgeConfig {
+  /** 关闭后调用结束时不评审；已有的评审记录照常显示 */
+  enabled: boolean;
+}
+
 export interface AppConfig {
   schedule: ScheduleConfig;
   run: RunConfig;
   retention: RetentionConfig;
+  /** 作品评审开关（ACR-019）；不写即开启 */
+  judge: JudgeConfig;
   /** 成本上限；不写即不限 */
   budget: BudgetConfig;
   /** 上游类型清单，profiles[].upstreamType 的取值范围；未配置时为起步清单 */

@@ -11,6 +11,7 @@ export type {
   ScheduleRhythm,
   RunConfig,
   RetentionConfig,
+  JudgeConfig,
   AppConfig,
 } from "./config/types";
 
