@@ -2,7 +2,9 @@
  * 公开数据仓（meomeo-dev/llm-iq-data）的布局与记录契约。
  *
  * 写入方是同步流水线（src/core/sync），读取方是远程数据源（DATA_SOURCE=remote 的看板）
- * 与数据仓自身的校验脚本。三方只认本文件：改字段先改这里并提升 DATA_REPO_SCHEMA_VERSION。
+ * 与数据仓自身的校验脚本。三方只认本文件：改字段先改这里。只增可选字段不升
+ * DATA_REPO_SCHEMA_VERSION——读取方按版本号整体拒收，升版会让尚未重新部署的展台在数据
+ * 推送后立刻不可用；改语义或删字段才升版。
  *
  * 布局（均为数据仓根的相对路径，分区日期取 runId 的 UTC 日期）：
  *
@@ -14,6 +16,7 @@
  * 数据仓只追加：已发布的轮次目录不改写、不删除；清单与日索引随追加重写。
  */
 
+import type { ProfileView } from "../profile-view";
 import type { Attempt, RunRecord } from "../types";
 import type { TokenUsage } from "../../pricing/types";
 
@@ -72,7 +75,16 @@ export interface RunSummary {
   path: string;
 }
 
-/** 脱敏后的单次调用：去掉原始转录引用，用量已从转录回填 */
+/**
+ * 随记录发布的上游 profile：与看板页面下发的公开视图同一份字段白名单（PROFILE_VIEW_FIELDS），
+ * 按导出时的配置快照，只含本轮调用用到的。接口地址、查询参数与 key 状态永远不在其中。
+ */
+export type PublicProfile = ProfileView;
+
+/**
+ * 脱敏后的单次调用：去掉原始转录引用，用量已从转录回填。
+ * `profile`（继承自 Attempt）指向 PublicRunRecord.profiles 里的一项；登录态不写。
+ */
 export interface PublicAttempt extends Omit<Attempt, "rawFile" | "usage"> {
   /** 公开记录不带原始转录，恒为 null，保留字段使读取方与本地记录同形 */
   rawFile: null;
@@ -93,6 +105,8 @@ export interface PublicRunRecord extends Omit<RunRecord, "attempts" | "inProgres
   attempts: PublicAttempt[];
   /** 被拦下的作品；为空数组表示全部发布 */
   redactions: Redaction[];
+  /** 本轮调用用到的上游 profile；只有登录态时为空数组。引入前的旧记录没有此字段，读取方按空处理 */
+  profiles?: PublicProfile[];
 }
 
 const RUN_ID_PATTERN = /^(\d{4})(\d{2})(\d{2})T\d{6}Z$/;
