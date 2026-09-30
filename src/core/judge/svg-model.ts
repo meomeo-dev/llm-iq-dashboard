@@ -33,6 +33,13 @@ export interface AnimationInfo {
   centerMode: CenterMode;
   /** SMIL 的 additive="sum"；CSS 动画视为 true（transform 由 CSS 叠加） */
   additive: boolean;
+  /**
+   * SMIL rotate 已写了中心点，元素上又有非零的 CSS transform-origin：浏览器两者叠加，
+   * 实际绕两倍处旋转，部件会飞离
+   */
+  doubleOrigin: boolean;
+  /** <animate> 指向的属性在目标上不存在（如 <g> 上 animate d），浏览器里不产生任何动作 */
+  inert: boolean;
 }
 
 export interface SvgModel {
@@ -59,7 +66,7 @@ export function parseSvgModel(source: string): ParseResult {
     model: {
       root,
       viewBox: parseViewBox(root.getAttribute("viewBox")),
-      animations: [...collectSmilAnimations(root), ...collectCssAnimations(root)],
+      animations: collectAnimations(root),
       hasScript: root.querySelector("script") !== null,
       hasForeignObject: root.querySelector("foreignObject") !== null,
       hasRasterImage: root.querySelector("image") !== null,
@@ -154,6 +161,19 @@ export function useInstancesOf(el: Element, root: Element): { definition: Elemen
   return out;
 }
 
+/** 从根到元素的子元素下标序列；浏览器里按同一份 XML 解析后据此找回同一元素 */
+export function elementPath(el: Element, root: Element): number[] {
+  const path: number[] = [];
+  let cursor: Element | null = el;
+  while (cursor && cursor !== root) {
+    const parent: Element | null = cursor.parentElement;
+    if (!parent) break;
+    path.unshift([...parent.children].indexOf(cursor));
+    cursor = parent;
+  }
+  return path;
+}
+
 /** 元素是否位于 <defs> 之下（不直接渲染，只经 <use> 出现） */
 export function insideDefs(el: Element): boolean {
   return el.closest("defs") !== null;
@@ -205,6 +225,25 @@ function offsetBetween(el: Element, ancestor: Element, point: Point): Measured {
   return out;
 }
 
+/**
+ * transform 属性是否真的移动了内容：translate(0 0)、scale(1)、rotate(任意)、单位 matrix 都不算。
+ * SMIL 非叠加动画会整段替换这个属性，只有它含位移或缩放时替换才会让部件飞离。
+ */
+export function hasDisplacingTransform(transform: string | null): boolean {
+  if (!transform) return false;
+  for (const call of transform.split(")")) {
+    const open = call.indexOf("(");
+    if (open === -1) continue;
+    const fn = call.slice(0, open).trim();
+    const args = call.slice(open + 1).split(/[\s,]+/).filter(Boolean).map(Number);
+    if (fn === "translate" && ((args[0] ?? 0) !== 0 || (args[1] ?? 0) !== 0)) return true;
+    if (fn === "scale" && ((args[0] ?? 1) !== 1 || (args[1] ?? args[0] ?? 1) !== 1)) return true;
+    if (fn === "matrix" && args.join(",") !== "1,0,0,1,0,0") return true;
+    if (fn === "skewX" || fn === "skewY") return true;
+  }
+  return false;
+}
+
 /** 只累加 translate；出现其他变换函数时标记不精确 */
 export function parseTranslate(transform: string | null): Measured {
   const out: Measured = { x: 0, y: 0, exact: true };
@@ -224,24 +263,62 @@ export function parseTranslate(transform: string | null): Measured {
   return out;
 }
 
-function collectSmilAnimations(root: Element): AnimationInfo[] {
+function collectAnimations(root: Element): AnimationInfo[] {
+  const styles = [...root.querySelectorAll("style")].map((s) => s.textContent ?? "").join("\n");
+  const sheet = parseStyleSheet(styles);
+  return [...collectSmilAnimations(root, sheet), ...collectCssAnimations(root, sheet)];
+}
+
+function collectSmilAnimations(root: Element, sheet: StyleSheetInfo): AnimationInfo[] {
   const out: AnimationInfo[] = [];
   for (const anim of root.querySelectorAll("animate, animateTransform, animateMotion, set")) {
     const target = smilTarget(anim, root);
     if (!target) continue;
     const isRotate = anim.tagName === "animateTransform" && anim.getAttribute("type") === "rotate";
+    const rotateCenter = isRotate ? smilRotateCenter(anim) : null;
     out.push({
       target,
       kind: isRotate ? "smil-rotate" : "smil-other",
       name: describeElement(target),
       durMs: parseSmilDuration(anim.getAttribute("dur")),
       indefinite: anim.getAttribute("repeatCount") === "indefinite" || anim.getAttribute("repeatDur") === "indefinite",
-      rotateCenter: isRotate ? smilRotateCenter(anim) : null,
+      rotateCenter,
       centerMode: isRotate ? "local" : "unknown",
       additive: anim.getAttribute("additive") === "sum",
+      doubleOrigin: rotateCenter !== null && (rotateCenter.x !== 0 || rotateCenter.y !== 0) && hasCssOrigin(target, sheet),
+      inert: isInertAnimate(anim, target),
     });
   }
   return out;
+}
+
+const GEOMETRY_ATTRIBUTES = new Set(["d", "points", "x", "y", "cx", "cy", "r", "rx", "ry", "x1", "y1", "x2", "y2", "width", "height"]);
+
+/** <animate attributeName="d"> 挂在没有 d 的 <g> 上是常见笔误，动画对画面没有影响 */
+function isInertAnimate(anim: Element, target: Element): boolean {
+  if (anim.tagName !== "animate") return false;
+  const name = anim.getAttribute("attributeName") ?? "";
+  return GEOMETRY_ATTRIBUTES.has(name) && !target.hasAttribute(name);
+}
+
+/** 元素是否带非零的 CSS transform-origin（规则、行内 style 或同名属性） */
+function hasCssOrigin(target: Element, sheet: StyleSheetInfo): boolean {
+  const inline = parseInlineAnimation(target.getAttribute("style") ?? "")?.transformOrigin
+    ?? inlineDeclaration(target.getAttribute("style") ?? "", "transform-origin");
+  const fromSheet = sheet.origins.filter((o) => safeMatches(target, o.selector)).at(-1)?.transformOrigin
+    ?? sheet.rules.filter((r) => safeMatches(target, r.selector)).at(-1)?.transformOrigin;
+  const origin = inline ?? fromSheet ?? target.getAttribute("transform-origin");
+  if (!origin) return false;
+  const tokens = origin.trim().split(/\s+/);
+  return tokens.some((t) => t !== "0" && t !== "0px" && t !== "0%");
+}
+
+function inlineDeclaration(style: string, name: string): string | null {
+  for (const part of style.split(";")) {
+    const colon = part.indexOf(":");
+    if (colon !== -1 && part.slice(0, colon).trim().toLowerCase() === name) return part.slice(colon + 1).trim();
+  }
+  return null;
 }
 
 function smilTarget(anim: Element, root: Element): Element | null {
@@ -257,9 +334,7 @@ function smilRotateCenter(anim: Element): Point {
   return { x: parts[1] ?? 0, y: parts[2] ?? 0 };
 }
 
-function collectCssAnimations(root: Element): AnimationInfo[] {
-  const styles = [...root.querySelectorAll("style")].map((s) => s.textContent ?? "").join("\n");
-  const sheet = parseStyleSheet(styles);
+function collectCssAnimations(root: Element, sheet: StyleSheetInfo): AnimationInfo[] {
   const out: AnimationInfo[] = [];
   for (const rule of sheet.rules) {
     for (const target of safeQuery(root, rule.selector)) out.push(cssAnimationInfo(target, rule, sheet, root));
@@ -283,6 +358,8 @@ function cssAnimationInfo(target: Element, rule: CssAnimationRule, sheet: StyleS
     rotateCenter: origin.center,
     centerMode: origin.mode,
     additive: true,
+    doubleOrigin: false,
+    inert: false,
   };
 }
 

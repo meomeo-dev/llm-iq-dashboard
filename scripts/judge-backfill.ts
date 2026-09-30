@@ -7,13 +7,16 @@
  *   --limit <n>      最多评 n 幅
  *   --only <text>    只评 attemptKey 含 text 的作品
  *   --verbose        逐条打印闸门与标准的理由
+ *   --no-render      只出静态分，不启动浏览器
  *
  * 退出码：0 正常；1 某幅作品读取或评审抛错。
  */
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { attemptKeyOf, saveJudgement } from "../src/core/judge/judge-store";
+import { closeJudgeBrowser } from "../src/core/judge/browser";
+import { judgeArtifact } from "../src/core/judge/judge-attempt";
+import { attemptKeyOf } from "../src/core/judge/judge-store";
 import { rubricFor, type Judgement } from "../src/core/judge/schema";
 import { judgeStatic } from "../src/core/judge/static-judge";
 import { runDir, runsRoot } from "../src/core/paths";
@@ -24,15 +27,17 @@ interface Options {
   limit: number;
   only: string | null;
   verbose: boolean;
+  render: boolean;
 }
 
 function parseOptions(args: readonly string[]): Options {
-  const opts: Options = { dryRun: false, limit: Number.POSITIVE_INFINITY, only: null, verbose: false };
+  const opts: Options = { dryRun: false, limit: Number.POSITIVE_INFINITY, only: null, verbose: false, render: true };
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === "--") continue;
     if (arg === "--dry-run") opts.dryRun = true;
     else if (arg === "--verbose") opts.verbose = true;
+    else if (arg === "--no-render") opts.render = false;
     else if (arg === "--limit") opts.limit = Number(args[++i] ?? "0");
     else if (arg === "--only") opts.only = args[++i] ?? null;
     else throw new Error(`未知参数：${arg}`);
@@ -89,16 +94,18 @@ async function main(): Promise<void> {
       const attemptKey = attemptKeyOf(attempt.svgFile);
       if (opts.only && !attemptKey.includes(opts.only)) continue;
       const source = await readFile(join(runDir(runId), attempt.svgFile), "utf8");
-      const judgement = judgeStatic({
-        source, rubric,
-        subject: { runId, attemptKey, promptId: attempt.promptId, cli: attempt.cli, model: attempt.model, effort: attempt.effort, svgFile: attempt.svgFile },
-      });
+      const subject = { runId, attemptKey, promptId: attempt.promptId, cli: attempt.cli, model: attempt.model, effort: attempt.effort, svgFile: attempt.svgFile };
+      // 预演只跑静态层：渲染层会写联系图文件，不算“不落盘”
+      const judgement = opts.dryRun
+        ? judgeStatic({ source, rubric, subject })
+        : await judgeArtifact({ subject, source, render: opts.render, log: (line) => { if (opts.verbose) console.log(`    ${line}`); } });
+      if (!judgement) continue;
       printJudgement(judgement, opts.verbose);
-      if (!opts.dryRun) await saveJudgement(judgement);
       judged += 1;
     }
   }
   console.log(`${opts.dryRun ? "预演" : "已写入"} ${judged} 幅`);
+  await closeJudgeBrowser();
 }
 
 main().catch((error: unknown) => {

@@ -23,8 +23,8 @@ const GOOD = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
   ${wheel("rear", 100, 200, "2s")}${wheel("front", 300, 200, "2s")}
   <g id="crank"><circle cx="200" cy="190" r="12"/><line x1="200" y1="190" x2="200" y2="215"/>
     <animateTransform attributeName="transform" type="rotate" from="0 200 190" to="360 200 190" dur="1s" repeatCount="indefinite"/></g>
-  <g id="leg-near"><path d="M200 150 L200 190"/>
-    <animate attributeName="d" values="M200 150 L200 190;M200 150 L205 200;M200 150 L200 190" dur="1s" repeatCount="indefinite"/></g>
+  <g id="leg-near"><path d="M200 150 L200 190">
+    <animate attributeName="d" values="M200 150 L200 190;M200 150 L205 200;M200 150 L200 190" dur="1s" repeatCount="indefinite"/></path></g>
 </svg>`;
 
 describe("judgeStatic 闸门", () => {
@@ -120,7 +120,7 @@ describe("judgeStatic 计分", () => {
   });
 
   test("腿部周期与曲柄不成整数比：C4 只得三分之一", () => {
-    const drift = GOOD.replace('dur="1s" repeatCount="indefinite"/></g>\n</svg>', 'dur="0.7s" repeatCount="indefinite"/></g>\n</svg>');
+    const drift = GOOD.replace('dur="1s" repeatCount="indefinite"/></path></g>', 'dur="0.7s" repeatCount="indefinite"/></path></g>');
     assert.equal(score(drift, "C4"), 5);
   });
 });

@@ -44,6 +44,7 @@
     "jsdom": "^29.1.1",
     "modern-gif": "^2.1.0",
     "next": "^15.1.0",
+    "playwright-core": "1.63.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "yaml": "^2.6.1"

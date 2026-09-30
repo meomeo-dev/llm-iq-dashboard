@@ -5,15 +5,19 @@
 
 import type { CriterionResult, CriterionSpec } from "./schema";
 import {
-  absoluteOffset, concentricCircle, insideDefs, largestCircle, pointInAncestor, renderedCircles, useInstancesOf,
+  absoluteOffset, concentricCircle, hasDisplacingTransform, insideDefs, largestCircle, pointInAncestor, renderedCircles, useInstancesOf,
   type AnimationInfo, type Measured, type Point, type RenderedCircle, type SvgModel,
 } from "./svg-model";
 
-interface WheelPart {
+export interface WheelPart {
   anim: AnimationInfo;
   /** 圆心（目标元素局部坐标）与半径 */
   circle: { center: Measured; radius: number };
   absCenter: Measured;
+  /** 轮子经 <use> 实例化时的那个 <use>；渲染层量它而不是 <defs> 里的定义 */
+  instance: Element | null;
+  /** 圆在动画目标子树内（可直接量圆心）还是按同心找到的轮圈（量包围盒） */
+  innerCircle: boolean;
 }
 
 export interface BikeParts {
@@ -34,7 +38,7 @@ export function identifyParts(model: SvgModel): BikeParts {
   const rest = rotating.filter((a) => !wheelTargets.has(a.target));
   const crank = pickCrank(rest, wheels, model.root);
   const used = new Set([...wheelTargets, ...(crank ? [crank.target] : [])]);
-  return { wheels, crank, others: model.animations.filter((a) => !used.has(a.target)) };
+  return { wheels, crank, others: model.animations.filter((a) => !used.has(a.target) && !a.inert) };
 }
 
 /**
@@ -43,16 +47,24 @@ export function identifyParts(model: SvgModel): BikeParts {
  */
 function wheelCandidates(anim: AnimationInfo, root: Element, circles: readonly RenderedCircle[]): WheelPart[] {
   const centers = rotationAbsCenters(anim, root);
+  const uses = useInstancesOf(anim.target, root)[0]?.uses ?? [];
+  const instanceAt = (i: number): Element | null => uses[i] ?? null;
   const inner = largestCircle(anim.target);
   if (inner) {
-    return centers.map((abs) => ({ anim, circle: { center: inner.center, radius: inner.radius }, absCenter: shiftBy(abs, inner.center, anim) }));
+    return centers.map((abs, i) => ({
+      anim, circle: { center: inner.center, radius: inner.radius }, absCenter: shiftBy(abs, inner.center, anim),
+      instance: instanceAt(i), innerCircle: true,
+    }));
   }
   const out: WheelPart[] = [];
-  for (const abs of centers) {
+  centers.forEach((abs, i) => {
     const rim = concentricCircle(circles, abs);
-    if (!rim || !anim.rotateCenter) continue;
-    out.push({ anim, circle: { center: { ...anim.rotateCenter, exact: abs.exact }, radius: rim.radius }, absCenter: rim.absCenter });
-  }
+    if (!rim || !anim.rotateCenter) return;
+    out.push({
+      anim, circle: { center: { ...anim.rotateCenter, exact: abs.exact }, radius: rim.radius }, absCenter: rim.absCenter,
+      instance: instanceAt(i), innerCircle: false,
+    });
+  });
   return out;
 }
 
@@ -81,10 +93,16 @@ function pickCrank(rest: readonly AnimationInfo[], wheels: readonly WheelPart[],
     ? rest.filter((a) => rotationAbsCenters(a, root).some((c) => withinWheelBand(c, wheels)))
     : [];
   const pool = inBand.length > 0 ? inBand : rest;
-  return pool.find((a) => largestCircle(a.target) !== null && !isLegNamed(a.target))
-    ?? pool.find((a) => !isLegNamed(a.target))
-    ?? pool[0]
-    ?? null;
+  // 脚踏常嵌在曲柄组里反向自转：先在不被别的候选包含的最外层里挑，挑不到再看嵌在里面的
+  const outermost = pool.filter((a) => !pool.some((b) => b !== a && b.target.contains(a.target)));
+  return pickCrankFrom(outermost) ?? pickCrankFrom(pool.filter((a) => !outermost.includes(a))) ?? null;
+}
+
+/** 同一层里：带圆（牙盘）且不叫腿的优先，其次不叫腿的，最后取文档顺序第一个 */
+function pickCrankFrom(tier: readonly AnimationInfo[]): AnimationInfo | undefined {
+  return tier.find((a) => largestCircle(a.target) !== null && !isLegNamed(a.target))
+    ?? tier.find((a) => !isLegNamed(a.target))
+    ?? tier[0];
 }
 
 function withinWheelBand(center: Point, wheels: readonly WheelPart[]): boolean {
@@ -113,6 +131,9 @@ export function scoreCrank(parts: BikeParts, model: SvgModel, spec: CriterionSpe
   if (!crank) return result(spec, 0, "车轮之外没有旋转动画，未找到曲柄");
   if (!crank.additive && hasOwnTransform(crank.target)) {
     return result(spec, 0, `${crank.name} 的 animateTransform 未加 additive="sum"，动画会覆盖自身 transform`);
+  }
+  if (crank.doubleOrigin) {
+    return result(spec, 0, `${crank.name} 的 SMIL rotate 已写中心点，元素又带 CSS transform-origin，两者叠加会飞离`);
   }
   const circle = largestCircle(crank.target);
   const verdict = circle
@@ -165,6 +186,9 @@ function rotationCenterScore(
 ): { points: number; note: string; concentric: boolean } {
   if (!anim.additive && hasOwnTransform(anim.target)) {
     return { points: 0, concentric: true, note: `animateTransform 未加 additive="sum"，动画会覆盖自身 transform，轮子会飞离` };
+  }
+  if (anim.doubleOrigin) {
+    return { points: 0, concentric: true, note: "SMIL rotate 已写中心点，元素又带 CSS transform-origin，两者叠加会绕两倍处旋转飞离" };
   }
   if (anim.centerMode === "fill-box-center") return { points: 1, concentric: true, note: "transform-box: fill-box 且原点居中" };
   if (anim.centerMode === "unknown" || anim.rotateCenter === null) return { points: 0.5, concentric: true, note: "旋转中心无法静态判定" };
@@ -225,8 +249,7 @@ function periodMatches(a: number, b: number): boolean {
 }
 
 function hasOwnTransform(el: Element): boolean {
-  const value = el.getAttribute("transform");
-  return value !== null && value.trim() !== "";
+  return hasDisplacingTransform(el.getAttribute("transform"));
 }
 
 function addMeasured(a: Measured, b: Measured): Measured {
