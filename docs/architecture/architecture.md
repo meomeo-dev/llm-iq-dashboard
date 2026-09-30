@@ -29,6 +29,7 @@
 | [ACR-016](revisions/ACR-016-profile-compare-view.md) | 2026-09-29 | 看板的上游对比视图与信息卡：格子计数与色点、上游 × 强度矩阵、大图页同轮切换、上游筛选 | §1 §3 |
 | [ACR-017](revisions/ACR-017-modal-gif-export.md) | 2026-09-29 | 结果集弹窗导出 PNG / SVG / GIF：合成图纯函数、时刻烘焙取帧、modern-gif 编码 | §0 §1 |
 | [ACR-018](revisions/ACR-018-data-repo-profile-publish.md) | 2026-09-30 | 数据仓发布 profile 结果（记录带八字段公开视图）、题目白名单、面板按轮次勾选导出 | §4 §6 §8 |
+| [ACR-019](revisions/ACR-019-judge-scoring.md) | 2026-09-30 | 动态鹈鹕车代码层评审：静态解析 + 无头 Chromium 渲染量测，卡片贴智商在线 / 降智标签，引入 playwright-core | §3 §4 §7 |
 
 ## 0. 技术选型总览
 
@@ -44,6 +45,8 @@
 | 定时调度 | croner | 9.1 | MIT | 调度器进程内的 cron 触发，支持时区 |
 | 配置读写 | yaml | 2.9 | ISC | 读写 `config/*.yaml`，写回保留注释 |
 | GIF 编码 | modern-gif | 2.1 | MIT | 浏览器端把结果集的逐帧画布编成 GIF，编码在 Web Worker 里进行（ACR-017） |
+| SVG 解析 | jsdom | 29.1 | MIT | 评审静态层在 Node 里解析 SVG 与样式；单测里也为 SVG 净化提供 DOM（ACR-019） |
+| 无头浏览器 | playwright-core | 1.63 | Apache-2.0 | 评审渲染层定格动画、量位置、截联系图；浏览器二进制运行时下载，不入仓库（ACR-019） |
 | TS 运行器 | tsx | 4.23 | MIT | 调度器、run-once 与单元测试免构建运行 |
 | 语言 | TypeScript | 5.9 | Apache-2.0 | 全仓 |
 
@@ -134,6 +137,12 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   提示词登记（Simon Willison 原文与四大名著候选集，均不可编辑）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
 - 失败分类：`ok` / `no-svg` / `error` / `timeout` 分开记录。
+- 作品评审（ACR-019）：有评分标准的题目（首期 `animated-pelican-v1`）在 `ok` 落盘后由 `src/core/judge`
+  按题目口径打分，结果只写独立的评审记录，不改 `Attempt`。代码层分静态解析（jsdom：XML 合法、
+  有动画、自包含三道闸门，车轮轴心、曲柄、循环、腿部同步四条标准）与渲染量测（playwright-core
+  驱动无头 Chromium：一个周期取 8 帧，判在动、不出画布，与静态分取低，并拼一行 8 帧联系图）；
+  闸门任一不过判「降智」，总分 ≥ 60 判「智商在线」，AI 层标准未判前为「待复核」。浏览器不可用时只出
+  静态分；`judge.enabled: false` 关闭评审。AI 语义层另立 ACR。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
   agy 仅 `--sandbox`。
 - 宿主机上限高于配置（ACR-006）：`PELICAN_CEILING_*` 定预算上限，`extraArgs` 默认不放行。
@@ -142,7 +151,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 
 - 纯文件存储，根目录由 `PELICAN_DATA_DIR` 覆盖，默认 `data/`。
 - `runs/{runId}/`：`run.json`（结果证据）、`progress.json`（逐调用状态与执行进程 pid）、
-  每次调用的 `.svg` 与原始事件流 `.txt`。`runId` 由 UTC 时刻派生，字典序即时间序。
+  每次调用的 `.svg` 与原始事件流 `.txt`；有评审的调用另有 `<attemptKey>.judge.json`（评审记录，
+  结构见 `docs/research/judge/judge.schema.json`）与 `<attemptKey>.sheet.png`（一行 8 帧联系图），
+  随轮次目录一起保留与删除，不进数据仓（ACR-019）。`runId` 由 UTC 时刻派生，字典序即时间序。
   看板首页只读 `run.json`；`.svg` 由浏览器按需经 `/art` 读取，单件作品页由服务端直接读取。
   `cancel.json` 是停止请求，只写不删；被停下的轮次在 `run.json` 与 `progress.json` 里带
   `cancelledAt`，被取消的调用不进 `attempts`；因预算上限没有发起的调用同样不进
@@ -213,7 +224,7 @@ llm_iq_dashboard/
 ├── src/
 │   ├── app/            ← 看板页面与 /api 路由；components/ 按功能分目录
 │   ├── bin/            ← scheduler、run-once 入口
-│   ├── core/           ← 领域逻辑
+│   ├── core/           ← 领域逻辑；judge/ 为作品评审（静态解析、渲染量测、记录读写）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检
 │   └── pricing/        ← 用量解析与成本折算

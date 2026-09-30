@@ -78,12 +78,12 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
-| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | - | | |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `pnpm check:length` | 文件与函数长度阈值 | pass | - | | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | - | | 真实调用 CLI 消耗配额，变更前未跑；runner 接入（第 2 步）后再跑 |
-| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | - | | 变更前该命令不存在 |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | d325bd2 | |
+| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | pass | d325bd2 | 813 用例 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | d325bd2 | |
+| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | d325bd2 | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | skip | | 真实调用 CLI 消耗配额，须先征得同意再跑；跑通并 pass 后状态改 done |
+| `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | pass | d325bd2 | 变更前该命令不存在；本地 44 幅：34 幅 60、1 幅 45、9 幅 0 |
 
 ## 分步实施
 
@@ -121,8 +121,8 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §3 | 增一条：动态题的作品在 `ok` 落盘后由 `src/core/judge` 按题目口径评审，闸门任一不过判降智，总分 ≥ 60 判在线 | 待回填 |
-| architecture.md §4 | `runs/{runId}/` 增 `{attemptKey}.judge.json` 与 `.sheet.png`；`run.json` 不变 | 待回填 |
-| architecture.md §7 | `src/core/judge/` 目录职责 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-019 | 待回填 |
-| ADR（/adr-curator） | 不适用：附加产物，可整体回滚 | 待回填 |
+| architecture.md §3 | 增一条：动态题的作品在 `ok` 落盘后由 `src/core/judge` 按题目口径评审，闸门任一不过判降智，总分 ≥ 60 判在线 | 已回填 |
+| architecture.md §4 | `runs/{runId}/` 增 `{attemptKey}.judge.json` 与 `.sheet.png`；`run.json` 不变 | 已回填 |
+| architecture.md §7 | `src/core/judge/` 目录职责 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-019 | 已回填 |
+| ADR（/adr-curator） | 不适用：附加产物，可整体回滚 | 不适用 |
