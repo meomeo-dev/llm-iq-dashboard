@@ -116,6 +116,20 @@ test("requestRepoStatus & postRepoAction 请求函数覆盖", async (t) => {
     assert.strictEqual(conflictRes.result, null);
     assert.strictEqual(conflictRes.error, "已有一项操作在运行");
   });
+
+  await t.test("postRepoAction：勾选的 runIds 随请求体发出，空清单不发", async () => {
+    const bodies: string[] = [];
+    const recordingFetch: FetchFn = async (_input, init) => {
+      bodies.push(String(init?.body));
+      return new Response(JSON.stringify(createFakeActionResult()), { status: 200 });
+    };
+    await postRepoAction(recordingFetch, "export", undefined, ["20260929T150913Z"]);
+    await postRepoAction(recordingFetch, "dry-run", undefined, []);
+    await postRepoAction(recordingFetch, "export");
+    assert.deepStrictEqual(JSON.parse(bodies[0]!), { mode: "export", runIds: ["20260929T150913Z"] });
+    assert.equal("runIds" in JSON.parse(bodies[1]!), false);
+    assert.equal("runIds" in JSON.parse(bodies[2]!), false);
+  });
 });
 
 test("useDataRepoActions Hook 生命周期与操作互斥测试", async (t) => {

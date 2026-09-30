@@ -178,10 +178,18 @@ describe("data-repo-status 状态聚合", () => {
     await mkdir(run1Dir, { recursive: true });
     await writeFile(join(run1Dir, "run.json"), JSON.stringify({ inProgress: false }), "utf8");
 
-    // 2. 已完成但不在台账中 -> pending (20260927T030000Z)
+    // 2. 已完成但不在台账中 -> pending (20260927T030000Z)，摘要取题目、调用数、成功数与上游
     const run2Dir = join(runsDir, "20260927T030000Z");
     await mkdir(run2Dir, { recursive: true });
-    await writeFile(join(run2Dir, "run.json"), JSON.stringify({ inProgress: false }), "utf8");
+    await writeFile(join(run2Dir, "run.json"), JSON.stringify({
+      inProgress: false,
+      prompts: [{ promptId: "animated-pelican-v1" }, { promptId: "classic-v1" }],
+      attempts: [
+        { promptId: "animated-pelican-v1", status: "ok", profile: "relay-a" },
+        { promptId: "animated-pelican-v1", status: "ok" },
+        { promptId: "classic-v1", status: "error", profile: "relay-a" },
+      ],
+    }), "utf8");
 
     // 3. 早已开始却仍标 inProgress -> interrupted
     const runInProgDir = join(runsDir, "20260927T040000Z");
@@ -204,6 +212,13 @@ describe("data-repo-status 状态聚合", () => {
     assert.strictEqual(status.local.running, 1);
     assert.strictEqual(status.local.interrupted, 2);
     assert.deepStrictEqual(status.local.pending, ["20260927T030000Z"]);
+    assert.deepStrictEqual(status.local.pendingRuns, [{
+      runId: "20260927T030000Z",
+      promptIds: ["animated-pelican-v1", "classic-v1"],
+      attempts: 3,
+      ok: 2,
+      profiles: ["relay-a"],
+    }]);
   });
 
   it("成功写入与回读 lastAction", async () => {

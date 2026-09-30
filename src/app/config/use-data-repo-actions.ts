@@ -38,6 +38,7 @@ export interface UseDataRepoActionsReturn {
   executeAction: (
     mode: SyncActionMode,
     confirmation?: { aheadCommits: string[] },
+    runIds?: readonly string[],
   ) => Promise<SyncActionResult | null>;
   dismissResult: () => void;
   dismissError: () => void;
@@ -75,17 +76,19 @@ export async function requestRepoStatus(fetchFn: FetchFn): Promise<{
   }
 }
 
-/** 发起 POST /api/data-repo/sync 动作并归约响应 */
+/** 发起 POST /api/data-repo/sync 动作并归约响应；runIds 只在给了且非空时随请求体发出 */
 export async function postRepoAction(
   fetchFn: FetchFn,
   mode: SyncActionMode,
   confirmation?: { aheadCommits: string[] },
+  runIds?: readonly string[],
 ): Promise<{ result: SyncActionResult | null; error: string | null }> {
   try {
+    const payload = { mode, confirmation, ...(runIds !== undefined && runIds.length > 0 ? { runIds } : {}) };
     const res = await fetchFn("/api/data-repo/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, confirmation }),
+      body: JSON.stringify(payload),
     });
     const body = (await res.json().catch(() => ({}))) as
       | SyncActionResult
@@ -151,12 +154,13 @@ function useRepoActionExecutor(
     async (
       mode: SyncActionMode,
       conf?: { aheadCommits: string[] },
+      runIds?: readonly string[],
     ): Promise<SyncActionResult | null> => {
       if (inFlightRef.current !== null) return null;
       inFlightRef.current = mode;
       setInFlightMode(mode);
       setError(null);
-      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf);
+      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf, runIds);
       inFlightRef.current = null;
       if (!mounted.current) return null;
       setInFlightMode(null);

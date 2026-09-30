@@ -291,8 +291,9 @@ async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Pr
 async function executeSyncAction(
   mode: "dry-run" | "export" | "confirm",
   full: AppConfig,
+  runIds: readonly string[] | undefined,
 ): Promise<SyncReport | ConfirmPublishedReport> {
-  const scope = syncOptionsFromConfig(full);
+  const scope = { ...syncOptionsFromConfig(full), runIds };
   if (mode === "dry-run") {
     return syncDataRepo({ ...scope, dryRun: true });
   }
@@ -405,20 +406,22 @@ async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<
     await recordSyncFailure(request.id, action.mode, "数据仓未配置", startedAt);
     return;
   }
-  await performRunnerSync(request.id, action.mode, full, startedAt);
+  await performRunnerSync(request.id, action, full, startedAt);
 }
 
 async function performRunnerSync(
   requestId: string,
-  mode: "dry-run" | "export" | "confirm",
+  action: SyncActionRequest,
   full: AppConfig,
   startedAt: string,
 ): Promise<void> {
+  const { mode } = action;
+  if (mode === "push") throw new Error("push 由 handleRunnerPush 处理");
   let ok = true;
   let report: SyncReport | ConfirmPublishedReport | null = null;
   let error: string | null = null;
   try {
-    report = await executeSyncAction(mode, full);
+    report = await executeSyncAction(mode, full, action.runIds);
   } catch (cause) {
     ok = false;
     error = describe(cause);

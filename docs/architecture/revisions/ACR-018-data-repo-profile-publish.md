@@ -48,8 +48,12 @@
 | `src/app/api/data-repo/sync/sync-request.ts` | modify | 解析 `runIds`（字符串数组，可选） | no |
 | `src/app/config/DataRepoPendingList.tsx` | add | 待导出轮次清单：勾选框、题目、调用数、上游；缺省全选 | no |
 | `src/app/config/DataRepoPanel.tsx` | modify | 挂清单；导出与演练只带勾选的 runId | no |
+| `src/app/config/DataRepoPipeline.tsx` | modify | 勾选数进导出按钮文案 | no |
+| `src/app/config/data-repo-pipeline-model.ts` | modify | 勾选为零时导出按钮禁用并给原因 | no |
+| `src/app/config/use-pending-selection.ts` | add | 勾选状态：缺省全选，刷新后新轮次默认勾上 | no |
 | `src/app/config/use-data-repo-actions.ts` | modify | `executeAction` 带 `runIds` | no |
-| `src/app/config/config-data-repo.css` | modify | 清单样式 | no |
+| `src/app/config/config-data-repo-pending.css` | add | 清单样式 | no |
+| `src/app/config/config.css` | modify | 引入清单样式 | no |
 | `src/bin/runner.ts` | modify | 分容器执行同步时传 profiles、白名单与 `runIds` | no |
 | `src/bin/sync-data.ts` | modify | 从配置传 profiles 与白名单 | no |
 | `config/pelican.example.yaml` | modify | `dataRepo.publishPrompts` 说明 | no |
@@ -58,7 +62,8 @@
 | `test/core/sync/data-repo-status.test.ts` | modify | `pendingRuns` | no |
 | `test/core/config/data-repo-config.test.ts` | add | `publishPrompts` 解析 | no |
 | `test/core/data-source/remote-profiles.test.ts` | add | `knownProfiles` 汇总 | no |
-| `test/app/api/data-repo/sync-request.test.ts` | modify | `runIds` 解析 | no |
+| `test/app/api/data-repo-sync-request.test.ts` | add | `runIds` 解析 | no |
+| `test/app/config/use-data-repo-actions.test.ts` | modify | 请求体带 `runIds` | no |
 | `test/app/config/data-repo-pending-list.test.ts` | add | 清单渲染与勾选 | no |
 | `docs/architecture/architecture.md` | modify | §1 同步一句、§3 数据仓契约、§4 profile 数据边界 | no |
 

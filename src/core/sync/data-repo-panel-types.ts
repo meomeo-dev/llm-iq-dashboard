@@ -5,6 +5,17 @@ import type { GithubConnection, GithubConnectionState } from "../github-auth";
 export type { GithubConnection, GithubConnectionState };
 export type PushCapability = "github-app" | "host-credentials" | "unavailable";
 
+/** 待导出轮次的摘要，供面板勾选；只读 run.json 的题目、调用与上游，不读作品 */
+export interface PendingRun {
+  runId: string;
+  /** 本轮题目 id，按记录顺序去重 */
+  promptIds: string[];
+  attempts: number;
+  ok: number;
+  /** 本轮用到的非登录态 profile 名，按首次出现去重 */
+  profiles: string[];
+}
+
 /** 数据仓面板状态：GET /api/data-repo 的响应体 */
 export interface DataRepoStatus {
   /** 配置是否含 dataRepo 段 */
@@ -46,6 +57,8 @@ export interface DataRepoStatus {
     totalRuns: number;
     /** 已完成（有 run.json 且非 inProgress）但台账里没有记录的轮次，新的在前 */
     pending: string[];
+    /** pending 里每一轮的摘要，顺序与 pending 相同；旧状态快照可能缺失 */
+    pendingRuns?: PendingRun[];
     /** 未完成的轮次数 = running + interrupted */
     incomplete: number;
     /** 未完成且开始不足 6 小时的轮次数：仍在执行，结束后自动导出 */
@@ -70,6 +83,8 @@ export type SyncActionMode = "dry-run" | "export" | "confirm" | "push";
 /** POST /api/data-repo/sync 的请求体 */
 export interface SyncActionRequest {
   mode: SyncActionMode;
+  /** 只处理这些轮次（面板勾选）；缺省为全部候选。空数组视为非法，由解析拒绝 */
+  runIds?: string[];
   /** 仅 push 必填：面板展示给用户并被确认的领先提交清单，须与服务端当下的 aheadCommits 完全一致 */
   confirmation?: { aheadCommits: string[] };
 }

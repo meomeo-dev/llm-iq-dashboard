@@ -2,6 +2,7 @@
  * 解析并校验数据仓同步动作请求体（POST /api/data-repo/sync）。
  */
 
+import { dayPartition } from "@/core/data-repo/contract";
 import type {
   SyncActionMode,
   SyncActionRequest,
@@ -37,6 +38,21 @@ function parseConfirmation(
   return undefined;
 }
 
+/** runIds：缺省为全部；给了就必须是非空的 runId 数组（空数组会被编排器当作全部，这里拒绝） */
+function parseRunIds(raw: unknown): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error("runIds 必须是非空的 runId 数组");
+  }
+  const runIds = [...new Set(raw)];
+  for (const item of runIds) {
+    if (typeof item !== "string" || dayPartition(item) === null) {
+      throw new Error(`runIds 含有非法的 runId: ${String(item)}`);
+    }
+  }
+  return runIds as string[];
+}
+
 /**
  * 解析并校验同步请求体。非法时抛出明确中文错误。
  */
@@ -62,8 +78,10 @@ export function parseSyncActionRequest(text: string): SyncActionRequest {
   }
 
   const confirmation = parseConfirmation(body.confirmation, mode);
+  const runIds = parseRunIds(body.runIds);
   return {
     mode,
+    ...(runIds !== undefined ? { runIds } : {}),
     ...(confirmation !== undefined ? { confirmation } : {}),
   };
 }

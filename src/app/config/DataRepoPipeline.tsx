@@ -10,6 +10,8 @@ export interface DataRepoPipelineProps {
   status?: DataRepoStatus | null;
   inFlightMode?: SyncActionMode | null;
   pipeline?: PipelineModel;
+  /** 面板勾选的待导出轮次数；没有勾选清单时省略 */
+  selectedCount?: number | null;
   onTriggerAction: (mode: SyncActionMode) => void;
   onOpenPushDialog: () => void;
   onRefresh?: () => void;
@@ -91,11 +93,12 @@ export function DataRepoPipeline({
   status = null,
   inFlightMode = null,
   pipeline: customPipeline,
+  selectedCount = null,
   onTriggerAction,
   onOpenPushDialog,
   onRefresh,
 }: DataRepoPipelineProps) {
-  const pipeline = customPipeline ?? derivePipeline(status, inFlightMode);
+  const pipeline = customPipeline ?? derivePipeline(status, inFlightMode, selectedCount);
   const { steps, description, staticNotice, primaryAction, secondaryAction } =
     pipeline;
 

@@ -184,17 +184,21 @@ function buildPipelineSteps(
   ];
 }
 
-/** 推导导出主按钮 */
+/** 推导导出主按钮；selectedCount 为面板勾选的轮次数，null 表示没有勾选清单（全部） */
 function buildExportAction(
   status: DataRepoStatus,
   commonBlocker: string | null,
   inFlight: SyncActionMode | null,
+  selectedCount: number | null,
 ): PipelinePrimaryAction {
-  const count = status.local.pending.length;
+  const count = selectedCount ?? status.local.pending.length;
   const defaultLabel = `导出 ${count} 轮`;
   const label = resolvePrimaryLabel(defaultLabel, inFlight);
   const dirty = !status.repo?.clean;
-  const reason = commonBlocker ?? (dirty ? "工作区有未提交的改动，请先清理或提交" : null);
+  const reason =
+    commonBlocker ??
+    (dirty ? "工作区有未提交的改动，请先清理或提交" : null) ??
+    (count === 0 ? "先在下方勾选要导出的轮次" : null);
   return {
     mode: "export",
     label,
@@ -293,9 +297,10 @@ function resolvePrimaryAction(
   status: DataRepoStatus,
   commonBlocker: string | null,
   inFlight: SyncActionMode | null,
+  selectedCount: number | null,
 ): PipelinePrimaryAction | null {
   if (kind === "export") {
-    return buildExportAction(status, commonBlocker, inFlight);
+    return buildExportAction(status, commonBlocker, inFlight, selectedCount);
   }
   if (kind === "push") {
     return buildPushAction(status, commonBlocker, inFlight);
@@ -312,6 +317,7 @@ function resolvePrimaryAction(
 export function derivePipeline(
   status: DataRepoStatus | null,
   inFlightMode: SyncActionMode | null = null,
+  selectedCount: number | null = null,
 ): PipelineModel {
   const commonBlocker = checkCommonBlocker(status, inFlightMode);
   const secondaryAction = buildSecondaryAction(commonBlocker, inFlightMode);
@@ -336,6 +342,7 @@ export function derivePipeline(
     status,
     commonBlocker,
     inFlightMode,
+    selectedCount,
   );
 
   return {

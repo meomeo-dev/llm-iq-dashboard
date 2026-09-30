@@ -18,9 +18,11 @@ import {
 import { DataRepoCards } from "./DataRepoCards";
 import { DataRepoGithubCard } from "./DataRepoGithubCard";
 import { DataRepoIssuesList } from "./DataRepoIssuesList";
+import { DataRepoPendingList } from "./DataRepoPendingList";
 import { DataRepoPipeline } from "./DataRepoPipeline";
 import { DataRepoPushDialog } from "./DataRepoPushDialog";
 import { useDataRepoActions, type FetchFn } from "./use-data-repo-actions";
+import { usePendingSelection } from "./use-pending-selection";
 
 export interface DataRepoPanelProps {
   initialStatus?: DataRepoStatus | null;
@@ -124,6 +126,7 @@ export function DataRepoPanel({
   const [showPushDialog, setShowPushDialog] = useState(initialShowPushDialog);
   const currentInFlight = hookMode ?? initialInFlightMode;
   const currentResult = hookResult ?? initialActionResult;
+  const pending = usePendingSelection(status);
 
   const notice = getSpecialNotice(status, loading);
   if (notice !== null) return <DataRepoNoticeSection message={notice} />;
@@ -147,9 +150,17 @@ export function DataRepoPanel({
       <DataRepoPipeline
         status={status}
         inFlightMode={currentInFlight}
-        onTriggerAction={(mode) => void executeAction(mode)}
+        selectedCount={pending.selectedCount}
+        onTriggerAction={(mode) => void executeAction(mode, undefined, pending.runIds)}
         onOpenPushDialog={() => setShowPushDialog(true)}
         onRefresh={() => void refresh()}
+      />
+      <DataRepoPendingList
+        runs={pending.runs}
+        selected={pending.selected}
+        disabled={currentInFlight !== null}
+        onToggle={pending.toggle}
+        onSetAll={pending.setAll}
       />
 
       <DataRepoSummaryBar error={error} summary={summary} />
@@ -164,7 +175,7 @@ export function DataRepoPanel({
         isBusy={currentInFlight === "push"}
         onConfirm={() => {
           setShowPushDialog(false);
-          void executeAction("push", { aheadCommits: pushConfirm.aheadCommits });
+          void executeAction("push", { aheadCommits: pushConfirm.aheadCommits }, pending.runIds);
         }}
         onCancel={() => setShowPushDialog(false)}
       />

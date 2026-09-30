@@ -79,17 +79,17 @@ async function startViaRunner(
 }
 
 async function performLocalSync(
-  mode: SyncActionMode,
+  action: SyncActionRequest,
   config: AppConfig,
 ): Promise<SyncReport | ConfirmPublishedReport> {
-  const scope = syncOptionsFromConfig(config);
-  if (mode === "dry-run") {
+  const scope = { ...syncOptionsFromConfig(config), runIds: action.runIds };
+  if (action.mode === "dry-run") {
     return syncDataRepo({ ...scope, dryRun: true });
   }
-  if (mode === "export") {
+  if (action.mode === "export") {
     return syncDataRepo({ ...scope, dryRun: false, push: false });
   }
-  if (mode === "confirm") {
+  if (action.mode === "confirm") {
     return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
   }
   return syncDataRepo({ ...scope, dryRun: false, push: true });
@@ -97,16 +97,17 @@ async function performLocalSync(
 
 async function executeLocalSync(
   config: AppConfig,
-  mode: SyncActionMode,
+  action: SyncActionRequest,
   who: { deviceId: string; ip: string | null },
 ): Promise<NextResponse> {
+  const { mode } = action;
   const startedAt = new Date().toISOString();
   let ok = true;
   let report: SyncReport | ConfirmPublishedReport | null = null;
   let error: string | null = null;
 
   try {
-    report = await performLocalSync(mode, config);
+    report = await performLocalSync(action, config);
   } catch (cause) {
     ok = false;
     error = cause instanceof Error ? cause.message : String(cause);
@@ -173,7 +174,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       }
     }
 
-    return await executeLocalSync(full, actionRequest.mode, who);
+    return await executeLocalSync(full, actionRequest, who);
   } finally {
     await lock.release();
   }

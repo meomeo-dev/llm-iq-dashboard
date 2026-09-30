@@ -8,5 +8,6 @@
 @import "./config-unscheduled.css";
 @import "./config-data-repo.css";
 @import "./config-data-repo-pipeline.css";
+@import "./config-data-repo-pending.css";
 @import "./config-nav.css";
 @import "./config-profiles.css";

@@ -19,6 +19,7 @@ import { inspectGitRepo } from "./data-repo-git";
 import type {
   DataRepoStatus,
   GithubConnection,
+  PendingRun,
   PushCapability,
   SyncActionResult,
 } from "./data-repo-panel-types";
@@ -182,23 +183,42 @@ function classifyUnfinished(runId: string, now: number): LocalRunState {
   return now - startedAt.getTime() <= RUNNING_WINDOW_MS ? "running" : "interrupted";
 }
 
+interface LocalRunShape {
+  inProgress?: boolean;
+  prompts?: Array<{ promptId?: string }>;
+  attempts?: Array<{ promptId?: string; status?: string; profile?: string }>;
+}
+
+/** 待导出轮次的摘要：题目按记录顺序去重，上游按首次出现去重 */
+function summarizePendingRun(runId: string, run: LocalRunShape): PendingRun {
+  const attempts = run.attempts ?? [];
+  const promptIds = [...new Set([
+    ...(run.prompts ?? []).map((prompt) => prompt.promptId),
+    ...attempts.map((attempt) => attempt.promptId),
+  ])].filter((id): id is string => typeof id === "string");
+  const profiles = [...new Set(attempts.map((attempt) => attempt.profile))]
+    .filter((name): name is string => typeof name === "string");
+  const ok = attempts.filter((attempt) => attempt.status === "ok").length;
+  return { runId, promptIds, attempts: attempts.length, ok, profiles };
+}
+
 async function checkSingleRunDir(
   runDir: string,
   runId: string,
   rawLedger: SyncLedger,
   now: number,
-): Promise<{ isPending: boolean; state: LocalRunState }> {
+): Promise<{ pending: PendingRun | null; state: LocalRunState }> {
   const runJsonPath = join(runDir, "run.json");
   try {
     const text = await readFile(runJsonPath, "utf8");
-    const run = JSON.parse(text) as { inProgress?: boolean };
+    const run = JSON.parse(text) as LocalRunShape;
     if (run.inProgress === true) {
-      return { isPending: false, state: classifyUnfinished(runId, now) };
+      return { pending: null, state: classifyUnfinished(runId, now) };
     }
-    const isPending = rawLedger[runId] === undefined;
-    return { isPending, state: "completed" };
+    const pending = rawLedger[runId] === undefined ? summarizePendingRun(runId, run) : null;
+    return { pending, state: "completed" };
   } catch {
-    return { isPending: false, state: classifyUnfinished(runId, now) };
+    return { pending: null, state: classifyUnfinished(runId, now) };
   }
 }
 
@@ -211,7 +231,7 @@ async function collectLocalRuns(
   try {
     const entries = await readdir(runsDir, { withFileTypes: true });
     const dirNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    const pending: string[] = [];
+    const pendingRuns: PendingRun[] = [];
     const rejected: string[] = [];
     let running = 0;
     let interrupted = 0;
@@ -221,24 +241,25 @@ async function collectLocalRuns(
       const outcome = await checkSingleRunDir(join(runsDir, runId), runId, rawLedger, now);
       if (outcome.state === "running") running += 1;
       if (outcome.state === "interrupted") interrupted += 1;
-      if (outcome.isPending) pending.push(runId);
+      if (outcome.pending !== null) pendingRuns.push(outcome.pending);
       const ledgerEntry = rawLedger[runId];
       if (ledgerEntry?.status === "skipped" && ledgerEntry.reason === "rejected") {
         rejected.push(runId);
       }
     }
-    pending.sort((a, b) => b.localeCompare(a));
+    pendingRuns.sort((a, b) => b.runId.localeCompare(a.runId));
     rejected.sort((a, b) => b.localeCompare(a));
     return {
       totalRuns: dirNames.length,
-      pending,
+      pending: pendingRuns.map((run) => run.runId),
+      pendingRuns,
       incomplete: running + interrupted,
       running,
       interrupted,
       rejected,
     };
   } catch {
-    return { totalRuns: 0, pending: [], incomplete: 0, running: 0, interrupted: 0, rejected: [] };
+    return { totalRuns: 0, pending: [], pendingRuns: [], incomplete: 0, running: 0, interrupted: 0, rejected: [] };
   }
 }
 
