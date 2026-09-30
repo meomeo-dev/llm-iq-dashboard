@@ -66,3 +66,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 评审标签（ACR-019）：按结论染色，分数跟在标签后 */
+.judge-tag {
+  padding: 0 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: help;
+}
+
+.judge-tag.judge-online {
+  color: var(--ok);
+}
+
+.judge-tag.judge-degraded {
+  color: var(--err);
+}
+
+.judge-tag.judge-pending {
+  color: var(--text-dim);
+}

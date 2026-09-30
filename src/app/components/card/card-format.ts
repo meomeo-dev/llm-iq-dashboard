@@ -1,5 +1,6 @@
 /** 结果卡片与单独查看页共用的文案与格式；不带 "use client"，服务端组件也会引用。 */
 
+import type { Judgement, Verdict } from "@/core/judge/schema";
 import type { DashboardCard } from "@/core/types";
 
 export const STATUS_TEXT: Record<DashboardCard["status"], string> = {
@@ -58,4 +59,25 @@ export function costTitle(card: Pick<DashboardCard, "cost" | "usage" | "profile"
     cost.catalogTag === null ? null : `价格目录 ${cost.catalogTag}`,
   ];
   return lines.filter((line): line is string => line !== null).join("\n");
+}
+
+/** 评审标签文案（ACR-019）：online 智商在线、degraded 降智、pending 待复核 */
+export const JUDGE_TEXT: Record<Verdict, string> = {
+  online: "智商在线",
+  degraded: "降智",
+  pending: "待复核",
+};
+
+/** 评审的悬停说明：闸门与每条标准的分与理由 */
+export function judgeTitle(judge: Judgement): string {
+  const lines = [
+    `${JUDGE_TEXT[judge.total.verdict]} ${judge.total.score}/${judge.total.maxScore}（及格线 ${judge.rubric.passThreshold}）`,
+    ...judge.gates.map((g) => `${g.passed ? "✓" : "✗"} ${g.id} ${g.title}：${g.evidence}`),
+    ...judge.criteria.map((c) =>
+      c.score === null
+        ? `${c.id} -/${c.maxScore} ${c.title}：待 AI 层判定`
+        : `${c.id} ${c.score}/${c.maxScore} ${c.title}：${c.reason ?? ""}`,
+    ),
+  ];
+  return lines.join("\n");
 }

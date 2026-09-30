@@ -12,6 +12,7 @@ import type { PromptStandard } from "@/core/prompt";
 
 describe("dashboard-calc 看板纯计算与状态解析测试", () => {
   const mockCard = (id: string, runId: string, status: "ok" | "error" = "ok", bindings: Record<string, string> = {}): DashboardCard => ({
+    judge: null,
     targetId: `claude__${id}__high`,
     promptId: id,
     cli: "claude",

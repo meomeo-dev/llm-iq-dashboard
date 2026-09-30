@@ -1,0 +1,90 @@
+/* 评审抽屉（ACR-019）：结论药丸、闸门与标准表 */
+
+.judge-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.judge-pill.judge-online {
+  color: var(--ok);
+}
+
+.judge-pill.judge-degraded {
+  color: var(--err);
+}
+
+.judge-pill.judge-pending {
+  color: var(--text-dim);
+}
+
+.judge-meta {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.judge-body {
+  overflow-x: auto;
+}
+
+.judge-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.judge-table td {
+  padding: 5px 8px;
+  border-top: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.judge-table tr:first-child td {
+  border-top: none;
+}
+
+.judge-id {
+  width: 2.5em;
+  color: var(--text-faint);
+}
+
+.judge-score {
+  width: 4.5em;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.judge-title {
+  width: 11em;
+  color: var(--text);
+  cursor: help;
+}
+
+.judge-reason {
+  color: var(--text-dim);
+}
+
+.judge-fail .judge-score {
+  color: var(--err);
+}
+
+.judge-pass .judge-score {
+  color: var(--ok);
+}
+
+.judge-pending .judge-score,
+.judge-pending .judge-reason {
+  color: var(--text-faint);
+}
+
+.judge-sheet-note {
+  margin-top: 8px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}

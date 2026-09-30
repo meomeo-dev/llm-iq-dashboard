@@ -3,7 +3,7 @@
 import type { DashboardCard } from "@/core/types";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
-import { costTitle, formatBytes, formatCost, formatDuration, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
+import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeTitle, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
 
 /**
  * 单次调用的结果卡片。表头、图框、页脚各自定高（见 cards.css），失败时用同尺寸
@@ -81,6 +81,8 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
       </div>
       <div className="footer-row">
         {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
+        {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
+        {card.judge != null && <JudgeTag judge={card.judge} />}
         <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
         {href !== null && (
           <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
@@ -89,6 +91,15 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
         )}
       </div>
     </footer>
+  );
+}
+
+/** 评审标签（ACR-019）：标签 + 总分，悬停看逐条闸门与标准 */
+function JudgeTag({ judge }: { judge: NonNullable<DashboardCard["judge"]> }) {
+  return (
+    <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge)}>
+      {JUDGE_TEXT[judge.total.verdict]} {judge.total.score}
+    </span>
   );
 }
 

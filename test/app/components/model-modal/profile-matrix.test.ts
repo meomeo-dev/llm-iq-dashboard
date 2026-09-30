@@ -16,7 +16,7 @@ import type { DashboardCard } from "@/core/types";
 
 function card(effort: string, profile?: string): DashboardCard {
   return {
-    runId: "20260929T100000Z", runStartedAt: "2026-09-29T10:00:00Z", runInProgress: false,
+    runId: "20260929T100000Z", runStartedAt: "2026-09-29T10:00:00Z", runInProgress: false, judge: null,
     targetId: `codex__gpt-6-sol__${effort}${profile === undefined ? "" : `__${profile}`}`,
     cli: "codex", model: "gpt-6-sol", effort, appliedEffort: effort, effortHonored: true,
     promptId: "animated-pelican-v1", promptText: "p", label: `gpt-6-sol · ${effort} · ${profile ?? "登录态"}`,

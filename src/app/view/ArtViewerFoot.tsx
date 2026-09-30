@@ -2,6 +2,7 @@ import React from "react";
 import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
 import { ReferenceSourceDisplay } from "../components/ReferenceSourceDisplay";
+import { JudgeDrawer } from "./JudgeDrawer";
 
 interface ArtViewerFootProps {
   card: DashboardCard;
@@ -23,6 +24,7 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
           </div>
         </details>
       )}
+      {card.judge != null && <JudgeDrawer judge={card.judge} />}
       {standard != null && (
         <details className="viewer-drawer viewer-standard">
           <summary>

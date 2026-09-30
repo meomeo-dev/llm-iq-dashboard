@@ -1,6 +1,7 @@
 /** 领域类型（domain types），不依赖 Next.js、文件系统或 CLI 细节，前后端共用。 */
 
 import type { CostEstimate, TokenUsage } from "../pricing/types";
+import type { Judgement } from "./judge/schema";
 import type { RenderedPrompt } from "./variables";
 
 /** 被调度的命令行工具种类 */
@@ -173,4 +174,6 @@ export interface DashboardCard extends Attempt {
   usage: TokenUsage | null;
   /** 按价格目录折算的 API 等价成本，读取时计算，不落盘 */
   cost: CostEstimate;
+  /** 作品评审记录（ACR-019）；没有评分标准、尚未评审或远程数据源时为 null */
+  judge: Judgement | null;
 }

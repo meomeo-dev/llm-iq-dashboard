@@ -366,6 +366,7 @@ export class RemoteDataSource implements DataSource {
         promptText: prompt?.text ?? "",
         bindings: prompt?.bindings ?? {},
         ...costInfo,
+        judge: null,
       });
     }
     return cards;

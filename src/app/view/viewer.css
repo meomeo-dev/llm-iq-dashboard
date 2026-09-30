@@ -1,3 +1,4 @@
 /* 单件作品的单独查看页样式聚合入口，保持原有规则顺序与选择器声明 */
 @import "./viewer-base.css";
 @import "./viewer-drawers.css";
+@import "./viewer-judge.css";

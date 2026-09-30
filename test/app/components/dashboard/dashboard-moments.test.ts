@@ -11,6 +11,7 @@ import { NO_FILTERS } from "@/app/components/toolbar/filters";
 
 describe("dashboard-moments 看板时间线与卡片纯计算测试", () => {
   const mockCard = (cli: string, model: string): DashboardCard => ({
+    judge: null,
     targetId: `${cli}__${model}__high`,
     promptId: "p1",
     cli: cli as "claude" | "agy" | "codex",

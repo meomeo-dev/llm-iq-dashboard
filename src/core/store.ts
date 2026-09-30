@@ -9,6 +9,7 @@
 
 import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
 import { runDir, runsRoot } from "./paths";
 import type { Attempt, DashboardCard, RunRecord } from "./types";
 import { usageAndCost } from "../pricing/attempt-cost";
@@ -197,6 +198,7 @@ async function cardsOfRun(run: RunRecord, attempts: readonly Attempt[]): Promise
       promptText: prompt?.text ?? "",
       bindings: prompt?.bindings ?? {},
       ...(await usageAndCost(run.runId, attempt)),
+      judge: attempt.svgFile === null ? null : await loadJudgement(run.runId, attemptKeyOf(attempt.svgFile)),
     });
   }
   return cards;
