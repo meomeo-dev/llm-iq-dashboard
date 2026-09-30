@@ -8,7 +8,7 @@
 | 触发来源 | 口头：代码层误判太严重却占 60 分，两幅脚不踩脚踏的作品也能拿 60 过线；AI 语义层至今未实现，作品永远停在「待复核」 |
 | 基线 | ARCH-001 |
 | 影响章节 | §3 §4 §7 |
-| 改造面上限 | 9 个模块（src/core、src/adapters、src/app、src/pricing 四个源模块，pricing 只加一个读取侧文件；test/core、test/app、test/pricing 与源模块同构；docker/Dockerfile 只加一个 apt 包与两个环境变量；数据仓校验器在另一仓库，不计） |
+| 改造面上限 | 8 个模块（src/core、src/adapters、src/app、src/pricing 四个源模块，pricing 只加一个读取侧文件；test/core、test/app、test/pricing 与源模块同构；docker/Dockerfile 只加一个 apt 包与两个环境变量；数据仓校验器在另一仓库，不计） |
 | 取代 / 被取代 | 无 |
 
 本 ACR 是 ACR-019 预留的第二半：给适配器加「评审模式」，轮次定稿后在执行进程里串行请裁判 CLI
