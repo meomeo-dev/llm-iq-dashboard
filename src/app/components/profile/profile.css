@@ -179,18 +179,25 @@
 /* 大图页的同轮上游切换条（ArtViewerSiblings.tsx） */
 .viewer-siblings {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
   align-items: center;
   gap: 4px;
   min-width: 0;
+  max-width: 50%;
   font-size: 12.5px;
 }
 
+/* 放不下的上游横向滚动，不显示滚动条；当前项由组件滚进视野 */
 .viewer-siblings-list {
   display: flex;
   gap: 2px;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.viewer-siblings-list::-webkit-scrollbar {
+  display: none;
 }
 
 .viewer-sibling,
@@ -221,6 +228,15 @@
 .viewer-siblings-arrow[aria-disabled="true"] {
   opacity: 0.35;
   pointer-events: none;
+}
+
+/* 窄屏：切换条独占一行排在标题下面 */
+@media (max-width: 640px) {
+  .viewer-siblings {
+    flex-basis: 100%;
+    max-width: none;
+    order: 1;
+  }
 }
 
 /* 窄屏：底部抽屉 */

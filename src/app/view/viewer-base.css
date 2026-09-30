@@ -17,8 +17,10 @@
   background: var(--surface);
 }
 
+/* 标题列吃掉切换条与按钮之外的全部宽度；切换条最多占一半，否则多上游时把标题挤成逐字换行 */
 .viewer-heading {
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: min(460px, 100%);
 }
 
 .viewer-title {

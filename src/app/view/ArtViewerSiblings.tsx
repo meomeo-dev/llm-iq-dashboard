@@ -32,6 +32,10 @@ export function ArtViewerSiblings({ current, siblings }: ArtViewerSiblingsProps)
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [prev, next]);
+  // 切换条放不下时当前项可能被裁掉，载入后把它滚进视野
+  useEffect(() => {
+    document.querySelector('.viewer-sibling[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [current.targetId]);
   if (index === -1 || siblings.length < 2) return null;
 
   return (
