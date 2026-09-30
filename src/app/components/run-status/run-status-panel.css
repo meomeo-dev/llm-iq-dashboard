@@ -157,6 +157,14 @@
   margin-top: 10px;
 }
 
+.run-call-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--err);
+  font-size: 11px;
+  white-space: normal;
+}
+
 .run-judging {
   margin-top: 10px;
   padding-top: 8px;

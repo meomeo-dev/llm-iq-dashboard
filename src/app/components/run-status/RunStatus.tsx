@@ -252,6 +252,7 @@ function JudgeItem({ item, now }: { item: JudgeItemProgress; now: number }) {
         {item.state === "done" && `${VERDICT_TEXT[item.verdict ?? ""] ?? item.verdict} ${item.score} · ${formatElapsed(elapsed)}`}
         {item.state === "failed" && "未评"}
       </span>
+      {item.state === "failed" && item.note !== null && <span className="run-call-note">{item.note}</span>}
     </span>
   );
 }
