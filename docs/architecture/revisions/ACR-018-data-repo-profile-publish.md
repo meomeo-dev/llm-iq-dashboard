@@ -2,12 +2,12 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-30 |
 | 变更类型 | structure-change |
 | 触发来源 | 口头：codex 多 profile 之后，同步到 llm-iq-data 不能泄露 profile 的 key，profile 基本信息按用户运行时配置照常显示；上传时要能选题目（配置白名单 + 面板勾选）；容器里 autoSync 为 true，每轮结束即自动导出提交。前置 ACR-014 / ACR-016 |
 | 基线 | ARCH-001 |
-| 影响章节 | §1 §3 §4 |
+| 影响章节 | §4 §6 §8 |
 | 改造面上限 | 6 个模块（测试目录与源模块同构：src/core、src/app、src/bin 各带一个 test 目录） |
 | 取代 / 被取代 | 无 |
 
@@ -43,6 +43,7 @@
 | `src/core/run/post-sync.ts` | modify | 自动同步传 profiles 与白名单 | no |
 | `src/core/data-source/interface.ts` | modify | 可选 `knownProfiles(): ProfileView[]` | no |
 | `src/core/data-source/remote.ts` | modify | 记录里的 `profiles` 汇入 `knownProfiles`，按首次出现排序 | no |
+| `src/core/data-source/index.ts` | modify | 导出 `knownProfiles` 入口 | no |
 | `src/app/components/dashboard/dashboard-page-data.ts` | modify | 配置没有 profile 时（展台）改用数据源的 `knownProfiles` | no |
 | `src/app/api/data-repo/sync/route.ts` | modify | 传 profiles、白名单与 `runIds` | no |
 | `src/app/api/data-repo/sync/sync-request.ts` | modify | 解析 `runIds`（字符串数组，可选） | no |
@@ -60,7 +61,9 @@
 | `test/core/sync/export-profile.test.ts` | modify | 登记的 profile 放行并带 `profiles`；未登记的仍扣下；key 不进记录 | no |
 | `test/core/sync/export-prompts.test.ts` | add | 白名单剔除与整轮跳过 | no |
 | `test/core/sync/data-repo-status.test.ts` | modify | `pendingRuns` | no |
-| `test/core/config/data-repo-config.test.ts` | add | `publishPrompts` 解析 | no |
+| `test/core/config-data-repo.test.ts` | modify | `publishPrompts` 解析 | no |
+| `test/core/sync/orchestrator-profile-guard.test.ts` | add | 同步指纹拦下作品里的 profile key；不传 profiles 时行为与此前相同 | no |
+| `test/core/sync/runner-hook.test.ts` | modify | 配置夹具补 `publishPrompts` | no |
 | `test/core/data-source/remote-profiles.test.ts` | add | `knownProfiles` 汇总 | no |
 | `test/app/api/data-repo-sync-request.test.ts` | add | `runIds` 解析 | no |
 | `test/app/config/use-data-repo-actions.test.ts` | modify | 请求体带 `runIds` | no |
@@ -82,14 +85,14 @@
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | - | | 变更前 3325158 |
-| `pnpm test` | node:test 全量 | pass | - | | 变更前 3325158，761 项 |
-| `pnpm check:length` | 文件与函数长度门禁 | pass | - | | 变更前 3325158 |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | 变更前 6bde09e |
-| `pnpm showcase:smoke` | 只读展台与远程数据源 | - | - | | 变更前未跑，变更后必跑 |
-| `pnpm --dir ../llm-iq-data test && pnpm --dir ../llm-iq-data validate` | 数据仓校验器与 schema 单测，全量校验 runs/ | - | - | | 数据仓侧 |
-| `pnpm sync:data --dry-run` | 对本机全部轮次演练导出：profile 轮次放行、白名单剔除、零写入 | - | - | | 不写数据仓 |
-| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车） | pass | - | | 变更前轮次 20260929T150913Z；变更只在同步与展示层，以该轮次产物演练导出 |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，含 test/） | pass | pass | c22481b | 变更前 3325158 |
+| `pnpm test` | node:test 全量 | pass | pass | c22481b | 变更前 3325158 761 项，变更后 775 项 |
+| `pnpm check:length` | 文件与函数长度门禁 | pass | pass | c22481b | 变更前 3325158 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | c22481b | 变更前 6bde09e |
+| `pnpm showcase:smoke` | 只读展台与远程数据源 | pass | pass | c22481b | 变更前在 3325158 的临时 worktree 跑；13 项断言全过 |
+| `pnpm --dir ../llm-iq-data test && pnpm --dir ../llm-iq-data validate` | 数据仓校验器与 schema 单测，全量校验 runs/ | pass | pass | c22481b | 变更前 22 项（a918cf5 之前），变更后 24 项（数据仓 commit a918cf5） |
+| `pnpm sync:data --dry-run` | 对本机全部轮次演练导出：profile 轮次放行、白名单剔除、零写入 | pass | pass | c22481b | 变更前（3325158 临时 worktree）可导出 11 轮、冲突 0；变更后 75 轮候选：可导出 20、幂等 53、未完成 2、空 1、冲突 0，多出的 9 轮即含 profile 调用的轮次，20260929T150913Z 在内 |
+| `PELICAN_CONFIG=data/profile-smoke.config.yaml pnpm run:once` | 端到端冒烟：3 个 profile 同轮并行（动态鹈鹕车） | pass | pass | c22481b | 变更前轮次 20260929T150913Z；变更只在同步与展示层，以该轮次产物演练导出并在配置页面板勾选后演练核对 |
 
 ## 分步实施
 
@@ -127,8 +130,8 @@
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §1 | 同步：profile 调用随记录发布，指纹含 profile key；题目白名单与面板勾选 | 待回填 |
-| architecture.md §3 | 数据仓契约：attempt.profile 与 run.profiles，只增可选字段不升版 | 待回填 |
-| architecture.md §4 | profile 数据边界：公开记录只含八字段视图 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-018 | 待回填 |
-| ADR（/adr-curator） | 不适用：非难逆转 | 待回填 |
+| architecture.md §4 | 数据仓：attempt.profile 与 run.profiles（只增可选字段不升版）、题目白名单、面板勾选 | 已回填 |
+| architecture.md §6 | 安全边界：profile 调用发布时只带八字段视图；同步指纹含 profile key | 已回填 |
+| architecture.md §8 | Docker 同步：autoSync 关闭时在面板勾选后导出 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-018 | 已回填 |
+| ADR（/adr-curator） | 不适用：非难逆转 | 不适用 |

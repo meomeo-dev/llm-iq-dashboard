@@ -28,6 +28,7 @@
 | [ACR-015](revisions/ACR-015-run-once-profiles.md) | 2026-09-29 | 跑一次：开始前多选上游，服务端按组合 × 上游展开本轮目标 | §1 §3 §5 |
 | [ACR-016](revisions/ACR-016-profile-compare-view.md) | 2026-09-29 | 看板的上游对比视图与信息卡：格子计数与色点、上游 × 强度矩阵、大图页同轮切换、上游筛选 | §1 §3 |
 | [ACR-017](revisions/ACR-017-modal-gif-export.md) | 2026-09-29 | 结果集弹窗导出 PNG / SVG / GIF：合成图纯函数、时刻烘焙取帧、modern-gif 编码 | §0 §1 |
+| [ACR-018](revisions/ACR-018-data-repo-profile-publish.md) | 2026-09-30 | 数据仓发布 profile 结果（记录带八字段公开视图）、题目白名单、面板按轮次勾选导出 | §4 §6 §8 |
 
 ## 0. 技术选型总览
 
@@ -158,6 +159,13 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `unpublishable-prompt` / `rejected` / `abandoned` / `empty`），推送并确认远端包含后才为 published；
   一次调用都没完成的轮次不导出。仅供本地测试的题目永不发布（见仓库根 `AGENTS.md`）。
   只读展台的日历只拉取最近 62 天的日索引，更早按清单计数（ACR-012）。
+- 记录里的上游（ACR-018）：非登录态调用带 `profile` 名，记录顶层 `profiles` 是这些 profile 的
+  公开视图（名字、显示名、CLI、上游类型、分组、官网、倍率、启停，按导出时配置快照，只含本轮用到的）；
+  导出时配置里已不存在的 profile 其调用扣下不发布。契约只增可选字段、不升版本号：只有登录态的记录
+  与引入前逐字相同，旧展台照常读。只读展台没有配置，上游的显示名与倍率从已读记录里汇总。
+- 发布什么由两层选择决定（ACR-018）：`dataRepo.publishPrompts` 题目白名单（缺省全部，不在清单里的
+  题目连同调用剔除，剩空整轮跳过）；配置页数据仓面板列出待导出轮次逐个勾选，导出、演练与推送只带
+  勾选的轮次。数据仓只追加，一轮导出后不再补发当时扣下的题目或上游。
 
 ## 5. 配置与运行参数
 
@@ -177,9 +185,10 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - 模型产物不可信：SVG 经净化后展示，`/art` 路由以 CSP 沙箱返回原图。
 - 每次调用一个空的临时工作目录，避免 CLI 读到仓库里的 `CLAUDE.md` / `AGENTS.md`。
 - 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）；
-  指纹同时覆盖全部已登记 profile 的 API key（ACR-014）。
+  指纹同时覆盖全部已登记 profile 的 API key，运行阶段与同步阶段同一口径（ACR-014、ACR-018）。
 - profile 的 API key 只存在 `PELICAN_SECRETS_DIR` 下（目录 700 / 文件 600），运行时只交给该
-  profile 的子进程环境；非默认 profile 的调用在公开数据仓契约支持前不导出（ACR-014）。
+  profile 的子进程环境；发布到数据仓的记录只带 profile 的八字段公开视图，接口地址、查询参数与
+  key 状态不进任何公开面，数据仓 CI 对多余字段拒收（ACR-018）。
 - 写操作与配置类读取只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
   `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
@@ -242,9 +251,10 @@ llm_iq_dashboard/
   run.json，作品由服务端 `/art` 代理；只展示、不运行评测，适合 serverless 托管（如 Vercel）。
   `pnpm showcase:smoke` 端到端自检，`/api/health` 报告数据仓连通性；见
   `docs/deploy-public-showcase.md`。
-- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner；轮次结束后
-  runner 自动导出并本地提交，推送在配置页数据仓面板确认后由 runner 用 GitHub App 令牌完成
-  （ACR-010、ACR-011）；未连接 GitHub 时仍可在宿主机推送并以 `--confirm-published` 回填发布状态。
+- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner；`autoSync`
+  开启时轮次结束后 runner 自动导出并本地提交，关闭时在配置页数据仓面板勾选轮次后导出（ACR-018）；
+  推送在面板确认后由 runner 用 GitHub App 令牌完成（ACR-010、ACR-011）；未连接 GitHub 时仍可在
+  宿主机推送并以 `--confirm-published` 回填发布状态。
 - K8s：no。单机单用户的两个进程。复议条件：需要多人共用一套部署，或常驻进程增加到 5 个以上。
 
 ## 9. 待确认事项
