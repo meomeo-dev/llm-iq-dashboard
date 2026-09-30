@@ -19,10 +19,13 @@ import { inspectGitRepo } from "./data-repo-git";
 import type {
   DataRepoStatus,
   GithubConnection,
+  PendingAttempt,
   PendingRun,
   PushCapability,
   SyncActionResult,
 } from "./data-repo-panel-types";
+import { attemptKey } from "./attempt-selection";
+import { isDiscarded } from "./ledger-decisions";
 import { loadSyncLedger, type SyncLedger } from "./sync-ledger";
 import { readGithubConnection } from "../github-auth";
 
@@ -122,6 +125,7 @@ function createEmptyLedgerMetrics(): DataRepoStatus["ledger"] {
       rejected: 0,
       abandoned: 0,
       empty: 0,
+      discarded: 0,
     },
     lastExportedAt: null,
     lastPublishedAt: null,
@@ -183,15 +187,42 @@ function classifyUnfinished(runId: string, now: number): LocalRunState {
   return now - startedAt.getTime() <= RUNNING_WINDOW_MS ? "running" : "interrupted";
 }
 
+interface LocalAttemptShape {
+  targetId?: string;
+  promptId?: string;
+  cli?: string;
+  model?: string;
+  effort?: string;
+  status?: string;
+  profile?: string;
+  svgFile?: string | null;
+}
+
 interface LocalRunShape {
   inProgress?: boolean;
   prompts?: Array<{ promptId?: string }>;
-  attempts?: Array<{ promptId?: string; status?: string; profile?: string }>;
+  attempts?: LocalAttemptShape[];
+}
+
+function toPendingAttempt(attempt: LocalAttemptShape): PendingAttempt | null {
+  const { targetId, promptId } = attempt;
+  if (typeof targetId !== "string" || typeof promptId !== "string") return null;
+  return {
+    key: attemptKey({ targetId, promptId }),
+    promptId,
+    cli: attempt.cli ?? "",
+    model: attempt.model ?? "",
+    effort: attempt.effort ?? "",
+    ...(typeof attempt.profile === "string" ? { profile: attempt.profile } : {}),
+    status: attempt.status ?? "",
+    svgFile: typeof attempt.svgFile === "string" ? attempt.svgFile : null,
+  };
 }
 
 /** 待导出轮次的摘要：题目按记录顺序去重，上游按首次出现去重 */
 function summarizePendingRun(runId: string, run: LocalRunShape): PendingRun {
   const attempts = run.attempts ?? [];
+  const items = attempts.map(toPendingAttempt).filter((item): item is PendingAttempt => item !== null);
   const promptIds = [...new Set([
     ...(run.prompts ?? []).map((prompt) => prompt.promptId),
     ...attempts.map((attempt) => attempt.promptId),
@@ -199,7 +230,7 @@ function summarizePendingRun(runId: string, run: LocalRunShape): PendingRun {
   const profiles = [...new Set(attempts.map((attempt) => attempt.profile))]
     .filter((name): name is string => typeof name === "string");
   const ok = attempts.filter((attempt) => attempt.status === "ok").length;
-  return { runId, promptIds, attempts: attempts.length, ok, profiles };
+  return { runId, promptIds, attempts: attempts.length, ok, profiles, items };
 }
 
 async function checkSingleRunDir(
@@ -233,6 +264,7 @@ async function collectLocalRuns(
     const dirNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     const pendingRuns: PendingRun[] = [];
     const rejected: string[] = [];
+    const discarded: string[] = [];
     let running = 0;
     let interrupted = 0;
     const now = Date.now();
@@ -246,9 +278,11 @@ async function collectLocalRuns(
       if (ledgerEntry?.status === "skipped" && ledgerEntry.reason === "rejected") {
         rejected.push(runId);
       }
+      if (isDiscarded(ledgerEntry)) discarded.push(runId);
     }
     pendingRuns.sort((a, b) => b.runId.localeCompare(a.runId));
     rejected.sort((a, b) => b.localeCompare(a));
+    discarded.sort((a, b) => b.localeCompare(a));
     return {
       totalRuns: dirNames.length,
       pending: pendingRuns.map((run) => run.runId),
@@ -257,9 +291,12 @@ async function collectLocalRuns(
       running,
       interrupted,
       rejected,
+      discarded,
     };
   } catch {
-    return { totalRuns: 0, pending: [], pendingRuns: [], incomplete: 0, running: 0, interrupted: 0, rejected: [] };
+    return {
+      totalRuns: 0, pending: [], pendingRuns: [], incomplete: 0, running: 0, interrupted: 0, rejected: [], discarded: [],
+    };
   }
 }
 
@@ -339,6 +376,7 @@ export async function collectDataRepoStatus(
 
   return {
     configured,
+    autoSync: config.dataRepo?.autoSync === true,
     deploy,
     repo: repoState.repo,
     manifest: repoState.manifest,

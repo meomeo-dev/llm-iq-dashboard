@@ -25,6 +25,7 @@ import { runDir } from "../paths";
 import type { ProfileView } from "../profile-view";
 import { usageFromTranscript } from "../../pricing/usage";
 import type { Attempt, RunRecord } from "../types";
+import { withSelectedAttempts } from "./attempt-selection";
 import { sanitizeLocalPaths, scanText, type LeakReason } from "./leak-scan";
 
 export type ExportStatus = "ready" | "skipped" | "rejected";
@@ -43,12 +44,15 @@ export interface ReadyExportResult {
   redactions: Redaction[];
   /** 未导出的 profile 调用数（其 profile 不在导出时的配置里），见 withoutUnregisteredProfileAttempts */
   withheldProfileAttempts: number;
+  /** 本次按子集导出时的子集（attemptKey，原样来自选择），供台账沿用；整轮导出时缺省 */
+  attemptKeys?: string[];
 }
 
 export interface SkippedExportResult {
   status: "skipped";
   runId: string;
-  reason: "incomplete" | "invalid-run-id" | "unpublishable-prompt" | "empty";
+  /** no-selected-attempts：给了子集但一个都对不上本轮的调用，不记台账 */
+  reason: "incomplete" | "invalid-run-id" | "unpublishable-prompt" | "empty" | "no-selected-attempts";
 }
 
 export interface RejectedExportResult {
@@ -69,6 +73,8 @@ export interface ExportOptions {
   profiles?: readonly ProfileView[];
   /** 允许发布的题目 id；缺省或 null 为全部 */
   publishPrompts?: readonly string[] | null;
+  /** 按轮次给出的导出子集（attemptKey）；没有这一轮的条目即整轮 */
+  attemptSelection?: Readonly<Record<string, readonly string[]>>;
 }
 
 interface LegacyRunRecord
@@ -215,7 +221,12 @@ async function loadRunRecord(
   if (localRun.attempts.length === 0) {
     return { status: "skipped", runId, reason: "empty" };
   }
-  const publishable = withoutUnpublishablePrompts(localRun, options.publishPrompts ?? null);
+  const picked = options.attemptSelection?.[runId];
+  const selected = withSelectedAttempts(localRun, picked === undefined ? null : new Set(picked));
+  if (selected === null) {
+    return { status: "skipped", runId, reason: "no-selected-attempts" };
+  }
+  const publishable = withoutUnpublishablePrompts(selected, options.publishPrompts ?? null);
   if (publishable === null) {
     return { status: "skipped", runId, reason: "unpublishable-prompt" };
   }
@@ -357,6 +368,7 @@ export async function exportRun(
   }
 
   const { dir, run, withheldProfileAttempts } = loaded;
+  const picked = options.attemptSelection?.[runId];
   const { publicAttempts, svgFiles, redactions } = await processAttempts(
     dir,
     run.attempts,
@@ -386,6 +398,7 @@ export async function exportRun(
     svgFiles,
     redactions,
     withheldProfileAttempts,
+    ...(picked === undefined ? {} : { attemptKeys: [...new Set(picked)].sort() }),
   };
 }
 

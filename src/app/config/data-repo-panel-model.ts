@@ -16,6 +16,7 @@ import type {
 } from "@/core/sync/data-repo-panel-types";
 import type { SyncReport } from "@/core/sync/sync-orchestrator";
 import type { ConfirmPublishedReport } from "@/core/sync/confirm-published";
+import type { LedgerDecisionReport } from "@/core/sync/ledger-decisions";
 
 export type HealthLevel = "healthy" | "warning" | "unavailable";
 
@@ -77,6 +78,8 @@ export const ACTION_LABELS: Record<SyncActionMode, string> = {
   export: "导出提交",
   confirm: "确认发布",
   push: "推送发布",
+  discard: "丢弃",
+  restore: "恢复",
 };
 
 /** 推导数据仓整体健康等级及面向所有者的中文说明 */
@@ -151,7 +154,9 @@ function deriveWarningOrHealthy(status: DataRepoStatus): HealthInfo {
   // 中断的轮次由执行进程启动时收尾或保留策略清理，用户无法处理，面板不展示
   const running = status.local.running ?? 0;
   if (running > 0) {
-    return { level: "healthy", label: "正常", reason: `${running} 轮正在执行，结束后自动导出` };
+    // 旧状态快照没有 autoSync 字段，沿用原来的措辞
+    const after = status.autoSync === false ? "结束后在下方清单勾选导出" : "结束后自动导出";
+    return { level: "healthy", label: "正常", reason: `${running} 轮正在执行，${after}` };
   }
   return { level: "healthy", label: "正常", reason: "数据仓状态健康" };
 }
@@ -237,6 +242,8 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   "已废弃": "已废弃",
   empty: "空轮次",
   "空轮次": "空轮次",
+  discarded: "已丢弃",
+  "no-selected-attempts": "勾选的调用已不在本轮",
 };
 
 /** 确认发布与执行器推送的结果都是 ConfirmPublishedReport（带 confirmed 清单） */
@@ -332,7 +339,21 @@ function formatExportOrDryRunSummary(
 }
 
 /** 格式化成功的动作结果 */
+/** 丢弃与恢复：改了几轮，没改的附原因 */
+function formatLedgerDecisionSummary(result: SyncActionResult): ActionResultSummary {
+  const report = result.report as LedgerDecisionReport | null;
+  const changed = report?.changed.length ?? 0;
+  const verb = result.mode === "discard" ? "丢弃" : "恢复";
+  const unchanged = (report?.unchanged ?? []).map((item) => `${item.runId}（${item.reason}）`);
+  const text = unchanged.length > 0 ? `${verb} ${changed} 轮；未处理 ${unchanged.join("、")}` : `${verb} ${changed} 轮`;
+  return {
+    text, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0,
+    redactedCount: 0, publishedCount: 0, error: null,
+  };
+}
+
 function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
+  if (result.mode === "discard" || result.mode === "restore") return formatLedgerDecisionSummary(result);
   if (result.mode === "confirm") return formatConfirmSummary(result);
   if (result.mode === "push") return formatPushSummary(result);
   return formatExportOrDryRunSummary(result);
@@ -340,7 +361,7 @@ function formatSuccessSummary(result: SyncActionResult): ActionResultSummary {
 
 /** 从同步报告提取被拦截或跳过的轮次清单 */
 export function extractReportIssues(
-  report: SyncReport | ConfirmPublishedReport | null,
+  report: SyncActionResult["report"],
 ): {
   rejected: RejectedIssue[];
   skipped: SkippedIssue[];

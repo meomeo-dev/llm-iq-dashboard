@@ -55,6 +55,8 @@ const ACTION_NAMES: Record<SyncActionMode, string> = {
   export: "导出提交",
   confirm: "确认发布",
   push: "推送发布",
+  discard: "丢弃",
+  restore: "恢复",
 };
 
 /** 检查所有动作通用的基础不可用原因 */
@@ -311,6 +313,15 @@ function resolvePrimaryAction(
   return null;
 }
 
+/** 分容器部署时说明导出与推送由谁触发；按配置的 autoSync 说，不假定 */
+function describeAutoSync(status: DataRepoStatus | null): string | null {
+  if (status?.deploy.externalRunner !== true) return null;
+  // 旧状态快照没有 autoSync 字段，沿用原来的措辞
+  return status.autoSync === false
+    ? "轮次结束后不自动导出：在下方清单勾选后导出；推送需你在此确认。"
+    : "轮次结束后自动导出；推送需你在此确认。";
+}
+
 /**
  * 推导数据仓发布流水线模型。
  */
@@ -321,9 +332,7 @@ export function derivePipeline(
 ): PipelineModel {
   const commonBlocker = checkCommonBlocker(status, inFlightMode);
   const secondaryAction = buildSecondaryAction(commonBlocker, inFlightMode);
-  const staticNotice = status?.deploy.externalRunner
-    ? "轮次结束后自动导出；推送需你在此确认。"
-    : null;
+  const staticNotice = describeAutoSync(status);
 
   if (status === null) {
     return {

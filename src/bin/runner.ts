@@ -55,13 +55,8 @@ import {
   readDataRepoManifest,
   saveLastAction,
 } from "../core/sync/data-repo-status";
-import {
-  confirmPublished,
-  syncDataRepo,
-  syncOptionsFromConfig,
-  type ConfirmPublishedReport,
-  type SyncReport,
-} from "../core/sync/sync-orchestrator";
+import { performSyncAction, type SyncActionReport } from "../core/sync/sync-actions";
+import { confirmPublished, type ConfirmPublishedReport } from "../core/sync/sync-orchestrator";
 
 const REQUEST_POLL_MS = 1000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
@@ -288,24 +283,6 @@ async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Pr
   });
 }
 
-async function executeSyncAction(
-  mode: "dry-run" | "export" | "confirm",
-  full: AppConfig,
-  runIds: readonly string[] | undefined,
-): Promise<SyncReport | ConfirmPublishedReport> {
-  const scope = { ...syncOptionsFromConfig(full), runIds };
-  if (mode === "dry-run") {
-    return syncDataRepo({ ...scope, dryRun: true });
-  }
-  if (mode === "export") {
-    return syncDataRepo({ ...scope, dryRun: false, push: false });
-  }
-  if (mode === "confirm") {
-    return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
-  }
-  throw new Error(`不支持的同步模式: ${mode}`);
-}
-
 function isAheadCommitsMatch(actual: string[], confirmed?: string[]): boolean {
   if (!confirmed) return false;
   if (actual.length !== confirmed.length) return false;
@@ -418,10 +395,10 @@ async function performRunnerSync(
   const { mode } = action;
   if (mode === "push") throw new Error("push 由 handleRunnerPush 处理");
   let ok = true;
-  let report: SyncReport | ConfirmPublishedReport | null = null;
+  let report: SyncActionReport | null = null;
   let error: string | null = null;
   try {
-    report = await executeSyncAction(mode, full, action.runIds);
+    report = await performSyncAction(action, full);
   } catch (cause) {
     ok = false;
     error = describe(cause);

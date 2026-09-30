@@ -3,7 +3,7 @@
  *
  * 规则：
  * 1. 过期且台账为 published：删除；
- * 2. 过期且台账为 skipped/unpublishable-prompt 或 skipped/empty：删除；
+ * 2. 过期且台账为 skipped/unpublishable-prompt、skipped/empty 或 skipped/discarded（所有者丢弃）：删除；
  * 3. 过期且台账为 skipped/rejected：永不自动删除，汇总日志“保留 N 个被拒绝的过期轮次（需人工处理）”；
  * 4. 残轮判定：只有 run.json 不存在（ENOENT）或解析成功且 inProgress === true 才算残轮；
  *    读取失败（EACCES 等）或 JSON 损坏一律保留并记日志。
@@ -30,6 +30,13 @@ import {
 import { acquireDataRepoSyncLock } from "./sync/data-repo-action-lock";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 过期即删的跳过原因与日志里的叫法 */
+const SKIPPED_PRUNE_LABELS = {
+  "unpublishable-prompt": "过期不可发布轮次",
+  empty: "过期空轮次",
+  discarded: "过期已丢弃轮次",
+} as const;
 const RUN_FILE = "run.json";
 
 type PruneOutcome = "deleted" | "unpublished" | "rejected" | "retained";
@@ -164,8 +171,8 @@ async function handleCompletedRun(
     return del ? "deleted" : "retained";
   }
   if (record?.status === "skipped") {
-    if (record.reason === "unpublishable-prompt" || record.reason === "empty") {
-      const label = record.reason === "empty" ? "过期空轮次" : "过期不可发布轮次";
+    if (record.reason === "unpublishable-prompt" || record.reason === "empty" || record.reason === "discarded") {
+      const label = SKIPPED_PRUNE_LABELS[record.reason];
       const del = await removeExpiredDir(dir, runId, label, log);
       return del ? "deleted" : "retained";
     }

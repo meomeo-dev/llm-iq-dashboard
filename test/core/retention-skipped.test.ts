@@ -57,8 +57,10 @@ describe("retention-skipped 修剪分级测试", () => {
     const expExported = "20260901T040000Z";
     const expUnrecorded = "20260901T050000Z";
     const expEmpty = "20260901T060000Z";
+    const expDiscarded = "20260901T070000Z";
 
     for (const id of [
+      expDiscarded,
       expPublished,
       expUnpublishable,
       expRejected,
@@ -99,6 +101,11 @@ describe("retention-skipped 修剪分级测试", () => {
         reason: "empty",
         skippedAt: "2026-09-01T06:05:00Z",
       },
+      [expDiscarded]: {
+        status: "skipped",
+        reason: "discarded",
+        skippedAt: "2026-09-01T07:05:00Z",
+      },
     };
     await saveSyncLedger(ledger, dataDir);
 
@@ -109,6 +116,7 @@ describe("retention-skipped 修剪分级测试", () => {
     assert.ok(!remaining.includes(expPublished));
     assert.ok(!remaining.includes(expUnpublishable));
     assert.ok(!remaining.includes(expEmpty));
+    assert.ok(!remaining.includes(expDiscarded));
     assert.ok(remaining.includes(expRejected));
     assert.ok(remaining.includes(expExported));
     assert.ok(remaining.includes(expUnrecorded));
@@ -117,7 +125,7 @@ describe("retention-skipped 修剪分级测试", () => {
       logs.some((msg) => msg.includes("保留 1 个被拒绝的过期轮次（需人工处理）")),
     );
     assert.ok(logs.some((msg) => msg.includes("保留 2 个未发布的过期轮次")));
-    assert.ok(logs.some((msg) => msg.includes("清理了 3 个过期轮次")));
+    assert.ok(logs.some((msg) => msg.includes("清理了 4 个过期轮次")));
   });
 
   it("残轮两倍阈值两侧判定：未超两倍保留，超两倍写 abandoned 并删除", async () => {

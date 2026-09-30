@@ -34,7 +34,7 @@
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  max-height: 260px;
+  max-height: 520px;
   overflow-y: auto;
 }
 
@@ -46,7 +46,15 @@
   color: var(--text-faint);
 }
 
-.data-repo-pending-items li > label {
+.data-repo-pending-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.data-repo-pending-items .data-repo-pending-row > label {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -58,7 +66,7 @@
   cursor: pointer;
 }
 
-.data-repo-pending-items li > label > input {
+.data-repo-pending-items .data-repo-pending-row > label > input {
   margin: 0 2px 0 0;
 }
 
@@ -78,4 +86,133 @@
 
 .data-repo-pending-profiles {
   color: var(--accent);
+}
+
+.data-repo-pending-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.data-repo-pending-actions a {
+  color: var(--text-dim);
+}
+
+.data-repo-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.data-repo-link-button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.data-repo-pending-hint .data-repo-link-button {
+  margin-left: 10px;
+}
+
+/* 展开后的逐次调用：缩略图网格，每格可单独勾选 */
+.data-repo-pending-attempts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0 0 0 22px;
+  list-style: none;
+}
+
+.data-repo-pending-items .data-repo-pending-attempts li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  font-size: 11.5px;
+}
+
+.data-repo-pending-attempts li.unselected {
+  opacity: 0.45;
+}
+
+.data-repo-pending-attempts li > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.data-repo-attempt-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.data-repo-attempt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.data-repo-attempt-status {
+  color: var(--text-faint);
+}
+
+.data-repo-attempt-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--text-dim);
+}
+
+.data-repo-attempt-caption b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.data-repo-attempt-result.ok {
+  color: var(--ok);
+}
+
+.data-repo-attempt-result.error,
+.data-repo-attempt-result.timeout,
+.data-repo-attempt-result.no-svg {
+  color: var(--err);
+}
+
+.data-repo-pending-attempts li > a {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* 已丢弃的轮次：折叠，逐轮恢复 */
+.data-repo-discarded {
+  padding: 8px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.data-repo-discarded ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.data-repo-discarded li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
 }

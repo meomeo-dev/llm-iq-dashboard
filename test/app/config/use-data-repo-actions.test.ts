@@ -123,12 +123,18 @@ test("requestRepoStatus & postRepoAction 请求函数覆盖", async (t) => {
       bodies.push(String(init?.body));
       return new Response(JSON.stringify(createFakeActionResult()), { status: 200 });
     };
-    await postRepoAction(recordingFetch, "export", undefined, ["20260929T150913Z"]);
-    await postRepoAction(recordingFetch, "dry-run", undefined, []);
+    await postRepoAction(recordingFetch, "export", undefined, { runIds: ["20260929T150913Z"] });
+    await postRepoAction(recordingFetch, "dry-run", undefined, { runIds: [] });
     await postRepoAction(recordingFetch, "export");
     assert.deepStrictEqual(JSON.parse(bodies[0]!), { mode: "export", runIds: ["20260929T150913Z"] });
     assert.equal("runIds" in JSON.parse(bodies[1]!), false);
     assert.equal("runIds" in JSON.parse(bodies[2]!), false);
+    await postRepoAction(recordingFetch, "export", undefined, {
+      runIds: ["20260929T150913Z"], attempts: { "20260929T150913Z": ["a@p"] },
+    });
+    await postRepoAction(recordingFetch, "export", undefined, { runIds: ["20260929T150913Z"], attempts: {} });
+    assert.deepStrictEqual(JSON.parse(bodies[3]!).attempts, { "20260929T150913Z": ["a@p"] });
+    assert.equal("attempts" in JSON.parse(bodies[4]!), false);
   });
 });
 

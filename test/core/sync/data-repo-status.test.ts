@@ -185,9 +185,9 @@ describe("data-repo-status 状态聚合", () => {
       inProgress: false,
       prompts: [{ promptId: "animated-pelican-v1" }, { promptId: "classic-v1" }],
       attempts: [
-        { promptId: "animated-pelican-v1", status: "ok", profile: "relay-a" },
+        { targetId: "codex__m__low__relay-a", promptId: "animated-pelican-v1", status: "ok", profile: "relay-a", svgFile: "a.svg" },
         { promptId: "animated-pelican-v1", status: "ok" },
-        { promptId: "classic-v1", status: "error", profile: "relay-a" },
+        { targetId: "codex__m__low__relay-a", promptId: "classic-v1", status: "error", profile: "relay-a", svgFile: null },
       ],
     }), "utf8");
 
@@ -218,7 +218,33 @@ describe("data-repo-status 状态聚合", () => {
       attempts: 3,
       ok: 2,
       profiles: ["relay-a"],
+      // 缺 targetId 的旧记录不进逐次预览
+      items: [
+        {
+          key: "codex__m__low__relay-a@animated-pelican-v1", promptId: "animated-pelican-v1", cli: "", model: "",
+          effort: "", profile: "relay-a", status: "ok", svgFile: "a.svg",
+        },
+        {
+          key: "codex__m__low__relay-a@classic-v1", promptId: "classic-v1", cli: "", model: "",
+          effort: "", profile: "relay-a", status: "error", svgFile: null,
+        },
+      ],
     }]);
+  });
+
+  it("丢弃的轮次不在待导出里、列入 discarded；autoSync 按配置回报", async () => {
+    const runsDir = join(testDataDir, "runs");
+    const runId = "20260926T010000Z";
+    await mkdir(join(runsDir, runId), { recursive: true });
+    await writeFile(join(runsDir, runId, "run.json"), JSON.stringify({ inProgress: false, attempts: [] }), "utf8");
+    await saveSyncLedger({ [runId]: { status: "skipped", reason: "discarded", skippedAt: "2026-09-26T02:00:00.000Z" } }, testDataDir);
+
+    const config = { ...mockBaseConfig(), dataRepo: { path: join(rootDir, "missing"), autoSync: false, push: false, publishPrompts: null } };
+    const status = await collectDataRepoStatus(config as AppConfig, { dataDir: testDataDir });
+    assert.ok(!status.local.pending.includes(runId));
+    assert.ok(status.local.discarded?.includes(runId));
+    assert.strictEqual(status.ledger.skippedByReason?.discarded, 1);
+    assert.strictEqual(status.autoSync, false);
   });
 
   it("成功写入与回读 lastAction", async () => {

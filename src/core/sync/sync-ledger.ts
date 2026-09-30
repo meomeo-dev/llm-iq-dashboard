@@ -5,6 +5,7 @@
  * 记录每个 runId 的同步状态：
  * - exported：已导出并生成本地提交，尚未确认推送到远程
  * - published：已推送并经远程分支祖先校验确认包含
+ * - skipped：不发布，reason 说明原因；discarded 为所有者在面板上丢弃，可恢复
  */
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -14,8 +15,11 @@ import type { Redaction } from "../data-repo/contract";
 
 export type SyncStatus = "exported" | "published" | "skipped";
 
-/** empty：轮次结束时没有任何完成的调用（如刚开始就被取消），没有可发布的内容 */
-export type SkipReason = "unpublishable-prompt" | "rejected" | "abandoned" | "empty";
+/**
+ * empty：轮次结束时没有任何完成的调用（如刚开始就被取消），没有可发布的内容；
+ * discarded：所有者在面板上丢弃，见 ledger-decisions.ts
+ */
+export type SkipReason = "unpublishable-prompt" | "rejected" | "abandoned" | "empty" | "discarded";
 
 export interface NormalRunSyncRecord {
   status: "exported" | "published";
@@ -23,6 +27,8 @@ export interface NormalRunSyncRecord {
   commit?: string;
   publishedAt?: string;
   redactions: Redaction[];
+  /** 只导出了部分调用时的子集（attemptKey），再次评估沿用；整轮导出时缺省 */
+  attempts?: string[];
 }
 
 export interface SkippedRunSyncRecord {
@@ -52,6 +58,7 @@ const VALID_SKIP_REASONS = new Set<string>([
   "rejected",
   "abandoned",
   "empty",
+  "discarded",
 ]);
 
 function validateLedgerRecord(
@@ -80,6 +87,10 @@ function validateLedgerRecord(
         `同步台账 ${filePath} 格式错误: 记录 ${runId} skipped 缺少 skippedAt`,
       );
     }
+  }
+  const attemptsValid = Array.isArray(rec.attempts) && rec.attempts.every((key) => typeof key === "string");
+  if (rec.attempts !== undefined && !attemptsValid) {
+    throw new Error(`同步台账 ${filePath} 格式错误: 记录 ${runId} 的 attempts 必须是字符串数组`);
   }
 }
 

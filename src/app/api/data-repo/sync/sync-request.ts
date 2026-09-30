@@ -13,7 +13,12 @@ const VALID_MODES = new Set<SyncActionMode>([
   "export",
   "confirm",
   "push",
+  "discard",
+  "restore",
 ]);
+
+/** 只改台账的动作：必须点名轮次，不接受"缺省即全部" */
+const LEDGER_MODES = new Set<SyncActionMode>(["discard", "restore"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -53,6 +58,21 @@ function parseRunIds(raw: unknown): string[] | undefined {
   return runIds as string[];
 }
 
+/** attempts：按轮次的调用子集；键须在 runIds 里，每项是非空、去重的 attemptKey 数组 */
+function parseAttempts(raw: unknown, runIds: readonly string[] | undefined): Record<string, string[]> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!isRecord(raw)) throw new Error("attempts 必须是以 runId 为键的对象");
+  const listed = new Set(runIds ?? []);
+  const attempts: Record<string, string[]> = {};
+  for (const [runId, keys] of Object.entries(raw)) {
+    if (!listed.has(runId)) throw new Error(`attempts 里的轮次 ${runId} 不在 runIds 中`);
+    const valid = Array.isArray(keys) && keys.length > 0 && keys.every((key) => typeof key === "string" && key.includes("@"));
+    if (!valid) throw new Error(`attempts.${runId} 必须是非空的调用标识数组`);
+    attempts[runId] = [...new Set(keys as string[])];
+  }
+  return Object.keys(attempts).length > 0 ? attempts : undefined;
+}
+
 /**
  * 解析并校验同步请求体。非法时抛出明确中文错误。
  */
@@ -74,14 +94,19 @@ export function parseSyncActionRequest(text: string): SyncActionRequest {
 
   const mode = body.mode as SyncActionMode;
   if (!VALID_MODES.has(mode)) {
-    throw new Error(`未知的同步模式: ${String(body.mode)}，仅支持 dry-run、export、confirm、push`);
+    throw new Error(`未知的同步模式: ${String(body.mode)}，仅支持 dry-run、export、confirm、push、discard、restore`);
   }
 
   const confirmation = parseConfirmation(body.confirmation, mode);
   const runIds = parseRunIds(body.runIds);
+  if (LEDGER_MODES.has(mode) && runIds === undefined) {
+    throw new Error(`${mode} 必须用 runIds 点名要处理的轮次`);
+  }
+  const attempts = parseAttempts(body.attempts, runIds);
   return {
     mode,
     ...(runIds !== undefined ? { runIds } : {}),
+    ...(attempts !== undefined ? { attempts } : {}),
     ...(confirmation !== undefined ? { confirmation } : {}),
   };
 }

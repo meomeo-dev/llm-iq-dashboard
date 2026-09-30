@@ -50,6 +50,7 @@ export {
   type ConfirmPublishedOptions,
   type ConfirmPublishedReport,
 } from "./confirm-published";
+import { effectiveSelection, isDiscarded } from "./ledger-decisions";
 import { exportOptionsFor, resolveSyncContext, type SyncContext } from "./sync-scope";
 export { syncOptionsFromConfig, type SyncScope } from "./sync-scope";
 
@@ -67,6 +68,8 @@ export interface SyncOptions {
   profiles?: readonly ProfileConfig[];
   /** 允许发布的题目 id；缺省或 null 为全部 */
   publishPrompts?: readonly string[] | null;
+  /** 按轮次的导出子集（attemptKey）；只对尚未导出的轮次生效，已导出的沿用台账，见 effectiveSelection */
+  attemptSelection?: Readonly<Record<string, readonly string[]>>;
   log?: (message: string) => void;
 }
 
@@ -137,7 +140,7 @@ async function backfillIdempotentLedger(
   repoPath: string,
   runId: string,
   relativeRunDir: string,
-  redactions: Redaction[],
+  res: ReadyExportResult,
   ledger: SyncLedger,
   newlyExported: string[],
 ): Promise<void> {
@@ -151,7 +154,8 @@ async function backfillIdempotentLedger(
     status: "exported",
     exportedAt: new Date().toISOString(),
     ...(dirCommit !== null ? { commit: dirCommit } : {}),
-    redactions,
+    redactions: res.redactions,
+    ...(res.attemptKeys !== undefined ? { attempts: res.attemptKeys } : {}),
   };
   newlyExported.push(runId);
 }
@@ -176,7 +180,7 @@ async function checkExistingTargetDir(
         repoPath,
         runId,
         relativeRunDir,
-        res.redactions,
+        res,
         ledger,
         newlyExportedRunIds,
       );
@@ -326,6 +330,7 @@ async function commitAndRecordExported(
         exportedAt: nowIso,
         ...(commitSha !== null ? { commit: commitSha } : {}),
         redactions: item.redactions,
+        ...(item.attemptKeys !== undefined ? { attempts: item.attemptKeys } : {}),
       };
       newlyExportedRunIds.push(item.runId);
     }
@@ -434,14 +439,18 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
   const ctx = await resolveSyncContext(options);
   const report = createInitialReport(ctx.dryRun);
   await preparePreflight(ctx.repoPath, ctx.dryRun, ctx.push);
-  const candidateIds = await collectCandidateIds(options, ctx.runsDir);
+  const ledger: SyncLedger = await loadSyncLedger(ctx.dataDirPath);
+  // 丢弃的轮次任何同步都不导出，包括显式点名；要导出先在面板恢复
+  const candidateIds = (await collectCandidateIds(options, ctx.runsDir)).filter((id) => !isDiscarded(ledger[id]));
   report.totalCandidates = candidateIds.length;
 
-  const ledger: SyncLedger = await loadSyncLedger(ctx.dataDirPath);
   const newlyExportedRunIds: string[] = [];
   const newlySkippedRunIds: string[] = [];
   const newlyPublishedRunIds: string[] = [];
-  const exportOpts = exportOptionsFor(ctx, options);
+  const exportOpts = {
+    ...exportOptionsFor(ctx, options),
+    attemptSelection: effectiveSelection(ledger, options.attemptSelection, candidateIds),
+  };
 
   const { readyToExport, allRedactions } = await evaluateCandidates(
     candidateIds,

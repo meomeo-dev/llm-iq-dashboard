@@ -1,5 +1,5 @@
 /**
- * POST /api/data-repo/sync：所有者触发数据仓同步动作（演练、导出、发布确认、推送）。
+ * POST /api/data-repo/sync：所有者触发数据仓同步动作（演练、导出、发布确认、推送、丢弃与恢复）。
  *
  * 需所有者写操作权限（x-pelican-action: 1）；只读部署 403；未配置 409；非法请求体 400；
  * 动作并发 409；externalRunner 下 push 409；push 确认提交不一致 409。
@@ -24,13 +24,7 @@ import type {
   SyncActionResult,
 } from "@/core/sync/data-repo-panel-types";
 import { saveLastAction } from "@/core/sync/data-repo-status";
-import {
-  confirmPublished,
-  syncDataRepo,
-  syncOptionsFromConfig,
-  type ConfirmPublishedReport,
-  type SyncReport,
-} from "@/core/sync/sync-orchestrator";
+import { performSyncAction, type SyncActionReport } from "@/core/sync/sync-actions";
 import { parseSyncActionRequest } from "./sync-request";
 
 export const dynamic = "force-dynamic";
@@ -78,23 +72,6 @@ async function startViaRunner(
   return NextResponse.json({ error }, { status: settled?.state === "failed" ? 409 : 503 });
 }
 
-async function performLocalSync(
-  action: SyncActionRequest,
-  config: AppConfig,
-): Promise<SyncReport | ConfirmPublishedReport> {
-  const scope = { ...syncOptionsFromConfig(config), runIds: action.runIds };
-  if (action.mode === "dry-run") {
-    return syncDataRepo({ ...scope, dryRun: true });
-  }
-  if (action.mode === "export") {
-    return syncDataRepo({ ...scope, dryRun: false, push: false });
-  }
-  if (action.mode === "confirm") {
-    return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
-  }
-  return syncDataRepo({ ...scope, dryRun: false, push: true });
-}
-
 async function executeLocalSync(
   config: AppConfig,
   action: SyncActionRequest,
@@ -103,11 +80,11 @@ async function executeLocalSync(
   const { mode } = action;
   const startedAt = new Date().toISOString();
   let ok = true;
-  let report: SyncReport | ConfirmPublishedReport | null = null;
+  let report: SyncActionReport | null = null;
   let error: string | null = null;
 
   try {
-    report = await performLocalSync(action, config);
+    report = await performSyncAction(action, config);
   } catch (cause) {
     ok = false;
     error = cause instanceof Error ? cause.message : String(cause);
@@ -157,7 +134,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const who = { deviceId: guard.owner.deviceId, ip: clientIp(request) };
   try {
-    if (externalRunner()) {
+    // 丢弃与恢复只改产物目录里的台账，看板进程可直接写，不经执行器
+    const ledgerOnly = actionRequest.mode === "discard" || actionRequest.mode === "restore";
+    if (externalRunner() && !ledgerOnly) {
       if (actionRequest.mode === "push") {
         const pushErr = await checkExternalRunnerPush(actionRequest);
         if (pushErr) return NextResponse.json({ error: pushErr }, { status: 409 });

@@ -28,6 +28,13 @@ export interface UseDataRepoActionsOptions {
   autoLoad?: boolean;
 }
 
+/** 动作的处理范围：勾选的轮次与其中勾选的调用子集；都缺省为全部 */
+export interface ActionScope {
+  runIds?: readonly string[];
+  /** 只列部分勾选的轮次；整轮勾选的不列 */
+  attempts?: Readonly<Record<string, readonly string[]>>;
+}
+
 export interface UseDataRepoActionsReturn {
   status: DataRepoStatus | null;
   loading: boolean;
@@ -38,7 +45,7 @@ export interface UseDataRepoActionsReturn {
   executeAction: (
     mode: SyncActionMode,
     confirmation?: { aheadCommits: string[] },
-    runIds?: readonly string[],
+    scope?: ActionScope,
   ) => Promise<SyncActionResult | null>;
   dismissResult: () => void;
   dismissError: () => void;
@@ -76,15 +83,21 @@ export async function requestRepoStatus(fetchFn: FetchFn): Promise<{
   }
 }
 
-/** 发起 POST /api/data-repo/sync 动作并归约响应；runIds 只在给了且非空时随请求体发出 */
+/** 发起 POST /api/data-repo/sync 动作并归约响应；runIds 与 attempts 只在给了且非空时随请求体发出 */
 export async function postRepoAction(
   fetchFn: FetchFn,
   mode: SyncActionMode,
   confirmation?: { aheadCommits: string[] },
-  runIds?: readonly string[],
+  scope: ActionScope = {},
 ): Promise<{ result: SyncActionResult | null; error: string | null }> {
   try {
-    const payload = { mode, confirmation, ...(runIds !== undefined && runIds.length > 0 ? { runIds } : {}) };
+    const { runIds, attempts } = scope;
+    const payload = {
+      mode,
+      confirmation,
+      ...(runIds !== undefined && runIds.length > 0 ? { runIds } : {}),
+      ...(attempts !== undefined && Object.keys(attempts).length > 0 ? { attempts } : {}),
+    };
     const res = await fetchFn("/api/data-repo/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,13 +167,13 @@ function useRepoActionExecutor(
     async (
       mode: SyncActionMode,
       conf?: { aheadCommits: string[] },
-      runIds?: readonly string[],
+      scope?: ActionScope,
     ): Promise<SyncActionResult | null> => {
       if (inFlightRef.current !== null) return null;
       inFlightRef.current = mode;
       setInFlightMode(mode);
       setError(null);
-      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf, runIds);
+      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf, scope);
       inFlightRef.current = null;
       if (!mounted.current) return null;
       setInFlightMode(null);

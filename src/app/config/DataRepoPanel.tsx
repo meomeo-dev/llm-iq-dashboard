@@ -16,13 +16,14 @@ import {
   type ActionResultSummary,
 } from "./data-repo-panel-model";
 import { DataRepoCards } from "./DataRepoCards";
+import { DataRepoDiscardedList } from "./DataRepoDiscardedList";
 import { DataRepoGithubCard } from "./DataRepoGithubCard";
 import { DataRepoIssuesList } from "./DataRepoIssuesList";
 import { DataRepoPendingList } from "./DataRepoPendingList";
 import { DataRepoPipeline } from "./DataRepoPipeline";
 import { DataRepoPushDialog } from "./DataRepoPushDialog";
 import { useDataRepoActions, type FetchFn } from "./use-data-repo-actions";
-import { usePendingSelection } from "./use-pending-selection";
+import { usePendingSelection, type PendingSelection } from "./use-pending-selection";
 
 export interface DataRepoPanelProps {
   initialStatus?: DataRepoStatus | null;
@@ -104,6 +105,34 @@ function derivePanelData(
   };
 }
 
+/** 待导出清单（按轮次与调用勾选、丢弃）与已丢弃清单（恢复） */
+function DataRepoSelectionSection({
+  pending,
+  discarded,
+  disabled,
+  onLedgerAction,
+}: {
+  pending: PendingSelection;
+  discarded: readonly string[];
+  disabled: boolean;
+  onLedgerAction: (mode: "discard" | "restore", runIds: string[]) => void;
+}) {
+  return (
+    <>
+      <DataRepoPendingList
+        runs={pending.runs}
+        state={pending.state}
+        disabled={disabled}
+        onToggleRun={pending.toggleRun}
+        onToggleAttempt={pending.toggleAttempt}
+        onSetAll={pending.setAll}
+        onDiscard={(runIds) => onLedgerAction("discard", runIds)}
+      />
+      <DataRepoDiscardedList runIds={discarded} disabled={disabled} onRestore={(runIds) => onLedgerAction("restore", runIds)} />
+    </>
+  );
+}
+
 /** 配置页数据仓同步控制面板 */
 export function DataRepoPanel({
   initialStatus,
@@ -151,16 +180,15 @@ export function DataRepoPanel({
         status={status}
         inFlightMode={currentInFlight}
         selectedCount={pending.selectedCount}
-        onTriggerAction={(mode) => void executeAction(mode, undefined, pending.runIds)}
+        onTriggerAction={(mode) => void executeAction(mode, undefined, pending.scope)}
         onOpenPushDialog={() => setShowPushDialog(true)}
         onRefresh={() => void refresh()}
       />
-      <DataRepoPendingList
-        runs={pending.runs}
-        selected={pending.selected}
+      <DataRepoSelectionSection
+        pending={pending}
+        discarded={status?.local.discarded ?? []}
         disabled={currentInFlight !== null}
-        onToggle={pending.toggle}
-        onSetAll={pending.setAll}
+        onLedgerAction={(mode, runIds) => void executeAction(mode, undefined, { runIds })}
       />
 
       <DataRepoSummaryBar error={error} summary={summary} />
@@ -175,7 +203,7 @@ export function DataRepoPanel({
         isBusy={currentInFlight === "push"}
         onConfirm={() => {
           setShowPushDialog(false);
-          void executeAction("push", { aheadCommits: pushConfirm.aheadCommits }, pending.runIds);
+          void executeAction("push", { aheadCommits: pushConfirm.aheadCommits }, pending.scope);
         }}
         onCancel={() => setShowPushDialog(false)}
       />

@@ -1,5 +1,6 @@
 /**
- * POST /api/data-repo/sync 请求体解析：模式枚举、push 的确认清单、勾选的 runIds。
+ * POST /api/data-repo/sync 请求体解析：模式枚举、push 的确认清单、勾选的 runIds、调用子集，
+ * 以及丢弃与恢复必须点名轮次。
  */
 
 import assert from "node:assert/strict";
@@ -23,5 +24,33 @@ test("模式与 push 确认：未知模式拒绝；push 缺确认拒绝；确认
   assert.deepEqual(
     parseSyncActionRequest(JSON.stringify({ mode: "push", confirmation: { aheadCommits: ["abc"] }, runIds: ["20260929T150913Z"] })),
     { mode: "push", runIds: ["20260929T150913Z"], confirmation: { aheadCommits: ["abc"] } },
+  );
+});
+
+test("attempts：键须在 runIds 里、值为非空调用标识数组，去重后带出；缺省不带", () => {
+  const runId = "20260929T150913Z";
+  assert.deepEqual(
+    parseSyncActionRequest(JSON.stringify({ mode: "export", runIds: [runId], attempts: { [runId]: ["a@p", "a@p", "b@p"] } })),
+    { mode: "export", runIds: [runId], attempts: { [runId]: ["a@p", "b@p"] } },
+  );
+  assert.throws(
+    () => parseSyncActionRequest(JSON.stringify({ mode: "export", attempts: { [runId]: ["a@p"] } })),
+    /不在 runIds 中/,
+  );
+  assert.throws(
+    () => parseSyncActionRequest(JSON.stringify({ mode: "export", runIds: [runId], attempts: { [runId]: [] } })),
+    /非空的调用标识数组/,
+  );
+  assert.throws(
+    () => parseSyncActionRequest(JSON.stringify({ mode: "export", runIds: [runId], attempts: [] })),
+    /以 runId 为键/,
+  );
+});
+
+test("discard 与 restore 必须点名轮次", () => {
+  assert.throws(() => parseSyncActionRequest(JSON.stringify({ mode: "discard" })), /必须用 runIds 点名/);
+  assert.deepEqual(
+    parseSyncActionRequest(JSON.stringify({ mode: "restore", runIds: ["20260929T150913Z"] })),
+    { mode: "restore", runIds: ["20260929T150913Z"] },
   );
 });
