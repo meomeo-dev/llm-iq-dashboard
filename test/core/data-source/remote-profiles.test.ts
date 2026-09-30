@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { RemoteDataSource, type FetchFn } from "@/core/data-source/remote";
 
-const RELAY_A = { name: "relay-a", label: "甲", cli: "codex", upstreamType: "chatgpt-pro-5x", group: null, website: null, multiplier: 0.07, enabled: true };
+const RELAY_A = { name: "relay-a", label: "甲", cli: "codex", upstreamType: "chatgpt-pro-5x", group: null, multiplier: 0.07, enabled: true };
 const RELAY_B = { ...RELAY_A, name: "relay-b", label: "乙", multiplier: 0.16 };
 
 function attempt(targetId: string, profile?: string) {
@@ -50,7 +50,7 @@ test("knownProfiles：读过的记录里的 profile 按首次出现汇总；卡�
   assert.equal(cards.length, 3);
   assert.deepEqual(cards.map((card) => card.profile ?? "default").sort(), ["default", "relay-a", "relay-b"]);
   assert.deepEqual(ds.knownProfiles().map((view) => view.name), ["relay-b", "relay-a"]);
-  assert.deepEqual(ds.knownProfiles()[1], RELAY_A);
+  assert.deepEqual(ds.knownProfiles()[1], { ...RELAY_A, website: null });
   ds.clearCache();
   assert.deepEqual(ds.knownProfiles(), []);
 });

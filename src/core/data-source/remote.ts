@@ -338,7 +338,8 @@ export class RemoteDataSource implements DataSource {
 
   private async cardsOfPublicRun(run: PublicRunRecord): Promise<DashboardCard[]> {
     for (const profile of run.profiles ?? []) {
-      if (!this.profiles.has(profile.name)) this.profiles.set(profile.name, profile);
+      // 公开记录不带官网，展台上的信息卡据此不出外链
+      if (!this.profiles.has(profile.name)) this.profiles.set(profile.name, { ...profile, website: null });
     }
     const byId = new Map(run.prompts.map((p) => [p.promptId, p]));
     const redactionMap = new Map(run.redactions.map((r) => [r.file, r.reason]));

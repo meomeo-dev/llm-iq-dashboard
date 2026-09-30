@@ -15,6 +15,7 @@ import {
   DATA_REPO_SCHEMA_VERSION,
   dayPartition,
   type PublicAttempt,
+  type PublicProfile,
   type PublicRunRecord,
   type Redaction,
   UNPUBLISHABLE_PROMPT_IDS,
@@ -132,10 +133,14 @@ export function withoutUnregisteredProfileAttempts(
   return { run: { ...run, attempts }, withheld: run.attempts.length - attempts.length };
 }
 
-/** 本轮调用用到的 profile 公开视图，按配置顺序；没有则为空 */
-export function profilesUsedBy(run: RunRecord, views: readonly ProfileView[]): ProfileView[] {
+/** 本轮调用用到的 profile 公开视图，按配置顺序、去掉官网；没有则为空 */
+export function profilesUsedBy(run: RunRecord, views: readonly ProfileView[]): PublicProfile[] {
   const used = new Set(run.attempts.map((attempt) => attempt.profile));
-  return views.filter((view) => used.has(view.name));
+  return views.filter((view) => used.has(view.name)).map(toPublicProfile);
+}
+
+function toPublicProfile({ website: _website, ...view }: ProfileView): PublicProfile {
+  return view;
 }
 
 async function fileExists(path: string): Promise<boolean> {

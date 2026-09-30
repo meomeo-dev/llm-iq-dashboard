@@ -76,10 +76,16 @@ export interface RunSummary {
 }
 
 /**
- * 随记录发布的上游 profile：与看板页面下发的公开视图同一份字段白名单（PROFILE_VIEW_FIELDS），
- * 按导出时的配置快照，只含本轮调用用到的。接口地址、查询参数与 key 状态永远不在其中。
+ * 随记录发布的上游 profile：看板页面公开视图（ProfileView）去掉官网后的七个字段，
+ * 按导出时的配置快照，只含本轮调用用到的。接口地址、查询参数与 key 状态永远不在其中；
+ * 官网也不发布——公开展台不为第三方上游导流，只描述结果经由的上游类型与倍率。
  */
-export type PublicProfile = ProfileView;
+export type PublicProfile = Omit<ProfileView, "website">;
+
+/** 公开记录里 profile 允许的全部字段；数据仓校验器按同一份清单拒收多余字段 */
+export const PUBLIC_PROFILE_FIELDS: readonly (keyof PublicProfile)[] = [
+  "name", "label", "cli", "upstreamType", "group", "multiplier", "enabled",
+];
 
 /**
  * 脱敏后的单次调用：去掉原始转录引用，用量已从转录回填。

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, test } from "node:test";
 import {
   buildPromptStandards,
@@ -8,6 +11,41 @@ import {
 } from "@/app/components/dashboard/dashboard-page-data";
 import type { DashboardCard } from "@/core/types";
 import type { PromptSpec } from "@/core/prompt";
+import { _resetDataSourceInstancesForTest } from "@/core/data-source";
+
+const PROFILE_YAML = `run:
+  promptIds: [classic-v1]
+upstreamTypes: [chatgpt-pro-5x]
+profiles:
+  - name: relay-a
+    cli: codex
+    upstreamType: chatgpt-pro-5x
+    website: https://relay.example/
+    baseUrl: https://api.relay.example/v1
+    models: [gpt-5.5]
+    pricing:
+      multiplier: 0.08
+targets:
+  - cli: codex
+    profile: relay-a
+    model: gpt-5.5
+    effort: high
+`;
+
+async function withEnv(vars: Record<string, string>, body: () => Promise<void>): Promise<void> {
+  const saved = Object.fromEntries(Object.keys(vars).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, vars);
+  _resetDataSourceInstancesForTest();
+  try {
+    await body();
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    _resetDataSourceInstancesForTest();
+  }
+}
 
 describe("dashboard-page-data 服务端页面数据加载纯逻辑测试", () => {
   test("cardWindow：未指定日期时，按传入 now 取最近 24 小时宽窗口", () => {
@@ -70,5 +108,24 @@ describe("dashboard-page-data 服务端页面数据加载纯逻辑测试", () =>
     const settings = readDashboardSettings();
     assert.ok(Array.isArray(settings.prompts));
     assert.ok(settings.prompts.length > 0);
+  });
+
+  test("readDashboardSettings：远程数据源不读配置里的 profile，只信记录", async () => {
+    const workdir = await mkdtemp(join(tmpdir(), "page-data-"));
+    const configFile = join(workdir, "pelican.config.yaml");
+    await writeFile(configFile, PROFILE_YAML);
+    try {
+      await withEnv({ PELICAN_CONFIG: configFile }, async () => {
+        assert.deepEqual(readDashboardSettings().profiles.map((view) => view.website), ["https://relay.example/"]);
+      });
+      await withEnv(
+        { PELICAN_CONFIG: configFile, PELICAN_DATA_SOURCE: "remote", PELICAN_READONLY: "1" },
+        async () => {
+          assert.deepEqual(readDashboardSettings().profiles, []);
+        },
+      );
+    } finally {
+      await rm(workdir, { recursive: true, force: true });
+    }
   });
 });

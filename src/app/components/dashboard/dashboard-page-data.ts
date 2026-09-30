@@ -1,5 +1,6 @@
 import { loadConfig } from "@/core/config";
 import { knownProfiles } from "@/core/data-source";
+import { isRemoteDataSource } from "@/core/deploy-mode";
 import { configPath } from "@/core/paths";
 import {
   BUILTIN_PROMPTS,
@@ -36,8 +37,8 @@ export interface DashboardSettings {
   prompts: readonly PromptSpec[];
   scheduleTimeZone: string | null;
   /**
-   * 上游 profile 的公开视图（无接口地址与 key）：有配置时来自配置；
-   * 没有（展台、远程数据源）时来自已读到的记录，所以要在载入卡片之后再读
+   * 上游 profile 的公开视图（无接口地址与 key）：本地数据源来自配置；
+   * 远程数据源只信已读到的记录（记录不带官网，展台不出外链），所以要在载入卡片之后再读
    */
   profiles: readonly ProfileView[];
 }
@@ -49,11 +50,10 @@ export interface DashboardSettings {
 export function readDashboardSettings(): DashboardSettings {
   try {
     const config = loadConfig(configPath());
-    const configured = toProfileViews(config.profiles);
     return {
       prompts: listPrompts(config.customPrompts),
       scheduleTimeZone: config.schedule.timezone,
-      profiles: configured.length > 0 ? configured : knownProfiles(),
+      profiles: isRemoteDataSource() ? knownProfiles() : toProfileViews(config.profiles),
     };
   } catch {
     return { prompts: BUILTIN_PROMPTS, scheduleTimeZone: null, profiles: knownProfiles() };

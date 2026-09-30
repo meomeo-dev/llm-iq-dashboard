@@ -1,6 +1,6 @@
 /**
  * profile 调用的导出：导出时配置里登记的随记录发布并附公开视图，未登记的扣下并计数；
- * 记录里的 profile 视图只有八个公开字段，只有登录态的记录不带 profiles 字段。
+ * 记录里的 profile 视图只有七个公开字段（不含官网），只有登录态的记录不带 profiles 字段。
  */
 
 import assert from "node:assert/strict";
@@ -8,7 +8,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
-import { PROFILE_VIEW_FIELDS, type ProfileView } from "@/core/profile-view";
+import { PUBLIC_PROFILE_FIELDS } from "@/core/data-repo/contract";
+import type { ProfileView } from "@/core/profile-view";
 import { exportRun } from "@/core/sync/export-run";
 
 const RELAY_A: ProfileView = {
@@ -91,10 +92,13 @@ test("登记的 profile 调用随记录发布并附公开视图，未登记的�
     ["relay-b", "default", "relay-a"],
   );
   assert.equal(result.withheldProfileAttempts, 1);
-  assert.deepEqual(result.publicRecord.profiles, [RELAY_A, RELAY_B]);
+  const { website: _a, ...publicA } = RELAY_A;
+  const { website: _b, ...publicB } = RELAY_B;
+  assert.deepEqual(result.publicRecord.profiles, [publicA, publicB]);
   for (const view of result.publicRecord.profiles ?? []) {
-    assert.deepEqual(Object.keys(view).sort(), [...PROFILE_VIEW_FIELDS].sort());
+    assert.deepEqual(Object.keys(view).sort(), [...PUBLIC_PROFILE_FIELDS].sort());
   }
+  assert.equal(result.jsonText.includes("a.example"), false);
   const parsed = JSON.parse(result.jsonText) as { profiles: ProfileView[] };
   assert.equal(parsed.profiles.length, 2);
   assert.equal(result.jsonText.includes("relay-c"), false);
