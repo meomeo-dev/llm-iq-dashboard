@@ -32,7 +32,8 @@
 
 .data-repo-pending-items {
   margin: 8px 0 0;
-  padding: 0;
+  /* 右侧留出滚动条的位置，行尾动作不贴边 */
+  padding: 0 10px 0 0;
   list-style: none;
   max-height: 520px;
   overflow-y: auto;
