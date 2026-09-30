@@ -21,6 +21,7 @@ import {
 } from "../data-repo/contract";
 import { getDataRepoUrl } from "../deploy-mode";
 import { usageAndCost } from "../../pricing/attempt-cost";
+import type { ProfileView } from "../profile-view";
 import { runIdTime } from "../store";
 import type { DashboardCard, RunRecord } from "../types";
 import { FetchPool } from "./fetch-pool";
@@ -47,6 +48,8 @@ export class RemoteDataSource implements DataSource {
   private readonly timeoutMs: number;
   private readonly pool: FetchPool;
   private notice: string | null = null;
+  /** 记录里出现过的 profile 视图，键为 name，按首次出现排序 */
+  private readonly profiles = new Map<string, ProfileView>();
 
   constructor(options?: RemoteDataSourceOptions) {
     this.repoUrl = (options?.repoUrl ?? getDataRepoUrl()).replace(/\/+$/, "");
@@ -62,6 +65,11 @@ export class RemoteDataSource implements DataSource {
   /** 清空请求缓存（测试时重置） */
   clearCache(): void {
     this.pool.clearCache();
+    this.profiles.clear();
+  }
+
+  knownProfiles(): readonly ProfileView[] {
+    return [...this.profiles.values()];
   }
 
   /** 全部轮次的开始时刻（ISO），新的在前，供日历计数 */
@@ -329,6 +337,9 @@ export class RemoteDataSource implements DataSource {
   }
 
   private async cardsOfPublicRun(run: PublicRunRecord): Promise<DashboardCard[]> {
+    for (const profile of run.profiles ?? []) {
+      if (!this.profiles.has(profile.name)) this.profiles.set(profile.name, profile);
+    }
     const byId = new Map(run.prompts.map((p) => [p.promptId, p]));
     const redactionMap = new Map(run.redactions.map((r) => [r.file, r.reason]));
     const cards: DashboardCard[] = [];

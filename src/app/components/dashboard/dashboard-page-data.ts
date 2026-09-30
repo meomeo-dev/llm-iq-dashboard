@@ -1,4 +1,5 @@
 import { loadConfig } from "@/core/config";
+import { knownProfiles } from "@/core/data-source";
 import { configPath } from "@/core/paths";
 import {
   BUILTIN_PROMPTS,
@@ -34,24 +35,28 @@ export function sortNewestFirst(cards: readonly DashboardCard[]): DashboardCard[
 export interface DashboardSettings {
   prompts: readonly PromptSpec[];
   scheduleTimeZone: string | null;
-  /** 上游 profile 的公开视图（无接口地址与 key）；配置缺失时为空 */
+  /**
+   * 上游 profile 的公开视图（无接口地址与 key）：有配置时来自配置；
+   * 没有（展台、远程数据源）时来自已读到的记录，所以要在载入卡片之后再读
+   */
   profiles: readonly ProfileView[];
 }
 
 /**
  * 提示词显示名取全部已登记条目（含已停用的），保证历史结果在筛选里显示正确名称。
- * 配置缺失或损坏时退回内置条目、不带调度时区与上游，页面仍能呈现历史。
+ * 配置缺失或损坏时退回内置条目、不带调度时区，上游改从记录里取，页面仍能呈现历史。
  */
 export function readDashboardSettings(): DashboardSettings {
   try {
     const config = loadConfig(configPath());
+    const configured = toProfileViews(config.profiles);
     return {
       prompts: listPrompts(config.customPrompts),
       scheduleTimeZone: config.schedule.timezone,
-      profiles: toProfileViews(config.profiles),
+      profiles: configured.length > 0 ? configured : knownProfiles(),
     };
   } catch {
-    return { prompts: BUILTIN_PROMPTS, scheduleTimeZone: null, profiles: [] };
+    return { prompts: BUILTIN_PROMPTS, scheduleTimeZone: null, profiles: knownProfiles() };
   }
 }
 

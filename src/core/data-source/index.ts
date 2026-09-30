@@ -4,6 +4,7 @@
  */
 
 import { isRemoteDataSource } from "../deploy-mode";
+import type { ProfileView } from "../profile-view";
 import type { DashboardCard, RunRecord } from "../types";
 import type { DataRepoHealth, DataSource } from "./interface";
 import { LocalDataSource } from "./local";
@@ -57,6 +58,11 @@ export async function loadArt(
 /** 按 runId 倒序列出运行记录 */
 export async function listRuns(limit: number): Promise<RunRecord[]> {
   return getDataSource().listRuns(limit);
+}
+
+/** 已读到的记录里出现过的上游 profile 视图；本地数据源为空 */
+export function knownProfiles(): readonly ProfileView[] {
+  return getDataSource().knownProfiles?.() ?? [];
 }
 
 /** 获取远程数据源当前的提示信息（如有） */

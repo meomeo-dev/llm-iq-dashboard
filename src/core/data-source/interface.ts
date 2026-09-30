@@ -3,6 +3,7 @@
  * 页面与路由只经这一层读轮次数据。
  */
 
+import type { ProfileView } from "../profile-view";
 import type { DashboardCard, RunRecord } from "../types";
 
 export interface DataRepoHealth {
@@ -34,5 +35,11 @@ export interface DataSource {
 
   /** 数据仓健康检查探针；仅远程数据源有实际探针 */
   checkHealth?(): Promise<DataRepoHealth>;
+
+  /**
+   * 已读到的记录里出现过的上游 profile 公开视图，按首次出现排序；展台没有配置文件，
+   * 上游的显示名与倍率只能从记录里来。本地数据源不实现，页面改读配置
+   */
+  knownProfiles?(): readonly ProfileView[];
 }
 
