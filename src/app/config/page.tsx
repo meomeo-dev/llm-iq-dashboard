@@ -56,6 +56,7 @@ export default async function ConfigPage() {
               targets: config!.targets,
               customPrompts: config!.customPrompts,
               customModels: config!.customModels,
+              judge: config!.judge,
             }}
             builtinPrompts={[...BUILTIN_PROMPTS]}
             initialCatalog={catalog}

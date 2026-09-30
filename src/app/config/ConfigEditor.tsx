@@ -11,6 +11,7 @@ import { PromptPicker } from "./PromptPicker";
 import { CapabilityPanel } from "./CapabilityPanel";
 import { RotationForm } from "./RotationForm";
 import { TimeoutForm } from "./TimeoutForm";
+import { JudgePanel } from "./JudgePanel";
 import { ConfigSection } from "./ConfigSection";
 import { ProfilePanel, type ProfilePanelProps } from "./ProfilePanel";
 import type { ProfileCredentialTable } from "@/core/profile-credentials";
@@ -88,6 +89,8 @@ export function ConfigEditor({
         run={draft.run}
         onChange={(updated) => patch("run", updated)}
       />
+
+      <JudgeSection judge={draft.judge} catalog={catalog} onChange={(v) => patch("judge", v)} />
 
       <ConfigEditorActions
         status={status}
@@ -219,6 +222,26 @@ function ScheduleSection({
       hint="这里只定节奏，到点是否执行看“自动任务”开关。cron 与间隔二选一，cron 优先；保存后 30 秒内生效，无需重启。"
     >
       <ScheduleForm value={schedule} onChange={onChange} />
+    </ConfigSection>
+  );
+}
+
+function JudgeSection({
+  judge,
+  catalog,
+  onChange,
+}: {
+  judge: EditableConfig["judge"];
+  catalog: CapabilitySnapshot;
+  onChange: (value: EditableConfig["judge"]) => void;
+}) {
+  return (
+    <ConfigSection
+      id="judge"
+      title="作品评审"
+      hint="有评分标准的题目（动态鹈鹕车）给作品贴智商在线 / 降智标签。代码层不花配额；AI 层由裁判 CLI 看联系图打分，走裁判的登录态与配额。"
+    >
+      <JudgePanel value={judge} catalog={catalog} onChange={onChange} />
     </ConfigSection>
   );
 }

@@ -394,6 +394,36 @@ describe("永不发布的题目", () => {
     await writeFile(join(runsDir, runId, "run.json"), JSON.stringify(run));
   }
 
+  it("有 .judge.json 的调用内嵌评审记录，去掉联系图与裁判转录引用；没有的不带字段", async () => {
+    const runId = "20260927T030000Z";
+    await mkdir(join(runsDir, runId), { recursive: true });
+    const judged = { ...attemptFor("animated-pelican-v1"), targetId: "agy__m__high__profile-x", status: "ok", svgFile: "judged.svg", svgBytes: 10 };
+    const plain = { ...attemptFor("animated-pelican-v1"), status: "ok", svgFile: "plain.svg", svgBytes: 10 };
+    await writeFile(join(runsDir, runId, "run.json"), JSON.stringify({
+      runId, prompts: [{ promptId: "animated-pelican-v1", text: "题面", bindings: {} }],
+      startedAt: "2026-09-27T03:00:00.000Z", finishedAt: "2026-09-27T03:01:00.000Z", durationMs: 60000,
+      trigger: "manual", inProgress: false, attempts: [judged, plain],
+    }));
+    await writeFile(join(runsDir, runId, "judged.svg"), "<svg/>");
+    await writeFile(join(runsDir, runId, "plain.svg"), "<svg/>");
+    await writeFile(join(runsDir, runId, "judged.judge.json"), JSON.stringify({
+      schemaVersion: 1, subject: { runId, attemptKey: "judged" }, rubric: { id: "animated-pelican-v1", version: 3, passThreshold: 60 },
+      judges: [{ kind: "code", id: "static-judge@1", judgedAt: "2026-09-27T03:01:00Z" }, { kind: "ai", id: "agy/g@high", judgedAt: "2026-09-27T03:02:00Z", rawFile: "judged.judge-ai.txt" }],
+      contactSheet: { file: "judged.sheet.png", details: [] }, blindDescription: "一只鹈鹕在骑车",
+      gates: [], criteria: [], total: { score: 88, maxScore: 100, verdict: "online", judgedAt: "2026-09-27T03:02:00Z" },
+    }));
+    const result = await exportRun(runId, { runsDir });
+    assert.equal(result.status, "ready");
+    if (result.status !== "ready") return;
+    const [first, second] = result.publicRecord.attempts;
+    assert.equal(first?.judge?.total.verdict, "online");
+    assert.equal(first?.judge?.blindDescription, "一只鹈鹕在骑车");
+    assert.equal("contactSheet" in (first?.judge ?? {}), false);
+    assert.deepEqual(first?.judge?.judges.map((j) => "rawFile" in j), [false, false]);
+    assert.equal("judge" in (second ?? {}), false);
+    assert.doesNotMatch(result.jsonText, /judge-ai\.txt|sheet\.png/);
+  });
+
   it("整轮只含测试题时跳过，不产出任何公开内容", async () => {
     await writeRun("20260927T021708Z", ["leijun-v1"]);
     const result = await exportRun("20260927T021708Z", { runsDir });

@@ -5,6 +5,7 @@
  * 1. rawFile 恒为 null，用量缺失时从同名 .txt 转录解析回填；
  * 2. 规范化旧版记录（顶层 promptId/promptText）；
  * 3. 扫描并脱敏 SVG 作品（命中则 svgFile 置 null，记录 redaction）；
+ * 3b. 有评审记录的调用内嵌去掉联系图与转录引用的评审记录（ACR-020）；
  * 4. 替换 run.json 文本中的本机绝对路径为 ~ 形式；
  * 5. 扫描 run.json，若命中凭据/私钥/路径规则则整轮拒绝发布。
  */
@@ -15,11 +16,14 @@ import {
   DATA_REPO_SCHEMA_VERSION,
   dayPartition,
   type PublicAttempt,
+  type PublicJudgement,
   type PublicProfile,
   type PublicRunRecord,
   type Redaction,
   UNPUBLISHABLE_PROMPT_IDS,
 } from "../data-repo/contract";
+import { attemptKeyOf, judgeFileName } from "../judge/judge-store";
+import type { Judgement } from "../judge/schema";
 import type { LeakGuard } from "../leak-guard";
 import { runDir } from "../paths";
 import type { ProfileView } from "../profile-view";
@@ -305,15 +309,29 @@ async function processAttempts(
     if (svgItem !== null) svgFiles.push(svgItem);
 
     const { rawFile: _rawFile, ...restAttempt } = attempt;
+    const judge = finalSvgFile === null ? null : await loadPublicJudgement(dir, finalSvgFile);
     publicAttempts.push({
       ...restAttempt,
       rawFile: null,
       svgFile: finalSvgFile,
       usage,
+      ...(judge === null ? {} : { judge }),
     });
   }
 
   return { publicAttempts, svgFiles, redactions };
+}
+
+/** 读本地 .judge.json 并去掉不发布的部分；没有或读不出即 null */
+async function loadPublicJudgement(dir: string, svgFile: string): Promise<PublicJudgement | null> {
+  try {
+    const parsed = JSON.parse(await readFile(join(dir, judgeFileName(attemptKeyOf(svgFile))), "utf8")) as Judgement;
+    if (parsed.schemaVersion !== 1) return null;
+    const { contactSheet: _sheet, judges, ...rest } = parsed;
+    return { ...rest, judges: judges.map(({ rawFile: _raw, ...judge }) => judge) };
+  } catch {
+    return null;
+  }
 }
 
 /**

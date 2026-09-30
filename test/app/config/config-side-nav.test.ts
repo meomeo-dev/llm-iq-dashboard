@@ -8,7 +8,7 @@ import { CONFIG_NAV_ITEMS } from "@/app/config/config-nav-items";
 import { ConfigSideNav } from "@/app/config/ConfigSideNav";
 
 test("CONFIG_NAV_ITEMS 常量契约", () => {
-  assert.strictEqual(CONFIG_NAV_ITEMS.length, 8);
+  assert.strictEqual(CONFIG_NAV_ITEMS.length, 9);
   const expectedOrder = [
     { id: "capability", title: "CLI 能力目录", href: "#capability" },
     { id: "prompts", title: "提示词", href: "#prompts" },
@@ -16,6 +16,7 @@ test("CONFIG_NAV_ITEMS 常量契约", () => {
     { id: "matrix", title: "被测矩阵", href: "#matrix" },
     { id: "schedule", title: "调度", href: "#schedule" },
     { id: "timeout", title: "执行与超时", href: "#timeout" },
+    { id: "judge", title: "作品评审", href: "#judge" },
     { id: "data-repo", title: "数据仓", href: "#data-repo" },
     { id: "devices", title: "已配对设备", href: "#devices" },
   ];

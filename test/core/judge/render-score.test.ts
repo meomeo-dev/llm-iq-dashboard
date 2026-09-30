@@ -64,18 +64,18 @@ describe("applyRenderResults", () => {
     const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2 }));
     const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "f0")), actor);
     assert.deepEqual(j.gates.map((g) => g.passed), [true, true, true, true, true]);
-    assert.equal(j.total.score, 60);
+    assert.equal(j.total.score, 30);
     assert.equal(j.judges.length, 2);
     assert.match(j.criteria[2]?.reason ?? "", /循环闭合/);
   });
 
-  test("轮心漂移一个半径：C1 取渲染分 10；末帧未闭合：C3 减半", () => {
+  test("轮心漂移一个半径：C1 取渲染分 5；末帧未闭合：C3 减半", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
     const frames = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { wheelX: k === 4 ? 40 : 0, legY: k % 2 }));
     const j = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(frames, frame(2000, "zz", { wheelX: 6 })), actor);
-    assert.equal(j.criteria[0]?.score, 10);
+    assert.equal(j.criteria[0]?.score, 5);
     assert.equal(j.criteria[0]?.source, "render");
-    assert.equal(j.criteria[2]?.score, 5);
+    assert.equal(j.criteria[2]?.score, 2);
   });
 
   test("画面不动：G4 不通过，总分 0 判降智", () => {
@@ -98,14 +98,14 @@ describe("applyRenderResults", () => {
     const base = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
     const steady = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2, pedalGap: 3 }));
     const good = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(steady, frame(2000, "f0")), actor);
-    assert.equal(good.criteria[3]?.score, 15);
+    assert.equal(good.criteria[3]?.score, 8);
     assert.match(good.criteria[3]?.reason ?? "", /脚始终跟着脚踏/);
     // 首帧贴着腿，半个周期后脚踏点离腿 36（曲柄伸出 40 的九成）
     const swinging = Array.from({ length: 8 }, (_, k) => frame(k * 250, `f${k}`, { legY: k % 2, pedalGap: k === 4 ? 36 : 0 }));
     const bad = applyRenderResults(base, ANIMATED_PELICAN_RUBRIC, measurements(swinging, frame(2000, "f0")), actor);
     assert.equal(bad.criteria[3]?.score, 0);
     assert.match(bad.criteria[3]?.reason ?? "", /脚与脚踏不同步/);
-    assert.equal(bad.total.score, 45);
+    assert.equal(bad.total.score, 22);
   });
 
   test("首帧脚尖离脚踏超过半个曲柄伸出长度的腿不算踩过脚踏：C4 零分", () => {

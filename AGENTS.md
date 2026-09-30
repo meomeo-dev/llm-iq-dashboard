@@ -43,11 +43,17 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `ok` / `no-svg` / `error` / `timeout` 分开记录；输出经凭据指纹比对，命中即不落盘。
 - **提示词**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
   `src/core/prompt*`，题目数据在 `src/core/prompts/`，改动后跑 `pnpm validate:prompts`。
-- **作品评审**（ACR-019）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
+- **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
   `<attemptKey>.judge.json`、帧序联系表 `.sheet.png` 与各类细节联系表 `.sheet.<kind>.png`（同帧号），
   不改 `run.json`；静态层用 jsdom，渲染层用 playwright-core 驱动本机 Chromium（没有则跳过）。
   `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`，改口径要升
   `version`。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
+- **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`
+  串行交给配置 `judge.ai.judges` 里第一个厂商不同的裁判 CLI，以适配器「评审模式」（临时目录只放联系图，
+  只放开读文件）先盲描述再按 C5–C8 打 70 分，转录存 `<attemptKey>.judge-ai.txt`。裁判调用真实消耗配额，
+  `pnpm judge:backfill -- --ai-only` 补评历史前先征得同意。评审记录去掉联系图与转录后随公开
+  `run.json` 的调用发布（`PublicAttempt.judge`），数据仓 validator 同步认这个字段；容器镜像装了
+  chromium（`PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX`）给渲染层用。
 - **模型产物不可信**：SVG 在浏览器端净化（`src/app/components/card/`），`/art` 路由以 CSP
   sandbox 返回原图。
 - **写入与权限**：JSON 一律写临时文件后原子替换；配置页写回在 YAML 语法树上改值并保留注释。

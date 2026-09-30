@@ -21,6 +21,7 @@ export const CONFIG_NAV_ITEMS: readonly ConfigNavItem[] = [
   { id: "matrix", title: "被测矩阵", href: "#matrix" },
   { id: "schedule", title: "调度", href: "#schedule" },
   { id: "timeout", title: "执行与超时", href: "#timeout" },
+  { id: "judge", title: "作品评审", href: "#judge" },
   { id: "data-repo", title: "数据仓", href: "#data-repo" },
   { id: "devices", title: "已配对设备", href: "#devices" },
 ] as const;

@@ -124,9 +124,27 @@ export interface RetentionConfig {
   days: number | null;
 }
 
+/** AI 层的一个裁判：走该 CLI 的登录态，按 cli/model@effort 写进记录的 judges[] */
+export interface JudgeModel {
+  cli: CliKind;
+  model: string;
+  effort: EffortLevel;
+}
+
+export interface JudgeAiConfig {
+  /** 关闭后只出代码层分，记录停在「待复核」 */
+  enabled: boolean;
+  /** 候选裁判，按顺序取第一个厂商与被评作品不同的；为空即不评 */
+  judges: JudgeModel[];
+  /** 单次裁判调用的超时（毫秒） */
+  timeoutMs: number;
+}
+
 export interface JudgeConfig {
   /** 关闭后调用结束时不评审；已有的评审记录照常显示 */
   enabled: boolean;
+  /** AI 语义层（ACR-020）；不写即关闭 */
+  ai: JudgeAiConfig;
 }
 
 export interface AppConfig {

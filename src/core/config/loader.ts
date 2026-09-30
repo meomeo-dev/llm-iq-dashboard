@@ -6,7 +6,7 @@ import { Cron } from "croner";
 import { constants, copyFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { CliKind, EffortLevel } from "../types";
+import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "../types";
 import { resolvePrompt } from "../prompt";
 import { parsePrompts } from "../config-prompts";
 import { applyCeiling, readCeiling } from "../ceiling";
@@ -16,7 +16,9 @@ import type {
   AppConfig,
   DataRepoConfig,
   RetentionConfig,
+  JudgeAiConfig,
   JudgeConfig,
+  JudgeModel,
   RunConfig,
   ScheduleConfig,
 } from "./types";
@@ -113,13 +115,44 @@ export function parseRetention(raw: unknown, errors: string[]): RetentionConfig 
   return { days };
 }
 
+const JUDGE_AI_DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+
 export function parseJudge(raw: unknown, errors: string[]): JudgeConfig {
   const node = asRecord(raw) ?? {};
+  const ai = parseJudgeAi(node.ai, errors);
   if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
     errors.push("judge.enabled 必须是布尔值");
-    return { enabled: true };
+    return { enabled: false, ai };
   }
-  return { enabled: node.enabled ?? true };
+  return { enabled: node.enabled ?? false, ai };
+}
+
+/** judge.ai：不写即关闭；judges 每项要有合法的 cli / model / effort */
+function parseJudgeAi(raw: unknown, errors: string[]): JudgeAiConfig {
+  const off: JudgeAiConfig = { enabled: false, judges: [], timeoutMs: JUDGE_AI_DEFAULT_TIMEOUT_MS };
+  const node = asRecord(raw);
+  if (node === null) return off;
+  if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
+    errors.push("judge.ai.enabled 必须是布尔值");
+    return off;
+  }
+  const judges: JudgeModel[] = [];
+  for (const [index, item] of (Array.isArray(node.judges) ? node.judges : []).entries()) {
+    const entry = asRecord(item);
+    const cli = optionalString(entry?.cli);
+    const model = optionalString(entry?.model);
+    const effort = optionalString(entry?.effort);
+    if (!isCliKind(cli) || model === null || model.trim() === "" || !isEffortLevel(effort)) {
+      errors.push(`judge.ai.judges[${index}] 需要 cli（${CLI_KINDS.join(" / ")}）、model 与 effort（${EFFORT_LEVELS.join(" / ")}）`);
+      continue;
+    }
+    judges.push({ cli, model: model.trim(), effort });
+  }
+  const timeoutMs = optionalNumber(node.timeoutMs) ?? JUDGE_AI_DEFAULT_TIMEOUT_MS;
+  if (!(timeoutMs > 0)) errors.push(`judge.ai.timeoutMs 必须是正数（毫秒），当前为 ${String(node.timeoutMs)}`);
+  const enabled = node.enabled ?? true;
+  if (enabled && judges.length === 0) errors.push("judge.ai 开启时 judges 至少要有一个裁判");
+  return { enabled: enabled && judges.length > 0, judges, timeoutMs: timeoutMs > 0 ? timeoutMs : JUDGE_AI_DEFAULT_TIMEOUT_MS };
 }
 
 export function parseBudget(raw: unknown, errors: string[]): BudgetConfig {

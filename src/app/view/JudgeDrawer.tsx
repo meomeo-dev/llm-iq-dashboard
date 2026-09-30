@@ -57,7 +57,7 @@ function ContactSheets({ runId, sheet }: { runId: string; sheet: ContactSheet })
         <img src={src(sheet.file)} alt="帧序联系表" loading="lazy" />
         <figcaption>帧序 · 整幅画面</figcaption>
       </figure>
-      {sheet.details.map((d) => (
+      {(sheet.details ?? []).map((d) => (
         <figure key={d.kind} className="judge-sheet">
           <img src={src(d.file)} alt={`${d.subject}细节联系表`} loading="lazy" />
           <figcaption>{d.subject} ×{d.zoom} · {d.criteria.join(" ")}</figcaption>

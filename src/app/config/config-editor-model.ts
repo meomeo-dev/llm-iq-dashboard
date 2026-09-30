@@ -1,4 +1,4 @@
-import type { ProfileConfig } from "@/core/config";
+import type { JudgeConfig, ProfileConfig } from "@/core/config";
 import type { PromptSpec } from "@/core/prompt";
 import type { CliKind, EffortLevel, Target } from "@/core/types";
 import type { RotationConfig } from "@/core/variables";
@@ -19,6 +19,7 @@ export interface EditableConfig {
   targets: Target[];
   customPrompts: PromptSpec[];
   customModels: Partial<Record<CliKind, string[]>>;
+  judge: JudgeConfig;
 }
 
 export type ConfigEditorStatus =
@@ -40,5 +41,6 @@ export function buildConfigPatchBody(draft: EditableConfig): string {
     targets: draft.targets,
     prompts: draft.customPrompts,
     customModels: draft.customModels,
+    judge: draft.judge,
   });
 }

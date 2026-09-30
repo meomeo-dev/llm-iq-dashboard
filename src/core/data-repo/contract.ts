@@ -13,9 +13,13 @@
  *   runs/YYYY/MM/DD/<runId>/run.json        PublicRunRecord
  *   runs/YYYY/MM/DD/<runId>/<svgFile>       作品，文件名即 PublicAttempt.svgFile
  *
+ * 评审结果（ACR-020）不另起文件：PublicAttempt.judge 内嵌去掉联系图与裁判转录引用的评审记录，
+ * 只读展台读 run.json 即得到标签与逐项分。联系图与转录留在本地，不进数据仓。
+ *
  * 数据仓只追加：已发布的轮次目录不改写、不删除；清单与日索引随追加重写。
  */
 
+import type { Judgement } from "../judge/schema";
 import type { ProfileView } from "../profile-view";
 import type { Attempt, RunRecord } from "../types";
 import type { TokenUsage } from "../../pricing/types";
@@ -88,6 +92,14 @@ export const PUBLIC_PROFILE_FIELDS: readonly (keyof PublicProfile)[] = [
 ];
 
 /**
+ * 随调用发布的评审记录：本地 `.judge.json` 去掉 `contactSheet`（联系图不发布）与
+ * `judges[].rawFile`（裁判转录不发布）；其余逐字相同，结构见 docs/research/judge/judge.schema.json。
+ */
+export type PublicJudgement = Omit<Judgement, "contactSheet" | "judges"> & {
+  judges: Array<Omit<Judgement["judges"][number], "rawFile">>;
+};
+
+/**
  * 脱敏后的单次调用：去掉原始转录引用，用量已从转录回填。
  * `profile`（继承自 Attempt）指向 PublicRunRecord.profiles 里的一项；登录态不写。
  */
@@ -95,6 +107,8 @@ export interface PublicAttempt extends Omit<Attempt, "rawFile" | "usage"> {
   /** 公开记录不带原始转录，恒为 null，保留字段使读取方与本地记录同形 */
   rawFile: null;
   usage: TokenUsage | null;
+  /** 有评审记录的调用带上它；没有评审（题目无评分标准、评审关闭、旧记录）时不写 */
+  judge?: PublicJudgement;
 }
 
 /** 某个文件因脱敏被拦下未发布的说明 */

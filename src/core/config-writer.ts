@@ -5,7 +5,7 @@
 
 import { readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { parseDocument } from "yaml";
-import { loadConfig, type AppConfig, type ProfileConfig } from "./config";
+import { loadConfig, type AppConfig, type JudgeConfig, type ProfileConfig } from "./config";
 import { deleteKeyKeepingComment, reconcileSequence } from "./yaml-nodes";
 import type { PromptSpec } from "./prompt";
 import { DEFAULT_PROFILE, type CliKind, type EffortLevel, type Target } from "./types";
@@ -35,6 +35,8 @@ export interface ConfigPatch {
   targets?: Target[];
   prompts?: PromptSpec[];
   customModels?: Partial<Record<CliKind, string[]>>;
+  /** 作品评审全表（ACR-020）：开关、AI 层开关、裁判清单与超时 */
+  judge?: JudgeConfig;
 }
 
 export async function applyConfigPatch(
@@ -73,8 +75,17 @@ export async function applyConfigPatch(
     });
   }
   if (patch.customModels !== undefined) doc.setIn(["customModels"], patch.customModels);
+  if (patch.judge !== undefined) applyJudge(doc, patch.judge);
 
   return commit(path, doc.toString());
+}
+
+/** 逐个子键写，保留段落注释；裁判清单整体替换（条目小，没有值得保留的注释） */
+function applyJudge(doc: YamlDoc, judge: JudgeConfig): void {
+  doc.setIn(["judge", "enabled"], judge.enabled);
+  doc.setIn(["judge", "ai", "enabled"], judge.ai.enabled);
+  doc.setIn(["judge", "ai", "timeoutMs"], judge.ai.timeoutMs);
+  doc.setIn(["judge", "ai", "judges"], judge.ai.judges.map((item) => ({ cli: item.cli, model: item.model, effort: item.effort })));
 }
 
 type YamlDoc = ReturnType<typeof parseDocument>;

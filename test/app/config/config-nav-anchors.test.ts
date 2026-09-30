@@ -129,6 +129,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
           targets: [],
           customPrompts: [],
           customModels: {},
+          judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000 } },
         },
         builtinPrompts: [],
         initialCatalog: catalog,
@@ -136,7 +137,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
       })
     );
     const ids = extractSectionIds(html);
-    const expected = ["capability", "prompts", "profiles", "matrix", "schedule", "timeout"];
+    const expected = ["capability", "prompts", "profiles", "matrix", "schedule", "timeout", "judge"];
     assert.deepStrictEqual(ids, expected);
     assert.strictEqual(new Set(ids).size, ids.length, "区块 id 不得重复");
   });
@@ -214,6 +215,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
           targets: [],
           customPrompts: [],
           customModels: {},
+          judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000 } },
         },
         builtinPrompts: [],
         initialCatalog: catalog,

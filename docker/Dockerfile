@@ -4,9 +4,10 @@
 # 不含任何账号信息。
 FROM node:22-bookworm-slim
 
-# curl 供安装 agy；git 供 CLI 在工作目录里正常识别仓库状态
+# curl 供安装 agy；git 供 CLI 在工作目录里正常识别仓库状态；
+# chromium 供作品评审的渲染层定格动画、截联系图（ACR-019 / ACR-020），字体给作品里的文字
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl git \
+  && apt-get install -y --no-install-recommends ca-certificates curl git chromium fonts-liberation fonts-noto-cjk \
   && rm -rf /var/lib/apt/lists/*
 
 ARG PNPM_VERSION=11.24.0
@@ -28,6 +29,8 @@ ENV CLAUDE_CODE_VERSION=2.1.283 \
     PELICAN_CLI_HOME=/opt/clis \
     PATH=/opt/clis/bin:/opt/clis/npm/bin:$PATH \
     PELICAN_CONFIG=/app/data/pelican.config.yaml \
+    PELICAN_BROWSER_PATH=/usr/bin/chromium \
+    PELICAN_BROWSER_NO_SANDBOX=1 \
     PELICAN_COMMAND_PREFIX="docker exec -it llm-iq-runner" \
     CLAUDE_CONFIG_DIR=/home/node/.claude \
     DISABLE_AUTOUPDATER=1 \

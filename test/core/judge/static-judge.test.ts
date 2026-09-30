@@ -53,9 +53,9 @@ describe("judgeStatic 闸门", () => {
 describe("judgeStatic 计分", () => {
   test("规范作品：静态四项满分，AI 项留空，verdict 为 pending", () => {
     const j = judge(GOOD);
-    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [20, 15, 10, 15]);
+    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [10, 8, 4, 8]);
     assert.equal(j.criteria.find((c) => c.id === "C6")?.score, null);
-    assert.equal(j.total.score, 60);
+    assert.equal(j.total.score, 30);
     assert.equal(j.total.verdict, "pending");
     assert.match(j.criteria[0]?.reason ?? "", /g#rear 旋转中心偏离圆心 0\.0/);
   });
@@ -69,7 +69,7 @@ describe("judgeStatic 计分", () => {
   test("绕全局原点旋转而圆心不在原点：偏差超过半径判零分", () => {
     const offCenter = GOOD.replace('<g id="rear" transform="translate(100 200)"><circle r="40"/>',
       '<g id="rear"><circle cx="100" cy="200" r="40"/>');
-    assert.equal(score(offCenter, "C1"), 10);
+    assert.equal(score(offCenter, "C1"), 5);
   });
 
   test("CSS 动画：transform-origin 的像素值与圆心一致时满分", () => {
@@ -87,7 +87,7 @@ describe("judgeStatic 计分", () => {
     </svg>`;
     const j = judge(css);
     // 曲柄用 fill-box 居中，五通位置静态无法定位，C2 只给八成
-    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [20, 12, 10, 15]);
+    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [10, 6, 4, 8]);
   });
 
   test("只转辐条、轮圈是兄弟节点，且轮子经 <use> 实例化两次：仍认出两个车轮", () => {
@@ -103,25 +103,25 @@ describe("judgeStatic 计分", () => {
       <path d="M200 150 L200 190"><animate attributeName="d" values="M200 150 L200 190;M200 150 L205 200" dur="1s" repeatCount="indefinite"/></path>
     </svg>`;
     const j = judge(spokes);
-    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [20, 15, 10, 15]);
+    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [10, 8, 4, 8]);
     assert.match(j.criteria[1]?.reason ?? "", /在两轮之间/);
   });
 
   test("腿没有命名但周期与曲柄一致：C4 仍满分，理由注明待核对", () => {
     const unnamed = GOOD.replace('<g id="leg-near">', "<g>");
     const c4 = judge(unnamed).criteria.find((c) => c.id === "C4");
-    assert.equal(c4?.score, 15);
+    assert.equal(c4?.score, 8);
     assert.match(c4?.reason ?? "", /未命名为腿/);
   });
 
   test("只播放一次的车轮：循环项按比例扣", () => {
     const once = GOOD.replace('dur="2s" repeatCount="indefinite"', 'dur="2s" repeatCount="1"');
-    assert.equal(score(once, "C3"), 7);
+    assert.equal(score(once, "C3"), 3);
   });
 
   test("腿部周期与曲柄不成整数比：C4 只得三分之一", () => {
     const drift = GOOD.replace('dur="1s" repeatCount="indefinite"/></path></g>', 'dur="0.7s" repeatCount="indefinite"/></path></g>');
-    assert.equal(score(drift, "C4"), 5);
+    assert.equal(score(drift, "C4"), 3);
   });
 });
 

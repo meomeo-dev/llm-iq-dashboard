@@ -28,6 +28,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       targets: config.targets,
       customPrompts: config.customPrompts,
       customModels: config.customModels,
+      judge: config.judge,
       builtinPrompts: BUILTIN_PROMPTS,
     });
   } catch (cause) {

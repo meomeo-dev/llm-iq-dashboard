@@ -20,6 +20,7 @@ import type { RenderedPrompt } from "./variables";
 import { discardScratch } from "./scratch-cleanup";
 import { closeJudgeBrowser } from "./judge/browser";
 import { createAttemptJudge } from "./judge/judge-attempt";
+import { judgeRoundWithAi } from "./judge/ai-round";
 import { executeLanes, type LaneHooks } from "./run/execute-lanes";
 import { postRunSync } from "./run/post-sync";
 import {
@@ -249,6 +250,8 @@ export async function executeRun(
   const record = await finishRunRecord(snapshot, progress, runId, config, log);
   const outcome = state.cancelledAt !== undefined ? "已停止" : "完成";
   log(`[${runId}] ${outcome}，成功 ${countOk(record.attempts)}/${record.attempts.length}`);
+  // AI 层在轮次记录定稿之后串行跑，不与基准调用重叠；被停止的轮次不评
+  if (state.cancelledAt === undefined) await judgeRoundWithAi(config, record, log);
   return record;
 }
 

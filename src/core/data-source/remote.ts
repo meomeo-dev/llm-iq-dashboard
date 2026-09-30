@@ -371,7 +371,8 @@ export class RemoteDataSource implements DataSource {
         promptText: prompt?.text ?? "",
         bindings: prompt?.bindings ?? {},
         ...costInfo,
-        judge: null,
+        // 公开记录内嵌的评审记录没有联系图与转录引用（ACR-020）；旧记录没有此字段
+        judge: attempt.judge ?? null,
       });
     }
     return cards;

@@ -8,8 +8,8 @@
  * 不用 `codex exec` 的原因见 codex-app-server.ts。
  *
  * - 思考强度通过 turn/start 的 `effort` 字段传递；
- * - 沙箱只读、审批策略 never：模型尝试写盘或执行命令时由服务端直接拒绝，不会卡在
- *   等待审批上。
+ * - 沙箱只读、审批策略 untrusted：模型尝试写盘或执行命令时由适配器直接拒绝，不会卡在
+ *   等待审批上；评审模式改 never，只读沙箱内可以看联系图。
  */
 
 import { CodexAppServer, EXIT_METHOD } from "./codex-app-server";
@@ -110,8 +110,9 @@ async function startThread(
       cwd: request.workdir,
       sandbox: "read-only",
       // untrusted：每条命令与每次改文件都进入审批，而适配器一律拒绝（见 codex-app-server.ts），
-      // 模型因此读不到任何文件；never 会让 read-only 沙箱内的读取直接放行
-      approvalPolicy: "untrusted",
+      // 模型因此读不到任何文件；never 会让 read-only 沙箱内的读取直接放行——评审模式正要这样，
+      // 裁判得看工作目录里的联系图，写盘仍被只读沙箱拦住
+      approvalPolicy: request.review ? "never" : "untrusted",
       // 基准调用不需要留在 codex 的会话历史里
       ephemeral: true,
     },

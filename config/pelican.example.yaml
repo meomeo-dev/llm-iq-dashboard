@@ -93,9 +93,19 @@ retention:
 # 作品评审（ACR-019）：有评分标准的题目（如 animated-pelican-v1）在每次调用抽出 SVG 后，
 # 由代码层按题目口径打分并写 data/runs/<runId>/<attemptKey>.judge.json；渲染层需要本机有
 # Chromium（Google Chrome 或 PELICAN_BROWSER_PATH 指定的可执行文件），没有时只出静态分。
-# 关闭后不评审，已有的记录照常显示。默认开启。
+# 默认关闭；开启后已有的记录照常显示。看板 /config 页「作品评审」区块可改这一段。
+# AI 语义层（ACR-020）：代码层判「待复核」的作品在整轮结束后逐件交给裁判 CLI 看联系图打分
+# （C5–C8，共 70 分），裁判走该 CLI 的登录态、真实消耗配额；按顺序取第一个厂商与作品不同的裁判，
+# 前一个调用失败（未登录、超时）时换下一个，都失败则不评。默认关闭且没有裁判：要用先填 judges。
 # judge:
 #   enabled: true
+#   ai:
+#     enabled: true
+#     timeoutMs: 300000
+#     judges:
+#       - { cli: claude, model: claude-sonnet-5-5, effort: medium }
+#       - { cli: codex, model: gpt-6-sol, effort: medium }
+#       - { cli: agy, model: gemini-3.8-flash, effort: high }
 
 # 数据仓同步配置（可选）：自动或手动将已完成的评测脱敏同步到独立公开数据仓（llm-iq-data）。
 # path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析；容器部署时填 /data-repo）。

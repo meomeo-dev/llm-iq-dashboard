@@ -2,7 +2,7 @@
  * Claude Code CLI 适配器。
  *
  * 调用形态：`claude -p <prompt> --model <model> --effort <level>
- *            --output-format stream-json --verbose --tools ""`
+ *            --output-format stream-json --verbose --tools ""`（评审模式 `--tools Read`）
  *
  * 使用事件流：Write 工具写出的 SVG 完整内容在 `tool_use` 事件里，被拒的工具列在
  * `result` 事件的 `permission_denials` 里；单个 JSON 信封只含最后一句回答。
@@ -57,9 +57,10 @@ export function buildClaudeArgs(request: AgentRequest): string[] {
     "stream-json",
     // print 模式下 stream-json 必须配 --verbose，否则 CLI 拒绝执行
     "--verbose",
-    // 基准只要一张内联 SVG，不给模型任何工具：读文件、跑命令一律拒绝
+    // 基准只要一张内联 SVG，不给模型任何工具：读文件、跑命令一律拒绝；
+    // 评审模式只放开 Read，让裁判看工作目录里的联系图
     "--tools",
-    "",
+    request.review ? "Read" : "",
     ...target.extraArgs,
   ];
 }

@@ -31,6 +31,16 @@ export interface AgentRequest {
    * 返回内容由编排层丢弃。
    */
   signal?: AbortSignal;
+  /**
+   * 评审模式（ACR-020）：工作目录里只放联系图，允许模型读取这些文件（看图），仍不给写盘与
+   * 执行命令。缺省即考生模式：空目录、不给任何工具。
+   */
+  review?: ReviewMode;
+}
+
+export interface ReviewMode {
+  /** 工作目录里允许读取的文件名 */
+  readableFiles: string[];
 }
 
 /** 模型在回答过程中写出的文件，内容已由适配器当场读回 */

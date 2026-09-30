@@ -37,6 +37,7 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
     targets: [],
     customPrompts: [],
     customModels: { claude: ["m1"] },
+    judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000 } },
   };
 
   const json = buildConfigPatchBody(draft);

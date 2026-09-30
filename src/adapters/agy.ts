@@ -19,7 +19,8 @@
  *
  * 权限：只加 `--sandbox`，不加 `--dangerously-skip-permissions`。headless 模式下未授权的
  * 命令与文件读取会被自动拒绝，模型读不到工作目录之外的任何东西；作品仍经
- * `write_to_file` 事件取回（写入不需要审批）。
+ * `write_to_file` 事件取回（写入不需要审批）。评审模式不改参数：工作目录内的联系图
+ * 本就在可读范围内。
  */
 
 import { EFFORT_LEVELS, type EffortLevel } from "../core/types";
