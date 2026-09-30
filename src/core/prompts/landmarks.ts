@@ -7,13 +7,18 @@
  * 结构、比例与颜色只取自事实表；微缩场景的陈设、光影与色板建议值为本仓库自撰的渲染层
  * 指令，不借用任何条目原文或照片。
  *
- * 题面采用固定骨架：主体 → 结构 → 比例 → 材质与色彩 → 环境与微缩细节 → 构图与镜头 →
- * 光影与材质 → 远近层次 → 微缩细节 → 氛围 → 风格与绘制技法 → 禁止。前五段每景各异，
- * 后七段由 composeLandmarkPrompt 统一拼接，各景逐字相同，只在「禁止」末尾追加该景特有的
+ * 题面采用固定骨架：主体 → 结构 → 比例 → 材质与色彩 → 环境与微缩细节 → 优先级说明 →
+ * 构图与镜头 → 光影与材质 → 远近层次 → 微缩细节 → 氛围 →（动态）→ 风格与绘制技法 → 禁止。前五段每景
+ * 各异，其余由 composeLandmarkPrompt 统一拼接，各景逐字相同，只在「禁止」末尾追加该景特有的
  * 排除项。
+ *
+ * 二十景的数据只维护一份（LANDMARK_SCENES），从中派生两套题：
+ * - `landmarks-v1` 静态版：候选 id 为 `landmark-<slug>`；
+ * - `landmarks-anim-v1` 动态版：多注入一段【动态】，候选 id 为 `landmark-anim-<slug>`，
+ *   评分标准在各景标准之后追加统一的动画判据。
  */
 
-import type { PromptSpec } from "../prompt";
+import type { PromptCandidate, PromptSpec, PromptStandard } from "../prompt";
 
 /** 一景题面里随地标变化的六段 */
 interface LandmarkPromptParts {
@@ -31,47 +36,83 @@ interface LandmarkPromptParts {
   readonly forbidden: string;
 }
 
+/** 一景的全部数据：题面六段 + 该景的评分标准，静态与动态两套题共用 */
+interface LandmarkScene {
+  /** 地标 slug，如 `paris-eiffel-tower`；静态候选 id 为 `landmark-<slug>`，动态为 `landmark-anim-<slug>` */
+  readonly slug: string;
+  /** 城市 + 地标，动态版在其后追加「（动态）」 */
+  readonly label: string;
+  readonly parts: LandmarkPromptParts;
+  readonly standard: PromptStandard;
+}
+
 /**
  * 统一的渲染层段落，二十条题面逐字相同。
  *
- * 这七段只讲「怎么画」，不含任何地标事实：舞台怎么搭、光从哪来、每种材质怎么处理、
- * 远近如何拉开、陈设怎样才算是一件可以凑近看的小模型。地标各自的【材质与色彩】段仍然
- * 决定颜色，这里只规定明暗与质感的画法，两段不冲突。
+ * 这些段落只讲「怎么画」，不含任何地标事实，也不点名任何具体物件或材质：底座怎么搭、光从哪来、
+ * 明暗怎么分、远近怎么拉开、陈设怎样才算是可以凑近看的小模型。画什么、什么颜色、什么质感、
+ * 有哪些陈设，全部由各景的五段数据决定；渲染层开头的 PRECEDENCE 明确写出这条优先级，
+ * 防止统一段落无中生有或与某一景的描述相抵触。
  */
+const PRECEDENCE =
+  "以下各段只规定画法。凡与【主体】【结构】【比例】【材质与色彩】【环境与微缩细节】五段有出入的，" +
+  "一律以那五段为准；不添加那五段没有写到的任何物件、材质或效果。";
 const COMPOSITION =
-  "【构图与镜头】把整座模型放在一块厚度可见的圆形展示底座上，底座顶面是一张干净的台面，" +
-  "侧壁比顶面深一档，顶面外沿留一道细细的亮边；镜头取约 30° 俯视的四分之三视角，带轻微" +
-  "透视，正面与一个侧面同时可见；主体居中，占画面高度约 70%，底座占画面宽度约 80%。";
+  "【构图与镜头】把整座模型放在一块厚度可见的圆形展示底座上，底座顶面就是【环境与微缩细节】" +
+  "段描述的地面或水面，侧壁比顶面深一档，顶面外沿留一道细细的亮边；镜头取约 30° 俯视的四分之三" +
+  "视角，带轻微透视，让主体的两个面同时可见，若【主体】段指定了观看方向则以它为准；主体居中，" +
+  "最长的一边约占画面对应方向的 70%，底座占画面宽度约 80%。";
 const LIGHTING =
-  "【光影与材质】光源在左上方约 45°，是柔和的漫射顶光。每个体块都分出受光、中间、背光" +
-  "三档明度，受光面顶边再提一道更亮的窄边，背光面底边压一道更暗的窄边。材质各有各的" +
-  "画法：石材与砖用略深的同色细线画砌缝，缝只出现在受光面；金属留一条细长的冷色高光；" +
-  "水面用径向渐变铺一片受光的亮斑，岸边与船底压一抹深色倒影；植被用两到三层由深到浅的" +
-  "圆润团块叠出蓬松；瓦面用细密的平行线表现瓦垄。出檐下、拱洞内、平台底面与构件相接处用" +
-  "半透明深色形状画环境光遮蔽；主体按光源方向在台面上拖出一片柔和的投影，底座下方再画" +
-  "一个淡淡的椭圆投影。";
+  "【光影与材质】光源在左上方约 45°，是柔和的漫射顶光。每个体块都分出受光、中间、背光三档明度，" +
+  "受光面顶边再提一道更亮的窄边，背光面底边压一道更暗的窄边。质感按【材质与色彩】段写的来，" +
+  "本段只规定明暗的做法：硬而光滑的表面高光集中成一条窄边，粗糙的表面高光散成一片；透明或" +
+  "反光的表面把上方物件的颜色压暗后映在下面；有砌缝、纹理、格纹这类表面细节时，只在受光面画出，" +
+  "背光面并入暗部。凡是悬出、凹进和两个构件相接的地方，用半透明深色形状压一层环境光遮蔽。" +
+  "主体按光源方向在地面上拖出一片柔和的投影，底座下方再画一个淡淡的椭圆投影。";
 const DEPTH =
-  "【远近层次】底座上分近、中、远三层：主体在中层，最实、对比最强；近处的陈设颜色略深、" +
-  "边缘清楚；远处的地貌与建筑整体提亮、降低饱和度、边缘变软、不描轮廓，像隔着一层薄薄的" +
-  "空气。";
+  "【远近层次】以主体所在的位置为基准分近、中、远：主体所在的那一层最实、对比最强；比主体更近的" +
+  "陈设颜色略深、边缘清楚；比主体更远的东西整体提亮、降低饱和度、边缘变软、不描轮廓，像隔着" +
+  "一层薄薄的空气。";
 const DETAIL =
-  "【微缩细节】陈设不是示意图，而是可以凑近看的小模型：船带一道尾迹，树有自己的小投影，" +
-  "车有车窗与车顶两个色块，窗洞里有一点更深的暗部。栏杆、窗、拱、波纹这类重复构件成排" +
-  "铺满，不能画三个代表一排；同类陈设至少两种尺寸，散落而不排成阵；尺寸上限以【比例】" +
-  "段为准。";
+  "【微缩细节】只画【环境与微缩细节】段写到的陈设，不添加那里没有的东西；但写到的每一件都" +
+  "按可以凑近看的小模型来画：会动的东西带上它运动留下的痕迹，立着的东西有自己的小投影，" +
+  "有开口的东西在开口里留一点更深的暗部，成组的东西至少两种尺寸、散落而不排成阵。凡是" +
+  "【结构】或【环境与微缩细节】段写成一排、一圈、一片的重复构件，就成排铺满，不能画三个代表" +
+  "一排。尺寸上限以【比例】段为准。";
 const ATMOSPHERE =
-  "【氛围】晴朗午后、安静的陈列室：背景是自上而下由浅到更浅的柔和渐变，不画任何背景景物；" +
-  "主体与陈设颜色饱和明快，底座与背景保持低饱和，让视线落在模型上；整体偏亮，最深的暗部" +
-  "也不发黑，而是带一点该处材质的颜色。";
+  "【氛围】时间、天气与季节以【主体】段为准，画面整体是一件放在安静陈列室里的模型：底座以外的" +
+  "背景只画自上而下由浅到更浅的柔和渐变，不画任何景物；模型比底座与背景更实、对比更强，让" +
+  "视线落在模型上；整体偏亮，最深的暗部也不发黑，而是带一点该处材质的颜色。";
 const STYLE =
   "【风格与绘制技法】miniature diorama 微缩景观的玩具模型质感：体量来自明暗面而不是线描；" +
-  "色块饱和明快，轮廓线细而干净或不画。细节要密而有序，结构与比例必须准确，宁可多画一层" +
-  "明度，不要省成一块平色。用分层的简单形状堆叠建筑与地貌；渐变可用线性与径向；允许用 " +
-  "<filter> 做柔和投影与远处的轻微模糊；重复构件放进 <defs>，用 <use> 或 <pattern> 复用；" +
-  "不使用位图与外部引用。";
+  "轮廓线细而干净或不画。细节要密而有序，结构与比例必须准确，宁可多分一档明度，不要省成" +
+  "一块平色。用分层的简单形状堆叠建筑与地貌；渐变可用线性与径向；允许用 <filter> 做柔和" +
+  "投影与远处的轻微模糊；重复构件放进 <defs>，用 <use> 或 <pattern> 复用；不使用位图与" +
+  "外部引用。";
 const FORBIDDEN_BASE = "【禁止】文字、旗帜、徽记、标语、真实人物、JavaScript 与交互事件";
 
-function composeLandmarkPrompt(parts: LandmarkPromptParts): string {
+/**
+ * 动态版多出的一段。只给一个判断方法，不点名任何物件、类别或效果：到该景【环境与微缩细节】段里
+ * 找现实中本来就会动的东西，让它按现实里的方式动；找不到就整幅静止。主体永远不动。这样结构与
+ * 比例的判据在两套题里完全一致，也不会为了动画凭空多出一辆车、一棵树或一道光。
+ */
+const MOTION =
+  "【动态】主体建筑或地貌本身静止不动。到【环境与微缩细节】段里找现实中本来就会动的东西，" +
+  "只让这些东西动，动法就是它们在现实里的动法，幅度按微缩模型的尺度缩小；那一段没有写到的" +
+  "东西一律不画，不为了动画添加任何物件、光效或天气变化。如果该景没有会动的东西，就整幅静止，" +
+  "这不算缺陷。动画一律用 SMIL（<animate>、<animateTransform>、" +
+  "<animateMotion>）或写在 <style> 里的 CSS @keyframes 实现，每个循环 4 到 12 秒，缓入缓出，" +
+  "循环处不能有跳变；旋转与摇摆的中心必须落在该物件自身的轴点上，不能绕画布原点转；" +
+  "动画元素总数不超过十二个，其余保持静止。若使用 <style>，把 CSS 包在 <![CDATA[ ]]> 里，" +
+  "不出现未转义的 & 与 <。";
+
+/** 静态与动态两套题的渲染层，差别只在有没有【动态】这一段 */
+const STATIC_RENDER_LAYER =
+  PRECEDENCE + COMPOSITION + LIGHTING + DEPTH + DETAIL + ATMOSPHERE + STYLE;
+const ANIMATED_RENDER_LAYER =
+  PRECEDENCE + COMPOSITION + LIGHTING + DEPTH + DETAIL + ATMOSPHERE + MOTION + STYLE;
+
+function composeLandmarkPrompt(parts: LandmarkPromptParts, renderLayer: string): string {
   return (
     "生成一幅 SVG 插画。" +
     `【主体】${parts.subject}` +
@@ -79,26 +120,47 @@ function composeLandmarkPrompt(parts: LandmarkPromptParts): string {
     `【比例】${parts.proportion}` +
     `【材质与色彩】${parts.material}` +
     `【环境与微缩细节】${parts.environment}` +
-    COMPOSITION +
-    LIGHTING +
-    DEPTH +
-    DETAIL +
-    ATMOSPHERE +
-    STYLE +
+    renderLayer +
     `${FORBIDDEN_BASE}、${parts.forbidden}。`
   );
 }
 
-export const LANDMARKS_PROMPT: PromptSpec = {
-  id: "landmarks-v1",
-  label: "城市地标·微缩景观二十景",
-  template: "二十座城市各一处地标的微缩景观，每个轮换周期洗牌抽一条，逐字发送该条全文。",
-  variables: [],
-  candidates: [
+/** 动态版在各景标准之后追加的统一动画判据 */
+const MOTION_CORE_KEY = "陈设与环境的循环动画平滑、旋转中心落在物件自身轴点、主体保持静止";
+const MOTION_CRITERIA =
+  "动态部分：满分为环境段里现实中会动的陈设按其现实动法做平滑无跳变的循环，旋转与摇摆绕" +
+  "自身轴点，主体静止，纯 SMIL 或内联 CSS 驱动；该景没有会动之物时整幅静止不扣分。扣分：" +
+  "为了动画添加环境段没有的物件、光效或天气；主体建筑跟着动或变形；绕画布原点旋转导致物件" +
+  "飞离；循环处明显跳变；使用 JavaScript；XML 解析出错。";
+
+function toStaticCandidate(scene: LandmarkScene): PromptCandidate {
+  return {
+    id: `landmark-${scene.slug}`,
+    label: scene.label,
+    text: composeLandmarkPrompt(scene.parts, STATIC_RENDER_LAYER),
+    standard: scene.standard,
+  };
+}
+
+function toAnimatedCandidate(scene: LandmarkScene): PromptCandidate {
+  return {
+    id: `landmark-anim-${scene.slug}`,
+    label: `${scene.label}（动态）`,
+    text: composeLandmarkPrompt(scene.parts, ANIMATED_RENDER_LAYER),
+    standard: {
+      ...scene.standard,
+      coreKey: `${scene.standard.coreKey}；${MOTION_CORE_KEY}`,
+      evaluationCriteria: `${scene.standard.evaluationCriteria}${MOTION_CRITERIA}`,
+    },
+  };
+}
+
+/** 二十景数据，静态与动态两套题的唯一来源；改这里，两套题同时生效 */
+const LANDMARK_SCENES: readonly LandmarkScene[] = [
     {
-      id: "landmark-paris-eiffel-tower",
+      slug: "paris-eiffel-tower",
       label: "巴黎 埃菲尔铁塔",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "巴黎的埃菲尔铁塔，晴朗白天，整座塔作为一件微缩模型。",
         structure:
           "自下而上：① 正方形基底，四角各立一条向外张开的弧形塔脚，每条塔脚本身是四根主桁架" +
@@ -122,7 +184,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "用几个圆角矩形表示；草坪尽头一小段蓝灰色的塞纳河水面，河上点缀一艘白色小游船；地面" +
           "其余部分为浅米色的碎石铺地。所有陈设的高度都不超过第一层平台，只为说明位置。",
         forbidden: "夜景灯光与闪烁效果、银灰色钢材质感、直线锥形塔身、三条或五条塔脚",
-      }),
+      },
       standard: {
         coreKey: "四脚格构塔的收窄曲线、双层平台分段与单色锻铁质感",
         groundTruth:
@@ -139,9 +201,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-london-tower-bridge",
+      slug: "london-tower-bridge",
       label: "伦敦 塔桥",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "伦敦的塔桥，白天，整座桥连同一段河面作为一件微缩模型。",
         structure:
           "由岸到河心：① 两岸各一座较矮的方形桥台塔，顶部带小尖塔与雉堞；② 从桥台塔到河心主塔的" +
@@ -164,7 +226,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "和一座小方塔，只作低矮的背景体块；两岸各一小段石砌堤岸，堤岸上放一两棵小树；河上" +
           "一艘小驳船正从中央跨下穿过；桥面上点缀两三辆红色的小车。",
         forbidden: "红色钢构、单一大拱或斜拉索、圆形塔身、没有高架人行道的双塔",
-      }),
+      },
       standard: {
         coreKey: "双塔与高架人行道的门形轮廓、开合桥叶与悬索侧跨的组合",
         groundTruth:
@@ -181,9 +243,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-prague-charles-bridge",
+      slug: "prague-charles-bridge",
       label: "布拉格 查理大桥",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "布拉格的查理大桥，白天，整座桥连同河面与两端桥塔作为一件微缩模型。",
         structure:
           "由近及远：① 近端一座高耸的哥特式方形桥塔，塔身底部开一道尖拱门洞让桥面穿过，上部有" +
@@ -205,7 +267,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "或一艘小船；远端河岸后方用两三个绿色圆丘和一座极简的城堡体块表示城堡所在的小山；近端" +
           "河岸留一小段石砌堤岸与一棵小树。",
         forbidden: "尖拱或驼峰桥面、可辨认身份的雕像面容、钢或木材质感、拱数少于六个",
-      }),
+      },
       standard: {
         coreKey: "多孔矮拱桥的水平长身、两端哥特桥塔与桥栏雕像列的节奏",
         groundTruth:
@@ -221,9 +283,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-bruges-belfry",
+      slug: "bruges-belfry",
       label: "布鲁日 钟楼",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "布鲁日的钟楼，白天，钟楼连同它脚下的市场大厅与门前的市集广场作为一件微缩模型。",
         structure:
           "自下而上：① 一栋矩形的两层砖砌大厅，陡坡屋顶，围合一个方形内院，长边朝向广场；② 塔从" +
@@ -244,7 +306,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "几组小游客剪影；广场对面与两侧沿边缘排一列阶梯形山墙的三层小房子，颜色各异；大厅背后" +
           "露出一小段运河水面，停一艘小平底船；点缀两三棵圆形树冠的小树。",
         forbidden: "尖顶、尖塔或任何塔帽、圆形或八角形的下段塔身、把塔画成独立于大厅之外、明显倾斜",
-      }),
+      },
       standard: {
         coreKey: "从矩形大厅正面中央升起的方形砖塔，顶着浅色八角石砌段，平顶无尖",
         groundTruth:
@@ -263,9 +325,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-beijing-temple-of-heaven",
+      slug: "beijing-temple-of-heaven",
       label: "北京 天坛祈年殿",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "北京的天坛祈年殿，白天，大殿连同三层台基与一段甬道作为一件微缩模型。",
         structure:
           "自下而上：① 三层圆形白石台基逐级收小，每层边缘一圈白色栏杆，由等距的望柱与栏板组成；" +
@@ -285,7 +347,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "底座上一条笔直的浅灰色石板甬道从底座前缘通向台阶，甬道两侧各一排深绿色的柏树，用瘦高的" +
           "锥形表示，高度不超过台基；甬道尽头点缀一座极简的白色牌坊式小门；地面其余部分为浅色铺地。",
         forbidden: "黄色或绿色瓦面、方形殿身或方形台基、匾额与文字、屋檐少于三重",
-      }),
+      },
       standard: {
         coreKey: "三重蓝色圆檐的逐层收分、三层圆台基与朱红殿身的色彩层次",
         groundTruth:
@@ -302,9 +364,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-kyoto-kiyomizu-dera",
+      slug: "kyoto-kiyomizu-dera",
       label: "京都 清水寺",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "京都的清水寺本堂与舞台，秋日白天，本堂连同山坡作为一件微缩模型。",
         structure:
           "自下而上：① 陡峭的山坡从底座前缘升向后方，坡面用两三层叠置的绿色体块表现台地；② 舞台" +
@@ -324,7 +386,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "坡面上点缀几棵红色与橙色的枫树，用圆润的团块表示，分布在格架两侧与坡脚；底座前缘留出" +
           "一条浅色的坡脚小路，路边放一两盏石灯笼；坡后方用一两个更浅的绿色山体轮廓表现远山。",
         forbidden: "本堂立在平地上、朱红色本堂、蓝色或绿色瓦面、舞台下没有柱子格架",
-      }),
+      },
       standard: {
         coreKey: "悬挑舞台下的木柱格架、深远的树皮屋顶与陡坡地势的关系",
         groundTruth:
@@ -340,9 +402,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-jaipur-hawa-mahal",
+      slug: "jaipur-hawa-mahal",
       label: "斋浦尔 风之宫殿",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "斋浦尔的风之宫殿正立面，白天，立面连同门前街道作为一件微缩模型。",
         structure:
           "自下而上：① 底层一道平直的基座，中央一个尖拱形入口，两侧各几扇简单的拱窗；② 二至五层" +
@@ -363,7 +425,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "底座上门前一条浅灰色的街道横贯，街道对面几间粉红色的沿街矮房，只有一到两层高；街上" +
           "点缀一辆小小的三轮车；立面后方留一小块内院的暗色阴影，表现薄墙的进深。",
         forbidden: "矩形不收窄的立面、稀疏的普通方窗、白色或黄色主色、厚重的宫殿体量",
-      }),
+      },
       standard: {
         coreKey: "逐层收窄的薄立面、蜂巢式凸窗阵列与粉红砂岩色调",
         groundTruth:
@@ -379,9 +441,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-new-york-statue-of-liberty",
+      slug: "new-york-statue-of-liberty",
       label: "纽约 自由女神像",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "纽约的自由女神像，白天，立像连同基座与小岛作为一件微缩模型。",
         structure:
           "自下而上：① 一圈星形的低矮堡垒平台，十一个尖角向外伸出，平台边缘是灰色石墙；② 截头" +
@@ -401,7 +463,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "底座是一小块岛屿，岛面为绿色草地与浅色步道，四周环绕蓝色的海水；岛边点缀一座小码头与" +
           "一艘白色渡轮；水面用几道浅色的弧线表现波纹，靠近岛岸处偏浅。",
         forbidden: "左右手持物互换、金色或红棕色像身、圆柱形基座、可辨认的真实人物面容、碑板上的文字",
-      }),
+      },
       standard: {
         coreKey: "举炬立像的姿态要素、七芒冠冕与截头金字塔基座的等高比例",
         groundTruth:
@@ -418,9 +480,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-rio-de-janeiro-sugarloaf-mountain",
+      slug: "rio-de-janeiro-sugarloaf-mountain",
       label: "里约热内卢 面包山",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "里约热内卢的面包山，白天，主峰连同邻峰、缆车与海湾作为一件微缩模型。",
         structure:
           "由近及远：① 底座前缘岸边的低矮城区，用一片小方块表示楼房，前面一小段浅黄色沙滩；② 一座" +
@@ -439,7 +501,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "两山立在海湾口的一小块半岛上，三面环水；水面上点缀一两艘小帆船与一道船尾的白色尾迹；" +
           "远端海面与底座边缘之间留出空白，让半岛的轮廓完整可见。",
         forbidden: "尖峰或雪山、通体绿色的山体、只有一段的索道、把城市或任何雕像画成主体",
-      }),
+      },
       standard: {
         coreKey: "陡壁圆顶独峰的体量、邻峰的一半高度关系与两段式缆车索道",
         groundTruth:
@@ -455,9 +517,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-cape-town-table-mountain",
+      slug: "cape-town-table-mountain",
       label: "开普敦 桌山",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "开普敦的桌山，白天，山体连同两座侧峰与山脚城区作为一件微缩模型。",
         structure:
           "自下而上：① 底座前缘山脚下的一片城区，用密集的小方块表示楼房，前面一小段蓝色海湾；" +
@@ -477,7 +539,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "底座前缘为城区与海湾，后方为山体，形成前低后高的层次；海湾上点缀一艘小船；城区与缓坡之间" +
           "留一条浅色的环山路。",
         forbidden: "尖顶或圆顶的山顶、缓坡代替崖壁、积雪、多条索道、把城市画成主体",
-      }),
+      },
       standard: {
         coreKey: "平顶山的宽高比、两侧异形侧峰与「桌布」云层",
         groundTruth:
@@ -494,9 +556,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-sydney-harbour-bridge",
+      slug: "sydney-harbour-bridge",
       label: "悉尼 悉尼港湾大桥",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "悉尼的悉尼港湾大桥，白天，整座桥连同一段港湾水面作为一件微缩模型。",
         structure:
           "由两端到中央：① 两岸各一段平直的引桥，由几个矮墩支撑；② 拱的两端各立两座方形花岗岩" +
@@ -514,7 +576,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "底座上一片港湾水面横贯，两岸各一小段低矮的城区与码头，用浅色小方块表示；水面上点缀一艘" +
           "黄绿两色的小渡轮与它的白色尾迹；南岸留一小段环形码头的弧形岸线。",
         forbidden: "悉尼歌剧院或任何贝壳形屋顶、上承式拱（桥面在拱顶之上）、缺少塔楼、斜拉索",
-      }),
+      },
       standard: {
         coreKey: "中承式钢拱的抛物线轮廓、穿拱桥面的吊杆与四座塔楼的位置关系",
         groundTruth:
@@ -530,9 +592,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-marrakesh-koutoubia-mosque",
+      slug: "marrakesh-koutoubia-mosque",
       label: "马拉喀什 库图比亚清真寺",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "马拉喀什的库图比亚清真寺，白天，宣礼塔连同祈祷厅与广场作为一件微缩模型。",
         structure:
           "自下而上：① 底座上一片广场与玫瑰园，远端留出早期寺院的一排矮柱基遗址；② 低矮宽阔的" +
@@ -551,7 +613,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "广场上点缀几棵高瘦的棕榈树，树高不超过主塔身的三分之一；玫瑰园用几块深绿色的圆角矩形" +
           "表示，中间留出浅色小径；广场一角放一座极小的白色圆顶小屋。",
         forbidden: "圆形或多边形塔身、尖锥形塔顶、塔身上的文字铭文、新月标志",
-      }),
+      },
       standard: {
         coreKey: "方形宣礼塔的五段式收分、瓷砖带与雉堞、三球尖饰",
         groundTruth:
@@ -568,9 +630,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-suzhou-tiger-hill-pagoda",
+      slug: "suzhou-tiger-hill-pagoda",
       label: "苏州 虎丘塔",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "苏州的虎丘塔，白天，倾斜的古塔连同它所在的小山作为一件微缩模型。",
         structure:
           "自下而上：① 底座前缘一小段水面与山脚的石砌堤岸；② 一座长满树木的小山从水边升起，山坡上" +
@@ -588,7 +650,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "山脚水面上点缀一座小石桥；树冠只画成圆润的团块，不画单棵树的细节；不画寺院殿宇与现代建筑。",
         forbidden: "笔直不倾斜的塔、方形或圆形塔身、彩色琉璃瓦、飞檐翘角的木塔样式、文字",
-      }),
+      },
       standard: {
         coreKey: "八角七层砖塔的整体倾斜、层间短檐与券门壁龛的交替",
         groundTruth:
@@ -604,9 +666,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-xian-giant-wild-goose-pagoda",
+      slug: "xian-giant-wild-goose-pagoda",
       label: "西安 大雁塔",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "西安的大雁塔，白天，塔连同台基与寺院庭院作为一件微缩模型。",
         structure:
           "自下而上：① 一层宽阔的方形砖砌台基，四面各有一道台阶；② 方形的七层砖塔立在台基中央，" +
@@ -623,7 +685,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "庭院里点缀几棵深绿色的松柏，树高不超过塔的第二层；台基前留一条笔直的甬道；不画现代高楼。",
         forbidden: "圆形或八角形塔身、彩色琉璃瓦、飞檐翘角的木塔样式、文字碑刻",
-      }),
+      },
       standard: {
         coreKey: "方形楼阁式砖塔的锥形收分、七层券门与叠涩短檐的节奏",
         groundTruth:
@@ -640,9 +702,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-lisbon-belem-tower",
+      slug: "lisbon-belem-tower",
       label: "里斯本 贝伦塔",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "里斯本的贝伦塔，白天，从河面一侧俯瞰，塔楼连同棱堡与一小段河岸作为一件微缩模型。",
         structure:
           "由河到岸：① 底座前缘一片特茹河水面；② 向河中伸出的一座低矮六边形棱堡，顶面为平台，" +
@@ -662,7 +724,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "河岸一侧留一小段绿色草坪与一条浅色步道；水面上点缀一艘小帆船；塔的四周留出足够的水面，" +
           "让棱堡伸入河中的形状清楚可见。",
         forbidden: "旗帜与徽记、圆形或八边形塔身、红色屋顶、与塔楼等高的棱堡",
-      }),
+      },
       standard: {
         coreKey: "方形塔楼与六边形低棱堡的前后组合、角楼小圆穹与曼努埃尔式绞绳纹",
         groundTruth:
@@ -679,9 +741,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-nara-todai-ji",
+      slug: "nara-todai-ji",
       label: "奈良 东大寺大佛殿",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "奈良的东大寺大佛殿，白天，大殿连同殿前参道作为一件微缩模型。",
         structure:
           "自下而上：① 一层低矮的石砌台基，正面中央一道宽台阶；② 体量极大的木造殿身，正面七开间，" +
@@ -701,7 +763,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "参道两侧为浅绿色草地，草地上点缀几只小鹿的剪影，鹿高不超过台阶高度；参道尽头的中门" +
           "只画成一座矮小的两层门楼；殿后留一两个更浅的绿色山丘轮廓。",
         forbidden: "朱红色殿身、多层塔式屋顶、殿内佛像露出、蓝色或绿色瓦",
-      }),
+      },
       standard: {
         coreKey: "近似立方体的巨大殿身、两重屋顶与圆形观相窗加曲线山花的正面特征",
         groundTruth:
@@ -717,9 +779,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-budapest-fishermans-bastion",
+      slug: "budapest-fishermans-bastion",
       label: "布达佩斯 渔人堡",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "布达佩斯的渔人堡，白天，从多瑙河一侧俯瞰，堡垒连同山坡与河面作为一件微缩模型。",
         structure:
           "自下而上：① 底座前缘一段多瑙河水面与一小段河岸；② 陡峭的绿色山坡从河岸升向堡垒；" +
@@ -738,7 +800,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "河面上点缀一艘小游船；山坡上散布几棵圆冠的小树；长廊前的小广场留空，不放任何雕像。",
         forbidden: "骑马雕像或任何人物雕像、红砖墙面、方形塔楼、旗帜",
-      }),
+      },
       standard: {
         coreKey: "七座圆锥顶圆塔的高矮节奏、连拱观景长廊与折返台阶的组合",
         groundTruth:
@@ -755,9 +817,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-segovia-aqueduct",
+      slug: "segovia-aqueduct",
       label: "塞哥维亚 古罗马水道桥",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "塞哥维亚的古罗马水道桥，白天，从广场斜前方俯瞰，最高的一段拱桥连同两侧渐低的延伸段作为一件微缩模型。",
         structure:
           "由中央到两端：① 底座中央一段老城广场的铺地，广场两侧各几间浅色的老房子；② 广场上方横跨" +
@@ -775,7 +837,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "广场上点缀两三棵小树与一段矮石栏；房屋只画成简单的体块；不画汽车与人物。",
         forbidden: "尖拱或平梁结构、砂浆勾缝的整齐砖墙、单层拱的最高段、人物",
-      }),
+      },
       standard: {
         coreKey: "双层半圆拱叠置的最高段、干砌条石质感与向两端渐低的连续拱列",
         groundTruth:
@@ -792,9 +854,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-montreal-notre-dame-basilica",
+      slug: "montreal-notre-dame-basilica",
       label: "蒙特利尔 圣母大教堂",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "蒙特利尔的圣母大教堂，白天，从广场一侧俯瞰，教堂连同门前广场作为一件微缩模型。",
         structure:
           "自下而上：① 底座前缘一片铺石广场，广场中央留空，两侧各一小片草地；② 灰色石灰岩的" +
@@ -812,7 +874,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "广场两侧各放两棵圆冠的小树，树高不超过门廊；广场边缘留一段矮石栏；不画对面的其他建筑。",
         forbidden: "尖锥形塔顶、两塔不对称、红砖或白色墙面、旗帜与文字",
-      }),
+      },
       standard: {
         coreKey: "对称双方塔的平顶轮廓、三门廊加壁龛带的正立面层次",
         groundTruth:
@@ -828,9 +890,9 @@ export const LANDMARKS_PROMPT: PromptSpec = {
       },
     },
     {
-      id: "landmark-uyuni-salar-de-uyuni",
+      slug: "uyuni-salar-de-uyuni",
       label: "乌尤尼 乌尤尼盐沼",
-      text: composeLandmarkPrompt({
+      parts: {
         subject: "乌尤尼的乌尤尼盐沼，雨季刚过的白天，一片盐沼连同岛屿与远山作为一件微缩模型。",
         structure:
           "由近及远：① 底座前缘一片薄薄的浅水，水面像镜子一样倒映出天空、岛屿与远山，倒影上下对称；" +
@@ -849,7 +911,7 @@ export const LANDMARKS_PROMPT: PromptSpec = {
         environment:
           "不画任何盐砖旅馆、矿场或人物；火烈鸟只画成几笔粉色的小剪影；底座边缘之外不画其他景物。",
         forbidden: "建筑物、人物、矿场设备、雪原或冰面质感、树木",
-      }),
+      },
       standard: {
         coreKey: "六边形盐壳纹理、镜面倒影与仙人掌小岛、远缘火山的空旷层次",
         groundTruth:
@@ -865,8 +927,17 @@ export const LANDMARKS_PROMPT: PromptSpec = {
           "docs/research/landmarks/20-uyuni-salar-de-uyuni.md",
       },
     },
-  ],
-  source: "docs/research/landmarks/selection-rules.md",
+];
+
+const SUITE_SOURCE = "docs/research/landmarks/selection-rules.md";
+
+export const LANDMARKS_PROMPT: PromptSpec = {
+  id: "landmarks-v1",
+  label: "城市地标·微缩景观二十景",
+  template: "二十座城市各一处地标的微缩景观，每个轮换周期洗牌抽一条，逐字发送该条全文。",
+  variables: [],
+  candidates: LANDMARK_SCENES.map(toStaticCandidate),
+  source: SUITE_SOURCE,
   verified: true,
   immutable: true,
   originDate: "2026-09",
@@ -879,6 +950,33 @@ export const LANDMARKS_PROMPT: PromptSpec = {
     evaluationCriteria:
       "以候选各自的 standard 为准；共同要求：地标可被一眼认出、关键构件齐全、比例与" +
       "颜色符合事实表、呈现为展示底座上的俯视微缩模型、不含文字与旗帜。",
-    referenceSource: "docs/research/landmarks/selection-rules.md",
+    referenceSource: SUITE_SOURCE,
+  },
+};
+
+export const LANDMARKS_ANIM_PROMPT: PromptSpec = {
+  id: "landmarks-anim-v1",
+  label: "动态城市地标·微缩景观二十景",
+  template:
+    "与 landmarks-v1 同一份二十景数据，题面多一段【动态】：主体静止，陈设与环境做纯内联" +
+    "循环动画。每个轮换周期洗牌抽一条，逐字发送该条全文。",
+  variables: [],
+  candidates: LANDMARK_SCENES.map(toAnimatedCandidate),
+  source: SUITE_SOURCE,
+  verified: true,
+  immutable: true,
+  originDate: "2026-09",
+  registeredAt: "2026-09-29",
+  standard: {
+    coreKey: "在静态版的结构比例判据之上，考察陈设与环境的纯内联循环动画",
+    groundTruth:
+      "事实表与静态版完全相同；动画只作用于该景环境段里现实中会动的陈设，按其现实动法循环，" +
+      "主体建筑或地貌静止，由 SMIL 或内联 CSS @keyframes 驱动，每个循环 4 到 12 秒；" +
+      "没有会动之物的景整幅静止。",
+    evaluationCriteria:
+      "先按静态版判据评结构、比例与颜色，再看动态：只动环境段里现实中会动的陈设、循环平滑" +
+      "无跳变、旋转与摇摆绕物件自身轴点、主体不动、不为动画添加任何物件或光效、无 JavaScript、" +
+      "XML 合规。",
+    referenceSource: SUITE_SOURCE,
   },
 };

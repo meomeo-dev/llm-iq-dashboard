@@ -33,7 +33,7 @@ import { HONGLOU_ANIM_PROMPT, HONGLOU_PROMPT } from "../classics/honglou";
 import { SANGUO_ANIM_PROMPT, SANGUO_PROMPT } from "../classics/sanguo";
 import { SHUIHU_ANIM_PROMPT, SHUIHU_PROMPT } from "../classics/shuihu";
 import { XIYOU_ANIM_PROMPT, XIYOU_PROMPT } from "../classics/xiyou";
-import { LANDMARKS_PROMPT } from "../prompts/landmarks";
+import { LANDMARKS_ANIM_PROMPT, LANDMARKS_PROMPT } from "../prompts/landmarks";
 import { ALL_FRONTIER_PROMPTS } from "../prompts";
 
 export * from "./data-classic";
@@ -70,5 +70,6 @@ export const BUILTIN_PROMPTS: readonly PromptSpec[] = [
   HONGLOU_PROMPT,
   HONGLOU_ANIM_PROMPT,
   LANDMARKS_PROMPT,
+  LANDMARKS_ANIM_PROMPT,
   ...ALL_FRONTIER_PROMPTS,
 ];

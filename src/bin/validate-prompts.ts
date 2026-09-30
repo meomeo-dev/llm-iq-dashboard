@@ -17,7 +17,7 @@ import {
   type PromptValidationError,
 } from "../core/prompt-schema";
 
-/** 候选集逐条带独立 standard 的套题：14 套前沿领域套题 + 城市地标套题 */
+/** 候选集逐条带独立 standard 的套题：14 套前沿领域套题 + 城市地标静态与动态两套 */
 const CANDIDATE_STANDARD_SUITE_IDS = [
   "fe-ai-v1",
   "fe-semi-v1",
@@ -34,6 +34,7 @@ const CANDIDATE_STANDARD_SUITE_IDS = [
   "vfx-motion-v1",
   "vfx-sys-v1",
   "landmarks-v1",
+  "landmarks-anim-v1",
 ];
 
 function formatErrors(errors: readonly PromptValidationError[]): string {
