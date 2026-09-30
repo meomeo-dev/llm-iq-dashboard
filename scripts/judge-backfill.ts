@@ -48,9 +48,24 @@ async function loadRun(runId: string): Promise<RunRecord | null> {
   }
 }
 
+/** 各层小计：代码层（static / render）与 AI 层分开，未判定的层写 - */
+function layerSummary(judgement: Judgement): string {
+  const layers: { label: string; sources: string[] }[] = [
+    { label: "代码层", sources: ["static", "render"] },
+    { label: "AI 层", sources: ["ai"] },
+  ];
+  return layers.map(({ label, sources }) => {
+    const items = judgement.criteria.filter((c) => sources.includes(c.source));
+    const max = items.reduce((sum, c) => sum + c.maxScore, 0);
+    const pending = items.some((c) => c.score === null);
+    const score = items.reduce((sum, c) => sum + (c.score ?? 0), 0);
+    return `${label} ${pending ? "-" : score}/${max}`;
+  }).join("，");
+}
+
 function printJudgement(judgement: Judgement, verbose: boolean): void {
   const { subject, total } = judgement;
-  console.log(`${subject.runId}/${subject.attemptKey}  ${String(total.score).padStart(3)}  ${total.verdict}`);
+  console.log(`${subject.runId}/${subject.attemptKey}  ${String(total.score).padStart(3)}  ${total.verdict}  ${layerSummary(judgement)}`);
   if (!verbose) return;
   for (const gate of judgement.gates) console.log(`    ${gate.id} ${gate.passed ? "✓" : "✗"} ${gate.title}：${gate.evidence}`);
   for (const c of judgement.criteria) {
