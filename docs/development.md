@@ -28,7 +28,7 @@ data/pricing/    价格目录附件缓存（已 gitignore，由 pnpm pricing:syn
 
 ```
 data/runs/<runId>/run.json          一次调度的全部元信息（进行中逐次更新，inProgress 标记）
-data/runs/<runId>/progress.json     逐调用的执行状态：排队 / 执行中 / 已完成、执行进程 pid
+data/runs/<runId>/progress.json     逐调用的执行状态：排队 / 执行中 / 已完成、执行进程 pid；judging 段为 AI 层评审队列
 data/runs/<runId>/<targetId>.svg    提取出的作品
 data/runs/<runId>/<targetId>.txt    CLI 原始事件流与 stderr，失败时的唯一线索
 data/runs/<runId>/cancel.json       停止请求（点“停止本轮”时写入）

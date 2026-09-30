@@ -152,7 +152,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `src/core/judge/ai-round` 串行处理本轮通过全部闸门的「待复核」作品：取 `judge.ai.judges` 里第一个
   厂商与作品不同的裁判，把联系图复制进临时目录，以适配器「评审模式」先只给帧序表要盲描述、再给
   全部联系图与题目要 C5–C8 的 JSON 分（解析失败重试一次）；盲描述没认出鹈鹕则 C6 上限减半。
-  转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。裁判全部问答的 token 用量从转录
+  转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。评审队列写在本轮 `progress.json`
+  的 `judging` 段（逐件排队 / 评审中 / 结论），随 SSE 推送：状态胶囊显示「评审中 k/n」，面板列出每件，
+  卡片在队列里时显示「待评审 / 评审中…」，出分后触发整页刷新。裁判全部问答的 token 用量从转录
   解析后记在 `judges[]` 的 AI 那条（`usage`、`asks`），成本与作品同口径按价格目录在读取时折算
   （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。`pnpm judge:backfill -- --ai`
   / `--ai-only` 补评历史。
@@ -165,7 +167,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 ## 4. 数据与存储
 
 - 纯文件存储，根目录由 `PELICAN_DATA_DIR` 覆盖，默认 `data/`。
-- `runs/{runId}/`：`run.json`（结果证据）、`progress.json`（逐调用状态与执行进程 pid）、
+- `runs/{runId}/`：`run.json`（结果证据）、`progress.json`（逐调用状态与执行进程 pid；开 AI 层时
+  另有 `judging` 段记评审队列，ACR-020）、
   每次调用的 `.svg` 与原始事件流 `.txt`；有评审的调用另有 `<attemptKey>.judge.json`（评审记录，
   结构见 `docs/research/judge/judge.schema.json`）、`<attemptKey>.sheet.png`（帧序联系表）与
   `<attemptKey>.sheet.<kind>.png`（各类细节联系表），随轮次目录一起保留与删除；

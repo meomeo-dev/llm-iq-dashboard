@@ -9,9 +9,11 @@ import { profileColor } from "../profile/profile-color";
 import { useProfiles } from "../profile/profiles-context";
 import { StopRunButton } from "../run-control/StopRunButton";
 import { formatZonedClock } from "../timeline/zoned-time";
+import type { JudgeItemProgress, JudgingProgress } from "@/core/progress";
 import {
   allCalls,
   countCalls,
+  countJudging,
   elapsedMs,
   formatElapsed,
   isActivePhase,
@@ -28,6 +30,7 @@ const PHASE_TEXT: Record<RunPhase, string> = {
   interrupted: "已中断",
   finished: "已完成",
   cancelled: "已停止",
+  judging: "评审中",
 };
 
 interface RunStatusProps {
@@ -47,7 +50,10 @@ export function RunStatus({ timeZone, owner, open, onToggle, onClose }: RunStatu
   const runs = useRunProgress();
   // 面板打开时每秒刷新执行中调用的时长；关闭时不重绘
   const now = useTicker(open);
-  const primary = runs?.find((run) => isActivePhase(phaseOf(run, now))) ?? runs?.[0];
+  const primary = runs?.find((run) => {
+    const phase = phaseOf(run, now);
+    return isActivePhase(phase) || phase === "judging";
+  }) ?? runs?.[0];
 
   return (
     <Menu label={<Pill run={primary} now={now} />} align="right" panelClassName="run-panel" open={open} onToggle={onToggle} onClose={onClose}>
@@ -68,6 +74,15 @@ export function RunStatus({ timeZone, owner, open, onToggle, onClose }: RunStatu
 
 function Pill({ run, now }: { run: ProgressView | undefined; now: number }) {
   const phase = run === undefined ? "finished" : phaseOf(run, now);
+  if (run !== undefined && phase === "judging" && run.judging) {
+    const judging = countJudging(run.judging.items);
+    return (
+      <span className="run-pill">
+        <span className="run-dot judging" aria-hidden="true" />
+        评审中 {judging.done + judging.failed}/{judging.total}
+      </span>
+    );
+  }
   if (run === undefined || !isActivePhase(phase)) {
     return (
       <span className="run-pill">
@@ -114,6 +129,7 @@ function RunSection({ run, now, timeZone, owner }: { run: ProgressView; now: num
         <p className="run-warn">本轮已手动停止，{counts.cancelled} 个调用未完成、不计入结果；停止前完成的结果照常保留。</p>
       )}
       {run.budgetStop != null && <p className="run-warn">{run.budgetStop}，其余调用未发起。</p>}
+      {run.judging != null && <JudgingSection judging={run.judging} phase={phase} now={now} />}
       <p className="run-note">{run.lanes.length} 个模型分道，同时最多 {run.laneLimit} 道；道内按强度从低到高串行</p>
       <LaneGroups lanes={run.lanes} now={now} />
     </section>
@@ -198,6 +214,44 @@ function Call({ call, now }: { call: CallProgress; now: number }) {
         {call.state === "cancelled" && "已取消"}
       </span>
       {call.state === "running" && <Bar ratio={elapsed / call.timeoutMs} />}
+    </span>
+  );
+}
+
+/** AI 层评审队列（ACR-020）：逐件列出排队 / 评审中 / 结论；进程中途消失时提示未评完 */
+function JudgingSection({ judging, phase, now }: { judging: JudgingProgress; phase: RunPhase; now: number }) {
+  const counts = countJudging(judging.items);
+  const interrupted = judging.finishedAt === null && phase !== "judging";
+  return (
+    <div className="run-judging">
+      <div className="run-lane-head">
+        <span>AI 层评审 · 每件先盲描述再按 C5–C8 打分</span>
+        <span className="run-lane-count">
+          {counts.done + counts.failed}/{counts.total}
+        </span>
+      </div>
+      {interrupted && <p className="run-warn">评审进程已不在，没评完的作品保持待复核；可用 judge:backfill --ai-only 补评。</p>}
+      <div className="run-calls">
+        {judging.items.map((item) => <JudgeItem key={item.attemptKey} item={item} now={now} />)}
+      </div>
+    </div>
+  );
+}
+
+const VERDICT_TEXT: Record<string, string> = { online: "智商在线", degraded: "降智", pending: "待复核" };
+
+function JudgeItem({ item, now }: { item: JudgeItemProgress; now: number }) {
+  const elapsed = item.durationMs ?? (item.startedAt === null ? 0 : Math.max(0, now - Date.parse(item.startedAt)));
+  const tone = item.state === "done" ? `done-${item.verdict === "online" ? "ok" : "error"}` : item.state === "failed" ? "done-error" : item.state;
+  return (
+    <span className={`run-call ${tone}`} title={item.note ?? item.attemptKey}>
+      <span className="run-call-name">{item.targetId.split("__").slice(2).join(" · ")} · {promptTag(item.promptId)}</span>
+      <span className="run-call-time">
+        {item.state === "queued" && "排队"}
+        {item.state === "running" && `评审中 ${formatElapsed(elapsed)}`}
+        {item.state === "done" && `${VERDICT_TEXT[item.verdict ?? ""] ?? item.verdict} ${item.score} · ${formatElapsed(elapsed)}`}
+        {item.state === "failed" && "未评"}
+      </span>
     </span>
   );
 }

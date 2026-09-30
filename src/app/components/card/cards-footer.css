@@ -86,3 +86,8 @@
 .judge-tag.judge-pending {
   color: var(--text-dim);
 }
+
+.judge-tag.judge-judging {
+  color: var(--accent);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}

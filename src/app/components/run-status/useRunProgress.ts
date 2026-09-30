@@ -24,12 +24,13 @@ export function useRunProgress(): ProgressView[] | null {
   return runs;
 }
 
-/** 已完成调用数加已结束轮次数，使轮次收尾（写终稿）也触发刷新 */
+/** 已完成调用数加已结束轮次数与已评审作品数，使轮次收尾（写终稿）与 AI 层出分也触发刷新 */
 function countDone(runs: readonly ProgressView[]): number {
   let total = 0;
   for (const run of runs) {
     if (run.finishedAt !== null) total += 1;
     for (const lane of run.lanes) total += lane.calls.filter((call) => call.state === "done").length;
+    for (const item of run.judging?.items ?? []) if (item.state === "done" || item.state === "failed") total += 1;
   }
   return total;
 }

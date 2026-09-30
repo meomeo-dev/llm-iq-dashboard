@@ -31,6 +31,33 @@ export interface CallProgress {
   durationMs: number | null;
 }
 
+/** AI 层评审队列里一件作品的状态；failed 为裁判都失败、作品保持待复核 */
+export type JudgeItemState = "queued" | "running" | "done" | "failed";
+
+export interface JudgeItemProgress {
+  /** 与 .judge.json 的文件名对应，卡片据此认出自己在评 */
+  attemptKey: string;
+  targetId: string;
+  promptId: string;
+  state: JudgeItemState;
+  startedAt: string | null;
+  durationMs: number | null;
+  /** 评完后的结论与总分；failed 时 note 记原因 */
+  verdict: string | null;
+  score: number | null;
+  note: string | null;
+}
+
+/**
+ * 轮次定稿之后的 AI 层评审进度（ACR-020）：调用都结束了（finishedAt 已写），执行进程还在
+ * 逐件请裁判打分。看板据此显示「评审中 k/n」；没开 AI 层的轮次没有这一段。
+ */
+export interface JudgingProgress {
+  startedAt: string;
+  finishedAt: string | null;
+  items: JudgeItemProgress[];
+}
+
 /** 一道 = 一个 CLI × 模型；道内的调用按执行顺序排列 */
 export interface LaneProgress {
   cli: CliKind;
@@ -61,6 +88,8 @@ export interface RunProgress {
   /** 同时在跑的道数上限 */
   laneLimit: number;
   lanes: LaneProgress[];
+  /** AI 层评审队列；旧进度文件与没开 AI 层的轮次缺失 */
+  judging?: JudgingProgress | null;
 }
 
 /** 下发给看板的形态，附执行进程是否存活；未结束且进程不在即为被中断的轮次 */
@@ -77,6 +106,16 @@ export interface ProgressTracker {
   /** 记下预算拦下调用的原因；被拦下的调用随后以 markCancelled 标记 */
   markBudgetStop: (reason: string) => void;
   /** 写入 finishedAt 并等全部写入落盘 */
+  finish: () => Promise<void>;
+  /** AI 层评审：登记队列、逐件标记、收尾（见 judge/ai-round.ts） */
+  judging: JudgeProgressReporter;
+}
+
+export interface JudgeProgressReporter {
+  start: (items: Array<Pick<JudgeItemProgress, "attemptKey" | "targetId" | "promptId">>) => void;
+  markRunning: (attemptKey: string) => void;
+  markDone: (attemptKey: string, result: { verdict: string; score: number }) => void;
+  markFailed: (attemptKey: string, note: string) => void;
   finish: () => Promise<void>;
 }
 
@@ -138,7 +177,49 @@ function buildProgressTrackerActions(progress: RunProgress, writer: SerialWriter
       save();
       await writer.drain();
     },
+    judging: buildJudgeReporter(progress, writer, save),
   };
+}
+
+function buildJudgeReporter(progress: RunProgress, writer: SerialWriter, save: () => void): JudgeProgressReporter {
+  const itemOf = (attemptKey: string): JudgeItemProgress => {
+    const found = progress.judging?.items.find((item) => item.attemptKey === attemptKey);
+    if (found === undefined) throw new Error(`评审队列里没有 ${attemptKey}`);
+    return found;
+  };
+  const elapsed = (item: JudgeItemProgress): number | null => (item.startedAt === null ? null : Date.now() - Date.parse(item.startedAt));
+  return {
+    start: (items) => {
+      progress.judging = { startedAt: new Date().toISOString(), finishedAt: null, items: items.map((item) => ({
+        ...item, state: "queued", startedAt: null, durationMs: null, verdict: null, score: null, note: null,
+      })) };
+      save();
+    },
+    markRunning: (attemptKey) => {
+      Object.assign(itemOf(attemptKey), { state: "running", startedAt: new Date().toISOString() });
+      save();
+    },
+    markDone: (attemptKey, result) => {
+      const item = itemOf(attemptKey);
+      Object.assign(item, { state: "done", durationMs: elapsed(item), verdict: result.verdict, score: result.score });
+      save();
+    },
+    markFailed: (attemptKey, note) => {
+      const item = itemOf(attemptKey);
+      Object.assign(item, { state: "failed", durationMs: elapsed(item), note });
+      save();
+    },
+    async finish() {
+      if (progress.judging) progress.judging.finishedAt = new Date().toISOString();
+      save();
+      await writer.drain();
+    },
+  };
+}
+
+/** 调用都结束了但 AI 层评审还没收尾 */
+export function isJudging(run: RunProgress): boolean {
+  return run.finishedAt !== null && run.judging != null && run.judging.finishedAt === null;
 }
 
 /** 每次状态变化整份重写（文件仅几 KB），读取方无需拼接增量 */
@@ -168,7 +249,8 @@ export const RECENT_PROGRESS_RUNS = 3;
 export async function listProgressViews(limit: number = RECENT_PROGRESS_RUNS): Promise<ProgressView[]> {
   const runs = await listRecentProgress(limit);
   const beat = await runnerHeartbeat();
-  return runs.map((run) => ({ ...run, alive: run.finishedAt === null && isRunnerAlive(run, beat) }));
+  // 评审阶段执行进程仍在工作，存活判断同样适用
+  return runs.map((run) => ({ ...run, alive: (run.finishedAt === null || isJudging(run)) && isRunnerAlive(run, beat) }));
 }
 
 /** 手动与定时执行互斥，同时在跑的轮次至多一轮，扫描最近几轮即可 */

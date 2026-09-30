@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { countCalls, isActivePhase, phaseOf } from "@/app/components/run-status/run-phase";
+import { countCalls, countJudging, isActivePhase, judgeItemOf, phaseOf } from "@/app/components/run-status/run-phase";
 import type { CallProgress, ProgressView } from "@/core/progress";
 
 const NOW = Date.parse("2026-09-25T05:45:00Z");
@@ -35,6 +35,34 @@ function run(overrides: Partial<ProgressView>): ProgressView {
     ...overrides,
   };
 }
+
+const judgingRun = (finishedJudging: string | null, alive = true) => run({
+  finishedAt: "2026-09-25T05:44:50Z", alive,
+  judging: { startedAt: "2026-09-25T05:44:51Z", finishedAt: finishedJudging, items: [
+    { attemptKey: "a", targetId: "claude__m__high", promptId: "animated-pelican-v1", state: "done", startedAt: "2026-09-25T05:44:51Z", durationMs: 9000, verdict: "online", score: 88, note: null },
+    { attemptKey: "b", targetId: "claude__m__low", promptId: "animated-pelican-v1", state: "running", startedAt: "2026-09-25T05:44:59Z", durationMs: null, verdict: null, score: null, note: null },
+  ] },
+});
+
+describe("AI 层评审阶段（ACR-020）", () => {
+  test("调用都结束、评审未收尾且进程还在：评审中；收尾后已完成", () => {
+    assert.equal(phaseOf(judgingRun(null), NOW), "judging");
+    assert.equal(phaseOf(judgingRun("2026-09-25T05:46:00Z"), NOW), "finished");
+    assert.equal(isActivePhase("judging"), false, "评审中不占执行位");
+  });
+
+  test("评审进程消失：按已完成显示，队列状态保留供提示", () => {
+    assert.equal(phaseOf(judgingRun(null, false), NOW), "finished");
+  });
+
+  test("队列计数与按作品查找", () => {
+    const view = judgingRun(null);
+    assert.deepEqual(countJudging(view.judging!.items), { total: 2, done: 1, failed: 0, running: view.judging!.items[1]! });
+    assert.equal(judgeItemOf([view], view.runId, "b")?.state, "running");
+    assert.equal(judgeItemOf([view], view.runId, "zzz"), null);
+    assert.equal(judgeItemOf(null, view.runId, "a"), null);
+  });
+});
 
 describe("phaseOf", () => {
   test("未请求停止时为执行中、中断或已完成", () => {

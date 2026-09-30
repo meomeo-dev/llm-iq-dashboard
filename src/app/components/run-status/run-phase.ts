@@ -1,9 +1,12 @@
 /** 进度视图的纯函数：阶段判定、计数、时长格式。 */
 
-import type { CallProgress, ProgressView } from "@/core/progress";
+import type { CallProgress, JudgeItemProgress, ProgressView } from "@/core/progress";
 
-/** stopping：已接受停止请求、还在收尾；cancelled：被人停下后已结束 */
-export type RunPhase = "running" | "stopping" | "interrupted" | "finished" | "cancelled";
+/**
+ * stopping：已接受停止请求、还在收尾；cancelled：被人停下后已结束；
+ * judging：调用都结束了，AI 层还在逐件请裁判打分（ACR-020）
+ */
+export type RunPhase = "running" | "stopping" | "interrupted" | "finished" | "cancelled" | "judging";
 
 /**
  * 调用超出超时上限这么久仍在“执行中”即视为进程已不在（适配器到点会终止调用），
@@ -11,8 +14,15 @@ export type RunPhase = "running" | "stopping" | "interrupted" | "finished" | "ca
  */
 const OVERDUE_GRACE_MS = 2 * 60 * 1000;
 
+/** 调用都结束了但 AI 层评审还没收尾（与 core/progress.ts 的 isJudging 同口径；这里不能引 Node 侧模块） */
+function judging(run: ProgressView): boolean {
+  return run.finishedAt !== null && run.judging != null && run.judging.finishedAt === null;
+}
+
 export function phaseOf(run: ProgressView, now: number): RunPhase {
   const cancelled = run.cancelledAt != null;
+  // 评审进程被杀时 alive 为假，按已完成显示，未评完的作品保持待复核
+  if (judging(run) && run.alive) return "judging";
   if (run.finishedAt !== null) return cancelled ? "cancelled" : "finished";
   if (!run.alive) return "interrupted";
   if (cancelled) return "stopping";
@@ -43,6 +53,28 @@ export function countCalls(calls: readonly CallProgress[]): CallCounts {
     cancelled: calls.filter((call) => call.state === "cancelled").length,
     ok: calls.filter((call) => call.status === "ok").length,
   };
+}
+
+export interface JudgeCounts {
+  total: number;
+  done: number;
+  failed: number;
+  running: JudgeItemProgress | null;
+}
+
+export function countJudging(items: readonly JudgeItemProgress[]): JudgeCounts {
+  return {
+    total: items.length,
+    done: items.filter((item) => item.state === "done").length,
+    failed: items.filter((item) => item.state === "failed").length,
+    running: items.find((item) => item.state === "running") ?? null,
+  };
+}
+
+/** 某件作品在最近几轮的评审队列里的状态；不在队列里为 null */
+export function judgeItemOf(runs: readonly ProgressView[] | null, runId: string, attemptKey: string): JudgeItemProgress | null {
+  const run = runs?.find((item) => item.runId === runId);
+  return run?.judging?.items.find((item) => item.attemptKey === attemptKey) ?? null;
 }
 
 export function allCalls(run: ProgressView): CallProgress[] {

@@ -92,7 +92,8 @@ async function startWatching(hub: LiveHub): Promise<void> {
   hub.watcher.on("all", () => scheduleRefresh(hub));
   hub.watcher.on("error", (cause) => console.error(`看板状态监听出错：${describe(cause)}`));
   hub.livenessTimer = setInterval(() => {
-    if (hub.latest?.progress.some((run) => run.finishedAt === null && run.alive) === true) scheduleRefresh(hub);
+    // alive 只在未结束或评审中的轮次为真
+    if (hub.latest?.progress.some((run) => run.alive) === true) scheduleRefresh(hub);
   }, LIVENESS_CHECK_MS);
   hub.latest = await computeSnapshot();
   armNextRunTimer(hub);

@@ -56,7 +56,12 @@
 | `src/app/view/` | modify | 作品页标题行与评审抽屉显示裁判成本 | no |
 | `test/pricing/judge-cost.test.ts` | add | 裁判成本 | no |
 | `test/app/` | modify | 卡片夹具补 `judgeCost` | no |
-| `src/core/runner.ts` | modify | `finishRunRecord` 之后调用 `judgeRoundWithAi`，被停止的轮次不评 | no |
+| `src/core/runner.ts` | modify | `finishRunRecord` 之后调用 `judgeRoundWithAi`，被停止的轮次不评；把进度追踪器的评审段交给它 | no |
+| `src/core/progress.ts` | modify | `RunProgress.judging`：评审队列逐件状态；`isJudging`；评审中视为进程存活 | no |
+| `src/app/api/events/live-hub.ts` | modify | 存活复核按 `alive` 判断，覆盖评审阶段 | no |
+| `src/app/components/run-status/` | modify | 阶段 `judging`：胶囊「评审中 k/n」、面板逐件列表、出分触发刷新 | no |
+| `src/app/components/card/PelicanCard.tsx` | modify | 队列里的作品显示「待评审 / 评审中…」 | no |
+| `test/core/progress-judging.test.ts` | add | 评审段落盘 | no |
 | `src/core/config/types.ts` | modify | `JudgeConfig` 增 `ai: { enabled, judges[], timeoutMs }` | no |
 | `src/core/config/loader.ts` | modify | 解析与校验 `judge.ai`（缺省关闭；开启但无裁判报错）；`judge.enabled` 缺省改为关闭 | yes |
 | `src/core/config-writer.ts` | modify | `ConfigPatch.judge`：配置页整段写回 | no |

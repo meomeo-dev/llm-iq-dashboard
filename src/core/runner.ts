@@ -251,7 +251,7 @@ export async function executeRun(
   const outcome = state.cancelledAt !== undefined ? "已停止" : "完成";
   log(`[${runId}] ${outcome}，成功 ${countOk(record.attempts)}/${record.attempts.length}`);
   // AI 层在轮次记录定稿之后串行跑，不与基准调用重叠；被停止的轮次不评
-  if (state.cancelledAt === undefined) await judgeRoundWithAi(config, record, log);
+  if (state.cancelledAt === undefined) await judgeRoundWithAi(config, record, log, progress.judging);
   return record;
 }
 

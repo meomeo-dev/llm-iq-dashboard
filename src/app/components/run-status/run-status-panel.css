@@ -20,6 +20,11 @@
   animation: run-pulse 1.6s ease-in-out infinite;
 }
 
+.run-dot.judging {
+  background: var(--accent);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
 .run-dot.interrupted {
   background: var(--warn);
 }
@@ -150,6 +155,12 @@
 
 .run-lane + .run-lane {
   margin-top: 10px;
+}
+
+.run-judging {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
 }
 
 .run-lane-head {

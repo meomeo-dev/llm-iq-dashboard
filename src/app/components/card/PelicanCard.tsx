@@ -1,6 +1,8 @@
 "use client";
 
 import type { DashboardCard } from "@/core/types";
+import { useLiveProgress } from "../live-state/live-store";
+import { judgeItemOf } from "../run-status/run-phase";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
 import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeTitle, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
@@ -82,7 +84,7 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
       <div className="footer-row">
         {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
         {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
-        {card.judge != null && <JudgeTag judge={card.judge} judgeCost={card.judgeCost ?? null} />}
+        {card.judge != null && <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} />}
         <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
         {href !== null && (
           <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
@@ -95,7 +97,16 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
 }
 
 /** 评审标签（ACR-019）：标签 + 总分，悬停看逐条闸门与标准 */
-function JudgeTag({ judge, judgeCost }: { judge: NonNullable<DashboardCard["judge"]>; judgeCost: DashboardCard["judgeCost"] }) {
+function JudgeTag({ card, judge, judgeCost }: { card: DashboardCard; judge: NonNullable<DashboardCard["judge"]>; judgeCost: DashboardCard["judgeCost"] }) {
+  // 待复核且还在本轮的 AI 评审队列里：显示评审中，出分后推送触发整页刷新换成结论
+  const item = judgeItemOf(useLiveProgress(), card.runId, judge.subject.attemptKey);
+  if (judge.total.verdict === "pending" && item !== null && (item.state === "queued" || item.state === "running")) {
+    return (
+      <span className="judge-tag judge-judging" title={item.state === "running" ? "AI 层裁判正在看联系图打分" : "排队等 AI 层评审"}>
+        {item.state === "running" ? "评审中…" : "待评审"}
+      </span>
+    );
+  }
   return (
     <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge, judgeCost)}>
       {JUDGE_TEXT[judge.total.verdict]} {judge.total.score}
