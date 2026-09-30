@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/meomeo-dev/llm-iq-dashboard/docs/research/judge/judge.schema.json",
+  "title": "Judgement",
+  "description": "一次调用产物的评审记录，落盘为 data/runs/<runId>/<attemptKey>.judge.json。代码层与 AI 层共用同一份文件：代码层先写入并把 AI 标准置为 pending，AI 层随后填分。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "subject", "rubric", "judges", "gates", "criteria", "total"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "subject": {
+      "description": "被评审的调用，字段与 run.json 里的 Attempt 对齐",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runId", "attemptKey", "promptId", "cli", "model", "effort", "svgFile"],
+      "properties": {
+        "runId": { "type": "string", "pattern": "^[0-9]{8}T[0-9]{6}Z$" },
+        "attemptKey": {
+          "description": "SVG 文件名去掉扩展名，如 codex__gpt-6-astra__high__animated-pelican-v1",
+          "type": "string"
+        },
+        "promptId": { "type": "string" },
+        "cli": { "type": "string" },
+        "model": { "type": "string" },
+        "effort": { "type": "string" },
+        "svgFile": { "type": "string" },
+        "svgSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "rubric": {
+      "description": "本次评审依据的标准集；同一 promptId 的作品用同一版 rubric 才可比",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "passThreshold"],
+      "properties": {
+        "id": { "type": "string", "examples": ["animated-pelican-v1"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "passThreshold": { "description": "总分达到此值判智商在线", "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "judges": {
+      "description": "参与评审的裁判，代码层与 AI 层各一条",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/judge" }
+    },
+    "contactSheet": {
+      "description": "AI 层看的联系图：一行 8 帧，从一个动画周期等间隔取样",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "layout", "frameCount", "frameSize", "periodMs", "sampleTimesMs"],
+      "properties": {
+        "file": { "type": "string" },
+        "layout": { "const": "row" },
+        "frameCount": { "const": 8 },
+        "frameSize": { "description": "单帧边长（像素）", "type": "integer", "minimum": 64 },
+        "periodMs": { "description": "取样所依据的动画周期", "type": "integer", "minimum": 1 },
+        "sampleTimesMs": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "blindDescription": {
+      "description": "AI 裁判在看到题目之前对联系图的描述，用于核对主体身份",
+      "type": "string"
+    },
+    "gates": {
+      "description": "闸门：任一不通过即总分 0、判降智，且不再进入 AI 层",
+      "type": "array",
+      "items": { "$ref": "#/$defs/gate" }
+    },
+    "criteria": {
+      "description": "计分标准，maxScore 之和为 100",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/criterion" }
+    },
+    "total": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "maxScore", "verdict", "judgedAt"],
+      "properties": {
+        "score": { "description": "已判定标准的得分之和", "type": "integer", "minimum": 0, "maximum": 100 },
+        "maxScore": { "const": 100 },
+        "verdict": {
+          "description": "online 智商在线；degraded 降智；pending 仍有标准未判定",
+          "enum": ["online", "degraded", "pending"]
+        },
+        "judgedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "judge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "judgedAt"],
+      "properties": {
+        "kind": { "enum": ["code", "ai"] },
+        "id": {
+          "description": "代码层写打分器名与版本；AI 层写 cli/model，如 codex/gpt-6-astra",
+          "type": "string"
+        },
+        "promptVersion": { "description": "AI 层的裁判提示词版本", "type": "integer", "minimum": 1 },
+        "judgedAt": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "rawFile": { "description": "AI 层原始输出，供事后排查", "type": "string" }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "title", "standard", "passed", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^G[0-9]+$" },
+        "source": { "enum": ["static", "render"] },
+        "title": { "type": "string" },
+        "standard": { "description": "口径：什么情况算不通过", "type": "string" },
+        "passed": { "type": "boolean" },
+        "evidence": { "description": "一句话，写出实测值", "type": "string" }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "title", "standard", "maxScore", "score", "reason"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^C[0-9]+$" },
+        "source": { "enum": ["static", "render", "ai"] },
+        "title": { "type": "string" },
+        "standard": { "description": "口径：满分要满足什么，零分是什么情况", "type": "string" },
+        "maxScore": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "score": {
+          "description": "未判定时为 null",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "reason": {
+          "description": "一句话理由；代码层写实测值，AI 层写裁判给出的依据；未判定时为 null",
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}
