@@ -1,9 +1,9 @@
 "use client";
 
 import { JUDGE_TEXT } from "../card/card-format";
-import { MoreIcon, VerdictIcon } from "../icons/verdict-icons";
+import { VerdictIcon } from "../icons/verdict-icons";
 import { Thumb } from "./Thumb";
-import { OVERFLOW_SLOT, SLOT_CORNERS, slotCount, slotMarks, type FolderCell, type SlotMarks } from "./effort-slots";
+import { OVERFLOW_SLOT, SLOT_CORNERS, SLOT_COUNT_CAP, slotCount, slotMarks, type FolderCell, type SlotMarks } from "./effort-slots";
 import type { Row } from "./rows";
 
 interface FolderTileProps {
@@ -59,22 +59,29 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
   );
 }
 
-/** 角底部居中的评审结论图标行：与弹窗里的上游列同序，最多三个，再多补一个「+」 */
+/** 作品右下角的评审结论圆标：三件以内逐件列、与弹窗里的上游列同序；更多时按结论计数，为 0 的不出 */
 function SlotMarkRow({ marks }: { marks: SlotMarks }) {
+  if (marks.kind === "summary") {
+    const summary = marks.counts.map((item) => `${JUDGE_TEXT[item.verdict]} ${item.count}`).join("、");
+    return (
+      <span className="folder-marks" title={`评审：${summary}`}>
+        {marks.counts.map((item) => (
+          <span key={item.verdict} className="verdict-badge verdict-count">
+            <VerdictIcon verdict={item.verdict} label={JUDGE_TEXT[item.verdict]} />
+            {Math.min(item.count, SLOT_COUNT_CAP)}
+          </span>
+        ))}
+      </span>
+    );
+  }
   if (marks.verdicts.length === 0) return null;
-  const summary = marks.verdicts.map((verdict) => JUDGE_TEXT[verdict]).join("、") + (marks.more > 0 ? ` 等 ${marks.verdicts.length + marks.more} 件` : "");
   return (
-    <span className="folder-marks" title={`评审：${summary}`}>
+    <span className="folder-marks" title={`评审：${marks.verdicts.map((verdict) => JUDGE_TEXT[verdict]).join("、")}`}>
       {marks.verdicts.map((verdict, index) => (
         <span key={index} className="verdict-badge">
           <VerdictIcon verdict={verdict} label={JUDGE_TEXT[verdict]} />
         </span>
       ))}
-      {marks.more > 0 && (
-        <span className="verdict-badge">
-          <MoreIcon label={`还有 ${marks.more} 件`} />
-        </span>
-      )}
     </span>
   );
 }

@@ -57,16 +57,22 @@ function judged(effort: string, profile: string | undefined, verdict: "online" |
   return { ...card(effort, profile), judge: verdict === null ? null : { total: { verdict } } } as unknown as DashboardCard;
 }
 
-test("slotMarks：按弹窗列序取结论，缺评审记录的占位为待复核，最多三个、余数记 more；整角无记录不出图标", () => {
+test("slotMarks：三件以内按弹窗列序逐件列，缺评审记录的占位为待复核；超过三件按结论计数且 0 的不列；整角无记录不出图标", () => {
   const crowded = {
     runId: "r2", cards: [judged("high", undefined, "online"), judged("high", "relay-a", null), judged("high", "relay-b", "degraded"), judged("high", "relay-c", "online")],
   } as unknown as Moment;
   const many = [...profiles, { ...profiles[0]!, name: "relay-c", label: "丙" }];
   const cell = folderCell(crowded, row, ["high"], ["high"], many);
   assert.ok(cell);
-  assert.deepEqual(slotMarks(cell, "high"), { verdicts: ["online", "pending", "degraded"], more: 1 });
+  assert.deepEqual(slotMarks(cell, "high"), { kind: "summary", counts: [{ verdict: "online", count: 2 }, { verdict: "degraded", count: 1 }, { verdict: "pending", count: 1 }] });
+  const three = folderCell({ runId: "r4", cards: crowded.cards.slice(0, 3) } as unknown as Moment, row, ["high"], ["high"], many);
+  assert.ok(three);
+  assert.deepEqual(slotMarks(three, "high"), { kind: "list", verdicts: ["online", "pending", "degraded"] });
+  const noPending = folderCell({ runId: "r5", cards: [judged("high", undefined, "online"), judged("high", "relay-a", "online"), judged("high", "relay-b", "online"), judged("high", "relay-c", "degraded")] } as unknown as Moment, row, ["high"], ["high"], many);
+  assert.ok(noPending);
+  assert.deepEqual(slotMarks(noPending, "high"), { kind: "summary", counts: [{ verdict: "online", count: 3 }, { verdict: "degraded", count: 1 }] }, "为 0 的结论不列");
   const unjudged = folderCell({ runId: "r3", cards: [judged("high", undefined, null), judged("high", "relay-a", null)] } as unknown as Moment, row, ["high"], ["high"], profiles);
   assert.ok(unjudged);
-  assert.deepEqual(slotMarks(unjudged, "high"), { verdicts: [], more: 0 });
-  assert.deepEqual(slotMarks(cell, "low"), { verdicts: [], more: 0 }, "没跑的角没有图标");
+  assert.deepEqual(slotMarks(unjudged, "high"), { kind: "list", verdicts: [] });
+  assert.deepEqual(slotMarks(cell, "low"), { kind: "list", verdicts: [] }, "没跑的角没有图标");
 });

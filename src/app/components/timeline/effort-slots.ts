@@ -63,25 +63,35 @@ export function slotCount(cell: FolderCell, slot: string): number {
   return new Set(cell.cards.filter((card) => card.effort === slot).map(upstreamOf)).size;
 }
 
-/** 一个角底部最多放几个评审结论图标，再多以「+」示意 */
+/** 一个角最多逐件列几个评审结论图标；再多就改为按结论计数 */
 export const SLOT_MARK_LIMIT = 3;
 
-export interface SlotMarks {
-  /** 前几个上游作品的结论，顺序与弹窗里的上游列一致 */
-  verdicts: Verdict[];
-  /** 放不下的个数 */
-  more: number;
-}
+/** 计数显示上限 */
+export const SLOT_COUNT_CAP = 99;
+
+/** 计数模式下结论的固定顺序 */
+const VERDICT_ORDER: readonly Verdict[] = ["online", "degraded", "pending"];
+
+export type SlotMarks =
+  /** 逐件：顺序与弹窗里的上游列一致 */
+  | { kind: "list"; verdicts: Verdict[] }
+  /** 计数：只列出现过的结论，按在线、降智、待复核排 */
+  | { kind: "summary"; counts: Array<{ verdict: Verdict; count: number }> };
 
 /**
  * 这一角各上游作品的评审结论（ACR-019）。没有评审记录的作品在有记录的同伴旁按待复核占位，
- * 保持与弹窗列的顺序对应；整角都没有评审记录（题目没有评分标准）时不出图标。
+ * 保持与弹窗列的顺序对应；整角都没有评审记录（题目没有评分标准）时不出图标；
+ * 超过 SLOT_MARK_LIMIT 件时逐件列不下，改为按结论计数。
  */
 export function slotMarks(cell: FolderCell, slot: string): SlotMarks {
   const cards = cell.cards.filter((card) => card.effort === slot);
-  if (!cards.some((card) => card.judge != null)) return { verdicts: [], more: 0 };
+  if (!cards.some((card) => card.judge != null)) return { kind: "list", verdicts: [] };
   const verdicts = cards.map((card): Verdict => card.judge?.total.verdict ?? "pending");
-  return { verdicts: verdicts.slice(0, SLOT_MARK_LIMIT), more: Math.max(0, verdicts.length - SLOT_MARK_LIMIT) };
+  if (verdicts.length <= SLOT_MARK_LIMIT) return { kind: "list", verdicts };
+  const counts = VERDICT_ORDER
+    .map((verdict) => ({ verdict, count: verdicts.filter((item) => item === verdict).length }))
+    .filter((item) => item.count > 0);
+  return { kind: "summary", counts };
 }
 
 /** 这一格出现过的第三方上游（登录态不算），登录态在前的顺序里去掉登录态 */

@@ -18,9 +18,6 @@ const X_EYES =
 const HOURGLASS =
   "M200,75.64V40a16,16,0,0,0-16-16H72A16,16,0,0,0,56,40V76a16.08,16.08,0,0,0,6.41,12.8L114.67,128,62.4,167.2A16.07,16.07,0,0,0,56,180v36a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V180.36a16,16,0,0,0-6.36-12.77L141.26,128l52.38-39.59A16.05,16.05,0,0,0,200,75.64Z";
 
-/** plus-fill：还有更多 */
-const PLUS =
-  "M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM184,136H136v48a8,8,0,0,1-16,0V136H72a8,8,0,0,1,0-16h48V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z";
 
 const VERDICT_PATH: Record<Verdict, string> = { online: BRAIN, degraded: X_EYES, pending: HOURGLASS };
 
@@ -36,9 +33,4 @@ function Icon({ path, className, label }: { path: string; className: string; lab
 /** 一个评审结论；颜色由 .verdict-{verdict} 决定 */
 export function VerdictIcon({ verdict, label }: { verdict: Verdict; label: string }) {
   return <Icon path={VERDICT_PATH[verdict]} className={`verdict-${verdict}`} label={label} />;
-}
-
-/** 图标行放不下的余数 */
-export function MoreIcon({ label }: { label: string }) {
-  return <Icon path={PLUS} className="verdict-more" label={label} />;
 }
