@@ -1,6 +1,7 @@
 /**
- * AI 语义层（ACR-020）：把联系表放进一个只含图片的临时目录，以评审模式请裁判 CLI 先盲描述、
- * 再按 C5–C8 打分，并入评审记录后落盘。任何一步失败都不抛错，记录保持「待复核」。
+ * AI 语义层（ACR-020 / ACR-021）：把联系表放进一个只含图片的临时目录，以评审模式请裁判 CLI 先盲描述、
+ * 再看首帧定位四类部位重切细节表、最后按 C5–C8 打分，并入评审记录后落盘。
+ * 定位失败沿用代码层的表；其余任何一步失败都不抛错，记录保持「待复核」。
  */
 
 import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -15,6 +16,7 @@ import type { TokenUsage } from "../../pricing/types";
 import {
   AI_PROMPT_VERSION, blindPrompt, blindRecognizedPelican, judgePrompt, parseJudgeReply, trimBlindDescription, type AiScore,
 } from "./ai-prompt";
+import { relocateDetails } from "./ai-locate";
 import { saveJudgement } from "./judge-store";
 import { rubricFor, summarizeTotal, type ContactSheet, type Judgement, type RubricSpec } from "./schema";
 
@@ -57,7 +59,7 @@ export async function judgeWithAi(input: AiJudgeInput): Promise<AiOutcome> {
     const files = await stageSheets(judgement.subject.runId, judgement.contactSheet!, workdir);
     for (const judge of judges) {
       const asker = new JudgeAsker(pool.sessionFor(judge.cli), judge, config.timeoutMs, workdir);
-      const outcome = await judgeOnce(judgement, rubric, judge, asker, input.promptText, files);
+      const outcome = await judgeOnce(judgement, rubric, judge, asker, input.promptText, files, log);
       if (outcome.ok) {
         log(`[judge-ai] ${judgement.subject.attemptKey} ${outcome.judgement.total.score} 分 ${outcome.judgement.total.verdict}（裁判 ${judge.cli}/${judge.model}）`);
         return outcome;
@@ -74,15 +76,21 @@ export async function judgeWithAi(input: AiJudgeInput): Promise<AiOutcome> {
   }
 }
 
-/** 一个裁判的完整流程：盲描述 → 逐项判定 → 并分落盘；失败时仍存转录供排查 */
+/** 一个裁判的完整流程：盲描述 → 定位重切 → 逐项判定 → 并分落盘；失败时仍存转录供排查 */
 async function judgeOnce(
-  judgement: Judgement, rubric: RubricSpec, judge: JudgeModel, asker: JudgeAsker, promptText: string, files: string[],
+  original: Judgement, rubric: RubricSpec, judge: JudgeModel, asker: JudgeAsker, promptText: string, staged: string[],
+  log: (line: string) => void,
 ): Promise<AiOutcome> {
-  const sheet = judgement.contactSheet!;
   const started = Date.now();
-  const blind = await asker.ask(blindPrompt(sheet), [sheet.file]);
-  if (blind.error || blind.timedOut) return await giveUp(judgement, asker, `盲描述失败：${blind.error ?? "超时"}`);
+  const blind = await asker.ask(blindPrompt(original.contactSheet!), [original.contactSheet!.file]);
+  if (blind.error || blind.timedOut) return await giveUp(original, asker, `盲描述失败：${blind.error ?? "超时"}`);
   const description = trimBlindDescription(blind.text);
+  // 定位失败不算失败：沿用代码层几何推断的细节表继续打分
+  const located = await relocateDetails(original, asker);
+  if (!located.ok) log(`[judge-ai] ${original.subject.attemptKey} 定位未采用，沿用代码层取景框：${located.reason}`);
+  const judgement = located.ok ? located.judgement : original;
+  const sheet = judgement.contactSheet!;
+  const files = located.ok ? await stageSheets(judgement.subject.runId, sheet, asker.workdir) : staged;
   const scores = await askScores(asker, promptText, sheet, rubric, files);
   if (!scores.ok) return await giveUp(judgement, asker, scores.reason);
   const rawFile = await asker.saveTranscript(judgement.subject.runId, judgement.subject.attemptKey);
@@ -128,7 +136,7 @@ class JudgeAsker {
   /** 已发出的问答次数（含解析失败后的重试） */
   asks = 0;
 
-  constructor(private readonly session: AgentSession, judge: JudgeModel, private readonly timeoutMs: number, private readonly workdir: string) {
+  constructor(private readonly session: AgentSession, judge: JudgeModel, private readonly timeoutMs: number, readonly workdir: string) {
     this.target = {
       id: `judge__${judge.cli}__${judge.model}__${judge.effort}`, cli: judge.cli, model: judge.model, effort: judge.effort,
       label: `裁判 ${judge.cli}/${judge.model}`, timeoutMs, extraArgs: [], enabled: true,

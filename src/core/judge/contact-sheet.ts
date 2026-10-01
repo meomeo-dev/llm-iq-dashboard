@@ -39,36 +39,42 @@ export function detailPlans(input: DetailInput): DetailPlan[] {
   const plans: DetailPlan[] = [];
   if (rider) {
     const center = { x: rider.x + rider.width / 2, y: rider.y + rider.height / 2 };
-    plans.push(square("pelican", "鹈鹕整体", center, Math.max(rider.width, rider.height) * 1.15, shortSide, stage, ["C6", "C7", "C8"]));
+    plans.push(squarePlan("pelican", "鹈鹕整体", center, Math.max(rider.width, rider.height) * 1.15, shortSide, stage, ["C6", "C7", "C8"]));
     const headHeight = rider.height * 0.4;
     const head = { x: rider.x + rider.width / 2, y: rider.y + headHeight / 2 };
-    plans.push(square("head", "头与喙", head, Math.max(rider.width, headHeight) * 1.1, shortSide, stage, ["C6"]));
+    plans.push(squarePlan("head", "头与喙", head, Math.max(rider.width, headHeight) * 1.1, shortSide, stage, ["C6"]));
   }
   const wheelRadius = wheels.length > 0 ? wheels.reduce((sum, w) => sum + w.radius, 0) / wheels.length : 0;
   if (feet.axle && feet.crankReach > 0) {
-    plans.push(square("crank", "脚踏与脚", feet.axle, feet.crankReach * 4, shortSide, stage, ["C2", "C4", "C7"]));
+    plans.push(squarePlan("crank", "脚踏与脚", feet.axle, feet.crankReach * 4, shortSide, stage, ["C2", "C4", "C7"]));
     const hips = feet.feet.map((s) => s.hip);
     const saddle = hips.length > 0
       ? { x: hips.reduce((sum, h) => sum + h.x, 0) / hips.length, y: hips.reduce((sum, h) => sum + h.y, 0) / hips.length }
       : { x: feet.axle.x, y: feet.axle.y - wheelRadius };
-    plans.push(square("saddle", "座垫与臀", saddle, Math.max(feet.crankReach * 3, wheelRadius), shortSide, stage, ["C7"]));
+    plans.push(squarePlan("saddle", "座垫与臀", saddle, Math.max(feet.crankReach * 3, wheelRadius), shortSide, stage, ["C7"]));
   }
   const ordered = [...wheels].sort((a, b) => a.sample.x - b.sample.x);
   ordered.forEach((wheel, i) => {
     const kind: DetailKind = i === 0 && ordered.length > 1 ? "wheel-left" : "wheel-right";
-    plans.push(square(kind, i === 0 && ordered.length > 1 ? "左轮" : "右轮", wheel.sample, wheel.radius * 2.6, shortSide, stage, ["C1"]));
+    plans.push(squarePlan(kind, i === 0 && ordered.length > 1 ? "左轮" : "右轮", wheel.sample, wheel.radius * 2.6, shortSide, stage, ["C1"]));
   });
   return plans;
 }
 
-function square(
+/** 以 center 为中心造正方形取景框：边长取 wanted 与画面短边 1/5 的较大者，放大倍数按画面长边算 */
+export function squarePlan(
   kind: DetailKind, subject: string, center: { x: number; y: number }, wanted: number,
   shortSide: number, stage: StageInfo, criteria: string[],
 ): DetailPlan {
-  const side = Math.max(wanted, shortSide / 5);
-  const region = { x: center.x - side / 2, y: center.y - side / 2, width: side, height: side };
+  const side = round2(Math.max(wanted, shortSide / 5));
+  const region = { x: round2(center.x - side / 2), y: round2(center.y - side / 2), width: side, height: side };
   const zoom = Math.max(stage.viewBox.width, stage.viewBox.height) / side;
   return { kind, subject, region, zoom: Math.round(zoom * 10) / 10, criteria };
+}
+
+/** 取景框写两位小数：量测值带浮点误差，记录里不该出现 74.49999999999994 */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 /** 一行帧格：每格左上角标帧号（细节表再带部位与倍数），在浏览器里拼好整体截图，不引入图像库 */

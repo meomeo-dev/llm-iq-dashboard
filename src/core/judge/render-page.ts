@@ -55,6 +55,12 @@ export function seekTo(ms: number): Promise<void> {
 }
 
 /** 把根元素的 viewBox 换成给定区域：动画已定格，只改取景框，用来截关键部位的放大图 */
+/** 根元素用户坐标 → 屏幕像素的矩阵（含 viewBox 缩放与 meet 居中留白）；像素框换算回 viewBox 用它的逆 */
+export function rootScreenMatrix(): Matrix2D | null {
+  const ctm = (document.documentElement as unknown as SVGSVGElement).getScreenCTM();
+  return ctm ? [ctm.a, ctm.b, ctm.c, ctm.d, ctm.e, ctm.f] : null;
+}
+
 export function setViewBox(box: StageInfo["viewBox"]): void {
   document.documentElement.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${box.height}`);
 }

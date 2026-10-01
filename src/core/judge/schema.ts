@@ -56,6 +56,8 @@ export interface ContactSheetDetail {
   zoom: number;
   /** 这张表主要服务哪些标准 */
   criteria: string[];
+  /** 取景框由谁定：代码层几何推断，或裁判看首帧给的框（ACR-021）；旧记录没有此字段即 code */
+  locatedBy?: "code" | "ai";
 }
 
 /** 给 AI 层的图件清单：帧序联系表加各类细节联系表 */

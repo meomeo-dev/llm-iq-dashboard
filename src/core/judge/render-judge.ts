@@ -10,7 +10,8 @@ import { acquireJudgeBrowser } from "./browser";
 import { runDir } from "../paths";
 import { composeContactSheet, detailPlans, FRAME_SIZE, type DetailPlan } from "./contact-sheet";
 import {
-  measureFeet, measureRider, measureTracks, PAGE_HELPERS, prepareStage, seekTo, setViewBox, type FeetSpec, type StageInfo, type TrackSpec,
+  measureFeet, measureRider, measureTracks, PAGE_HELPERS, prepareStage, rootScreenMatrix, seekTo, setViewBox,
+  type FeetSpec, type Matrix2D, type StageInfo, type TrackSpec,
 } from "./render-page";
 import { applyRenderResults, RENDER_JUDGE_ID, type FrameCapture, type RenderMeasurements } from "./render-score";
 import type { ContactSheetDetail, Judgement, RubricSpec } from "./schema";
@@ -59,6 +60,67 @@ export async function renderJudge(input: RenderJudgeInput): Promise<RenderOutcom
       file, layout: "row", frameCount: FRAME_COUNT, frameSize: FRAME_SIZE, periodMs,
       sampleTimesMs: frames.map((f) => f.timeMs), details,
     } } };
+  } catch (cause) {
+    return { ok: false, reason: cause instanceof Error ? cause.message.split("\n")[0] ?? "" : String(cause) };
+  } finally {
+    await context.close();
+  }
+}
+
+export interface LocateFrame {
+  png: Buffer;
+  stage: StageInfo;
+  /** 用户坐标 → 像素的矩阵，截图边长为 size */
+  matrix: Matrix2D;
+  size: number;
+}
+
+/** 首帧整幅画面按 size 边长截图，连同换算矩阵一起给定位阶段（ACR-021） */
+export async function captureLocateFrame(source: string, size: number): Promise<{ ok: true; frame: LocateFrame } | { ok: false; reason: string }> {
+  const handle = await acquireJudgeBrowser();
+  if (!handle.ok) return { ok: false, reason: handle.reason };
+  const context = await handle.browser.newContext({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
+  try {
+    const page = await context.newPage();
+    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`, { waitUntil: "load" });
+    const stage = await evaluatePage(page, prepareStage, size);
+    await evaluatePage(page, seekTo, 0);
+    const matrix = await evaluatePage(page, rootScreenMatrix, undefined);
+    if (!matrix) return { ok: false, reason: "根元素没有屏幕矩阵" };
+    const png = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: size, height: size } });
+    return { ok: true, frame: { png, stage, matrix, size } };
+  } catch (cause) {
+    return { ok: false, reason: cause instanceof Error ? cause.message.split("\n")[0] ?? "" : String(cause) };
+  } finally {
+    await context.close();
+  }
+}
+
+/** 按给定取景框重切 8 帧细节表并落盘，取样时刻沿用帧序表；返回带文件名的清单（ACR-021） */
+export async function recaptureDetails(
+  source: string, judgement: Judgement, plans: readonly DetailPlan[],
+): Promise<{ ok: true; details: ContactSheetDetail[] } | { ok: false; reason: string }> {
+  const sheet = judgement.contactSheet;
+  if (!sheet) return { ok: false, reason: "没有帧序表" };
+  const handle = await acquireJudgeBrowser();
+  if (!handle.ok) return { ok: false, reason: handle.reason };
+  const context = await handle.browser.newContext({ viewport: { width: FRAME_SIZE, height: FRAME_SIZE }, deviceScaleFactor: 1 });
+  try {
+    const page = await context.newPage();
+    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`, { waitUntil: "load" });
+    const stage = await evaluatePage(page, prepareStage, FRAME_SIZE);
+    const frames: Buffer[][] = [];
+    for (const timeMs of sheet.sampleTimesMs) {
+      await evaluatePage(page, seekTo, timeMs);
+      frames.push(await captureDetails(page, plans, stage));
+    }
+    const { runId, attemptKey } = judgement.subject;
+    const details: ContactSheetDetail[] = [];
+    for (const [index, plan] of plans.entries()) {
+      const composed = await composeContactSheet(handle.browser, frames.map((f) => f[index]!), (i) => `${i + 1} · ${plan.subject} ×${plan.zoom}`);
+      details.push({ ...plan, file: await saveContactSheet(runId, `${attemptKey}.sheet.${plan.kind}.png`, composed) });
+    }
+    return { ok: true, details };
   } catch (cause) {
     return { ok: false, reason: cause instanceof Error ? cause.message.split("\n")[0] ?? "" : String(cause) };
   } finally {
