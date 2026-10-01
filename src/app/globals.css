@@ -25,11 +25,11 @@
   /* 看板布局（见 components/toolbar/toolbar.css 与 components/timeline/timeline.css） */
   --lane-label-width: 176px;
   /* 矩阵格子固定尺寸：列宽、行高与文件夹边长都不随列数变化（与 track-layout.ts、
-     export/timeline-svg.ts 的常量一致）。文件夹内 2×2 小图边长 = (216 - 2×16 - 12) / 2 = 86 */
+     export/timeline-svg.ts 的常量一致）。文件夹内 2×2 小图边长 = (216 - 2×12 - 12) / 2 = 90 */
   --cell-width: 232px;
   --cell-height: 236px;
   --tile-size: 216px;
-  --folder-padding: 16px;
+  --folder-padding: 12px;
   --folder-gap: 12px;
   /* 时间轨道的高度，与 timeline/track-layout.ts 的常量一致 */
   --axis-height: 56px;

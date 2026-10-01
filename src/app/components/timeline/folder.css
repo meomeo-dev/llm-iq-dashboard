@@ -64,16 +64,17 @@
   box-shadow: 0 0 0 2px var(--surface-hi);
 }
 
-/* 角底部居中的评审结论图标行（verdict-icons.tsx）：深色底托住浅色作品 */
+/* 角底部居中的评审结论图标行（verdict-icons.tsx）：一半压在角外的格子底色上，少挡作品 */
 .folder-marks {
   position: absolute;
-  bottom: 5px;
+  bottom: -8px;
   left: 50%;
   display: inline-flex;
   align-items: center;
   gap: 2px;
   padding: 2px 4px;
-  border-radius: 9px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--surface-hi);
   background: rgba(3, 6, 12, 0.72);
   transform: translateX(-50%);
 }
