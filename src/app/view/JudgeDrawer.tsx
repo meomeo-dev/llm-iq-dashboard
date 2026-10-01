@@ -48,7 +48,10 @@ export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; jud
   );
 }
 
-/** 帧序联系表与各类细节联系表：同帧号、同取样时刻，细节表标出取景倍数与服务的标准 */
+/** 取景框来源的标签文案：旧记录没有 locatedBy 即几何推断 */
+const LOCATED_TEXT = { ai: "裁判定位", code: "几何推断" } as const;
+
+/** 帧序联系表与各类细节联系表：同帧号、同取样时刻，细节表标出取景倍数、服务的标准与取景框来源 */
 function ContactSheets({ runId, sheet }: { runId: string; sheet: ContactSheet }) {
   const src = (file: string) => `/sheet/${encodeURIComponent(runId)}/${encodeURIComponent(file)}`;
   return (
@@ -64,7 +67,12 @@ function ContactSheets({ runId, sheet }: { runId: string; sheet: ContactSheet })
       {(sheet.details ?? []).map((d) => (
         <figure key={d.kind} className="judge-sheet">
           <img src={src(d.file)} alt={`${d.subject}细节联系表`} loading="lazy" />
-          <figcaption>{d.subject} ×{d.zoom} · {d.criteria.join(" ")}</figcaption>
+          <figcaption>
+            {d.subject} ×{d.zoom} · {d.criteria.join(" ")}
+            <span className={`judge-located judge-located-${d.locatedBy ?? "code"}`} title="取景框由谁定：裁判看首帧给框，或代码层按几何推断">
+              {LOCATED_TEXT[d.locatedBy ?? "code"]}
+            </span>
+          </figcaption>
         </figure>
       ))}
     </div>

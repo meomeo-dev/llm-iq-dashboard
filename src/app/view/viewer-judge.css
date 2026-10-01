@@ -104,6 +104,23 @@
   border-radius: 4px;
 }
 
+/* 取景框来源：裁判定位用强调色，几何推断用淡色 */
+.judge-located {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 11px;
+}
+
+.judge-located-ai {
+  color: var(--accent);
+}
+
+.judge-located-code {
+  color: var(--text-faint);
+}
+
 .judge-sheet figcaption {
   margin-top: 2px;
   color: var(--text-faint);
