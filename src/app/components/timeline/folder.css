@@ -74,15 +74,16 @@
   bottom: 5px;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
+/* 4 个圆标（3 个结论 + 「+」）连描边共 62px，留在 86px 小格子内 */
 .verdict-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--surface);
   box-shadow: 0 0 0 2px var(--surface-hi);
@@ -90,8 +91,8 @@
 
 .verdict-icon {
   flex: none;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
 /* 图例里的图标与状态点同一视觉量级 */
