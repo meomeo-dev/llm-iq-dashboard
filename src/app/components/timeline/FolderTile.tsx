@@ -41,8 +41,9 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
         const card = cell.slotCards[index] ?? null;
         if (card === null) return <span key={slot} className="folder-slot folder-empty" title={`${slot}：未运行`} />;
         const count = slotCount(cell, slot);
+        const marks = slotMarks(cell, slot);
         return (
-          <span key={slot} className="folder-slot">
+          <span key={slot} className={`folder-slot${marks.verdicts.length > 0 ? " has-marks" : ""}`}>
             <Thumb card={card} />
             <span className={`folder-status status-dot status-${card.status}`} />
             {count > 1 && (
@@ -50,7 +51,7 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
                 ×{count}
               </span>
             )}
-            <SlotMarkRow marks={slotMarks(cell, slot)} />
+            <SlotMarkRow marks={marks} />
           </span>
         );
       })}
