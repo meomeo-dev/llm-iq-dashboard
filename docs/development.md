@@ -96,5 +96,5 @@ SVG 净化依赖浏览器的 `DOMParser`，测试里由 jsdom 提供（见 `test
 | 用途 | 在 Node 中为 `svg-sanitize.ts` 提供 `DOMParser` 与 `document.importNode` |
 | 理由 | 净化的正确性取决于 XML/SVG 解析保真度；jsdom 走命名空间感知的解析器，近两年无安全公告 |
 | 替代方案 | happy-dom：DOMParser 解析 SVG、`importNode` 有未关闭的偏差，近两年有多起高危公告；Vitest 5 / Jest 30：为现有纯逻辑用例引入整套工具链，收益不抵依赖量 |
-| 版本 | 锁在 29.x：30.x 要求 Node ≥ 22.22.2；jsdom 29 不带类型，`test/types/jsdom.d.ts` 声明所用的最小接口 |
+| 版本 | 锁在 29.x：30.x 要求 Node ≥ 22.22.2；jsdom 29 不带类型，`src/types/jsdom.d.ts` 声明所用的最小接口 |
 | 退出条件 | Node 升到 ≥ 22.22.2 后改用 jsdom 30 + `@types/jsdom`，删除本地声明；组件测试超过约 5 个、需要稳定的模块 mock 或覆盖率门禁时，整体迁到 Vitest，只保留一个运行器 |
