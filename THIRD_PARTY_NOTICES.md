@@ -102,6 +102,12 @@
 | jsdom | 29.1.1 | MIT | Copyright (c) 2010 Elijah Insua |
 | @types/node、@types/react、@types/react-dom | 22.20.4 / 19.3.0 | MIT | Copyright (c) Microsoft Corporation. |
 
+## 内嵌的第三方素材
+
+- 评审结论图标 `src/app/components/icons/verdict-icons.tsx` 内嵌 [Phosphor Icons](https://github.com/phosphor-icons/core)
+  2.1.1 的 fill 字重四个图标（brain、smiley-x-eyes、hourglass、plus）的 SVG 路径，未改形。
+  MIT License，Copyright (c) 2023 Phosphor Icons。
+
 ## 不随本仓库分发的组件
 
 - Docker 镜像不含三家 CLI：容器启动时由 `docker/install-clis.sh` 从官方渠道安装

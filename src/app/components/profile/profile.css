@@ -149,7 +149,7 @@
 
 .folder-count {
   position: absolute;
-  bottom: 5px;
+  top: 5px;
   left: 6px;
   padding: 0 5px;
   border-radius: 8px;

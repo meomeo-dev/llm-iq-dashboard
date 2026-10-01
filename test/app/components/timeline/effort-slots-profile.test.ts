@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cellUpstreams, folderCell, slotCount } from "@/app/components/timeline/effort-slots";
+import { cellUpstreams, folderCell, slotCount, slotMarks } from "@/app/components/timeline/effort-slots";
 import type { Moment } from "@/app/components/timeline/moments";
 import type { ProfileView } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
@@ -51,4 +51,22 @@ test("folderCell：没有配置清单时也把登录态排在前面，其余按�
 test("cellUpstreams：去掉登录态，按配置顺序", () => {
   assert.deepEqual(cellUpstreams(moment.cards, profiles), ["relay-a", "relay-b"]);
   assert.deepEqual(cellUpstreams([card("high")], profiles), []);
+});
+
+function judged(effort: string, profile: string | undefined, verdict: "online" | "degraded" | "pending" | null): DashboardCard {
+  return { ...card(effort, profile), judge: verdict === null ? null : { total: { verdict } } } as unknown as DashboardCard;
+}
+
+test("slotMarks：按弹窗列序取结论，缺评审记录的占位为待复核，最多三个、余数记 more；整角无记录不出图标", () => {
+  const crowded = {
+    runId: "r2", cards: [judged("high", undefined, "online"), judged("high", "relay-a", null), judged("high", "relay-b", "degraded"), judged("high", "relay-c", "online")],
+  } as unknown as Moment;
+  const many = [...profiles, { ...profiles[0]!, name: "relay-c", label: "丙" }];
+  const cell = folderCell(crowded, row, ["high"], ["high"], many);
+  assert.ok(cell);
+  assert.deepEqual(slotMarks(cell, "high"), { verdicts: ["online", "pending", "degraded"], more: 1 });
+  const unjudged = folderCell({ runId: "r3", cards: [judged("high", undefined, null), judged("high", "relay-a", null)] } as unknown as Moment, row, ["high"], ["high"], profiles);
+  assert.ok(unjudged);
+  assert.deepEqual(slotMarks(unjudged, "high"), { verdicts: [], more: 0 });
+  assert.deepEqual(slotMarks(cell, "low"), { verdicts: [], more: 0 }, "没跑的角没有图标");
 });

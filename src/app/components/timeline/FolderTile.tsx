@@ -1,7 +1,9 @@
 "use client";
 
+import { JUDGE_TEXT } from "../card/card-format";
+import { MoreIcon, VerdictIcon } from "../icons/verdict-icons";
 import { Thumb } from "./Thumb";
-import { OVERFLOW_SLOT, SLOT_CORNERS, slotCount, type FolderCell } from "./effort-slots";
+import { OVERFLOW_SLOT, SLOT_CORNERS, slotCount, slotMarks, type FolderCell, type SlotMarks } from "./effort-slots";
 import type { Row } from "./rows";
 
 interface FolderTileProps {
@@ -48,10 +50,23 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
                 ×{count}
               </span>
             )}
+            <SlotMarkRow marks={slotMarks(cell, slot)} />
           </span>
         );
       })}
     </button>
+  );
+}
+
+/** 角底部居中的评审结论图标行：与弹窗里的上游列同序，最多三个，再多补一个「+」 */
+function SlotMarkRow({ marks }: { marks: SlotMarks }) {
+  if (marks.verdicts.length === 0) return null;
+  const summary = marks.verdicts.map((verdict) => JUDGE_TEXT[verdict]).join("、") + (marks.more > 0 ? ` 等 ${marks.verdicts.length + marks.more} 件` : "");
+  return (
+    <span className="folder-marks" title={`评审：${summary}`}>
+      {marks.verdicts.map((verdict, index) => <VerdictIcon key={index} verdict={verdict} label={JUDGE_TEXT[verdict]} />)}
+      {marks.more > 0 && <MoreIcon label={`还有 ${marks.more} 件`} />}
+    </span>
   );
 }
 
@@ -88,6 +103,14 @@ export function StatusLegend() {
       <span className="legend-item">
         <span className="status-dot status-error" />
         失败
+      </span>
+      <span className="legend-item">
+        <VerdictIcon verdict="online" label={JUDGE_TEXT.online} />
+        {JUDGE_TEXT.online}
+      </span>
+      <span className="legend-item">
+        <VerdictIcon verdict="degraded" label={JUDGE_TEXT.degraded} />
+        {JUDGE_TEXT.degraded}
       </span>
     </span>
   );

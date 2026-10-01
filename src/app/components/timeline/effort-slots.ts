@@ -3,6 +3,7 @@
  * 档位多于四个时前三个各占一角，其余收进第四角显示为 “+N”。
  */
 
+import type { Verdict } from "@/core/judge/schema";
 import { orderProfileNames, type ProfileView } from "@/core/profile-view";
 import { DEFAULT_PROFILE, type DashboardCard } from "@/core/types";
 import type { Moment } from "./moments";
@@ -60,6 +61,27 @@ export function folderCell(
 /** 这一角有几个上游的结果；大于 1 时格子上标 `×N` */
 export function slotCount(cell: FolderCell, slot: string): number {
   return new Set(cell.cards.filter((card) => card.effort === slot).map(upstreamOf)).size;
+}
+
+/** 一个角底部最多放几个评审结论图标，再多以「+」示意 */
+export const SLOT_MARK_LIMIT = 3;
+
+export interface SlotMarks {
+  /** 前几个上游作品的结论，顺序与弹窗里的上游列一致 */
+  verdicts: Verdict[];
+  /** 放不下的个数 */
+  more: number;
+}
+
+/**
+ * 这一角各上游作品的评审结论（ACR-019）。没有评审记录的作品在有记录的同伴旁按待复核占位，
+ * 保持与弹窗列的顺序对应；整角都没有评审记录（题目没有评分标准）时不出图标。
+ */
+export function slotMarks(cell: FolderCell, slot: string): SlotMarks {
+  const cards = cell.cards.filter((card) => card.effort === slot);
+  if (!cards.some((card) => card.judge != null)) return { verdicts: [], more: 0 };
+  const verdicts = cards.map((card): Verdict => card.judge?.total.verdict ?? "pending");
+  return { verdicts: verdicts.slice(0, SLOT_MARK_LIMIT), more: Math.max(0, verdicts.length - SLOT_MARK_LIMIT) };
 }
 
 /** 这一格出现过的第三方上游（登录态不算），登录态在前的顺序里去掉登录态 */

@@ -64,6 +64,31 @@
   box-shadow: 0 0 0 2px var(--surface-hi);
 }
 
+/* 角底部居中的评审结论图标行（verdict-icons.tsx）：深色底托住浅色作品 */
+.folder-marks {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 9px;
+  background: rgba(3, 6, 12, 0.72);
+  transform: translateX(-50%);
+}
+
+.verdict-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.verdict-icon.verdict-online { color: var(--ok); }
+.verdict-icon.verdict-degraded { color: var(--err); }
+.verdict-icon.verdict-pending { color: var(--text-faint); }
+.verdict-icon.verdict-more { color: var(--text-dim); }
+
 /* 标题旁的格内位置图例 */
 .slot-legend {
   display: inline-flex;
