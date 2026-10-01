@@ -80,6 +80,12 @@
 
 .verdict-icon {
   flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+/* 图例里的图标与状态点同一视觉量级 */
+.legend-item .verdict-icon {
   width: 13px;
   height: 13px;
 }

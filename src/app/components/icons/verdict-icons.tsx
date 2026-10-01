@@ -26,7 +26,7 @@ const VERDICT_PATH: Record<Verdict, string> = { online: BRAIN, degraded: X_EYES,
 
 function Icon({ path, className, label }: { path: string; className: string; label: string }) {
   return (
-    <svg className={`verdict-icon ${className}`} viewBox="0 0 256 256" role="img" aria-label={label}>
+    <svg className={`verdict-icon ${className}`} viewBox="0 0 256 256" fill="currentColor" role="img" aria-label={label}>
       <title>{label}</title>
       <path d={path} />
     </svg>
