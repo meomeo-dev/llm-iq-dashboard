@@ -5,7 +5,8 @@
 
 import type { ContactSheet, CriterionSpec, RubricSpec } from "./schema";
 
-export const AI_PROMPT_VERSION = 3;
+/** 提示词版本，与评分标准的 version 同一规矩：从首次发布起算，发布前改措辞不升 */
+export const AI_PROMPT_VERSION = 1;
 
 /** 盲描述回答的存档长度上限 */
 const BLIND_MAX_CHARS = 600;

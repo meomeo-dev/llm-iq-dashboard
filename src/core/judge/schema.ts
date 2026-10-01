@@ -140,12 +140,13 @@ export interface RubricSpec {
  * 代码层（C1–C4）合计 30 分只做机械核对，AI 层（C5–C9）合计 70 分看语义；及格线 78 意味着
  * 没有 AI 层的记录只能是「待复核」，AI 层五项合计至少要拿 48 分。
  * C6 只管「认得出是鹈鹕」，骑姿与接触点各归 C7（座垫、脚踏）与 C9（车把），不混进身份判断。
- * version 只随标准与权重变；及格线只定「在线 / 降智」的标签、不改分数，调它不升 version，
+ * version 只随标准与权重变，且从首次发布起算：发布前改口径不升版本，已发布的版本上改口径才升。
+ * 及格线只定「在线 / 降智」的标签、不改分数，调它不升 version，
  * 旧记录展示时按当前及格线重定结论（见 withCurrentThreshold）。
  */
 export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
   id: "animated-pelican-v1",
-  version: 4,
+  version: 1,
   passThreshold: 78,
   gates: [
     { id: "G1", source: "static", title: "XML 合法", standard: "XML 解析零错误" },
