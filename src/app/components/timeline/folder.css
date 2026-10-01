@@ -30,26 +30,8 @@
 
 .folder-slot {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   min-width: 0;
   border-radius: 18px;
-}
-
-/* 有评审结论的角：作品缩成 70px 居中，底下留 16px 一条放图标，不压作品 */
-.folder-slot.has-marks .thumb {
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
-  border-radius: 14px;
-}
-
-.folder-slot.has-marks .folder-status {
-  right: 13px;
-}
-
-.folder-slot.has-marks .folder-count {
-  left: 14px;
 }
 
 .folder-slot .thumb {
@@ -82,18 +64,35 @@
   box-shadow: 0 0 0 2px var(--surface-hi);
 }
 
-/* 作品下方那一条里的评审结论图标行（verdict-icons.tsx），直接坐在格子底色上 */
+/*
+ * 评审结论小圆标（verdict-icons.tsx）：与右上角状态点同一套路，骑在作品下沿上，
+ * 一半落在格子底色里，只盖住作品底边 9px；作品本身保持满格
+ */
 .folder-marks {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  height: 16px;
+  transform: translateX(-50%);
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface-hi);
 }
 
 .verdict-icon {
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 /* 图例里的图标与状态点同一视觉量级 */

@@ -43,7 +43,7 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
         const count = slotCount(cell, slot);
         const marks = slotMarks(cell, slot);
         return (
-          <span key={slot} className={`folder-slot${marks.verdicts.length > 0 ? " has-marks" : ""}`}>
+          <span key={slot} className="folder-slot">
             <Thumb card={card} />
             <span className={`folder-status status-dot status-${card.status}`} />
             {count > 1 && (
@@ -65,8 +65,16 @@ function SlotMarkRow({ marks }: { marks: SlotMarks }) {
   const summary = marks.verdicts.map((verdict) => JUDGE_TEXT[verdict]).join("、") + (marks.more > 0 ? ` 等 ${marks.verdicts.length + marks.more} 件` : "");
   return (
     <span className="folder-marks" title={`评审：${summary}`}>
-      {marks.verdicts.map((verdict, index) => <VerdictIcon key={index} verdict={verdict} label={JUDGE_TEXT[verdict]} />)}
-      {marks.more > 0 && <MoreIcon label={`还有 ${marks.more} 件`} />}
+      {marks.verdicts.map((verdict, index) => (
+        <span key={index} className="verdict-badge">
+          <VerdictIcon verdict={verdict} label={JUDGE_TEXT[verdict]} />
+        </span>
+      ))}
+      {marks.more > 0 && (
+        <span className="verdict-badge">
+          <MoreIcon label={`还有 ${marks.more} 件`} />
+        </span>
+      )}
     </span>
   );
 }
