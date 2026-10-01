@@ -34,7 +34,7 @@ test("matrixEfforts：只留有结果的档位，按给定顺序", () => {
   assert.deepEqual(matrixEfforts(cards, ["low", "medium", "high"]), ["low", "high"]);
 });
 
-test("ProfileMatrix：列标题登录态不可点、上游名可点开信息卡；空格为 —；副标题只留 model · effort", () => {
+test("ProfileMatrix：列标题登录态不可点、上游名可点开信息卡；空格为 —；卡片不出副标题，上游走徽章", () => {
   const html = renderToStaticMarkup(
     React.createElement(ProfileMatrix, { cards, upstreams: ["default", "relay-a"], efforts: ["low", "high"], timeZone: "UTC" }),
   );
@@ -43,7 +43,9 @@ test("ProfileMatrix：列标题登录态不可点、上游名可点开信息卡�
   assert.match(html, /<button[^>]*class="profile-name"[^>]*aria-haspopup="dialog"[^>]*>.*relay-a/);
   assert.equal((html.match(/profile-matrix-empty/g) ?? []).length, 1);
   assert.equal((html.match(/<article class="card">/g) ?? []).length, 3);
-  assert.match(html, /class="subject" title="gpt-6-sol · high">gpt-6-sol · high</);
+  assert.doesNotMatch(html, /class="subject"/);
+  assert.equal((html.match(/class="badge profile"/g) ?? []).length, 2, "两张 relay-a 卡片各一个上游徽章，登录态没有");
+  assert.match(html, /class="badge profile" title="上游：relay-a">.*?relay-a<\/span>/);
   assert.doesNotMatch(html, /· 登录态</);
   assert.match(html, /官价 —/);
 });

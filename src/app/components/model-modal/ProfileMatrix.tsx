@@ -46,7 +46,7 @@ export function ProfileMatrix({ cards, upstreams, efforts, timeZone }: ProfileMa
           {upstreams.map((name) => {
             const card = cards.find((item) => item.effort === effort && upstreamOf(item) === name);
             if (card === undefined) return <div key={name} className="profile-matrix-empty" title={`${effort}：未运行`}>—</div>;
-            return <PelicanCard key={name} card={card} timeZone={timeZone} subject={`${card.model} · ${card.effort}`} />;
+            return <PelicanCard key={name} card={card} timeZone={timeZone} />;
           })}
         </Fragment>
       ))}

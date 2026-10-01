@@ -1,7 +1,10 @@
 "use client";
 
+import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 import { useLiveProgress } from "../live-state/live-store";
+import { profileColor } from "../profile/profile-color";
+import { useProfiles } from "../profile/profiles-context";
 import { judgeItemOf } from "../run-status/run-phase";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
@@ -11,22 +14,13 @@ import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeTi
  * 单次调用的结果卡片。表头、图框、页脚各自定高（见 cards.css），失败时用同尺寸
  * 图框说明原因，并排比较时高度差不会被误读为结果多寡。
  */
-export function PelicanCard({
-  card,
-  timeZone,
-  subject,
-}: {
-  card: DashboardCard;
-  timeZone: string;
-  /** 副标题；缺省用目标显示名。对比矩阵里列标题已写上游，这里只留 `model · effort` */
-  subject?: string;
-}) {
+export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
   // 抽出了 SVG 才有作品地址；源码在进入视口时再取（见 ACR-003）
   const art = rawSvgHref(card);
   const isRedacted = card.status === "ok" && card.svgFile === null;
   return (
     <article className="card">
-      <CardHeader card={card} timeZone={timeZone} subject={subject ?? card.label} />
+      <CardHeader card={card} timeZone={timeZone} />
 
       {art !== null ? (
         <ArtFrame card={card} art={art} />
@@ -41,20 +35,19 @@ export function PelicanCard({
   );
 }
 
-function CardHeader({ card, timeZone, subject }: { card: DashboardCard; timeZone: string; subject: string }) {
+/** 目标显示名与徽章内容重复，不单列一行，只放在表头的悬停提示里 */
+function CardHeader({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
   return (
-    <header>
+    <header title={card.label}>
       {/* 执行时刻作主标题，用于区分结果来自哪一轮 */}
       <h2 className="timestamp" suppressHydrationWarning>
         {formatZonedDateTime(new Date(card.startedAt), timeZone)}
       </h2>
-      <p className="subject" title={subject}>
-        {subject}
-      </p>
       <div className="badges">
         <span className="badge cli">{card.cli}</span>
         <span className="badge">{card.model}</span>
         <EffortBadge card={card} />
+        {card.profile !== undefined && <ProfileBadge name={card.profile} />}
         <span className="badge prompt-id">{card.promptId}</span>
         {/* 变量取值上徽章：不知道本轮问的是什么动物就无法判读作品 */}
         {Object.entries(card.bindings).map(([name, value]) => (
@@ -110,6 +103,18 @@ function JudgeTag({ card, judge, judgeCost }: { card: DashboardCard; judge: NonN
   return (
     <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge, judgeCost)}>
       {JUDGE_TEXT[judge.total.verdict]} {judge.total.score}
+    </span>
+  );
+}
+
+/** 上游徽章：色点与进度面板、时间线同色；登录态（无 profile）不出徽章 */
+function ProfileBadge({ name }: { name: string }) {
+  const { profiles } = useProfiles();
+  const label = profileLabel(name, profiles);
+  return (
+    <span className="badge profile" title={`上游：${label}`}>
+      <span className="profile-dot" style={{ background: profileColor(name) }} aria-hidden="true" />
+      {label}
     </span>
   );
 }
