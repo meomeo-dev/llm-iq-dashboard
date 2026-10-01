@@ -213,6 +213,13 @@
                   "type": "string",
                   "pattern": "^C[0-9]+$"
                 }
+              },
+              "locatedBy": {
+                "description": "取景框来源：code 为代码层几何推断，ai 为裁判看首帧给的框（ACR-021）；缺省即 code",
+                "enum": [
+                  "code",
+                  "ai"
+                ]
               }
             }
           }
@@ -311,7 +318,10 @@
         },
         "usage": {
           "description": "AI 层全部问答（含重试）的 token 用量，从裁判转录解析；成本读取时按价格目录折算。解析不出为 null",
-          "type": ["object", "null"]
+          "type": [
+            "object",
+            "null"
+          ]
         },
         "asks": {
           "description": "AI 层问答次数",

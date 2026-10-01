@@ -31,6 +31,7 @@
 | [ACR-018](revisions/ACR-018-data-repo-profile-publish.md) | 2026-09-30 | 数据仓发布 profile 结果（记录带八字段公开视图）、题目白名单、面板按轮次勾选导出 | §4 §6 §8 |
 | [ACR-019](revisions/ACR-019-judge-scoring.md) | 2026-09-30 | 动态鹈鹕车代码层评审：静态解析 + 无头 Chromium 渲染量测，卡片贴智商在线 / 降智标签，引入 playwright-core | §3 §4 §7 |
 | [ACR-020](revisions/ACR-020-judge-ai-layer.md) | 2026-09-30 | 评审 AI 语义层：适配器评审模式，轮次定稿后裁判 CLI 看联系图打 C5–C8；代码层权重降到 30 分 | §3 §4 §7 |
+| [ACR-021](revisions/ACR-021-judge-ai-locate.md) | 2026-10-01 | 裁判先看首帧定位四类部位的取景框，程序按框重切细节表再打分；几何推断只作兜底 | §3 §4 |
 
 ## 0. 技术选型总览
 
@@ -151,7 +152,10 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   踩踏可信）共 70 分由裁判 CLI 判，因此没有 AI 层的作品只能是「待复核」或「降智」。轮次记录定稿后
   `src/core/judge/ai-round` 串行处理本轮通过全部闸门的「待复核」作品：取 `judge.ai.judges` 里第一个
   厂商与作品不同的裁判，把联系图复制进临时目录，以适配器「评审模式」先只给帧序表要盲描述、再给
-  全部联系图与题目要 C5–C8 的 JSON 分（解析失败重试一次）；盲描述没认出鹈鹕则 C6 上限减半。
+  首帧整幅画面（640px）要鹈鹕整体、头与喙、座垫与臀、脚踏与脚四类部位的像素框，程序经根元素的
+  屏幕矩阵换算到 viewBox 后重切 8 帧细节表（`details[].locatedBy = ai`，定位失败沿用代码层几何推断
+  的表，ACR-021）、最后给全部联系图与题目要 C5–C8 的 JSON 分（解析失败重试一次）；盲描述没认出
+  鹈鹕则 C6 上限减半。
   转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。评审队列写在本轮 `progress.json`
   的 `judging` 段（逐件排队 / 评审中 / 结论），随 SSE 推送：状态胶囊显示「评审中 k/n」，面板列出每件，
   卡片在队列里时显示「待评审 / 评审中…」，出分后触发整页刷新。裁判全部问答的 token 用量从转录
@@ -173,7 +177,7 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   结构见 `docs/research/judge/judge.schema.json`）、`<attemptKey>.sheet.png`（帧序联系表）与
   `<attemptKey>.sheet.<kind>.png`（各类细节联系表），随轮次目录一起保留与删除；
   看板经 `/sheet/<runId>/<file>` 读联系图（ACR-019）。经 AI 层评审的作品另有
-  `<attemptKey>.judge-ai.txt`（裁判两次问答的转录，ACR-020）。联系图与转录不进数据仓；评审记录
+  `<attemptKey>.judge-ai.txt`（裁判三次问答的转录：盲描述、定位、打分，ACR-020 / ACR-021）。联系图与转录不进数据仓；评审记录
   去掉这两样后内嵌进公开 `run.json` 的对应调用（`PublicAttempt.judge`，可选字段、不升契约版本），
   只读展台因此与本地看板显示同样的标签与逐项分，只是抽屉里没有联系图（ACR-020）。`runId` 由 UTC 时刻派生，字典序即时间序。
   看板首页只读 `run.json`；`.svg` 由浏览器按需经 `/art` 读取，单件作品页由服务端直接读取。
