@@ -87,6 +87,19 @@ export function elapsedMs(call: CallProgress, now: number): number {
   return Math.max(0, now - Date.parse(call.startedAt));
 }
 
+/** 计时是否还在走：执行中、正在停止、评审中；中断、已完成、已停止的轮次停表 */
+export function isTicking(phase: RunPhase): boolean {
+  return isActivePhase(phase) || phase === "judging";
+}
+
+/**
+ * 调用与评审条目计时用的时钟：还在走时取当前时刻，停表后取进度文件最后一次更新。
+ * 进程消失后进度文件里残留的「执行中」条目据此停在最后一次更新，不再随墙钟增长。
+ */
+export function runClock(run: ProgressView, phase: RunPhase, now: number): number {
+  return isTicking(phase) ? now : Date.parse(run.updatedAt);
+}
+
 /** 整轮已用时长：结束的按结束时刻，中断的停在最后一次更新 */
 export function runElapsedMs(run: ProgressView, phase: RunPhase, now: number): number {
   const end = isActivePhase(phase) ? now : Date.parse(run.finishedAt ?? run.updatedAt);

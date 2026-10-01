@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { countCalls, countJudging, isActivePhase, judgeItemOf, phaseOf } from "@/app/components/run-status/run-phase";
+import { countCalls, countJudging, elapsedMs, isActivePhase, isTicking, judgeItemOf, phaseOf, runClock } from "@/app/components/run-status/run-phase";
 import type { CallProgress, ProgressView } from "@/core/progress";
 
 const NOW = Date.parse("2026-09-25T05:45:00Z");
@@ -61,6 +61,28 @@ describe("AI 层评审阶段（ACR-020）", () => {
     assert.equal(judgeItemOf([view], view.runId, "b")?.state, "running");
     assert.equal(judgeItemOf([view], view.runId, "zzz"), null);
     assert.equal(judgeItemOf(null, view.runId, "a"), null);
+  });
+});
+
+describe("停表：进程消失后不再随墙钟计时", () => {
+  test("执行中与评审中计时走，中断、已完成、已停止停表", () => {
+    assert.deepEqual((["running", "stopping", "judging"] as const).map(isTicking), [true, true, true]);
+    assert.deepEqual((["interrupted", "finished", "cancelled"] as const).map(isTicking), [false, false, false]);
+  });
+
+  test("中断轮次里残留的执行中调用停在进度文件最后一次更新", () => {
+    const dead = run({ alive: false });
+    const later = NOW + 20 * 3600_000;
+    const phase = phaseOf(dead, later);
+    assert.equal(phase, "interrupted");
+    const clock = runClock(dead, phase, later);
+    assert.equal(clock, Date.parse(dead.updatedAt));
+    assert.equal(elapsedMs(call("running"), clock), 30_000, "05:44:00 开始，05:44:30 最后一次更新");
+  });
+
+  test("执行中的轮次按当前时刻计时", () => {
+    const live = run({});
+    assert.equal(runClock(live, phaseOf(live, NOW), NOW), NOW);
   });
 });
 
