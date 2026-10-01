@@ -232,7 +232,7 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
   );
 }
 
-/** 页脚两行，与看板同序：第一行状态、耗时、成本；第二行体积、触发方式靠左，评审结论靠右按结论染色 */
+/** 页脚两行，与看板同序：第一行状态、耗时、成本；第二行体积、触发方式靠左，裁判成本与评审结论靠右，结论按颜色染 */
 function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette): string {
   const redacted = card.status === "ok" && card.svgFile === null;
   const statusColor = redacted ? palette.textDim : card.status === "ok" ? palette.ok : card.status === "no-svg" ? palette.warn : palette.err;
@@ -244,13 +244,16 @@ function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette):
     .join("   ");
   const statusWidth = estimateWidth(status, 12.5);
   const judge = judgeTag(card, palette);
+  const judgeCost = card.judgeCost == null ? null : `裁判 ${formatCost(card.judgeCost.cost)}`;
   const judgeWidth = judge === null ? 0 : estimateWidth(judge.label, 12) + 12;
+  const judgeCostWidth = judgeCost === null ? 0 : estimateWidth(judgeCost, 12) + 12;
   return (
     `<line x1="${x}" y1="${y}" x2="${x + CARD_WIDTH}" y2="${y}" stroke="${palette.border}"/>` +
     text(x + CARD_PAD, y + 20, status, statusColor, 12.5, 'font-weight="600"') +
     text(x + CARD_PAD + statusWidth + 12, y + 20, clip(first, CARD_WIDTH - CARD_PAD * 2 - statusWidth - 12, 12), palette.textDim, 12) +
-    text(x + CARD_PAD, y + 40, clip(second, CARD_WIDTH - CARD_PAD * 2 - judgeWidth, 12), palette.textDim, 12) +
-    (judge === null ? "" : text(x + CARD_WIDTH - CARD_PAD, y + 40, judge.label, judge.color, 12, 'text-anchor="end" font-weight="600"'))
+    text(x + CARD_PAD, y + 40, clip(second, CARD_WIDTH - CARD_PAD * 2 - judgeWidth - judgeCostWidth, 12), palette.textDim, 12) +
+    (judge === null ? "" : text(x + CARD_WIDTH - CARD_PAD, y + 40, judge.label, judge.color, 12, 'text-anchor="end" font-weight="600"')) +
+    (judgeCost === null ? "" : text(x + CARD_WIDTH - CARD_PAD - judgeWidth, y + 40, judgeCost, palette.textDim, 12, 'text-anchor="end"'))
   );
 }
 

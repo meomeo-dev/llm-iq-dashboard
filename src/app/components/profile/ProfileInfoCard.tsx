@@ -44,6 +44,7 @@ export function ProfileInfoCard({ name, profile, cards, owner, closeRef, onClose
           {cards.length > 1 ? `${card.effort} ` : "本件 "}
           耗时 {formatDuration(card.durationMs)} · 官价 {formatCost(card.cost)}
           {profile !== null && card.cost.usd !== null && ` · 折算 ${formatCost({ ...card.cost, usd: card.cost.usd * profile.multiplier })}`}
+          {card.judgeCost != null && ` · 裁判 ${formatCost(card.judgeCost.cost)}`}
         </p>
       ))}
       {owner && (

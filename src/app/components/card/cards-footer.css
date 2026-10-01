@@ -67,6 +67,13 @@
   }
 }
 
+/* 裁判成本：跟在评审标签后，与作品成本分开 */
+.judge-cost {
+  color: var(--text-dim);
+  cursor: help;
+  white-space: nowrap;
+}
+
 /* 评审标签（ACR-019）：按结论染色，分数跟在标签后 */
 .judge-tag {
   padding: 0 6px;

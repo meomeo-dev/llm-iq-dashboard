@@ -25,7 +25,7 @@ function card(effort: string, profile: string | undefined, status: DashboardCard
     usage: null, bindings: {}, trigger: "manual",
     error: status === "error" ? "unexpected status 503 <Service> Unavailable & retry later ".repeat(4) : null,
     judge: status === "ok" ? { total: { verdict: effort === "xhigh" ? "degraded" : "online", score: effort === "xhigh" ? 45 : 94 } } : null,
-    judgeCost: null,
+    judgeCost: status === "ok" && effort === "medium" ? { judgeId: "claude/claude-sonnet-5-5@high", usage: null, asks: 3, cost: { status: "priced", usd: 0.021, modelId: "m", channelId: "c", serviceTier: "standard", catalogTag: "t", lines: [], note: null } } : null,
     ...(profile === undefined ? {} : { profile }),
   } as unknown as DashboardCard;
 }
@@ -57,6 +57,7 @@ test("矩阵布局：列 = 上游、行 = 有结果的强度；尺寸按列行�
   assert.match(svg, /调用失败/);
   assert.match(svg, /&lt;Service&gt; Unavailable &amp; retry/);
   assert.match(svg, /官价 \$0.170/);
+  assert.match(svg, /裁判 \$0.021/);
   assert.doesNotMatch(svg, /NaN|undefined/);
   assert.match(svg, new RegExp(`<rect width="${width}" height="${height}" fill="#0b0f17"/>`));
 });

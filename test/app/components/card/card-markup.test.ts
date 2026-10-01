@@ -127,6 +127,13 @@ describe("PelicanCard 评审标签（ACR-019）", () => {
     assert.match(html, /judge-tag judge-pending/);
     assert.match(html, /待复核 20/);
     assert.match(html, /C1 20\/20 车轮绕轴心旋转：偏差 0/);
+    assert.doesNotMatch(html, /judge-cost/);
+  });
+
+  test("有裁判成本时在评审标签后单独列出，悬停说明含裁判与问答次数", () => {
+    const card: DashboardCard = { ...judged, judgeCost: { judgeId: "claude/claude-sonnet-5-5@high", usage: null, asks: 3, cost: { status: "priced", usd: 0.021, modelId: "m", channelId: "c", serviceTier: "standard", catalogTag: "t", lines: [], note: null } } };
+    const html = renderToStaticMarkup(React.createElement(PelicanCard, { card, timeZone: "UTC" }));
+    assert.match(html, /judge-cost[^>]*title="AI 层裁判 claude\/claude-sonnet-5-5@high · 3 次问答 · 用量未知 · API 等价 \$0.021"[^>]*>裁判 (<!-- -->)?\$0.021/);
   });
 
   test("没有评审记录时不渲染标签", () => {
