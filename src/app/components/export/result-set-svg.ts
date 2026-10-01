@@ -1,12 +1,13 @@
 /**
  * 把一个格子的结果集（弹窗里的内容）画成独立 SVG：标题 + 卡片。多上游时列 = 上游、行 = 强度，
- * 单上游时按强度排成一行。每张卡片与看板的 PelicanCard 同形：表头、4:3 白底图框、页脚。
+ * 单上游时按强度排成一行。每张卡片与看板的 PelicanCard 同形：表头（时刻 + 两行徽章）、4:3 白底图框、
+ * 页脚（状态、耗时、成本、体积、触发方式、评审结论）。
  * 作品以 <image> 嵌入 data URI，各自成为独立文档；背景全部不透明，栅格化后没有透明区域。
  * 文字宽度按字形估算并截断，不依赖浏览器测量，服务端与测试里也能画。
  */
 
 import type { DashboardCard } from "@/core/types";
-import { formatBytes, formatCost, formatDuration, STATUS_TEXT } from "../card/card-format";
+import { formatBytes, formatCost, formatDuration, JUDGE_TEXT, STATUS_TEXT } from "../card/card-format";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { escapeXml, thumbnailKey, type Palette, type RenderedSvg } from "./timeline-svg";
 
@@ -54,7 +55,8 @@ const CARD_WIDTH = 300;
 const CARD_HEAD = 96;
 const FRAME_HEIGHT = (CARD_WIDTH * 3) / 4;
 const FRAME_PAD = 10;
-const CARD_FOOT = 44;
+/** 页脚两行，与看板卡片同高 */
+const CARD_FOOT = 52;
 const CARD_HEIGHT = CARD_HEAD + FRAME_HEIGHT + CARD_FOOT;
 const CARD_PAD = 14;
 const ROW_LABEL_WIDTH = 56;
@@ -139,36 +141,62 @@ function emptyCell(x: number, y: number, palette: Palette): string {
   );
 }
 
-/** 一张卡片：表头（时刻、副标题、徽章）、图框、页脚 */
+/** 一张卡片：表头（时刻、徽章）、图框、页脚；与看板卡片一样不画副标题 */
 function cardSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number, artFrames: ArtFrame[]): string {
   const { palette } = input;
-  const subject = `${card.model} · ${card.effort}`;
-  const badges = [card.cli, card.model, `effort: ${effortText(card)}`, card.promptId, ...Object.entries(card.bindings).map(([k, v]) => `${k}: ${v}`)];
   return (
     `<rect x="${x}" y="${y}" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" rx="10" fill="${palette.surface}" stroke="${palette.border}"/>` +
     text(x + CARD_PAD, y + 26, formatZonedDateTime(new Date(card.startedAt), input.timeZone), palette.text, 14.5, 'font-weight="600"') +
-    text(x + CARD_PAD, y + 46, clip(subject, CARD_WIDTH - CARD_PAD * 2, 12.5), palette.textDim, 12.5) +
-    badgeRow(badges, x + CARD_PAD, y + 58, CARD_WIDTH - CARD_PAD * 2, palette) +
+    badgeRows(cardBadges(input, card), x + CARD_PAD, y + 38, CARD_WIDTH - CARD_PAD * 2, palette) +
     frameSvg(input, card, x, y + CARD_HEAD, artFrames) +
     footerSvg(card, x, y + CARD_HEAD + FRAME_HEIGHT, palette)
   );
 }
 
-function effortText(card: DashboardCard): string {
-  if (!card.effortHonored) return "不可调";
-  return card.appliedEffort === card.effort ? card.effort : `${card.effort} → ${card.appliedEffort}`;
+interface Badge {
+  label: string;
+  color: string;
+  /** 上游色点 */
+  dot?: string | null;
 }
 
-/** 徽章一行：放不下的省略，不换行 */
-function badgeRow(labels: readonly string[], x: number, y: number, maxWidth: number, palette: Palette): string {
+/** 与看板卡片表头同序：CLI、模型、强度、上游（登录态不出）、题目、变量取值 */
+function cardBadges(input: ResultSetExport, card: DashboardCard): Badge[] {
+  const { palette } = input;
+  const folded = card.effortHonored && card.appliedEffort !== card.effort;
+  const effort: Badge = !card.effortHonored
+    ? { label: "强度不可调", color: palette.warn }
+    : { label: `effort: ${folded ? `${card.effort} → ${card.appliedEffort}` : card.effort}`, color: folded ? palette.warn : palette.textDim };
+  const column = input.columns.find((item) => item.name === card.profile);
+  const profile: Badge[] = card.profile === undefined ? [] : [{ label: column?.label ?? card.profile, color: palette.text, dot: column?.color ?? null }];
+  return [
+    { label: card.cli, color: palette.text },
+    { label: card.model, color: palette.textDim },
+    effort,
+    ...profile,
+    { label: card.promptId, color: palette.textFaint },
+    ...Object.entries(card.bindings).map(([k, v]) => ({ label: `${k}: ${v}`, color: palette.accent })),
+  ];
+}
+
+/** 徽章最多两行（与看板表头同高），放不下的省略 */
+function badgeRows(badges: readonly Badge[], x: number, y: number, maxWidth: number, palette: Palette): string {
   const parts: string[] = [];
   let cursor = x;
-  for (const label of labels) {
-    const width = estimateWidth(label, 11.5) + 14;
-    if (cursor + width > x + maxWidth) break;
+  let row = 0;
+  for (const badge of badges) {
+    const dotWidth = badge.dot ? 12 : 0;
+    const width = estimateWidth(badge.label, 11.5) + 14 + dotWidth;
+    if (cursor + width > x + maxWidth) {
+      if (cursor === x || row === 1) break;
+      row = 1;
+      cursor = x;
+    }
+    const top = y + row * 26;
+    const dot = badge.dot ? `<circle cx="${cursor + 11}" cy="${top + 10}" r="4" fill="${badge.dot}"/>` : "";
     parts.push(
-      `<rect x="${cursor}" y="${y}" width="${round(width)}" height="20" rx="6" fill="${palette.surfaceHi}" stroke="${palette.border}"/>` +
-        text(cursor + 7, y + 14, label, palette.textDim, 11.5),
+      `<rect x="${cursor}" y="${top}" width="${round(width)}" height="20" rx="6" fill="${palette.surfaceHi}" stroke="${palette.border}"/>` +
+        dot + text(cursor + 7 + dotWidth, top + 14, badge.label, badge.color, 11.5),
     );
     cursor += width + 6;
   }
@@ -204,20 +232,35 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
   );
 }
 
+/** 页脚两行，与看板同序：第一行状态、耗时、成本；第二行体积、触发方式靠左，评审结论靠右按结论染色 */
 function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette): string {
   const redacted = card.status === "ok" && card.svgFile === null;
   const statusColor = redacted ? palette.textDim : card.status === "ok" ? palette.ok : card.status === "no-svg" ? palette.warn : palette.err;
   const status = redacted ? "已脱敏" : STATUS_TEXT[card.status];
   const cost = `${card.profile === undefined ? "" : "官价 "}${formatCost(card.cost)}`;
-  const rest = [`耗时 ${formatDuration(card.durationMs)}`, cost, card.svgBytes === null ? null : formatBytes(card.svgBytes)]
+  const first = `耗时 ${formatDuration(card.durationMs)}   ${cost}`;
+  const second = [card.svgBytes === null ? null : formatBytes(card.svgBytes), card.trigger === "schedule" ? "定时" : "手动"]
     .filter((item): item is string => item !== null)
     .join("   ");
   const statusWidth = estimateWidth(status, 12.5);
+  const judge = judgeTag(card, palette);
+  const judgeWidth = judge === null ? 0 : estimateWidth(judge.label, 12) + 12;
   return (
     `<line x1="${x}" y1="${y}" x2="${x + CARD_WIDTH}" y2="${y}" stroke="${palette.border}"/>` +
-    text(x + CARD_PAD, y + 27, status, statusColor, 12.5, 'font-weight="600"') +
-    text(x + CARD_PAD + statusWidth + 12, y + 27, clip(rest, CARD_WIDTH - CARD_PAD * 2 - statusWidth - 12, 12), palette.textDim, 12)
+    text(x + CARD_PAD, y + 20, status, statusColor, 12.5, 'font-weight="600"') +
+    text(x + CARD_PAD + statusWidth + 12, y + 20, clip(first, CARD_WIDTH - CARD_PAD * 2 - statusWidth - 12, 12), palette.textDim, 12) +
+    text(x + CARD_PAD, y + 40, clip(second, CARD_WIDTH - CARD_PAD * 2 - judgeWidth, 12), palette.textDim, 12) +
+    (judge === null ? "" : text(x + CARD_WIDTH - CARD_PAD, y + 40, judge.label, judge.color, 12, 'text-anchor="end" font-weight="600"'))
   );
+}
+
+/** 评审标签：与看板页脚同文案「智商在线 94」；没有评审记录的卡片不画 */
+function judgeTag(card: DashboardCard, palette: Palette): { label: string; color: string } | null {
+  const judge = card.judge;
+  if (judge == null) return null;
+  const { verdict, score } = judge.total;
+  const color = verdict === "online" ? palette.ok : verdict === "degraded" ? palette.err : palette.textDim;
+  return { label: `${JUDGE_TEXT[verdict]} ${score}`, color };
 }
 
 function stripesPattern(palette: Palette): string {

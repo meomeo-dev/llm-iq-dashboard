@@ -14,9 +14,11 @@ import {
   planSlots,
   SLOT_CORNERS,
   slotCount,
+  slotMarks,
   type FolderCell,
 } from "../timeline/effort-slots";
 import { momentHealth, type Moment } from "../timeline/moments";
+import { verdictBadgesSvg } from "./verdict-badges-svg";
 import { listRows, rowKeyOf, type Row } from "../timeline/rows";
 import type { NowMark } from "../timeline/TimelineAxis";
 import {
@@ -231,18 +233,18 @@ function miniSvg(context: TrackContext, cell: FolderCell, slot: string, index: n
       : `<rect ${box} fill="#fff"/><image href="${escapeXml(art)}" x="${x + 2}" y="${y + 2}" ` +
         `width="${MINI_SIZE - 4}" height="${MINI_SIZE - 4}" preserveAspectRatio="xMidYMid meet"/>`;
   const dot = `<circle cx="${x + MINI_SIZE - 10}" cy="${y + 10}" r="5" fill="${statusColor(card, palette)}" stroke="${palette.surfaceHi}" stroke-width="2"/>`;
-  return content + dot + countBadge(cell, slot, x, y, palette);
+  return content + dot + countBadge(cell, slot, x, y, palette) + verdictBadgesSvg(slotMarks(cell, slot), x, y, MINI_SIZE, palette);
 }
 
-/** 这一角有多个上游的结果时，左下角标 `×N` */
+/** 这一角有多个上游的结果时，左上角标 `×N`（右下角留给评审圆标） */
 function countBadge(cell: FolderCell, slot: string, x: number, y: number, palette: Palette): string {
   const count = slotCount(cell, slot);
   if (count <= 1) return "";
   const label = `×${count}`;
   const width = 10 + label.length * 7;
   return (
-    `<rect x="${x + 6}" y="${y + MINI_SIZE - 22}" width="${width}" height="16" rx="8" fill="${palette.bg}" fill-opacity="0.8"/>` +
-    text(x + 6 + width / 2, y + MINI_SIZE - 10, label, palette.text, 11, 'text-anchor="middle" font-weight="600"')
+    `<rect x="${x + 6}" y="${y + 6}" width="${width}" height="16" rx="8" fill="${palette.bg}" fill-opacity="0.8"/>` +
+    text(x + 6 + width / 2, y + 18, label, palette.text, 11, 'text-anchor="middle" font-weight="600"')
   );
 }
 
