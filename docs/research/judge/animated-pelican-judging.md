@@ -102,7 +102,7 @@
 ### 4.1 运行方式
 
 - 不在调用道内同步执行。轮次记录定稿后在同一进程里串行评审本轮作品（`src/core/judge/ai-round.ts`），
-  被停止的轮次不评；历史作品用 `pnpm judge:backfill -- --ai-only` 补评。
+  被停止的轮次不评；历史作品不补评，`pnpm judge:backfill -- --ai-only` 仅在人工明确要求时按轮运行。
 - 只评通过全部闸门、仍为「待复核」且有联系表的作品；已判「降智」的作品不再消耗配额。
 - 裁判来自配置 `judge.ai.judges`，按顺序取第一个厂商与被评作品不同的，写入 `judges[].id`
   为 `cli/model@effort`；没有厂商不同的裁判就不评。

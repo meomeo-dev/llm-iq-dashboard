@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-30 |
 | 变更类型 | new-module |
 | 触发来源 | 口头：代码层误判太严重却占 60 分，两幅脚不踩脚踏的作品也能拿 60 过线；AI 语义层至今未实现，作品永远停在「待复核」 |
@@ -45,7 +45,7 @@
 | `src/adapters/claude.ts` | modify | 评审模式 `--tools Read`，否则仍 `--tools ""` | no |
 | `src/adapters/codex.ts` | modify | 评审模式 `approvalPolicy: never`（只读沙箱内读取放行），否则仍 `untrusted` | no |
 | `src/adapters/agy.ts` | modify | 注释：评审模式不改参数，工作目录内文件本就可读 | no |
-| `src/core/judge/schema.ts` | modify | rubric 升 `version: 3`：C1 10 / C2 8 / C3 4 / C4 8（代码层 30），C5 15 / C6 15 / C7 20 / C8 20（AI 层 70）；历史记录须 `judge:backfill` 重算 | yes |
+| `src/core/judge/schema.ts` | modify | rubric 升 `version: 3`：C1 10 / C2 8 / C3 4 / C4 8（代码层 30），C5 15 / C6 15 / C7 20 / C8 20（AI 层 70）；历史记录不自动重算，`judge:backfill` 仅供人工按需使用 | yes |
 | `src/core/judge/ai-prompt.ts` | add | 盲描述与逐项判定的提示词、回答 JSON 解析、C6 盲描述核对 | no |
 | `src/core/judge/ai-judge.ts` | add | 单件评审：挑裁判、准入、临时目录放联系图、两次提问、并分、落盘、转录存档 | no |
 | `src/core/judge/ai-round.ts` | add | 轮后队列：本轮通过闸门的「待复核」作品串行评审 | no |
@@ -110,15 +110,15 @@
 
 **兼容策略**：并行运行 + 开关 —— `judge.ai` 缺省关闭，关闭时行为与 ACR-019 完全一致；开启后只对
 「待复核」记录追加分数与一条 `judges[]`，失败保持「待复核」。权重变化经 rubric `version: 3` 标出，
-旧记录由 `pnpm judge:backfill` 全量重算。
+旧记录不自动重算，也不默认补评 AI 层；`pnpm judge:backfill` 仅在人工明确要求时按轮运行。
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | 1a3723b | |
-| `pnpm test` | node:test 单测，含新增 `test/core/judge/ai-judge.test.ts` | pass | pass | 1a3723b | 830 用例 |
-| `pnpm build` | Next.js 看板生产构建 | pass | pass | 1a3723b | |
-| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | 1a3723b | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链 | skip | skip | | 真实调用 CLI 消耗配额，须先征得同意再跑 |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | be6d007 | |
+| `pnpm test` | node:test 单测，含新增 `test/core/judge/ai-judge.test.ts` | pass | pass | be6d007 | 837 用例 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | be6d007 | |
+| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | be6d007 | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链 | skip | skip | | 真实调用 CLI 消耗配额，由所有者自行执行，不由代理触发 |
 | `pnpm judge:backfill` | 本地 44 幅按 v3 权重重算代码层 | pass | pass | 1a3723b | 变更前为 v2 权重；v3 后 35 幅待复核、9 幅降智，无一幅能只凭代码层过线 |
 | `pnpm judge:backfill -- --ai-only --only {runId}` | 对一轮真实调用裁判 CLI，记录得到 C5–C8 与 `judges[].kind = ai` | skip | pass | 1a3723b | 变更前该参数不存在；轮次 20260929T161834Z 7 幅由 agy/gemini-3.8-flash@high 评：3 幅在线（100 / 95 / 66）、4 幅降智（45 / 44 / 35 / 31），claude 未登录时自动换下一个裁判 |
 
@@ -127,7 +127,9 @@
 | 步 | 做什么 | 回滚点 |
 |---|---|---|
 | 1 | 适配器评审模式 + 配置 `judge.ai` + `ai-prompt` / `ai-judge` / `ai-round` + runner 钩子 + 权重 v3 + 单测 + backfill `--ai` + 配置页区块 + 公开记录内嵌评审 + 容器 chromium（1a3723b） | revert 本 commit |
-| 2 | 本地 44 幅重算代码层，对一轮真实跑 AI 层核对分布；回填文档 | revert 本 commit |
+| 2 | 本地 44 幅重算代码层，对一轮真实跑 AI 层核对分布；回填文档（881e33e） | revert 本 commit |
+| 3 | 裁判用量记进评审记录，成本按价格目录折算并在看板显示（c8c1120） | revert 本 commit |
+| 4 | AI 层评审进度写进 `progress.json` 随 SSE 推送，看板显示评审中与未评原因（d5f8c78、be6d007） | revert 本 commit |
 
 ## 回滚方案
 

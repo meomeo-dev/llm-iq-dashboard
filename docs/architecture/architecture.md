@@ -156,8 +156,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   的 `judging` 段（逐件排队 / 评审中 / 结论），随 SSE 推送：状态胶囊显示「评审中 k/n」，面板列出每件，
   卡片在队列里时显示「待评审 / 评审中…」，出分后触发整页刷新。裁判全部问答的 token 用量从转录
   解析后记在 `judges[]` 的 AI 那条（`usage`、`asks`），成本与作品同口径按价格目录在读取时折算
-  （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。`pnpm judge:backfill -- --ai`
-  / `--ai-only` 补评历史。
+  （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。历史作品不自动补评；
+  `pnpm judge:backfill -- --ai` / `--ai-only` 仅在人工明确要求时按轮运行。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
   agy 仅 `--sandbox`。评审模式（ACR-020）是唯一例外：`AgentRequest.review` 声明工作目录里可读的
   联系图文件，claude 改 `--tools Read`，codex 改 `never` 审批（只读沙箱内读取放行、写盘仍拦），

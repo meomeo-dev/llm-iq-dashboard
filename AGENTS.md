@@ -51,7 +51,7 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 - **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`
   串行交给配置 `judge.ai.judges` 里第一个厂商不同的裁判 CLI，以适配器「评审模式」（临时目录只放联系图，
   只放开读文件）先盲描述再按 C5–C8 打 70 分，转录存 `<attemptKey>.judge-ai.txt`。裁判调用真实消耗配额，
-  `pnpm judge:backfill -- --ai-only` 补评历史前先征得同意。评审记录去掉联系图与转录后随公开
+  历史作品不补评、不主动提议补评；`pnpm judge:backfill -- --ai-only` 只在用户明确要求时按轮运行。评审记录去掉联系图与转录后随公开
   `run.json` 的调用发布（`PublicAttempt.judge`），数据仓 validator 同步认这个字段；容器镜像装了
   chromium（`PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX`）给渲染层用。
 - **模型产物不可信**：SVG 在浏览器端净化（`src/app/components/card/`），`/art` 路由以 CSP

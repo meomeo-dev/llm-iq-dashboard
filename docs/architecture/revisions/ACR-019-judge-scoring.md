@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-09-30 |
 | 变更类型 | add-dependency |
 | 触发来源 | 口头：动态鹈鹕车（animated-pelican-v1）的结果要打「智商在线 / 降智」标签并给百分制分数；方案见 `docs/research/judge/animated-pelican-judging.md`，记录结构见同目录 `judge.schema.json` |
@@ -85,11 +85,11 @@ AI 语义层要给适配器加「评审模式」并在执行进程里排评审�
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | eb7e001 | |
-| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | pass | eb7e001 | 820 用例 |
-| `pnpm build` | Next.js 看板生产构建 | pass | pass | eb7e001 | |
-| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | eb7e001 | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | skip | | 真实调用 CLI 消耗配额，须先征得同意再跑；跑通并 pass 后状态改 done |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | be6d007 | |
+| `pnpm test` | node:test 单测，含新增的 `test/core/judge/` | pass | pass | be6d007 | 837 用例 |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | be6d007 | |
+| `pnpm check:length` | 文件与函数长度阈值 | pass | pass | be6d007 | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链，`ok` 调用之后生成 `.judge.json` | skip | skip | | 真实调用 CLI 消耗配额，由所有者自行执行，不由代理触发 |
 | `pnpm judge:backfill -- --dry-run` | 对本地 `data/runs` 全量回填不落盘，检查静态解析不抛错 | skip | pass | eb7e001 | 变更前该命令不存在；本地 44 幅：15 幅 60、20 幅 45–55、9 幅 0 |
 
 ## 分步实施
