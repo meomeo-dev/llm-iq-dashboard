@@ -10,7 +10,7 @@
 - 标准来自题目自带的 `standard`（[data-classic.ts](../../../src/core/prompt/data-classic.ts)）：
   旋转中心、踩踏联动、语法规范三条，拆成可逐项计分的闸门与标准。
 - 闸门（gate）任一不通过：总分 0，判「降智」，不进入 AI 层。
-- 标准（criterion）逐项计分，`maxScore` 之和为 100；总分 ≥ 60 判「智商在线」。
+- 标准（criterion）逐项计分，`maxScore` 之和为 100；总分 ≥ 78 判「智商在线」；及格线只定标签不改分数，调整不升 `version`，展示时按当前及格线重定旧记录的结论。
 - 任何标准未判定时 `verdict = pending`，看板显示「待复核」，不贴标签。
 - 分数只在同一 `rubric.id + version` 内可比；改标准即升版本，旧记录不重算、不混排。
 

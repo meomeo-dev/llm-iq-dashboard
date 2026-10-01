@@ -10,6 +10,7 @@
 import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
+import { withCurrentThreshold } from "./judge/schema";
 import { runDir, runsRoot } from "./paths";
 import type { Attempt, DashboardCard, RunRecord } from "./types";
 import { usageAndCost } from "../pricing/attempt-cost";
@@ -199,7 +200,7 @@ async function cardsOfRun(run: RunRecord, attempts: readonly Attempt[]): Promise
       promptText: prompt?.text ?? "",
       bindings: prompt?.bindings ?? {},
       ...(await usageAndCost(run.runId, attempt)),
-      judge: attempt.svgFile === null ? null : await loadJudgement(run.runId, attemptKeyOf(attempt.svgFile)),
+      judge: attempt.svgFile === null ? null : withJudgeThreshold(await loadJudgement(run.runId, attemptKeyOf(attempt.svgFile))),
       judgeCost: null,
     });
     const last = cards[cards.length - 1]!;
@@ -215,4 +216,9 @@ async function readSvg(runId: string, attempt: Attempt): Promise<string | null> 
   } catch {
     return null;
   }
+}
+
+/** 展示用的评审记录按当前及格线重定结论；没有记录时仍是 null */
+function withJudgeThreshold(judgement: Awaited<ReturnType<typeof loadJudgement>>): Awaited<ReturnType<typeof loadJudgement>> {
+  return judgement === null ? null : withCurrentThreshold(judgement);
 }

@@ -135,13 +135,15 @@ export interface RubricSpec {
 
 /**
  * 动态鹈鹕车的评分标准，口径来自题目自带的 standard.evaluationCriteria。
- * 代码层（C1–C4）合计 30 分只做机械核对，AI 层（C5–C8）合计 70 分看语义；及格线 60 意味着
- * 没有 AI 层的记录只能是「待复核」，代码层的误判最多损失 30 分。
+ * 代码层（C1–C4）合计 30 分只做机械核对，AI 层（C5–C8）合计 70 分看语义；及格线 78 意味着
+ * 没有 AI 层的记录只能是「待复核」，AI 层四项合计至少要拿 48 分。
+ * version 只随标准与权重变；及格线只定「在线 / 降智」的标签、不改分数，调它不升 version，
+ * 旧记录展示时按当前及格线重定结论（见 withCurrentThreshold）。
  */
 export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
   id: "animated-pelican-v1",
   version: 3,
-  passThreshold: 60,
+  passThreshold: 78,
   gates: [
     { id: "G1", source: "static", title: "XML 合法", standard: "XML 解析零错误" },
     { id: "G2", source: "static", title: "写了动画", standard: "存在 <animate*>，或 <style> 内同时有 @keyframes 与 animation" },
@@ -176,6 +178,19 @@ const RUBRICS: ReadonlyMap<string, RubricSpec> = new Map([
 /** 有评分标准的题目才评审；其余题目返回 null */
 export function rubricFor(promptId: string): RubricSpec | null {
   return RUBRICS.get(promptId) ?? null;
+}
+
+/**
+ * 按当前及格线重定结论：同一标准同一版本下分数可比，只是及格线调过；落盘记录原样不动，
+ * 展示时统一按当前及格线判，免得同一分数在新旧记录上贴不同标签。待复核与闸门不过的不受影响。
+ */
+export function withCurrentThreshold(judgement: Judgement): Judgement {
+  const current = RUBRICS.get(judgement.rubric.id);
+  if (!current || current.version !== judgement.rubric.version || current.passThreshold === judgement.rubric.passThreshold) {
+    return judgement;
+  }
+  const rubric = { ...judgement.rubric, passThreshold: current.passThreshold };
+  return { ...judgement, rubric, total: summarizeTotal(judgement.gates, judgement.criteria, rubric, judgement.total.judgedAt) };
 }
 
 /** 闸门任一不过即 0 分降智；有标准未判定为 pending；否则按阈值判 */

@@ -65,17 +65,16 @@
 }
 
 /*
- * 评审结论小圆标（verdict-icons.tsx）：与右上角状态点同一套路，骑在作品下沿上，
- * 一半落在格子底色里，只盖住作品底边 9px；作品本身保持满格
+ * 评审结论小圆标（verdict-icons.tsx）：贴作品右下角，与右上角状态点对角呼应；
+ * 多个上游沿底边往左排，顺序与弹窗列一致
  */
 .folder-marks {
   position: absolute;
-  bottom: -9px;
-  left: 50%;
+  right: 5px;
+  bottom: 5px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  transform: translateX(-50%);
 }
 
 .verdict-badge {
