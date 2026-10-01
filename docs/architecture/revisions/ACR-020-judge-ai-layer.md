@@ -69,7 +69,9 @@
 | `src/core/sync/export-run.ts` | modify | 导出时读 `.judge.json` 内嵌进公开调用 | no |
 | `src/core/data-source/remote.ts` | modify | 只读展台从公开记录取 `judge`，不再恒为 null | no |
 | `src/core/judge/browser.ts` | modify | `PELICAN_BROWSER_NO_SANDBOX=1` 给容器内 chromium | no |
-| `src/app/config/JudgePanel.tsx` | add | 配置页「作品评审」区块：两个开关、裁判清单、超时 | no |
+| `src/app/config/JudgePanel.tsx` | add | 配置页「作品评审」区块：两个开关、裁判清单（可上移下移）、超时、每家作品的裁判路由预览 | no |
+| `src/app/config/judge-panel-model.ts` | add | 裁判清单调整顺序与路由推导的纯函数，规则与 `pickJudges` 一致 | no |
+| `src/app/config/config-matrix.css` | modify | 裁判清单顺序列与路由预览的样式 | no |
 | `src/app/config/ConfigEditor.tsx` | modify | 挂上作品评审区块 | no |
 | `src/app/config/config-editor-model.ts` | modify | `EditableConfig.judge` 与提交体 | no |
 | `src/app/config/config-nav-items.ts` | modify | 侧边导航增「作品评审」 | no |
@@ -77,7 +79,7 @@
 | `src/app/view/JudgeDrawer.tsx` | modify | 细节表清单缺失时按空处理（公开记录没有联系图） | no |
 | `src/app/api/config/route.ts` | modify | GET 带 `judge` | no |
 | `docker/Dockerfile` | modify | 装 chromium 与字体，设 `PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX` | no |
-| `test/app/config/` | modify | 夹具补 `judge` | no |
+| `test/app/config/` | modify | 夹具补 `judge`；增 `judge-panel-model.test.ts` | no |
 | `test/core/sync/export-run.test.ts` | modify | 内嵌评审记录的导出用例 | no |
 | `test/core/config-writer.test.ts` | modify | judge 段写回用例 | no |
 | `scripts/judge-backfill.ts` | modify | `--ai`（代码层后接 AI 层）与 `--ai-only`（只补 AI 层） | no |
@@ -130,6 +132,7 @@
 | 2 | 本地 44 幅重算代码层，对一轮真实跑 AI 层核对分布；回填文档（881e33e） | revert 本 commit |
 | 3 | 裁判用量记进评审记录，成本按价格目录折算并在看板显示（c8c1120） | revert 本 commit |
 | 4 | AI 层评审进度写进 `progress.json` 随 SSE 推送，看板显示评审中与未评原因（d5f8c78、be6d007） | revert 本 commit |
+| 5 | 配置页裁判清单可上移下移，列出每家作品按当前顺序由谁评（461c126） | revert 本 commit |
 
 ## 回滚方案
 
