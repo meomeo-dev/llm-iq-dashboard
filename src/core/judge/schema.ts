@@ -42,7 +42,7 @@ export interface JudgeActor {
 }
 
 /** 细节联系表的类别：每类一张表，与帧序联系表同帧号、同取样时刻 */
-export type DetailKind = "pelican" | "head" | "crank" | "saddle" | "wheel-left" | "wheel-right";
+export type DetailKind = "pelican" | "head" | "crank" | "saddle" | "handlebar" | "wheel-left" | "wheel-right";
 
 /** 一类关键部位的放大联系表：8 帧共用同一取景框 */
 export interface ContactSheetDetail {
@@ -137,14 +137,15 @@ export interface RubricSpec {
 
 /**
  * 动态鹈鹕车的评分标准，口径来自题目自带的 standard.evaluationCriteria。
- * 代码层（C1–C4）合计 30 分只做机械核对，AI 层（C5–C8）合计 70 分看语义；及格线 78 意味着
- * 没有 AI 层的记录只能是「待复核」，AI 层四项合计至少要拿 48 分。
+ * 代码层（C1–C4）合计 30 分只做机械核对，AI 层（C5–C9）合计 70 分看语义；及格线 78 意味着
+ * 没有 AI 层的记录只能是「待复核」，AI 层五项合计至少要拿 48 分。
+ * C6 只管「认得出是鹈鹕」，骑姿与接触点各归 C7（座垫、脚踏）与 C9（车把），不混进身份判断。
  * version 只随标准与权重变；及格线只定「在线 / 降智」的标签、不改分数，调它不升 version，
  * 旧记录展示时按当前及格线重定结论（见 withCurrentThreshold）。
  */
 export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
   id: "animated-pelican-v1",
-  version: 3,
+  version: 4,
   passThreshold: 78,
   gates: [
     { id: "G1", source: "static", title: "XML 合法", standard: "XML 解析零错误" },
@@ -166,10 +167,12 @@ export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
       standard: "车架、车把、座垫、辐条轮、脚踏、曲柄齐全且形状正确；只有轮子或缺少主要部件为零分" },
     { id: "C6", source: "ai", title: "主体是鹈鹕", maxScore: 15,
       standard: "盲描述能认出鹈鹕（长喙、喉囊）；认成其他鸟或无法辨认为零分" },
-    { id: "C7", source: "ai", title: "坐在座垫上、脚在脚踏上", maxScore: 20,
+    { id: "C7", source: "ai", title: "坐在座垫上、脚在脚踏上", maxScore: 15,
       standard: "鹈鹕坐在座垫上，双脚落在脚踏上；悬空、脱离车身或脚不在脚踏上为零分" },
-    { id: "C8", source: "ai", title: "踩踏动作可信", maxScore: 20,
+    { id: "C8", source: "ai", title: "踩踏动作可信", maxScore: 15,
       standard: "8 帧连看，腿的伸缩与脚踏位置对应；腿与脚踏各动各的为零分" },
+    { id: "C9", source: "ai", title: "翅膀扶住车把", maxScore: 10,
+      standard: "鹈鹕的翅膀（前肢）搭在车把上，像在扶着车把骑行；翅膀收在身侧、够不着车把或没有车把可扶为零分" },
   ],
 };
 

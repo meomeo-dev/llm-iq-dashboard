@@ -156,12 +156,13 @@
             ],
             "properties": {
               "kind": {
-                "description": "pelican 鹈鹕整体、head 头与喙、crank 脚踏与脚、saddle 座垫与臀、wheel-left / wheel-right 两轮",
+                "description": "pelican 鹈鹕整体、head 头与喙、crank 脚踏与脚、saddle 座垫与臀、handlebar 翅与车把（仅裁判定位时有）、wheel-left / wheel-right 两轮",
                 "enum": [
                   "pelican",
                   "head",
                   "crank",
                   "saddle",
+                  "handlebar",
                   "wheel-left",
                   "wheel-right"
                 ]

@@ -30,6 +30,7 @@ export interface DetailInput {
  * - head 头与喙：骑手包围盒上部 40% 那一段
  * - crank 脚踏与脚：以五通为中心，边长为曲柄伸出长度的 4 倍（腿的末端与脚踏都在框内）
  * - saddle 座垫与臀：以腿的髋关节均值为中心；没有腿时取五通上方一个轮半径处
+ * - handlebar 翅与车把：代码层量不到车把，这一类只在裁判定位（ai-locate.ts）时出表
  * - wheel-left / wheel-right：以轮心为中心，边长为直径的 1.3 倍
  * 取景框不小于画面短边的 1/5，免得部件画得极小时放大成马赛克
  */
@@ -39,7 +40,7 @@ export function detailPlans(input: DetailInput): DetailPlan[] {
   const plans: DetailPlan[] = [];
   if (rider) {
     const center = { x: rider.x + rider.width / 2, y: rider.y + rider.height / 2 };
-    plans.push(squarePlan("pelican", "鹈鹕整体", center, Math.max(rider.width, rider.height) * 1.15, shortSide, stage, ["C6", "C7", "C8"]));
+    plans.push(squarePlan("pelican", "鹈鹕整体", center, Math.max(rider.width, rider.height) * 1.15, shortSide, stage, ["C6", "C7", "C8", "C9"]));
     const headHeight = rider.height * 0.4;
     const head = { x: rider.x + rider.width / 2, y: rider.y + headHeight / 2 };
     plans.push(squarePlan("head", "头与喙", head, Math.max(rider.width, headHeight) * 1.1, shortSide, stage, ["C6"]));

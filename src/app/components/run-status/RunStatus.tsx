@@ -237,7 +237,7 @@ function JudgingSection({ judging, phase, clock }: { judging: JudgingProgress; p
   return (
     <div className="run-judging">
       <div className="run-lane-head">
-        <span>AI 层评审 · 每件先盲描述再按 C5–C8 打分</span>
+        <span>AI 层评审 · 每件先盲描述再按 C5–C9 打分</span>
         <span className="run-lane-count">
           {counts.done + counts.failed}/{counts.total}
         </span>

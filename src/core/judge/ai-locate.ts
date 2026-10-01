@@ -1,5 +1,5 @@
 /**
- * AI 层的定位阶段（ACR-021）：裁判看首帧整幅画面给出四类部位的像素框，程序经根元素的屏幕矩阵换算到
+ * AI 层的定位阶段（ACR-021）：裁判看首帧整幅画面给出五类部位的像素框，程序经根元素的屏幕矩阵换算到
  * viewBox，按 ACR-019 的造框规则重切 8 帧细节表，替换代码层几何推断的表。任何一步失败都退回原表。
  */
 
@@ -18,16 +18,17 @@ export const LOCATE_FRAME_SIZE = 640;
 /** 裁判框外扩多少再切：框是「刚好框住」，留点边读图才看得出部位与周围的关系 */
 const LOCATE_MARGIN = 1.15;
 
-/** 四类部位的表名与服务标准，与 contact-sheet.ts 的 detailPlans 一致 */
+/** 五类部位的表名与服务标准，与 contact-sheet.ts 的 detailPlans 一致；翅与车把代码层量不到，只有裁判定位时才出表 */
 const LOCATE_PLAN: Record<LocateKind, { subject: string; criteria: string[] }> = {
-  pelican: { subject: "鹈鹕整体", criteria: ["C6", "C7", "C8"] },
+  pelican: { subject: "鹈鹕整体", criteria: ["C6", "C7", "C8", "C9"] },
   head: { subject: "头与喙", criteria: ["C6"] },
   crank: { subject: "脚踏与脚", criteria: ["C2", "C4", "C7"] },
   saddle: { subject: "座垫与臀", criteria: ["C7"] },
+  handlebar: { subject: "翅与车把", criteria: ["C5", "C9"] },
 };
 
 /** 清单顺序：与代码层一致，车轮殿后 */
-const KIND_ORDER = ["pelican", "head", "crank", "saddle", "wheel-left", "wheel-right"] as const;
+const KIND_ORDER = ["pelican", "head", "crank", "saddle", "handlebar", "wheel-left", "wheel-right"] as const;
 
 /** 定位阶段要用的提问能力：由 ai-judge 的 JudgeAsker 提供 */
 export interface LocateAsker {

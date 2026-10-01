@@ -28,7 +28,7 @@ export function JudgePanel({
       </label>
       <label className="checkbox">
         <input type="checkbox" checked={value.ai.enabled} disabled={!value.enabled} onChange={(e) => patchAi({ enabled: e.target.checked })} />
-        AI 语义层：整轮结束后请裁判 CLI 看联系图给 C5–C8 打分（共 70 分，「智商在线」只能由它判定；真实消耗裁判的配额）
+        AI 语义层：整轮结束后请裁判 CLI 看联系图给 C5–C9 打分（共 70 分，「智商在线」只能由它判定；真实消耗裁判的配额）
       </label>
       <div className="field-row">
         <label>

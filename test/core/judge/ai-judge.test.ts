@@ -47,29 +47,31 @@ describe("AI 层", () => {
     assert.match(aiEligible(broken) ?? "", /闸门/);
   });
 
-  test("提示词：盲描述不提题目；判定提示列出图片清单与 C5–C8 口径", () => {
+  test("提示词：盲描述不提题目；判定提示列出图片清单与 C5–C9 口径", () => {
     assert.doesNotMatch(blindPrompt(sheet), /鹈鹕|自行车/);
     const prompt = judgePrompt("画一只鹈鹕骑车", sheet, ANIMATED_PELICAN_RUBRIC);
     assert.match(prompt, /k\.sheet\.crank\.png/);
-    assert.match(prompt, /C8「踩踏动作可信」满分 20/);
+    assert.match(prompt, /C8「踩踏动作可信」满分 15/);
+    assert.match(prompt, /C9「翅膀扶住车把」满分 10/);
     assert.doesNotMatch(prompt, /C4「/);
   });
 
   test("解析：取回答里的 JSON，分数夹到范围内，缺项或缺理由即失败", () => {
-    const text = "好的，结果如下：\n```json\n{\"criteria\":[{\"id\":\"C5\",\"score\":12,\"reason\":\"第 1 帧车架齐全\"},{\"id\":\"C6\",\"score\":99,\"reason\":\"长喙\"},{\"id\":\"C7\",\"score\":-3,\"reason\":\"悬空\"},{\"id\":\"C8\",\"score\":\"14.6\",\"reason\":\"3–6 帧腿随脚踏\"}]}\n```";
+    const text = "好的，结果如下：\n```json\n{\"criteria\":[{\"id\":\"C5\",\"score\":12,\"reason\":\"第 1 帧车架齐全\"},{\"id\":\"C6\",\"score\":99,\"reason\":\"长喙\"},{\"id\":\"C7\",\"score\":-3,\"reason\":\"悬空\"},{\"id\":\"C8\",\"score\":\"14.6\",\"reason\":\"3–6 帧腿随脚踏\"},{\"id\":\"C9\",\"score\":4,\"reason\":\"左翅搭在车把\"}]}\n```";
     const parsed = parseJudgeReply(text, ANIMATED_PELICAN_RUBRIC);
     assert.ok(parsed.ok);
-    assert.deepEqual(parsed.scores.map((s) => s.score), [12, 15, 0, 15]);
+    assert.deepEqual(parsed.scores.map((s) => s.score), [12, 15, 0, 15, 4]);
     assert.equal(parseJudgeReply("没有 json", ANIMATED_PELICAN_RUBRIC).ok, false);
     assert.equal(parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1,\"reason\":\"x\"}]}", ANIMATED_PELICAN_RUBRIC).ok, false);
-    assert.equal(parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1},{\"id\":\"C6\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C7\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C8\",\"score\":1,\"reason\":\"a\"}]}", ANIMATED_PELICAN_RUBRIC).ok, false);
+    assert.equal(parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1},{\"id\":\"C6\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C7\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C8\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C9\",\"score\":1,\"reason\":\"a\"}]}", ANIMATED_PELICAN_RUBRIC).ok, false);
+    assert.match((parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C6\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C7\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C8\",\"score\":1,\"reason\":\"a\"}]}", ANIMATED_PELICAN_RUBRIC) as { reason: string }).reason, /缺少 C9/);
   });
 
-  test("并分：AI 分填进 C5–C8，总分与结论重算；盲描述没认出鹈鹕时 C6 上限减半", () => {
+  test("并分：AI 分填进 C5–C9，总分与结论重算；盲描述没认出鹈鹕时 C6 上限减半", () => {
     const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
     const scores = [
       { id: "C5", score: 15, reason: "齐全" }, { id: "C6", score: 15, reason: "长喙" },
-      { id: "C7", score: 18, reason: "坐稳" }, { id: "C8", score: 16, reason: "跟随" },
+      { id: "C7", score: 13, reason: "坐稳" }, { id: "C8", score: 12, reason: "跟随" }, { id: "C9", score: 9, reason: "扶把" },
     ];
     const online = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鹈鹕在骑自行车", actor);
     assert.equal(online.total.verdict, "online");
@@ -87,7 +89,7 @@ describe("AI 层", () => {
     const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
     const scores = [
       { id: "C5", score: 15, reason: "齐全" }, { id: "C6", score: 15, reason: "长喙" },
-      { id: "C7", score: 18, reason: "坐稳" }, { id: "C8", score: 16, reason: "跟随" },
+      { id: "C7", score: 13, reason: "坐稳" }, { id: "C8", score: 12, reason: "跟随" }, { id: "C9", score: 9, reason: "扶把" },
     ];
     const judged = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鹈鹕在骑自行车", actor);
     const fresh = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
@@ -98,7 +100,7 @@ describe("AI 层", () => {
     assert.equal(carried.blindDescription, "一只鹈鹕在骑自行车");
     assert.equal(carryAiResults(fresh, null), fresh);
     assert.equal(carryAiResults(fresh, base), fresh);
-    const older = { ...judged, rubric: { ...judged.rubric, version: 2 } };
+    const older = { ...judged, rubric: { ...judged.rubric, version: ANIMATED_PELICAN_RUBRIC.version - 1 } };
     assert.equal(carryAiResults(fresh, older).total.verdict, "pending");
   });
 });

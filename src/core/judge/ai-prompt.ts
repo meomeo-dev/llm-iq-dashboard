@@ -1,11 +1,11 @@
 /**
  * AI 语义层的提示词与回答解析（ACR-020 / ACR-021）。三次提问：先盲描述（只给帧序联系表，不提题目），
- * 再定位（给首帧整幅画面，要四类部位的像素框），最后按 C5–C8 逐项判定（给全部联系表、题目原文与口径，要求只回 JSON）。
+ * 再定位（给首帧整幅画面，要五类部位的像素框），最后按 C5–C9 逐项判定（给全部联系表、题目原文与口径，要求只回 JSON）。
  */
 
 import type { ContactSheet, CriterionSpec, RubricSpec } from "./schema";
 
-export const AI_PROMPT_VERSION = 2;
+export const AI_PROMPT_VERSION = 3;
 
 /** 盲描述回答的存档长度上限 */
 const BLIND_MAX_CHARS = 600;
@@ -82,7 +82,7 @@ export function parseJudgeReply(text: string, rubric: RubricSpec): ParsedJudgeme
 }
 
 /** 定位阶段要找的部位：与 detailPlans 的 kind 同名，车轮由代码层量圆心、不用裁判找 */
-export const LOCATE_KINDS = ["pelican", "head", "saddle", "crank"] as const;
+export const LOCATE_KINDS = ["pelican", "head", "saddle", "crank", "handlebar"] as const;
 export type LocateKind = (typeof LOCATE_KINDS)[number];
 
 export interface PixelBox {
@@ -97,14 +97,15 @@ const LOCATE_SUBJECTS: Record<LocateKind, string> = {
   head: "头与喙（鹈鹕的头部和长喙）",
   saddle: "座垫与臀（自行车座垫以及坐在上面的臀部）",
   crank: "脚踏与脚（曲柄、脚踏以及踩在上面的脚）",
+  handlebar: "翅与车把（自行车车把以及搭在上面的翅膀或前肢）",
 };
 
-/** 定位：给首帧整幅画面，要四类部位的像素框；画面里没有的部位允许省略 */
+/** 定位：给首帧整幅画面，要五类部位的像素框；画面里没有的部位允许省略 */
 export function locatePrompt(file: string, size: number): string {
   const example = `{"parts":[${LOCATE_KINDS.map((kind) => `{"kind":"${kind}","box":[<x>,<y>,<宽>,<高>]}`).join(",")}]}`;
   return [
     `当前目录里有一张图片 ${file}：一件 SVG 动画作品的第 1 帧整幅画面，${size}×${size} 像素，左上角为原点、x 向右、y 向下。`,
-    "请用读文件工具按上面的文件名直接读取这张图片（不要运行任何命令、不要列目录），找出下面四类部位在图里的位置，各给一个刚好框住它的矩形（像素坐标，整数）：",
+    "请用读文件工具按上面的文件名直接读取这张图片（不要运行任何命令、不要列目录），找出下面五类部位在图里的位置，各给一个刚好框住它的矩形（像素坐标，整数）：",
     ...LOCATE_KINDS.map((kind) => `- ${kind}：${LOCATE_SUBJECTS[kind]}`),
     "画面里确实没有的部位就不要列；框要紧贴部位，不要把背景或整辆车框进来。",
     "回答只输出一个 JSON 对象，不要 Markdown 代码块、不要解释，格式如下：",
@@ -117,7 +118,7 @@ const LOCATE_MIN_SIDE = 4;
 
 export type ParsedLocate = { ok: true; boxes: Partial<Record<LocateKind, PixelBox>> } | { ok: false; reason: string };
 
-/** 从回答里取出 parts；只认四类 kind，框夹到图内，过小或非数字的丢弃；一个都没有即失败 */
+/** 从回答里取出 parts；只认清单里的 kind，框夹到图内，过小或非数字的丢弃；一个都没有即失败 */
 export function parseLocateReply(text: string, size: number): ParsedLocate {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
