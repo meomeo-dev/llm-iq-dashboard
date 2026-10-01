@@ -3,6 +3,7 @@
 import type { CapabilitySnapshot } from "@/capabilities/types";
 import type { JudgeConfig, JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "@/core/types";
+import { judgeLabel, judgeRoutes, moveJudge } from "./judge-panel-model";
 
 /** 作品评审（ACR-019 / ACR-020）：代码层开关、AI 层开关、裁判清单与超时 */
 export function JudgePanel({
@@ -48,13 +49,33 @@ export function JudgePanel({
         disabled={!value.enabled || !value.ai.enabled}
         onUpdate={setJudge}
         onRemove={(index) => patchAi({ judges: value.ai.judges.filter((_, i) => i !== index) })}
+        onMove={(index, offset) => patchAi({ judges: moveJudge(value.ai.judges, index, offset) })}
         onAdd={() => patchAi({ judges: [...value.ai.judges, defaultJudge(catalog)] })}
       />
       <p className="note">
         裁判按清单顺序取第一个厂商与作品不同的（同厂商不能自评）；前一个调用失败（未登录、超时）时换下一个，
-        都失败则作品保持「待复核」。历史作品用 <code>pnpm judge:backfill -- --ai-only</code> 补评。
+        都失败则作品保持「待复核」。用「上移 / 下移」决定谁优先。
       </p>
+      {value.ai.judges.length > 0 && <JudgeRoutes judges={value.ai.judges} />}
     </div>
+  );
+}
+
+/** 按当前顺序，每家作品依次交给谁评：首选在前，括号里是失败时的后备 */
+function JudgeRoutes({ judges }: { judges: JudgeModel[] }) {
+  return (
+    <ul className="note judge-routes">
+      {judgeRoutes(judges).map(({ subject, judges: route }) => (
+        <li key={subject}>
+          {subject} 的作品 → {route.length === 0
+            ? <strong>没有可用裁判（只配了同厂商），保持「待复核」</strong>
+            : <>
+                <strong>{judgeLabel(route[0]!)}</strong>
+                {route.length > 1 && <>（失败时依次换 {route.slice(1).map(judgeLabel).join("、")}）</>}
+              </>}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -69,6 +90,7 @@ function JudgeTable({
   disabled,
   onUpdate,
   onRemove,
+  onMove,
   onAdd,
 }: {
   judges: JudgeModel[];
@@ -76,20 +98,22 @@ function JudgeTable({
   disabled: boolean;
   onUpdate: (index: number, changes: Partial<JudgeModel>) => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, offset: number) => void;
   onAdd: () => void;
 }) {
   return (
     <div className="table-responsive">
       <table className="matrix">
         <thead>
-          <tr><th>裁判 CLI</th><th>模型</th><th>思考强度</th><th /></tr>
+          <tr><th>顺序</th><th>裁判 CLI</th><th>模型</th><th>思考强度</th><th /></tr>
         </thead>
         <tbody>
           {judges.length === 0 && (
-            <tr><td colSpan={4} className="note">没有裁判：AI 层开着也不会评</td></tr>
+            <tr><td colSpan={5} className="note">没有裁判：AI 层开着也不会评</td></tr>
           )}
           {judges.map((judge, index) => (
             <JudgeRow key={index} judge={judge} catalog={catalog} disabled={disabled}
+              order={{ index, count: judges.length, onMove: (offset) => onMove(index, offset) }}
               onChange={(changes) => onUpdate(index, changes)} onRemove={() => onRemove(index)} />
           ))}
         </tbody>
@@ -105,12 +129,14 @@ function JudgeRow({
   judge,
   catalog,
   disabled,
+  order,
   onChange,
   onRemove,
 }: {
   judge: JudgeModel;
   catalog: CapabilitySnapshot;
   disabled: boolean;
+  order: { index: number; count: number; onMove: (offset: number) => void };
   onChange: (changes: Partial<JudgeModel>) => void;
   onRemove: () => void;
 }) {
@@ -118,6 +144,13 @@ function JudgeRow({
   const listId = `judge-models-${judge.cli}`;
   return (
     <tr>
+      <td className="judge-order">
+        <span>{order.index + 1}</span>
+        <button type="button" disabled={disabled || order.index === 0} onClick={() => order.onMove(-1)}
+          title="上移：优先于前一个裁判" aria-label={`上移第 ${order.index + 1} 个裁判`}>上移</button>
+        <button type="button" disabled={disabled || order.index === order.count - 1} onClick={() => order.onMove(1)}
+          title="下移：让后一个裁判优先" aria-label={`下移第 ${order.index + 1} 个裁判`}>下移</button>
+      </td>
       <td>
         <select value={judge.cli} disabled={disabled} onChange={(e) => onChange({ cli: e.target.value as CliKind })}>
           {CLI_KINDS.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
