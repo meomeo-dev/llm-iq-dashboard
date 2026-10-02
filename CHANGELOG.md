@@ -3,7 +3,7 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [0.2.0] - 2026-10-02
 
 ### 新增
 
@@ -16,6 +16,8 @@
   逐条得分、联系图与裁判成本；轮次状态面板新增「评审中 k/n」阶段与每件的结果或未评原因。
 - 评审记录随公开 `run.json` 发布（`attempts[].judge`，去掉联系图与转录），只读展台同样显示；
   容器镜像安装 chromium 供渲染层使用。
+- 时间线格子以图标标出评审结论（超过三件按结论计数）；模态弹窗、导出图与作品页的卡片页脚列出
+  评审结论与裁判成本，裁判成本悬停给出与作品同口径的计价明细。
 - 所有者配对登录：宿主机 `pnpm pair` 签发一次性配对码，浏览器换取设备凭据（服务端只存
   HMAC）；不登录只能看结果，配置、跑一次、停止与自动任务开关只对所有者开放；写操作要求
   `X-Pelican-Action` 头并写入审计日志；配置页可逐台吊销设备。
@@ -49,4 +51,5 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[0.2.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.0
 [0.1.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.1.0
