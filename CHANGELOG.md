@@ -3,7 +3,7 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [0.4.0] - 2026-10-02
 
 ### 修复
 
@@ -92,7 +92,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.3.0...HEAD
+[0.4.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.4.0
 [0.3.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.3.0
 [0.2.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.2
 [0.2.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.1
