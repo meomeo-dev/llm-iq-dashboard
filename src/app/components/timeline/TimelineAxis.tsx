@@ -1,7 +1,7 @@
 "use client";
 
 import { momentHealth } from "./moments";
-import { AXIS_HEIGHT, AXIS_LINE_Y, HEAD_HEIGHT, hourLabelVisible, hourX, timeX, type Column } from "./track-layout";
+import { AXIS_HEIGHT, AXIS_LINE_Y, HEAD_HEIGHT, HOUR_WIDTH, hourLabelVisible, hourX, timeX, type Column } from "./track-layout";
 
 const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
@@ -11,25 +11,34 @@ export interface NowMark {
   clock: string;
 }
 
+interface TimelineAxisProps {
+  columns: readonly Column[];
+  width: number;
+  now: NowMark | null;
+  /** 这一天 1 小时的像素数，与 layoutColumns 算出的列位置同一比例 */
+  hourWidth?: number;
+}
+
 /**
  * 轨道头部：24 小时轴 + 列头。轴上标记在准确时刻，列头在列中心，两者错开时以连线
  * 指回准确时刻。与下方矩阵共用滚动容器。
  */
-export function TimelineAxis({ columns, width, now }: { columns: readonly Column[]; width: number; now: NowMark | null }) {
-  const nowX = now === null ? null : timeX(now.fraction);
+export function TimelineAxis({ columns, width, now, hourWidth = HOUR_WIDTH }: TimelineAxisProps) {
+  const nowX = now === null ? null : timeX(now.fraction, hourWidth);
   const headY = AXIS_HEIGHT + HEAD_HEIGHT / 2;
+  const atHour = (hour: number): number => hourX(hour, hourWidth);
 
   return (
     <div className="track-head" style={{ width }}>
       <svg className="track-head-lines" width={width} height={AXIS_HEIGHT + HEAD_HEIGHT} aria-hidden="true">
-        <line className="axis-line" x1={hourX(0)} y1={AXIS_LINE_Y} x2={hourX(24)} y2={AXIS_LINE_Y} />
+        <line className="axis-line" x1={atHour(0)} y1={AXIS_LINE_Y} x2={atHour(24)} y2={AXIS_LINE_Y} />
         {Array.from({ length: 25 }, (_, hour) => (
           <line
             key={hour}
             className={hour % 3 === 0 ? "axis-tick major" : "axis-tick"}
-            x1={hourX(hour)}
+            x1={atHour(hour)}
             y1={AXIS_LINE_Y - (hour % 3 === 0 ? 8 : 4)}
-            x2={hourX(hour)}
+            x2={atHour(hour)}
             y2={AXIS_LINE_Y}
           />
         ))}
@@ -38,8 +47,8 @@ export function TimelineAxis({ columns, width, now }: { columns: readonly Column
         ))}
         {nowX !== null && <line className="now-line" x1={nowX} y1={12} x2={nowX} y2={AXIS_HEIGHT + HEAD_HEIGHT} />}
       </svg>
-      {HOUR_LABELS.filter((hour) => hourLabelVisible(hour, nowX)).map((hour) => (
-        <span key={hour} className="axis-hour" style={{ left: hourX(hour) }}>
+      {HOUR_LABELS.filter((hour) => hourLabelVisible(hour, nowX, hourWidth)).map((hour) => (
+        <span key={hour} className="axis-hour" style={{ left: atHour(hour) }}>
           {String(hour).padStart(2, "0")}
         </span>
       ))}

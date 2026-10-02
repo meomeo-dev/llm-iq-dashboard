@@ -91,6 +91,8 @@ export function thumbnailKey(card: Pick<DashboardCard, "runId" | "targetId" | "p
 interface TrackContext {
   input: TimelineExport;
   columns: readonly Column[];
+  /** 这一天 1 小时的像素数，与列位置同一比例 */
+  hourWidth: number;
   trackLeft: number;
   width: number;
   showPrompt: boolean;
@@ -99,7 +101,7 @@ interface TrackContext {
 }
 
 export function renderTimelineSvg(input: TimelineExport): RenderedSvg {
-  const { columns, width: trackWidth } = layoutColumns(input.moments, CELL_WIDTH);
+  const { columns, width: trackWidth, hourWidth } = layoutColumns(input.moments, CELL_WIDTH);
   const cards = input.moments.flatMap((moment) => moment.cards);
   const rows = listRows(cards);
   const trackLeft = PAD + LABEL_WIDTH;
@@ -108,7 +110,7 @@ export function renderTimelineSvg(input: TimelineExport): RenderedSvg {
   const width = trackLeft + trackWidth + PAD;
   const height = matrixTop + LANE_HEAD_HEIGHT + Math.max(rows.length, 1) * ROW_HEIGHT + PAD;
   const showPrompt = new Set(cards.map((card) => card.promptId)).size > 1;
-  const context: TrackContext = { input, columns, trackLeft, width, showPrompt, slots: planSlots(input.efforts) };
+  const context: TrackContext = { input, columns, hourWidth, trackLeft, width, showPrompt, slots: planSlots(input.efforts) };
 
   const body: string[] = [
     `<rect width="${width}" height="${height}" fill="${input.palette.bg}"/>`,
@@ -137,19 +139,20 @@ function header(input: TimelineExport): string {
 }
 
 /** 24 小时轴：轴线、刻度、钟点、每轮的健康点与列头、现在线 */
-function axis({ input, columns, trackLeft }: TrackContext, top: number): string {
+function axis({ input, columns, hourWidth, trackLeft }: TrackContext, top: number): string {
   const { palette } = input;
   const lineY = top + AXIS_LINE_Y;
   const headY = top + AXIS_HEIGHT + HEAD_HEIGHT / 2;
   const x = (value: number): number => trackLeft + value;
-  const parts = [line(x(hourX(0)), lineY, x(hourX(24)), lineY, palette.border, 1)];
+  const atHour = (hour: number): number => x(hourX(hour, hourWidth));
+  const parts = [line(atHour(0), lineY, atHour(24), lineY, palette.border, 1)];
   for (let hour = 0; hour <= 24; hour += 1) {
     const major = hour % 3 === 0;
-    parts.push(line(x(hourX(hour)), lineY - (major ? 8 : 4), x(hourX(hour)), lineY, major ? palette.textDim : palette.textFaint, major ? 1.5 : 1));
+    parts.push(line(atHour(hour), lineY - (major ? 8 : 4), atHour(hour), lineY, major ? palette.textDim : palette.textFaint, major ? 1.5 : 1));
   }
-  const nowX = input.now === null ? null : timeX(input.now.fraction);
-  for (const hour of HOUR_LABELS.filter((item) => hourLabelVisible(item, nowX))) {
-    parts.push(text(x(hourX(hour)), lineY - 14, String(hour).padStart(2, "0"), palette.textDim, 11, 'text-anchor="middle"'));
+  const nowX = input.now === null ? null : timeX(input.now.fraction, hourWidth);
+  for (const hour of HOUR_LABELS.filter((item) => hourLabelVisible(item, nowX, hourWidth))) {
+    parts.push(text(atHour(hour), lineY - 14, String(hour).padStart(2, "0"), palette.textDim, 11, 'text-anchor="middle"'));
   }
   for (const { moment, exactX, x: columnX } of columns) {
     parts.push(line(x(exactX), lineY, x(columnX), headY - 9, palette.textFaint, 1));
