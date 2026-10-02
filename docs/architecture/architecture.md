@@ -233,6 +233,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 
 - 模型产物不可信：SVG 经净化后展示，`/art` 路由以 CSP 沙箱返回原图。
 - 每次调用一个空的临时工作目录，避免 CLI 读到仓库里的 `CLAUDE.md` / `AGENTS.md`。
+- 直出约束（`run.harnessGuard`，缺省关）：开启后 `run-attempt` 把一段要求直接作答的原文另起一段附在每条
+  提示词之后再发给 CLI，抑制 harness 自带的联网检索、跑代码自测与截图自检；`prompts[].text` 仍是题目原文，
+  附加原文整轮只记一次在 `run.json` 的 `harnessGuard`，随公开记录发布，读取方据此区分裸模型与带增强的结果。
 - 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）；
   指纹同时覆盖全部已登记 profile 的 API key，运行阶段与同步阶段同一口径（ACR-014、ACR-018）。
 - profile 的 API key 只存在 `PELICAN_SECRETS_DIR` 下（目录 700 / 文件 600），运行时只交给该

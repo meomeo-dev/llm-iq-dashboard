@@ -1,4 +1,4 @@
-import type { JudgeConfig, ProfileConfig } from "@/core/config";
+import type { HarnessGuardConfig, JudgeConfig, ProfileConfig } from "@/core/config";
 import type { PromptSpec } from "@/core/prompt";
 import type { CliKind, EffortLevel, Target } from "@/core/types";
 import type { RotationConfig } from "@/core/variables";
@@ -13,6 +13,7 @@ export interface EditableConfig {
     timeoutByCli: Partial<Record<CliKind, number>>;
     timeoutByEffort?: Partial<Record<EffortLevel, number>>;
     rotation: RotationConfig;
+    harnessGuard: HarnessGuardConfig;
   };
   upstreamTypes: string[];
   profiles: ProfileConfig[];

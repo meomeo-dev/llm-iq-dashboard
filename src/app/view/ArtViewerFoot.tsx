@@ -30,6 +30,12 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
           </summary>
           <div className="viewer-drawer-body">
             <p>{card.promptText}</p>
+            {card.harnessGuard !== undefined && (
+              <p className="viewer-harness-guard" title="本轮开了直出约束：这段话附在题目原文之后一并发给模型">
+                <span className="viewer-harness-guard-label">直出约束</span>
+                {card.harnessGuard}
+              </p>
+            )}
           </div>
         </details>
       )}

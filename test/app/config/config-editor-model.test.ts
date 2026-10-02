@@ -31,6 +31,7 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
       defaultTimeoutMs: 600000,
       timeoutByCli: {},
       rotation: { period: "day", timeZone: "UTC" },
+      harnessGuard: { enabled: false, text: "" },
     },
     upstreamTypes: ["compatible"],
     profiles: [],

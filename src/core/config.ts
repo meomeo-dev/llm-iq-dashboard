@@ -12,6 +12,7 @@ export type {
   RunConfig,
   RetentionConfig,
   JudgeConfig,
+  HarnessGuardConfig,
   AppConfig,
 } from "./config/types";
 

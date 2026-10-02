@@ -41,6 +41,8 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `src/capabilities/catalog.ts` 的探针列表。
 - **考场约束**：每次调用在空的临时工作目录里执行，模型不给任何工具；失败分为
   `ok` / `no-svg` / `error` / `timeout` 分开记录；输出经凭据指纹比对，命中即不落盘。
+  `run.harnessGuard`（缺省关）开启后每条提示词末尾另起一段附上直出约束原文（不联网、不跑代码自测、
+  不截图自检），题目原文不动，附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布。
 - **提示词**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
   `src/core/prompt*`，题目数据在 `src/core/prompts/`，改动后跑 `pnpm validate:prompts`。
 - **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的

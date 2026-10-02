@@ -8,10 +8,11 @@ import { CONFIG_NAV_ITEMS } from "@/app/config/config-nav-items";
 import { ConfigSideNav } from "@/app/config/ConfigSideNav";
 
 test("CONFIG_NAV_ITEMS 常量契约", () => {
-  assert.strictEqual(CONFIG_NAV_ITEMS.length, 9);
+  assert.strictEqual(CONFIG_NAV_ITEMS.length, 10);
   const expectedOrder = [
     { id: "capability", title: "CLI 能力目录", href: "#capability" },
     { id: "prompts", title: "提示词", href: "#prompts" },
+    { id: "harness-guard", title: "直出约束", href: "#harness-guard" },
     { id: "profiles", title: "上游 Profile", href: "#profiles" },
     { id: "matrix", title: "被测矩阵", href: "#matrix" },
     { id: "schedule", title: "调度", href: "#schedule" },

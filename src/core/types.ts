@@ -158,6 +158,11 @@ export interface RunRecord {
   cancelledAt?: string;
   /** 首次因预算上限未发起调用的原因；未被预算拦下时缺省 */
   budgetStop?: string;
+  /**
+   * 本轮附在每条提示词之后的直出约束原文（run.harnessGuard）；prompts[].text 仍是题目原文。
+   * 未开启时缺省，读取方据此区分「裸模型」与「带 harness 增强」的结果。
+   */
+  harnessGuard?: string;
   attempts: Attempt[];
 }
 
@@ -168,8 +173,10 @@ export interface DashboardCard extends Attempt {
   trigger: RunRecord["trigger"];
   /** 所属轮次尚未跑完，同一轮的其余格子稍后才会出现 */
   runInProgress: boolean;
-  /** 本次实际提问的完整文本 */
+  /** 题目原文（变量版为渲染后的文本）；本轮开了直出约束时实际发出的提示词还附有 harnessGuard */
   promptText: string;
+  /** 本轮附在提示词之后的直出约束原文；没开时缺省 */
+  harnessGuard?: string;
   /** 本次的变量取值；无变量时为空对象 */
   bindings: Record<string, string>;
   usage: TokenUsage | null;

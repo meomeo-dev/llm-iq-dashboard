@@ -34,6 +34,7 @@ function config(aiEnabled: boolean): AppConfig {
     run: {
       promptIds: ["animated-pelican-v1"], concurrency: 1, profileConcurrency: 5, defaultTimeoutMs: 10000,
       timeoutByCli: {}, timeoutByEffort: {}, rotation: { period: "day", timeZone: "UTC" },
+      harnessGuard: { enabled: false, text: "" },
     },
     retention: { days: null },
     judge: { enabled: true, ai: { enabled: aiEnabled, judges: [], timeoutMs: 300000, concurrency: 5 } },

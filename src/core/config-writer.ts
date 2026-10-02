@@ -5,7 +5,7 @@
 
 import { readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { parseDocument } from "yaml";
-import { loadConfig, type AppConfig, type JudgeConfig, type ProfileConfig } from "./config";
+import { loadConfig, type AppConfig, type HarnessGuardConfig, type JudgeConfig, type ProfileConfig } from "./config";
 import { deleteKeyKeepingComment, reconcileSequence } from "./yaml-nodes";
 import type { PromptSpec } from "./prompt";
 import { DEFAULT_PROFILE, type CliKind, type EffortLevel, type Target } from "./types";
@@ -27,6 +27,7 @@ export interface ConfigPatch {
     timeoutByCli: Partial<Record<CliKind, number>>;
     timeoutByEffort: Partial<Record<EffortLevel, number>>;
     rotation: RotationConfig;
+    harnessGuard: HarnessGuardConfig;
   }>;
   /** 上游类型清单全表 */
   upstreamTypes?: string[];
@@ -106,13 +107,17 @@ function applyRun(doc: YamlDoc, run: ConfigPatch["run"]): void {
   if (run === undefined) return;
 
   for (const [key, value] of Object.entries(run)) {
-    if (value === undefined || key === "rotation") continue;
+    if (value === undefined || key === "rotation" || key === "harnessGuard") continue;
     doc.setIn(["run", key], value);
   }
   // 逐个子键写：整体替换 rotation 节点会冲掉子键上的注释；YAML 里的键名是 timezone
   if (run.rotation !== undefined) {
     doc.setIn(["run", "rotation", "period"], run.rotation.period);
     doc.setIn(["run", "rotation", "timezone"], run.rotation.timeZone);
+  }
+  if (run.harnessGuard !== undefined) {
+    doc.setIn(["run", "harnessGuard", "enabled"], run.harnessGuard.enabled);
+    doc.setIn(["run", "harnessGuard", "text"], run.harnessGuard.text);
   }
   // 单数 promptId 优先于 promptIds，写入时须删除
   if (run.promptIds !== undefined) doc.deleteIn(["run", "promptId"]);

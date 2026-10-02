@@ -13,9 +13,11 @@ import { applyCeiling, readCeiling } from "../ceiling";
 import type { BudgetConfig } from "../budget";
 import type { RotationConfig } from "../variables";
 import {
+  DEFAULT_HARNESS_GUARD_TEXT,
   JUDGE_AI_DEFAULT_CONCURRENCY,
   JUDGE_AI_MAX_CONCURRENCY,
   type AppConfig,
+  type HarnessGuardConfig,
   type DataRepoConfig,
   type RetentionConfig,
   type JudgeAiConfig,
@@ -252,7 +254,26 @@ export function parseRun(raw: unknown, errors: string[]): RunConfig {
     timeoutByCli: parseTimeoutMap(node.timeoutByCli, "timeoutByCli", isCliKind, errors),
     timeoutByEffort: parseTimeoutMap(node.timeoutByEffort, "timeoutByEffort", isEffortLevel, errors),
     rotation: parseRotation(node.rotation, errors),
+    harnessGuard: parseHarnessGuard(node.harnessGuard, errors),
   };
+}
+
+/** run.harnessGuard：不写即关闭且用缺省英文原文；enabled 要是布尔，text 开启时不能为空 */
+export function parseHarnessGuard(raw: unknown, errors: string[]): HarnessGuardConfig {
+  const off: HarnessGuardConfig = { enabled: false, text: DEFAULT_HARNESS_GUARD_TEXT };
+  const node = asRecord(raw);
+  if (node === null) return off;
+  if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
+    errors.push("run.harnessGuard.enabled 必须是布尔值");
+    return off;
+  }
+  const enabled = node.enabled ?? false;
+  const text = typeof node.text === "string" ? node.text.trim() : "";
+  if (node.text !== undefined && typeof node.text !== "string") errors.push("run.harnessGuard.text 必须是字符串");
+  if (enabled && text === "") {
+    errors.push("run.harnessGuard 开启时 text 不能为空（删掉 text 即用缺省英文原文）");
+  }
+  return { enabled, text: text === "" ? DEFAULT_HARNESS_GUARD_TEXT : text };
 }
 
 const DEFAULT_ROTATION: RotationConfig = { period: "day", timeZone: "UTC" };

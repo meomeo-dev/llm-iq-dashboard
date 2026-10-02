@@ -174,6 +174,7 @@ function createRunSnapshot(
   inProgress: boolean,
   slots: (Attempt | undefined)[],
   state: RunState,
+  harnessGuard: string | null,
 ): RunRecord {
   return {
     runId,
@@ -185,6 +186,7 @@ function createRunSnapshot(
     inProgress,
     ...(state.cancelledAt !== undefined ? { cancelledAt: state.cancelledAt } : {}),
     ...(state.budgetStop !== undefined ? { budgetStop: state.budgetStop } : {}),
+    ...(harnessGuard !== null ? { harnessGuard } : {}),
     attempts: slots.filter((attempt): attempt is Attempt => attempt !== undefined),
   };
 }
@@ -204,10 +206,14 @@ async function finishRunRecord(
   return record;
 }
 
-export async function executeRun(
-  config: AppConfig,
-  options: ExecuteOptions,
-): Promise<RunRecord> {
+/** 直出约束按本轮配置定死：整轮同一段原文，记录里也只记一次；未开启为 null */
+function harnessGuardOf(config: AppConfig, runId: string, log: Logger): string | null {
+  if (!config.run.harnessGuard.enabled) return null;
+  log(`[${runId}] 直出约束已开启，附在每条提示词之后`);
+  return config.run.harnessGuard.text;
+}
+
+export async function executeRun(config: AppConfig, options: ExecuteOptions): Promise<RunRecord> {
   const log = options.log ?? (() => {});
   const startedAt = new Date();
   const runId = formatRunId(startedAt);
@@ -224,8 +230,9 @@ export async function executeRun(
 
   const slots = new Array<Attempt | undefined>(jobs.length);
   const state: RunState = {};
+  const harnessGuard = harnessGuardOf(config, runId, log);
   const snapshot = (inProgress: boolean): RunRecord =>
-    createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state);
+    createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state, harnessGuard);
 
   const { writer, progress } = await initRunProgressTracking(
     runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
@@ -240,7 +247,7 @@ export async function executeRun(
     const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
     const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
     const judge = createAttemptJudge(config.judge.enabled, log);
-    const round = { runId, signal: cancel.signal, leakGuard, judge, profileLaunches: profiles.launches };
+    const round = { runId, signal: cancel.signal, leakGuard, judge, harnessGuard, profileLaunches: profiles.launches };
     await executeLanes(lanes, limits, round, hooks);
   } finally {
     cancel.stop();

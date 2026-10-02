@@ -172,3 +172,21 @@
     padding: 0 10px 20px;
   }
 }
+
+/* 提示词抽屉里的直出约束：与题目原文分开，一眼看出这一轮是裸模型口径 */
+.viewer-harness-guard {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  color: var(--text-dim);
+}
+
+.viewer-harness-guard-label {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 11px;
+  color: var(--text);
+}

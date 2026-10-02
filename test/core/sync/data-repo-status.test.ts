@@ -32,6 +32,7 @@ function mockBaseConfig(): AppConfig {
       timeoutByCli: {},
       timeoutByEffort: {},
       rotation: { period: "day", timeZone: "UTC" },
+      harnessGuard: { enabled: false, text: "" },
     },
     retention: { days: null },
     judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },

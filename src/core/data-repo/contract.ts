@@ -118,7 +118,10 @@ export interface Redaction {
   reason: string;
 }
 
-/** 数据仓里的 run.json：只收已结束的轮次 */
+/**
+ * 数据仓里的 run.json：只收已结束的轮次。RunRecord 的可选字段（cancelledAt、budgetStop、
+ * harnessGuard）原样随记录发布，数据仓校验器的顶层字段清单须与此同步。
+ */
 export interface PublicRunRecord extends Omit<RunRecord, "attempts" | "inProgress"> {
   publicSchemaVersion: typeof DATA_REPO_SCHEMA_VERSION;
   inProgress: false;

@@ -123,6 +123,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
             timeoutByCli: {},
             timeoutByEffort: {},
             rotation: { period: "day", timeZone: "Asia/Shanghai" },
+            harnessGuard: { enabled: false, text: "" },
           },
           upstreamTypes: ["compatible"],
           profiles: [],
@@ -137,7 +138,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
       })
     );
     const ids = extractSectionIds(html);
-    const expected = ["capability", "prompts", "profiles", "matrix", "schedule", "timeout", "judge"];
+    const expected = ["capability", "prompts", "harness-guard", "profiles", "matrix", "schedule", "timeout", "judge"];
     assert.deepStrictEqual(ids, expected);
     assert.strictEqual(new Set(ids).size, ids.length, "区块 id 不得重复");
   });
@@ -209,6 +210,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
             timeoutByCli: {},
             timeoutByEffort: {},
             rotation: { period: "day", timeZone: "Asia/Shanghai" },
+            harnessGuard: { enabled: false, text: "" },
           },
           upstreamTypes: ["compatible"],
           profiles: [],

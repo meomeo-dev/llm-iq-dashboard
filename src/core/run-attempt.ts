@@ -25,6 +25,14 @@ export interface AttemptContext {
   leakGuard: LeakGuard;
   /** 作品落盘后的评审（ACR-019）；未配置或题目无评分标准时不评 */
   judge?: AttemptJudge;
+  /** 直出约束原文，附在每条提示词之后；未开启为 null */
+  harnessGuard: string | null;
+}
+
+/** 实际发给 CLI 的提示词：题目原文在前，直出约束另起一段在后；未开启即原文 */
+export function composePromptText(promptText: string, harnessGuard: string | null): string {
+  if (harnessGuard === null) return promptText;
+  return `${promptText.trimEnd()}\n\n${harnessGuard.trim()}`;
 }
 
 /** 命中凭据指纹时记录里的失败说明；作品与转录都不落盘 */
@@ -88,7 +96,7 @@ export async function runAttempt(job: Job, context: AttemptContext): Promise<Att
     await prepareAttemptWorkspace(workdir);
     const reply = await sessions.sessionFor(target.cli, target.profile).ask({
       target,
-      promptText: prompt.text,
+      promptText: composePromptText(prompt.text, context.harnessGuard),
       workdir,
       appliedEffort,
       effortAdjustable,

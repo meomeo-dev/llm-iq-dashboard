@@ -3,6 +3,15 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- 直出约束 `run.harnessGuard`（缺省关闭，配置页「直出约束」区块可改）：开启后每条提示词末尾另起一段附上
+  要求直接作答的原文（缺省英文，可按客户要求改措辞或语言），抑制 CLI 工具自带的联网检索、跑代码自测与
+  截图自检，让结果反映模型本身。题目原文不改；附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布，
+  作品页提示词抽屉里单独显示。
+
 ## [0.3.0] - 2026-10-02
 
 ### 新增
@@ -77,6 +86,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.3.0
 [0.2.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.2
 [0.2.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.1

@@ -40,6 +40,22 @@ export function hasRhythm(schedule: Pick<ScheduleConfig, "cron" | "intervalMinut
   return schedule.cron !== null || schedule.intervalMinutes !== null;
 }
 
+/**
+ * 直出约束（harness guard）：附在每条提示词之后、要求模型直接作答的一段话，用来抑制
+ * CLI 工具自身的增强（联网检索、跑代码自测、渲染截图自检），让结果反映模型本身而不是
+ * harness 的兜底。缺省关闭；开启后原文记进 run.json 的 harnessGuard，与不加约束的轮次区分。
+ */
+export interface HarnessGuardConfig {
+  enabled: boolean;
+  /** 附加的原文；可按客户要求改成别的语言或措辞 */
+  text: string;
+}
+
+export const DEFAULT_HARNESS_GUARD_TEXT =
+  "Draw it directly in this single reply. Do not search the web or fetch anything online, " +
+  "do not run or test any code, and do not render, screenshot, or otherwise inspect your own output " +
+  "to check it. Output the final SVG straight away.";
+
 export interface RunConfig {
   /**
    * 本轮要跑的提示词条目。经典版作锚点、变量版防背答案，
@@ -65,6 +81,8 @@ export interface RunConfig {
   timeoutByCli: Partial<Record<CliKind, number>>;
   /** 按思考强度覆盖超时（毫秒），优先于按 CLI；高强度档耗时主要取决于思考深度 */
   timeoutByEffort: Partial<Record<EffortLevel, number>>;
+  /** 直出约束：开启后每条提示词末尾附上 text */
+  harnessGuard: HarnessGuardConfig;
   /** 提示词变量的轮换周期；默认按 UTC 每天一换，同一天各轮取值相同便于对照 */
   rotation: RotationConfig;
 }

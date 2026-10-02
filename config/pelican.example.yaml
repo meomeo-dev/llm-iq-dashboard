@@ -49,6 +49,17 @@ run:
     period: day
     timezone: UTC
 
+  # 直出约束：开启后每条提示词末尾另起一段附上 text，要求模型直接作答，抑制 CLI 工具自带的
+  # 联网检索、跑代码自测与截图自检，让结果反映模型本身而不是 harness 的兜底。题目原文不改
+  # （classic-v1 仍逐字保留），附加的原文记进 run.json 的 harnessGuard，与不加约束的轮次区分。
+  # 缺省关闭；text 不写即用缺省英文，可按客户要求换成别的语言或措辞。看板 /config 页「直出约束」区块可改。
+  # harnessGuard:
+  #   enabled: true
+  #   text: >-
+  #     Draw it directly in this single reply. Do not search the web or fetch anything online,
+  #     do not run or test any code, and do not render, screenshot, or otherwise inspect your own
+  #     output to check it. Output the final SVG straight away.
+
   # 同时在跑的模型数上限。按模型分道：不同模型并行，同一模型的各强度、各提示词
   # 在自己的道里串行。取启用的模型数即全部并行。
   concurrency: 3

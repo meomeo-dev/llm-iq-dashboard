@@ -203,6 +203,7 @@ async function cardsOfRun(run: RunRecord, attempts: readonly Attempt[]): Promise
       trigger: run.trigger,
       runInProgress: run.inProgress,
       promptText: prompt?.text ?? "",
+      ...(run.harnessGuard !== undefined ? { harnessGuard: run.harnessGuard } : {}),
       bindings: prompt?.bindings ?? {},
       ...(await usageAndCost(run.runId, attempt)),
       judge: attempt.svgFile === null ? null : withJudgeThreshold(await loadJudgement(run.runId, attemptKeyOf(attempt.svgFile))),

@@ -11,6 +11,7 @@ import { PromptPicker } from "./PromptPicker";
 import { CapabilityPanel } from "./CapabilityPanel";
 import { RotationForm } from "./RotationForm";
 import { TimeoutForm } from "./TimeoutForm";
+import { HarnessGuardForm } from "./HarnessGuardForm";
 import { JudgePanel } from "./JudgePanel";
 import { ConfigSection } from "./ConfigSection";
 import { ProfilePanel, type ProfilePanelProps } from "./ProfilePanel";
@@ -60,6 +61,11 @@ export function ConfigEditor({
         onPatchCustomPrompts={(prompts) => patch("customPrompts", prompts)}
       />
 
+      <HarnessGuardSection
+        value={draft.run.harnessGuard}
+        onChange={(harnessGuard) => patch("run", { ...draft.run, harnessGuard })}
+      />
+
       <ProfileSection
         draft={draft}
         savedNames={savedNames}
@@ -80,15 +86,9 @@ export function ConfigEditor({
         onCustomModels={(models) => patch("customModels", models)}
       />
 
-      <ScheduleSection
-        schedule={draft.schedule}
-        onChange={(v) => patch("schedule", v)}
-      />
+      <ScheduleSection schedule={draft.schedule} onChange={(v) => patch("schedule", v)} />
 
-      <TimeoutSection
-        run={draft.run}
-        onChange={(updated) => patch("run", updated)}
-      />
+      <TimeoutSection run={draft.run} onChange={(updated) => patch("run", updated)} />
 
       <JudgeSection judge={draft.judge} catalog={catalog} onChange={(v) => patch("judge", v)} />
 
@@ -134,6 +134,24 @@ function PromptSection({
         value={rotation}
         onChange={(next) => onPatchRun({ rotation: next })}
       />
+    </ConfigSection>
+  );
+}
+
+function HarnessGuardSection({
+  value,
+  onChange,
+}: {
+  value: EditableConfig["run"]["harnessGuard"];
+  onChange: (value: EditableConfig["run"]["harnessGuard"]) => void;
+}) {
+  return (
+    <ConfigSection
+      id="harness-guard"
+      title="直出约束"
+      hint="开启后每条提示词末尾附上这段话，要求模型直接作答，抑制 CLI 工具自带的联网检索、跑代码自测与截图自检，让结果反映模型本身。附加的原文记进 run.json，与不加约束的轮次区分。"
+    >
+      <HarnessGuardForm value={value} onChange={onChange} />
     </ConfigSection>
   );
 }

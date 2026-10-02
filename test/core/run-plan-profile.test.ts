@@ -94,6 +94,7 @@ test("executeLanes: 放行但没有启动参数的 profile 调用记 error，登
     runId: "20260929T000000Z",
     signal: new AbortController().signal,
     leakGuard: leakGuardFromText([]),
+    harnessGuard: null,
     profileLaunches: new Map(),
   };
   await executeLanes(lanes, { profiles: 5, lanesPerProfile: 2 }, round, hooks);
