@@ -51,8 +51,8 @@ describe("AI 层", () => {
     assert.doesNotMatch(blindPrompt(sheet), /鹈鹕|自行车/);
     const prompt = judgePrompt("画一只鹈鹕骑车", sheet, ANIMATED_PELICAN_RUBRIC);
     assert.match(prompt, /k\.sheet\.crank\.png/);
-    assert.match(prompt, /C8「踩踏动作可信」满分 15/);
-    assert.match(prompt, /C9「翅膀扶住车把」满分 10/);
+    assert.match(prompt, /C8「踩踏动作可信」满分 20/);
+    assert.match(prompt, /C9「翅膀扶住车把」满分 20/);
     assert.doesNotMatch(prompt, /C4「/);
   });
 
@@ -60,7 +60,7 @@ describe("AI 层", () => {
     const text = "好的，结果如下：\n```json\n{\"criteria\":[{\"id\":\"C5\",\"score\":12,\"reason\":\"第 1 帧车架齐全\"},{\"id\":\"C6\",\"score\":99,\"reason\":\"长喙\"},{\"id\":\"C7\",\"score\":-3,\"reason\":\"悬空\"},{\"id\":\"C8\",\"score\":\"14.6\",\"reason\":\"3–6 帧腿随脚踏\"},{\"id\":\"C9\",\"score\":4,\"reason\":\"左翅搭在车把\"}]}\n```";
     const parsed = parseJudgeReply(text, ANIMATED_PELICAN_RUBRIC);
     assert.ok(parsed.ok);
-    assert.deepEqual(parsed.scores.map((s) => s.score), [12, 15, 0, 15, 4]);
+    assert.deepEqual(parsed.scores.map((s) => s.score), [10, 10, 0, 15, 4]);
     assert.equal(parseJudgeReply("没有 json", ANIMATED_PELICAN_RUBRIC).ok, false);
     assert.equal(parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1,\"reason\":\"x\"}]}", ANIMATED_PELICAN_RUBRIC).ok, false);
     assert.equal(parseJudgeReply("{\"criteria\":[{\"id\":\"C5\",\"score\":1},{\"id\":\"C6\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C7\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C8\",\"score\":1,\"reason\":\"a\"},{\"id\":\"C9\",\"score\":1,\"reason\":\"a\"}]}", ANIMATED_PELICAN_RUBRIC).ok, false);
@@ -70,8 +70,8 @@ describe("AI 层", () => {
   test("并分：AI 分填进 C5–C9，总分与结论重算；盲描述没认出鹈鹕时 C6 上限减半", () => {
     const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
     const scores = [
-      { id: "C5", score: 15, reason: "齐全" }, { id: "C6", score: 15, reason: "长喙" },
-      { id: "C7", score: 13, reason: "坐稳" }, { id: "C8", score: 12, reason: "跟随" }, { id: "C9", score: 9, reason: "扶把" },
+      { id: "C5", score: 10, reason: "齐全" }, { id: "C6", score: 10, reason: "长喙" },
+      { id: "C7", score: 9, reason: "坐稳" }, { id: "C8", score: 18, reason: "跟随" }, { id: "C9", score: 17, reason: "扶把" },
     ];
     const online = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鹈鹕在骑自行车", actor);
     assert.equal(online.total.verdict, "online");
@@ -81,15 +81,15 @@ describe("AI 层", () => {
     assert.equal(online.judges.at(-1)?.asks, 2);
     assert.equal(online.blindDescription, "一只鹈鹕在骑自行车");
     const blind = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鸭子在骑车", actor);
-    assert.equal(blind.criteria.find((c) => c.id === "C6")?.score, 7);
+    assert.equal(blind.criteria.find((c) => c.id === "C6")?.score, 5);
     assert.match(blind.criteria.find((c) => c.id === "C6")?.reason ?? "", /上限减半/);
   });
 
   test("重跑代码层：同版本下带上旧记录的 AI 分与裁判；版本不同或没有 AI 分时不带", () => {
     const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
     const scores = [
-      { id: "C5", score: 15, reason: "齐全" }, { id: "C6", score: 15, reason: "长喙" },
-      { id: "C7", score: 13, reason: "坐稳" }, { id: "C8", score: 12, reason: "跟随" }, { id: "C9", score: 9, reason: "扶把" },
+      { id: "C5", score: 10, reason: "齐全" }, { id: "C6", score: 10, reason: "长喙" },
+      { id: "C7", score: 9, reason: "坐稳" }, { id: "C8", score: 18, reason: "跟随" }, { id: "C9", score: 17, reason: "扶把" },
     ];
     const judged = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鹈鹕在骑自行车", actor);
     const fresh = judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC });
