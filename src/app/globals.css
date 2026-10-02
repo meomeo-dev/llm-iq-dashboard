@@ -21,7 +21,8 @@
      + 间距 3 + 标题 18 + 间距 8 + 两行徽章 48 + 下留白 10 + 分隔线 1 */
   --badge-height: 21px;
   --card-header-height: 120px;
-  --card-footer-height: 52px;
+  /* 页脚三行：状态 / 体积与评审 / 裁判成本，各约 15px，行距 3，上下留白 */
+  --card-footer-height: 70px;
   /* 看板布局（见 components/toolbar/toolbar.css 与 components/timeline/timeline.css） */
   --lane-label-width: 176px;
   /* 矩阵格子固定尺寸：列宽、行高与文件夹边长都不随列数变化（与 track-layout.ts、

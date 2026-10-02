@@ -71,10 +71,17 @@ export const JUDGE_TEXT: Record<Verdict, string> = {
 /** 裁判成本的一行文案：谁评的、几次问答、多少 token、多少钱 */
 export function judgeCostLine(judgeCost: DashboardCard["judgeCost"]): string | null {
   if (judgeCost === null) return null;
-  const tokens = judgeCost.usage === null
-    ? "用量未知"
-    : `${Object.values(judgeCost.usage.tokens).reduce((sum, n) => sum + n, 0).toLocaleString("en-US")} tok`;
-  return `AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答 · ${tokens} · API 等价 ${formatCost(judgeCost.cost)}`;
+  return `AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答 · ${judgeTokens(judgeCost)} · API 等价 ${formatCost(judgeCost.cost)}`;
+}
+
+/** 页脚第三行的短句：钱、问答次数、token；裁判是谁放在悬停说明里，窄卡片放不下 */
+export function judgeCostBrief(judgeCost: NonNullable<DashboardCard["judgeCost"]>): string {
+  return `裁判 ${formatCost(judgeCost.cost)} · ${judgeCost.asks} 次问答 · ${judgeTokens(judgeCost)}`;
+}
+
+function judgeTokens(judgeCost: NonNullable<DashboardCard["judgeCost"]>): string {
+  if (judgeCost.usage === null) return "用量未知";
+  return `${Object.values(judgeCost.usage.tokens).reduce((sum, n) => sum + n, 0).toLocaleString("en-US")} tok`;
 }
 
 /** 评审的悬停说明：闸门与每条标准的分与理由，末尾是裁判成本 */

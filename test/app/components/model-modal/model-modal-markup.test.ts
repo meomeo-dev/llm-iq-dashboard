@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
+import { expectFixture } from "../../../support/fixtures";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -13,9 +13,7 @@ import type { DashboardCard } from "@/core/types";
 
 const FIXTURES_DIR = path.resolve("test/fixtures/markup/wp-f");
 
-function loadFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
-}
+const fixture = (name: string) => path.join(FIXTURES_DIR, name);
 
 const noop = () => {};
 
@@ -94,7 +92,7 @@ describe("ModelModal Markup Characterization", () => {
         onClose: noop,
       }),
     );
-    assert.equal(actual, loadFixture("ModelModal-with-standard.html"));
+    expectFixture(actual, fixture("ModelModal-with-standard.html"));
   });
 
   test("空卡片且无标准场景逐字节一致", () => {
@@ -107,6 +105,6 @@ describe("ModelModal Markup Characterization", () => {
         onClose: noop,
       }),
     );
-    assert.equal(actual, loadFixture("ModelModal-empty.html"));
+    expectFixture(actual, fixture("ModelModal-empty.html"));
   });
 });

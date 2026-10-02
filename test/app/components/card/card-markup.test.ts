@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
+import { expectFixture } from "../../../support/fixtures";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -12,9 +12,7 @@ import type { DashboardCard } from "@/core/types";
 
 const FIXTURES_DIR = path.resolve("test/fixtures/markup/wp-f");
 
-function loadFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
-}
+const fixture = (name: string) => path.join(FIXTURES_DIR, name);
 
 const mockCardOk: DashboardCard = {
   runId: "20260927T020000Z",
@@ -82,28 +80,28 @@ describe("Card Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(PelicanCard, { card: mockCardOk, timeZone: "Asia/Shanghai" }),
       );
-      assert.equal(actual, loadFixture("PelicanCard-ok.html"));
+      expectFixture(actual, fixture("PelicanCard-ok.html"));
     });
 
     test("failed 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(PelicanCard, { card: mockCardFailed, timeZone: "Asia/Shanghai" }),
       );
-      assert.equal(actual, loadFixture("PelicanCard-failed.html"));
+      expectFixture(actual, fixture("PelicanCard-failed.html"));
     });
 
     test("redacted 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(PelicanCard, { card: mockCardRedacted, timeZone: "Asia/Shanghai" }),
       );
-      assert.equal(actual, loadFixture("PelicanCard-redacted.html"));
+      expectFixture(actual, fixture("PelicanCard-redacted.html"));
     });
 
     test("folded 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(PelicanCard, { card: mockCardFolded, timeZone: "Asia/Shanghai" }),
       );
-      assert.equal(actual, loadFixture("PelicanCard-folded.html"));
+      expectFixture(actual, fixture("PelicanCard-folded.html"));
     });
   });
 });
@@ -133,7 +131,7 @@ describe("PelicanCard 评审标签（ACR-019）", () => {
   test("有裁判成本时在评审标签后单独列出，悬停说明含裁判与问答次数", () => {
     const card: DashboardCard = { ...judged, judgeCost: { judgeId: "claude/claude-sonnet-5-5@high", usage: null, asks: 3, cost: { status: "priced", usd: 0.021, modelId: "m", channelId: "c", serviceTier: "standard", catalogTag: "t", lines: [], note: null } } };
     const html = renderToStaticMarkup(React.createElement(PelicanCard, { card, timeZone: "UTC" }));
-    assert.match(html, /judge-cost[^>]*title="AI 层裁判 claude\/claude-sonnet-5-5@high · 3 次问答 · 用量未知 · API 等价 \$0.021"[^>]*>裁判 (<!-- -->)?\$0.021/);
+    assert.match(html, /footer-row judge-cost" title="AI 层裁判 claude\/claude-sonnet-5-5@high · 3 次问答 · 用量未知 · API 等价 \$0.021">裁判 \$0.021 · 3 次问答 · 用量未知</);
   });
 
   test("没有评审记录时不渲染标签", () => {

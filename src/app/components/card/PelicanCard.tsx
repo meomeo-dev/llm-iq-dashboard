@@ -8,7 +8,7 @@ import { useProfiles } from "../profile/profiles-context";
 import { judgeItemOf } from "../run-status/run-phase";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
-import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostLine, judgeTitle, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
+import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, judgeCostLine, judgeTitle, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
 
 /**
  * 单次调用的结果卡片。表头、图框、页脚各自定高（见 cards.css），失败时用同尺寸
@@ -73,22 +73,22 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
           {card.profile !== undefined && "官价 "}
           {formatCost(card.cost)}
         </span>
-      </div>
-      <div className="footer-row">
-        {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
-        {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
-        {card.judge != null && <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} />}
-        {/* 裁判成本与作品成本分开列：作品那格是生成 SVG 的钱，这里是 AI 层评审的钱 */}
-        {card.judgeCost != null && (
-          <span className="judge-cost" title={judgeCostLine(card.judgeCost) ?? ""}>裁判 {formatCost(card.judgeCost.cost)}</span>
-        )}
-        <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
         {href !== null && (
           <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
             大图 ↗
           </a>
         )}
       </div>
+      <div className="footer-row">
+        {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
+        <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
+        {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
+        {card.judge != null && <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} />}
+      </div>
+      {/* 裁判成本与作品成本分开列：作品那格是生成 SVG 的钱，这一行是 AI 层评审的钱；最窄的卡片也放得下 */}
+      {card.judgeCost != null && (
+        <div className="footer-row judge-cost" title={judgeCostLine(card.judgeCost) ?? ""}>{judgeCostBrief(card.judgeCost)}</div>
+      )}
     </footer>
   );
 }
