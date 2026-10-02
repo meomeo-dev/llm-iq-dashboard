@@ -68,11 +68,8 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
         <span className={`status-text ${isRedacted ? "status-redacted" : `status-${card.status}`}`}>
           {isRedacted ? "已脱敏，未发布" : STATUS_TEXT[card.status]}
         </span>
-        <span>耗时 {formatDuration(card.durationMs)}</span>
-        <span className="card-cost" title={costTitle(card)}>
-          {card.profile !== undefined && "官价 "}
-          {formatCost(card.cost)}
-        </span>
+        {/* 评审结论紧跟状态：成功与否、智商在线与否是一眼要看的两件事；旧记录与远程数据源没有 judge 字段，按无评审处理 */}
+        {card.judge != null && <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} />}
         {href !== null && (
           <a className="card-open" href={href} target="_blank" rel="noopener" title="在新标签页单独查看大图">
             大图 ↗
@@ -80,10 +77,13 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
         )}
       </div>
       <div className="footer-row">
+        <span>耗时 {formatDuration(card.durationMs)}</span>
+        <span className="card-cost" title={costTitle(card)}>
+          {card.profile !== undefined && "官价 "}
+          {formatCost(card.cost)}
+        </span>
         {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
         <span>{card.trigger === "schedule" ? "定时" : "手动"}</span>
-        {/* 旧记录与远程数据源没有 judge 字段，按无评审处理 */}
-        {card.judge != null && <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} />}
       </div>
       {/* 裁判成本与作品成本分开列：作品那格是生成 SVG 的钱，这一行是 AI 层评审的钱；最窄的卡片也放得下 */}
       {card.judgeCost != null && (

@@ -68,10 +68,13 @@ export const JUDGE_TEXT: Record<Verdict, string> = {
   pending: "待复核",
 };
 
-/** 裁判成本的一行文案：谁评的、几次问答、多少 token、多少钱 */
+/**
+ * 裁判成本的悬停说明：第一行谁评的、几次问答，其后与作品成本同一套明细（口径、计价项逐行、
+ * 目录版本），两处悬停读起来口径一致。
+ */
 export function judgeCostLine(judgeCost: DashboardCard["judgeCost"]): string | null {
   if (judgeCost === null) return null;
-  return `AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答 · ${judgeTokens(judgeCost)} · API 等价 ${formatCost(judgeCost.cost)}`;
+  return [`AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答`, costTitle({ cost: judgeCost.cost, usage: judgeCost.usage })].join("\n");
 }
 
 /** 页脚第三行的短句：钱、问答次数、token；裁判是谁放在悬停说明里，窄卡片放不下 */

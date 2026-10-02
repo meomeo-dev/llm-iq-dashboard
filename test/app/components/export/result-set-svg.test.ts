@@ -49,7 +49,7 @@ test("矩阵布局：列 = 上游、行 = 有结果的强度；尺寸按列行�
   // 32 + 56 + 2×(300+16) − 16 + 32
   assert.equal(width, 736);
   // 32 + 72 + 28 + 16 + 2×(373+16) − 16 + 32
-  assert.equal(height, 942);
+  assert.equal(height, 978, "页脚三行 70px");
   assert.equal((svg.match(/<image /g) ?? []).length, 1);
   assert.equal((svg.match(/stroke-dasharray="4 4"/g) ?? []).length, 1);
   assert.match(svg, /甲 &lt;稳定&gt; 0.07/);
@@ -72,12 +72,13 @@ test("单上游：按强度排成一行，没有列标题与行标签", () => {
   assert.doesNotMatch(svg, /gpt-6-astra · low/, "与看板卡片一样不画副标题");
 });
 
-test("卡片与看板同形：上游徽章带色点、评审结论靠右染色、页脚有触发方式", () => {
+test("卡片与看板同形：上游徽章带色点、评审结论紧跟状态并染色、页脚有触发方式与裁判成本", () => {
   const { svg } = renderResultSetSvg(input({}));
   assert.match(svg, /<circle cx="[\d.]+" cy="[\d.]+" r="4" fill="#f28b5b"\/>/, "上游徽章的色点");
   assert.match(svg, /fill="#e6e8ee" font-size="11.5" >甲 &lt;稳定&gt; 0.07</, "上游徽章文字");
-  assert.match(svg, /fill="#4ade80" font-size="12" text-anchor="end" font-weight="600">智商在线 94</);
-  assert.match(svg, /fill="#f87171" font-size="12" text-anchor="end" font-weight="600">降智 45</);
+  assert.match(svg, /font-weight="600">成功<\/text><text x="[\d.]+" y="[\d.]+" fill="#4ade80" font-size="12" font-weight="600">智商在线 94</, "结论紧跟状态");
+  assert.match(svg, /fill="#f87171" font-size="12" font-weight="600">降智 45</);
+  assert.match(svg, />裁判 \$0.021 · 3 次问答 · 用量未知</);
   assert.equal((svg.match(/手动/g) ?? []).length, 3);
   const folded = renderResultSetSvg(input({ cards: [{ ...card("xhigh", undefined), appliedEffort: "high" } as DashboardCard], columns: [{ name: "default", label: "登录态", color: null }] }));
   assert.match(folded.svg, /fill="#fbbf24" font-size="11.5" >effort: xhigh → high</);

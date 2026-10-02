@@ -7,7 +7,7 @@
  */
 
 import type { DashboardCard } from "@/core/types";
-import { formatBytes, formatCost, formatDuration, JUDGE_TEXT, STATUS_TEXT } from "../card/card-format";
+import { formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, STATUS_TEXT } from "../card/card-format";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { escapeXml, thumbnailKey, type Palette, type RenderedSvg } from "./timeline-svg";
 
@@ -56,7 +56,7 @@ const CARD_HEAD = 96;
 const FRAME_HEIGHT = (CARD_WIDTH * 3) / 4;
 const FRAME_PAD = 10;
 /** 页脚两行，与看板卡片同高 */
-const CARD_FOOT = 52;
+const CARD_FOOT = 70;
 const CARD_HEIGHT = CARD_HEAD + FRAME_HEIGHT + CARD_FOOT;
 const CARD_PAD = 14;
 const ROW_LABEL_WIDTH = 56;
@@ -232,28 +232,26 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
   );
 }
 
-/** 页脚两行，与看板同序：第一行状态、耗时、成本；第二行体积、触发方式靠左，裁判成本与评审结论靠右，结论按颜色染 */
+/**
+ * 页脚三行，与看板同序：第一行状态与紧跟的评审结论（按结论染色）；第二行耗时、成本、体积、触发方式；
+ * 有裁判成本时第三行「裁判 $x · n 次问答 · token」
+ */
 function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette): string {
   const redacted = card.status === "ok" && card.svgFile === null;
   const statusColor = redacted ? palette.textDim : card.status === "ok" ? palette.ok : card.status === "no-svg" ? palette.warn : palette.err;
   const status = redacted ? "已脱敏" : STATUS_TEXT[card.status];
   const cost = `${card.profile === undefined ? "" : "官价 "}${formatCost(card.cost)}`;
-  const first = `耗时 ${formatDuration(card.durationMs)}   ${cost}`;
-  const second = [card.svgBytes === null ? null : formatBytes(card.svgBytes), card.trigger === "schedule" ? "定时" : "手动"]
+  const second = [`耗时 ${formatDuration(card.durationMs)}`, cost, card.svgBytes === null ? null : formatBytes(card.svgBytes), card.trigger === "schedule" ? "定时" : "手动"]
     .filter((item): item is string => item !== null)
     .join("   ");
   const statusWidth = estimateWidth(status, 12.5);
   const judge = judgeTag(card, palette);
-  const judgeCost = card.judgeCost == null ? null : `裁判 ${formatCost(card.judgeCost.cost)}`;
-  const judgeWidth = judge === null ? 0 : estimateWidth(judge.label, 12) + 12;
-  const judgeCostWidth = judgeCost === null ? 0 : estimateWidth(judgeCost, 12) + 12;
   return (
     `<line x1="${x}" y1="${y}" x2="${x + CARD_WIDTH}" y2="${y}" stroke="${palette.border}"/>` +
-    text(x + CARD_PAD, y + 20, status, statusColor, 12.5, 'font-weight="600"') +
-    text(x + CARD_PAD + statusWidth + 12, y + 20, clip(first, CARD_WIDTH - CARD_PAD * 2 - statusWidth - 12, 12), palette.textDim, 12) +
-    text(x + CARD_PAD, y + 40, clip(second, CARD_WIDTH - CARD_PAD * 2 - judgeWidth - judgeCostWidth, 12), palette.textDim, 12) +
-    (judge === null ? "" : text(x + CARD_WIDTH - CARD_PAD, y + 40, judge.label, judge.color, 12, 'text-anchor="end" font-weight="600"')) +
-    (judgeCost === null ? "" : text(x + CARD_WIDTH - CARD_PAD - judgeWidth, y + 40, judgeCost, palette.textDim, 12, 'text-anchor="end"'))
+    text(x + CARD_PAD, y + 19, status, statusColor, 12.5, 'font-weight="600"') +
+    (judge === null ? "" : text(x + CARD_PAD + statusWidth + 12, y + 19, judge.label, judge.color, 12, 'font-weight="600"')) +
+    text(x + CARD_PAD, y + 38, clip(second, CARD_WIDTH - CARD_PAD * 2, 12), palette.textDim, 12) +
+    (card.judgeCost == null ? "" : text(x + CARD_PAD, y + 57, clip(judgeCostBrief(card.judgeCost), CARD_WIDTH - CARD_PAD * 2, 12), palette.textDim, 12))
   );
 }
 
