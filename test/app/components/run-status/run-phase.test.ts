@@ -2,7 +2,9 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { countCalls, countJudging, elapsedMs, isActivePhase, isTicking, judgeItemOf, phaseOf, runClock } from "@/app/components/run-status/run-phase";
+import {
+  countCalls, countJudging, elapsedMs, isActivePhase, isTicking, judgeItemOf, pendingJudgeState, phaseOf, runClock,
+} from "@/app/components/run-status/run-phase";
 import type { CallProgress, ProgressView } from "@/core/progress";
 
 const NOW = Date.parse("2026-09-25T05:45:00Z");
@@ -53,6 +55,18 @@ describe("AI 层评审阶段（ACR-020）", () => {
 
   test("评审进程消失：按已完成显示，队列状态保留供提示", () => {
     assert.equal(phaseOf(judgingRun(null, false), NOW), "finished");
+  });
+
+  test("待复核作品的实时状态：进程在时排队 / 评审中，进程不在即中断，有结论或不在队列为 null", () => {
+    const alive = [judgingRun(null)];
+    assert.equal(pendingJudgeState(alive, alive[0]!.runId, "b", NOW), "running");
+    assert.equal(pendingJudgeState(alive, alive[0]!.runId, "a", NOW), null, "已有结论");
+    assert.equal(pendingJudgeState(alive, alive[0]!.runId, "zzz", NOW), null, "不在队列");
+    assert.equal(pendingJudgeState(alive, "other-run", "b", NOW), null, "不在最近几轮");
+    const gone = [judgingRun(null, false)];
+    assert.equal(pendingJudgeState(gone, gone[0]!.runId, "b", NOW), "interrupted");
+    const finished = [judgingRun("2026-09-25T05:46:00Z")];
+    assert.equal(pendingJudgeState(finished, finished[0]!.runId, "b", NOW), "interrupted", "收尾后仍没结论的条目按中断显示");
   });
 
   test("队列计数与按作品查找", () => {

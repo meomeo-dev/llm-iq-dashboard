@@ -15,6 +15,7 @@ import { configPath } from "../core/paths";
 import { findActiveRun } from "../core/progress";
 import { claimNextRequest, cleanStaleGithubRequestCodes, completeRequest, failRequest, pruneRequests, type RunnerRequest } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
+import { resumeInterruptedJudging } from "../core/judge/ai-round";
 import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
 import { handleProfileCredential, handleProfileModels } from "../core/profile-credential-request";
 import { executeRun } from "../core/runner";
@@ -82,7 +83,9 @@ async function main(): Promise<void> {
   }
 
   // 上一个进程退出前没跑完的轮次先收尾，已完成的作品照常导出
-  await recoverInterruptedRuns(config, log);
+  const recovered = await recoverInterruptedRuns(config, log);
+  // 没评完的评审队列在后台续评，不耽误调度与请求处理；裁判调用串行，与新一轮互不影响
+  void resumeJudging(recovered.judgingInterrupted);
 
   const { enabled } = await readAutoRunSwitch();
   log(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);
@@ -101,6 +104,12 @@ async function main(): Promise<void> {
   };
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
+}
+
+async function resumeJudging(runIds: readonly string[]): Promise<void> {
+  for (const runId of runIds) {
+    await resumeInterruptedJudging(loadConfig(configPath()), runId, log).catch((cause: unknown) => log(`[${runId}] 续评失败：${describe(cause)}`));
+  }
 }
 
 let handling = false;

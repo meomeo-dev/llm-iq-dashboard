@@ -222,6 +222,15 @@ export function isJudging(run: RunProgress): boolean {
   return run.finishedAt !== null && run.judging != null && run.judging.finishedAt === null;
 }
 
+/**
+ * 接手上一个进程留下的进度文件（续评中断的评审队列）：pid 换成本进程，看板据此把续评
+ * 期间的轮次判为存活；后续写入沿用同一文件。
+ */
+export function reopenProgressTracker(stored: RunProgress, writer: SerialWriter): ProgressTracker {
+  const progress: RunProgress = { ...stored, pid: process.pid, pidStart: processStartMark(process.pid) };
+  return buildProgressTrackerActions(progress, writer);
+}
+
 /** 每次状态变化整份重写（文件仅几 KB），读取方无需拼接增量 */
 export function createProgressTracker(
   initial: InitialProgress,
@@ -271,7 +280,12 @@ async function runnerHeartbeat(): Promise<RunnerHeartbeat | null> {
   return externalRunner() ? readFreshHeartbeat() : null;
 }
 
-async function readProgress(runId: string): Promise<RunProgress | null> {
+/** 某轮的执行进程是否还在；已结束且评审也收尾的轮次一律为假 */
+export async function progressAlive(run: RunProgress): Promise<boolean> {
+  return (run.finishedAt === null || isJudging(run)) && isRunnerAlive(run, await runnerHeartbeat());
+}
+
+export async function readProgress(runId: string): Promise<RunProgress | null> {
   try {
     return JSON.parse(await readFile(join(runDir(runId), PROGRESS_FILE), "utf8")) as RunProgress;
   } catch {

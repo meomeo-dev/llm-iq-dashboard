@@ -242,7 +242,7 @@ function JudgingSection({ judging, phase, clock }: { judging: JudgingProgress; p
           {counts.done + counts.failed}/{counts.total}
         </span>
       </div>
-      {interrupted && <p className="run-warn">评审进程已不在，没评完的作品保持待复核。</p>}
+      {interrupted && <p className="run-warn">评审进程已不在，没评完的作品待执行器下次启动时续评。</p>}
       <div className="run-calls">
         {judging.items.map((item) => <JudgeItem key={item.attemptKey} item={item} clock={clock} />)}
       </div>

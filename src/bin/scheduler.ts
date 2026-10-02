@@ -7,14 +7,23 @@
  */
 
 import { readAutoRunSwitch, readLiveScheduler, recordSchedulerProcess } from "../core/auto-run";
-import { loadConfig } from "../core/config";
+import { loadConfig, type AppConfig } from "../core/config";
 import { configPath } from "../core/paths";
+import { resumeInterruptedJudging } from "../core/judge/ai-round";
 import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
 import { scheduledRound } from "../core/run-selection";
 import { startScheduler } from "../core/scheduler";
 
 function timestamped(message: string): void {
   console.log(`${new Date().toISOString()} ${message}`);
+}
+
+async function resumeJudging(runIds: readonly string[], readConfig: () => AppConfig, log: (line: string) => void): Promise<void> {
+  for (const runId of runIds) {
+    await resumeInterruptedJudging(readConfig(), runId, log).catch((cause: unknown) => {
+      log(`[${runId}] 续评失败：${cause instanceof Error ? cause.message : String(cause)}`);
+    });
+  }
 }
 
 async function main(): Promise<void> {
@@ -32,7 +41,9 @@ async function main(): Promise<void> {
   // 登记 pid，看板据此判断打开自动任务时是否需要拉起调度器
   await recordSchedulerProcess(process.pid);
   // 上一个进程退出前没跑完的轮次先收尾，已完成的作品照常导出
-  await recoverInterruptedRuns(loadConfig(path), timestamped);
+  const recovered = await recoverInterruptedRuns(loadConfig(path), timestamped);
+  // 没评完的评审队列在后台续评，不耽误调度启动；裁判调用串行，与整点的新一轮互不影响
+  void resumeJudging(recovered.judgingInterrupted, () => loadConfig(path), timestamped);
   const { enabled } = await readAutoRunSwitch();
   timestamped(`自动任务开关：${enabled ? "开" : "关（到点跳过，在看板上打开）"}`);
 

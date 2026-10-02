@@ -1,11 +1,19 @@
 import React from "react";
 import type { ContactSheet, Judgement } from "@/core/judge/schema";
 import type { DashboardCard } from "@/core/types";
-import { formatCost, JUDGE_TEXT, judgeCostLine } from "../components/card/card-format";
+import { formatCost, JUDGE_TEXT, judgeCostLine, PENDING_JUDGE_TEXT } from "../components/card/card-format";
+import type { PendingJudgeState } from "../components/run-status/run-phase";
 import { criterionFloors, type CriterionResult } from "@/core/judge/schema";
 
+interface JudgeDrawerProps {
+  judge: Judgement;
+  judgeCost?: DashboardCard["judgeCost"];
+  /** 待复核作品在评审队列里的实时状态；有值时结论胶囊显示它而不是记录里的「待复核」 */
+  liveState?: PendingJudgeState | null;
+}
+
 /** 单件作品查看页的评审抽屉（ACR-019）：结论、闸门与逐条标准的分与理由 */
-export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; judgeCost?: DashboardCard["judgeCost"] }) {
+export function JudgeDrawer({ judge, judgeCost = null, liveState = null }: JudgeDrawerProps) {
   const floors = criterionFloors(judge.rubric);
   const { total, rubric } = judge;
   return (
@@ -13,9 +21,15 @@ export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; jud
       <summary>
         <span className="drawer-icon" aria-hidden="true">🧠</span>
         <span className="drawer-title">评审</span>
-        <span className={`judge-pill judge-${total.verdict}`}>
-          {JUDGE_TEXT[total.verdict]} {total.score}/{total.maxScore}
-        </span>
+        {liveState !== null ? (
+          <span className={`judge-pill judge-${liveState === "interrupted" ? "interrupted" : "judging"}`} title={PENDING_JUDGE_TEXT[liveState].title}>
+            {PENDING_JUDGE_TEXT[liveState].label}
+          </span>
+        ) : (
+          <span className={`judge-pill judge-${total.verdict}`}>
+            {JUDGE_TEXT[total.verdict]} {total.score}/{total.maxScore}
+          </span>
+        )}
         <span className="judge-meta">
           及格线 {rubric.passThreshold} · {rubric.id} v{rubric.version} · {judge.judges.map((j) => j.id).join(" + ")}
           {judgeCost != null && (

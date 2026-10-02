@@ -2,7 +2,8 @@
  * 执行进程启动时收尾中断轮次：
  *   - inProgress 的 run.json 置为已停止，保留已完成的调用，progress.json 同步收尾；
  *   - 只有 progress.json 的目录删除；
- *   - 已完成的轮次与没有 run.json 但有产物的目录不动。
+ *   - 已完成的轮次与没有 run.json 但有产物的目录不动；
+ *   - 已收尾但评审队列没收尾的轮次只记进报告，不改文件。
  */
 
 import assert from "node:assert/strict";
@@ -94,11 +95,20 @@ describe("recoverInterruptedRuns", () => {
       "run.json": { runId: "20260926T050000Z", inProgress: false, attempts: [attempt] },
     });
     await writeRunDir("20260926T060000Z", { "b.svg": "<svg/>" });
+    await writeRunDir("20260926T070000Z", {
+      "run.json": { runId: "20260926T070000Z", inProgress: false, attempts: [attempt] },
+      "progress.json": {
+        runId: "20260926T070000Z", finishedAt: "2026-09-26T07:05:00Z", cancelledAt: null, lanes: [],
+        judging: { startedAt: "2026-09-26T07:05:00Z", finishedAt: null, items: [{ attemptKey: "a", state: "running" }] },
+      },
+    });
 
     const logs: string[] = [];
     const report = await recoverInterruptedRuns(config(), (message) => logs.push(message));
 
-    assert.deepEqual(report, { finalized: ["20260926T041323Z"], discarded: ["20260926T035418Z"] });
+    assert.deepEqual(report, {
+      finalized: ["20260926T041323Z"], discarded: ["20260926T035418Z"], judgingInterrupted: ["20260926T070000Z"],
+    });
 
     const run = await readJson("20260926T041323Z", "run.json");
     assert.equal(run.inProgress, false);
@@ -111,14 +121,16 @@ describe("recoverInterruptedRuns", () => {
     assert.deepEqual(lanes.flatMap((lane) => lane.calls.map((call) => call.state)), ["done", "cancelled", "cancelled"]);
 
     const dirs = (await readdir(join(dataDir, "runs"))).sort();
-    assert.deepEqual(dirs, ["20260926T041323Z", "20260926T050000Z", "20260926T060000Z"]);
+    assert.deepEqual(dirs, ["20260926T041323Z", "20260926T050000Z", "20260926T060000Z", "20260926T070000Z"]);
+    const judging = await readJson("20260926T070000Z", "progress.json");
+    assert.equal((judging.judging as { finishedAt: string | null }).finishedAt, null, "评审队列由续评收尾，收尾扫描不改它");
     const completed = await readJson("20260926T050000Z", "run.json");
     assert.equal("cancelledAt" in completed, false);
     assert.ok(logs.some((line) => line.includes("保留 2 次已完成的调用")));
   });
 
-  it("再次启动时已收尾的轮次不再处理", async () => {
+  it("再次启动时已收尾的轮次不再处理，评审没收尾的仍待续评", async () => {
     const report = await recoverInterruptedRuns(config(), () => undefined);
-    assert.deepEqual(report, { finalized: [], discarded: [] });
+    assert.deepEqual(report, { finalized: [], discarded: [], judgingInterrupted: ["20260926T070000Z"] });
   });
 });

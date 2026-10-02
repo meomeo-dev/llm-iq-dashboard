@@ -5,10 +5,13 @@ import type { DashboardCard } from "@/core/types";
 import { useLiveProgress } from "../live-state/live-store";
 import { profileColor } from "../profile/profile-color";
 import { useProfiles } from "../profile/profiles-context";
-import { judgeItemOf } from "../run-status/run-phase";
+import { pendingJudgeState } from "../run-status/run-phase";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
-import { costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, judgeCostLine, judgeTitle, rawSvgHref, STATUS_TEXT, viewHref } from "./card-format";
+import {
+  costTitle, formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, judgeCostLine, judgeTitle, PENDING_JUDGE_TEXT,
+  rawSvgHref, STATUS_TEXT, viewHref,
+} from "./card-format";
 
 /**
  * 单次调用的结果卡片。表头、图框、页脚各自定高（见 cards.css），失败时用同尺寸
@@ -95,12 +98,12 @@ function CardFooter({ card, isRedacted }: { card: DashboardCard; isRedacted: boo
 
 /** 评审标签（ACR-019）：标签 + 总分，悬停看逐条闸门与标准 */
 function JudgeTag({ card, judge, judgeCost }: { card: DashboardCard; judge: NonNullable<DashboardCard["judge"]>; judgeCost: DashboardCard["judgeCost"] }) {
-  // 待复核且还在本轮的 AI 评审队列里：显示评审中，出分后推送触发整页刷新换成结论
-  const item = judgeItemOf(useLiveProgress(), card.runId, judge.subject.attemptKey);
-  if (judge.total.verdict === "pending" && item !== null && (item.state === "queued" || item.state === "running")) {
+  // 待复核且还在本轮的 AI 评审队列里：显示排队 / 评审中 / 中断，出分后推送触发整页刷新换成结论
+  const live = judge.total.verdict === "pending" ? pendingJudgeState(useLiveProgress(), card.runId, judge.subject.attemptKey, Date.now()) : null;
+  if (live !== null) {
     return (
-      <span className="judge-tag judge-judging" title={item.state === "running" ? "AI 层裁判正在看联系图打分" : "排队等 AI 层评审"}>
-        {item.state === "running" ? "评审中…" : "待评审"}
+      <span className={`judge-tag judge-${live === "interrupted" ? "interrupted" : "judging"}`} title={PENDING_JUDGE_TEXT[live].title}>
+        {PENDING_JUDGE_TEXT[live].label}
       </span>
     );
   }

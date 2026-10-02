@@ -1,7 +1,11 @@
+"use client";
+
 import React from "react";
 import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
 import { ReferenceSourceDisplay } from "../components/ReferenceSourceDisplay";
+import { useLiveProgress } from "../components/live-state/live-store";
+import { pendingJudgeState } from "../components/run-status/run-phase";
 import { JudgeDrawer } from "./JudgeDrawer";
 
 interface ArtViewerFootProps {
@@ -11,6 +15,11 @@ interface ArtViewerFootProps {
 
 /** 单件作品查看页底部抽屉：原始提示词与客观标准判定规则 */
 export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
+  // 待复核作品在本轮评审队列里时，抽屉胶囊跟卡片一样显示排队 / 评审中 / 中断
+  const progress = useLiveProgress();
+  const liveState = card.judge?.total.verdict === "pending"
+    ? pendingJudgeState(progress, card.runId, card.judge.subject.attemptKey, Date.now())
+    : null;
   return (
     <footer className="viewer-foot">
       {card.promptText !== "" && (
@@ -24,7 +33,7 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
           </div>
         </details>
       )}
-      {card.judge != null && <JudgeDrawer judge={card.judge} judgeCost={card.judgeCost ?? null} />}
+      {card.judge != null && <JudgeDrawer judge={card.judge} judgeCost={card.judgeCost ?? null} liveState={liveState} />}
       {standard != null && (
         <details className="viewer-drawer viewer-standard">
           <summary>

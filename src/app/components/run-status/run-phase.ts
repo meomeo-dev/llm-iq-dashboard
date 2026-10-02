@@ -77,6 +77,22 @@ export function judgeItemOf(runs: readonly ProgressView[] | null, runId: string,
   return run?.judging?.items.find((item) => item.attemptKey === attemptKey) ?? null;
 }
 
+/**
+ * 待复核作品的实时评审状态：排队 / 评审中只在评审进程还在时成立，进程不在即为中断
+ * （下一个执行进程启动时续评）；不在队列里或已有结论为 null，按记录本身显示。
+ */
+export type PendingJudgeState = "queued" | "running" | "interrupted";
+
+export function pendingJudgeState(
+  runs: readonly ProgressView[] | null, runId: string, attemptKey: string, now: number,
+): PendingJudgeState | null {
+  const run = runs?.find((item) => item.runId === runId);
+  const item = run?.judging?.items.find((entry) => entry.attemptKey === attemptKey);
+  if (run === undefined || item === undefined) return null;
+  if (item.state !== "queued" && item.state !== "running") return null;
+  return phaseOf(run, now) === "judging" ? item.state : "interrupted";
+}
+
 export function allCalls(run: ProgressView): CallProgress[] {
   return run.lanes.flatMap((lane) => lane.calls);
 }

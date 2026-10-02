@@ -106,6 +106,11 @@ async function hasRunFile(runId: string): Promise<boolean> {
   }
 }
 
+/** 单轮记录；缺失或损坏时为 null */
+export async function loadRun(runId: string): Promise<RunRecord | null> {
+  return readRun(runId);
+}
+
 async function readRun(runId: string): Promise<RunRecord | null> {
   try {
     const text = await readFile(join(runDir(runId), RUN_FILE), "utf8");

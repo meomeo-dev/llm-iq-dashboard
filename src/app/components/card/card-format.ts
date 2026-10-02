@@ -3,6 +3,7 @@
 import { criterionFloors } from "@/core/judge/schema";
 import type { Judgement, Verdict } from "@/core/judge/schema";
 import type { DashboardCard } from "@/core/types";
+import type { PendingJudgeState } from "../run-status/run-phase";
 
 export const STATUS_TEXT: Record<DashboardCard["status"], string> = {
   ok: "成功",
@@ -72,6 +73,13 @@ export const JUDGE_TEXT: Record<Verdict, string> = {
   online: "智商在线",
   degraded: "降智",
   pending: "待复核",
+};
+
+/** 待复核作品在评审队列里的实时状态文案与悬停说明（见 run-phase.ts 的 pendingJudgeState） */
+export const PENDING_JUDGE_TEXT: Record<PendingJudgeState, { label: string; title: string }> = {
+  queued: { label: "待评审", title: "排队等 AI 层评审" },
+  running: { label: "评审中…", title: "AI 层裁判正在看联系图打分" },
+  interrupted: { label: "评审中断", title: "评审进程中途退出，执行器下次启动时续评" },
 };
 
 /**

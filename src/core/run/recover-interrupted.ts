@@ -7,13 +7,14 @@
  *     已完成的作品照常进入数据仓。
  *   - 只有 progress.json（连第一次 run.json 都没写出）：目录里没有任何结果，直接删除。
  *   - 有产物却没有 run.json：无法重建记录，留给保留策略处理。
+ *   - 轮次已收尾但 AI 层评审队列没收尾：记进报告，由调用方续评（judge/ai-round.ts），不在这里等裁判。
  */
 
 import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { AppConfig } from "../config";
 import { runDir } from "../paths";
-import type { RunProgress } from "../progress";
+import { isJudging, type RunProgress } from "../progress";
 import { listRunIds, saveRun, writeJsonAtomic } from "../store";
 import type { RunRecord } from "../types";
 import { postRunSync } from "./post-sync";
@@ -27,6 +28,8 @@ export interface RecoveryReport {
   finalized: string[];
   /** 没有任何结果、已删除的目录 */
   discarded: string[];
+  /** 轮次已收尾、评审队列停在半途的轮次，待续评 */
+  judgingInterrupted: string[];
 }
 
 async function readJson<T>(runId: string, filename: string): Promise<T | null> {
@@ -70,7 +73,11 @@ async function recoverOne(runId: string, config: AppConfig, log: Logger, report:
     }
     return;
   }
-  if (record.inProgress !== true) return;
+  if (record.inProgress !== true) {
+    const progress = await readJson<RunProgress>(runId, PROGRESS_FILE);
+    if (progress !== null && isJudging(progress)) report.judgingInterrupted.push(runId);
+    return;
+  }
   await finalizeRun(runId, record);
   report.finalized.push(runId);
   log(`[${runId}] 上次进程退出前未收尾，按已停止收尾：保留 ${record.attempts.length} 次已完成的调用`);
@@ -79,7 +86,7 @@ async function recoverOne(runId: string, config: AppConfig, log: Logger, report:
 
 /** 扫描全部轮次目录，收尾中断的轮次；单个目录出错只记日志，不影响其余目录与启动 */
 export async function recoverInterruptedRuns(config: AppConfig, log: Logger): Promise<RecoveryReport> {
-  const report: RecoveryReport = { finalized: [], discarded: [] };
+  const report: RecoveryReport = { finalized: [], discarded: [], judgingInterrupted: [] };
   for (const runId of await listRunIds()) {
     try {
       await recoverOne(runId, config, log, report);

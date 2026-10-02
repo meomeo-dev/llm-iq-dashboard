@@ -158,7 +158,10 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   鹈鹕则 C6 上限减半。
   转录存 `<attemptKey>.judge-ai.txt`，任一步失败记录保持「待复核」。评审队列写在本轮 `progress.json`
   的 `judging` 段（逐件排队 / 评审中 / 结论），随 SSE 推送：状态胶囊显示「评审中 k/n」，面板列出每件，
-  卡片在队列里时显示「待评审 / 评审中…」，出分后触发整页刷新。裁判全部问答的 token 用量从转录
+  卡片与作品页在队列里时显示「待评审 / 评审中…」，出分后触发整页刷新。评审进程中途退出时队列停在半途，
+  看板按进程存活把排队 / 评审中的作品显示为「评审中断」；下一个执行进程（`pnpm runner` / `pnpm scheduler`）
+  启动时经 `recoverInterruptedRuns` 找出这些轮次，由 `ai-round.resumeInterruptedJudging` 在后台接手：
+  pid 换成新进程、已落盘结论的直接标结论、AI 层已关闭的标未评、其余重新请裁判，队列最终总会收尾。裁判全部问答的 token 用量从转录
   解析后记在 `judges[]` 的 AI 那条（`usage`、`asks`），成本与作品同口径按价格目录在读取时折算
   （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。历史作品不自动补评；
   `pnpm judge:backfill -- --ai` / `--ai-only` 仅在人工明确要求时按轮运行。

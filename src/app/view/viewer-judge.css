@@ -20,6 +20,14 @@
   color: var(--text-dim);
 }
 
+.judge-pill.judge-judging {
+  color: var(--accent);
+}
+
+.judge-pill.judge-interrupted {
+  color: var(--warn);
+}
+
 .judge-meta {
   margin-left: auto;
   color: var(--text-faint);
