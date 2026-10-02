@@ -112,9 +112,11 @@ function ScheduleNoticeBox({
       <div className="schedule-runtime-notice ok">
         <span>
           ✅ <strong>状态说明：</strong>自动任务正常运行中。
-          {state?.nextRunAt
-            ? `下次触发预计于 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
-            : "按设定间隔自动发起评测"}。
+          {state?.pendingRun
+            ? `到点时${state.pendingRun.waitingFor !== null ? `轮次 ${state.pendingRun.waitingFor}` : "上一轮"}还在跑，定时轮次已排队，等它结束立即开跑`
+            : state?.nextRunAt
+              ? `下次触发预计于 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
+              : "按设定间隔自动发起评测"}。
         </span>
       </div>
     );

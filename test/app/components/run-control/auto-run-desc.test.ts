@@ -16,6 +16,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 1234,
         schedule: { cron: "0 * * * *", intervalMinutes: null, timezone: "UTC" },
         nextRunAt: "2026-09-27T12:00:00Z",
+        pendingRun: null,
       };
       assert.equal(subline(state, "UTC"), "已暂停");
     });
@@ -27,6 +28,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 1234,
         schedule: { cron: null, intervalMinutes: null, timezone: null },
         nextRunAt: null,
+        pendingRun: null,
       };
       assert.equal(subline(state, "UTC"), "未设节奏");
     });
@@ -38,6 +40,7 @@ describe("auto-run-desc", () => {
         schedulerPid: null,
         schedule: { cron: "0 * * * *", intervalMinutes: null, timezone: "UTC" },
         nextRunAt: null,
+        pendingRun: null,
       };
       assert.equal(subline(state, "UTC"), "调度器未运行");
     });
@@ -49,6 +52,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 1234,
         schedule: { cron: "0 * * * *", intervalMinutes: null, timezone: "UTC" },
         nextRunAt: "2026-09-27T12:00:00Z",
+        pendingRun: null,
       };
       assert.equal(subline(state, "UTC"), "下次 12:00");
     });
@@ -60,6 +64,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 1234,
         schedule: { cron: null, intervalMinutes: 30, timezone: null },
         nextRunAt: null,
+        pendingRun: null,
       };
       assert.equal(subline(state, "UTC"), "每 30 分钟");
     });
@@ -77,6 +82,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 1234,
         schedule: { cron: null, intervalMinutes: null, timezone: null },
         nextRunAt: null,
+        pendingRun: null,
       };
       assert.ok(describeSchedule(state).includes("配置里没有定时节奏"));
     });
@@ -88,6 +94,7 @@ describe("auto-run-desc", () => {
         schedulerPid: 5678,
         schedule: { cron: "*/10 * * * *", intervalMinutes: null, timezone: "Asia/Shanghai" },
         nextRunAt: null,
+        pendingRun: null,
       };
       const desc = describeSchedule(state);
       assert.ok(desc.includes("cron */10 * * * *"));
@@ -103,6 +110,7 @@ describe("auto-run-desc", () => {
         schedulerPid: null,
         schedule: { cron: null, intervalMinutes: 15, timezone: null },
         nextRunAt: null,
+        pendingRun: null,
       };
       const desc = describeSchedule(state);
       assert.ok(desc.includes("已暂停"));

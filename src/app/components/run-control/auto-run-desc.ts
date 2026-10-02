@@ -6,6 +6,7 @@ export function subline(state: AutoRunView | null, timeZone: string): string {
   if (!state.enabled) return "已暂停";
   if (state.schedule.cron === null && state.schedule.intervalMinutes === null) return "未设节奏";
   if (state.schedulerPid === null) return "调度器未运行";
+  if (state.pendingRun !== null) return state.pendingRun.waitingFor !== null ? `排队中，等 ${state.pendingRun.waitingFor} 结束` : "排队中，等上一轮结束";
   if (state.nextRunAt !== null) return `下次 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`;
   return `每 ${state.schedule.intervalMinutes} 分钟`;
 }

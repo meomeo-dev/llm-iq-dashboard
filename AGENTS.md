@@ -35,7 +35,8 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `src/adapters`，调用 CLI 只经 `src/core`；`src/core` 不依赖 `src/app`。
 - **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 low 到 max 串行；
   超时优先级 `targets[].timeoutMs` > `timeoutByEffort` > `timeoutByCli` > `defaultTimeoutMs`；
-  预算按历史成本预估逐次放行。手动与定时轮次互斥。
+  预算按历史成本预估逐次放行。一次只跑一轮：手动发起时有轮次在跑直接拒绝；定时到点时有轮次在跑则排队
+  （只容一轮，合并后续触发），等它结束立即开跑。
 - **适配器**：`src/adapters/` 每家 CLI 一个，实现 `AgentAdapter`（codex 用长驻 `codex app-server`）。
   新增一家需同时改 `src/adapters/index.ts`、`src/core/types.ts` 的 `CLI_KINDS` 与
   `src/capabilities/catalog.ts` 的探针列表。

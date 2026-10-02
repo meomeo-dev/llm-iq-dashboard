@@ -3,7 +3,8 @@
  *
  * 配置里的 schedule 只决定节奏，这里是唯一的开关：此刻是否允许自动执行，看板上拨动即生效。
  * - auto-run.json：开关。文件不存在即关闭：自动任务消耗 CLI 配额，须由人明确打开。
- * - scheduler.json：常驻调度器的 pid，看板据此判断是否需要拉起。
+ * - scheduler.json：常驻调度器的 pid，看板据此判断是否需要拉起；另记排队中的定时轮次
+ *   （到点时有别的轮次在跑，定时轮次等它结束再开，见 scheduler.ts）。
  */
 
 import { Cron } from "croner";
@@ -30,6 +31,16 @@ export interface SchedulerProcess {
   startedAt: string;
   /** 进程启动标记，与 pid 一起认定进程（见 process-identity.ts）；旧记录可能缺失 */
   pidStart?: string | null;
+  /** 排队中的定时轮次；没有排队时缺省或 null */
+  pending?: PendingScheduledRun | null;
+}
+
+/** 到点时别的轮次还在跑，定时轮次排队等它结束；一次只排一轮，后续触发点合并进来 */
+export interface PendingScheduledRun {
+  /** 首次被挡下的触发时刻 */
+  since: string;
+  /** 挡住它的轮次；执行方自己的上一轮还没收尾时为 null */
+  waitingFor: string | null;
 }
 
 const SWITCH_OFF: AutoRunSwitch = { enabled: false, updatedAt: null };
@@ -51,6 +62,22 @@ export async function writeAutoRunSwitch(enabled: boolean, now: Date = new Date(
 export async function recordSchedulerProcess(pid: number, now: Date = new Date()): Promise<void> {
   const record: SchedulerProcess = { pid, startedAt: now.toISOString(), pidStart: processStartMark(pid) };
   await writeJson(SCHEDULER_FILE, record);
+}
+
+/** 记下或清掉排队中的定时轮次；保留登记的 pid */
+export async function writeSchedulerPending(pending: PendingScheduledRun | null): Promise<void> {
+  const stored = (await readJson(SCHEDULER_FILE)) as Partial<SchedulerProcess> | null;
+  if (stored === null || typeof stored.pid !== "number") return;
+  await writeJson(SCHEDULER_FILE, { ...stored, pending });
+}
+
+/** 排队中的定时轮次；调度器不在（进程退出，排队随之作废）时为 null */
+export async function readSchedulerPending(): Promise<PendingScheduledRun | null> {
+  if ((await readLiveScheduler()) === null) return null;
+  const stored = (await readJson(SCHEDULER_FILE)) as Partial<SchedulerProcess> | null;
+  const pending = stored?.pending;
+  if (!pending || typeof pending !== "object" || typeof pending.since !== "string") return null;
+  return { since: pending.since, waitingFor: typeof pending.waitingFor === "string" ? pending.waitingFor : null };
 }
 
 /** 登记的调度器仍存活时返回，否则为 null；分容器部署时调度器就是执行器，看心跳 */
@@ -75,6 +102,8 @@ export interface AutoRunView {
   schedule: ScheduleRhythm;
   /** 按 cron 推算的下一个触发点；间隔调度或未配置时为 null */
   nextRunAt: string | null;
+  /** 到点时被别的轮次挡下、正在排队的定时轮次；没有为 null */
+  pendingRun: PendingScheduledRun | null;
 }
 
 function loadScheduleSafely(): ScheduleRhythm {
@@ -113,6 +142,7 @@ export async function describeAutoRun(now: Date = new Date()): Promise<AutoRunVi
       timezone: schedule.timezone,
     },
     nextRunAt: nextCronRun(schedule, now),
+    pendingRun: await readSchedulerPending(),
   };
 }
 
