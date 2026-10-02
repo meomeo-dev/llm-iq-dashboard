@@ -22,7 +22,7 @@ import {
 import { getDataRepoUrl } from "../deploy-mode";
 import { usageAndCost } from "../../pricing/attempt-cost";
 import { judgeCostOf } from "../../pricing/judge-cost";
-import { withCurrentThreshold, type Judgement } from "../judge/schema";
+import { withCurrentRules, type Judgement } from "../judge/schema";
 import type { ProfileView } from "../profile-view";
 import { runIdTime } from "../store";
 import type { DashboardCard, RunRecord } from "../types";
@@ -374,7 +374,7 @@ export class RemoteDataSource implements DataSource {
         bindings: prompt?.bindings ?? {},
         ...costInfo,
         // 公开记录内嵌的评审记录没有联系图与转录引用（ACR-020）；旧记录没有此字段
-        judge: attempt.judge == null ? null : withCurrentThreshold(attempt.judge as Judgement),
+        judge: attempt.judge == null ? null : withCurrentRules(attempt.judge as Judgement),
         judgeCost: judgeCostOf(attempt.judge ?? null),
       });
     }

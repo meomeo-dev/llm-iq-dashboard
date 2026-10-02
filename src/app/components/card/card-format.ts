@@ -1,5 +1,6 @@
 /** 结果卡片与单独查看页共用的文案与格式；不带 "use client"，服务端组件也会引用。 */
 
+import { criterionFloors } from "@/core/judge/schema";
 import type { Judgement, Verdict } from "@/core/judge/schema";
 import type { DashboardCard } from "@/core/types";
 
@@ -90,16 +91,17 @@ export function judgeCostBrief(judgeCost: NonNullable<DashboardCard["judgeCost"]
   return `裁判 ${formatCost(judgeCost.cost)} · ${judgeCost.asks} 次问答 · ${tokens}`;
 }
 
-/** 评审的悬停说明：闸门与每条标准的分与理由，末尾是裁判成本 */
+/** 评审的悬停说明：闸门与每条标准的分与理由（关键标准低于门槛的标出），末尾是裁判成本 */
 export function judgeTitle(judge: Judgement, judgeCost: DashboardCard["judgeCost"] = null): string {
   const costLine = judgeCostLine(judgeCost);
+  const floors = criterionFloors(judge.rubric);
   const lines = [
     `${JUDGE_TEXT[judge.total.verdict]} ${judge.total.score}/${judge.total.maxScore}（及格线 ${judge.rubric.passThreshold}）`,
     ...judge.gates.map((g) => `${g.passed ? "✓" : "✗"} ${g.id} ${g.title}：${g.evidence}`),
     ...judge.criteria.map((c) =>
       c.score === null
         ? `${c.id} -/${c.maxScore} ${c.title}：待 AI 层判定`
-        : `${c.id} ${c.score}/${c.maxScore} ${c.title}：${c.reason ?? ""}`,
+        : `${c.id} ${c.score}/${c.maxScore}${c.score < (floors.get(c.id) ?? 0) ? "（低于门槛，不计分）" : ""} ${c.title}：${c.reason ?? ""}`,
     ),
     ...(costLine === null ? [] : [costLine]),
   ];

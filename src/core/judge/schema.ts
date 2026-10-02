@@ -125,6 +125,8 @@ export interface CriterionSpec {
   title: string;
   standard: string;
   maxScore: number;
+  /** 关键标准的门槛：得分低于它即关键结构不满足，这一项不计入总分并直接判「降智」 */
+  minScore?: number;
 }
 
 export interface RubricSpec {
@@ -141,8 +143,8 @@ export interface RubricSpec {
  * 没有 AI 层的记录只能是「待复核」，AI 层五项合计至少要拿 48 分。
  * C6 只管「认得出是鹈鹕」，骑姿与接触点各归 C7（座垫、脚踏）与 C9（车把），不混进身份判断。
  * version 只随标准与权重变，且从首次发布起算：发布前改口径不升版本，已发布的版本上改口径才升。
- * 及格线只定「在线 / 降智」的标签、不改分数，调它不升 version，
- * 旧记录展示时按当前及格线重定结论（见 withCurrentThreshold）。
+ * 及格线与关键标准门槛（C8、C9 的 minScore）只定「在线 / 降智」的结论、不改裁判给的分，调它们不升 version，
+ * 旧记录展示时按当前规则重定结论（见 withCurrentRules）。
  */
 export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
   id: "animated-pelican-v1",
@@ -170,9 +172,9 @@ export const ANIMATED_PELICAN_RUBRIC: RubricSpec = {
       standard: "盲描述能认出鹈鹕（长喙、喉囊）；认成其他鸟或无法辨认为零分" },
     { id: "C7", source: "ai", title: "坐在座垫上、脚在脚踏上", maxScore: 10,
       standard: "鹈鹕坐在座垫上，双脚落在脚踏上；悬空、脱离车身或脚不在脚踏上为零分" },
-    { id: "C8", source: "ai", title: "踩踏动作可信", maxScore: 20,
+    { id: "C8", source: "ai", title: "踩踏动作可信", maxScore: 20, minScore: 6,
       standard: "8 帧连看，腿的伸缩与脚踏位置对应；腿与脚踏各动各的为零分" },
-    { id: "C9", source: "ai", title: "翅膀扶住车把", maxScore: 20,
+    { id: "C9", source: "ai", title: "翅膀扶住车把", maxScore: 20, minScore: 6,
       standard: "鹈鹕的翅膀（前肢）搭在车把上，像在扶着车把骑行；翅膀收在身侧、够不着车把或没有车把可扶为零分" },
   ],
 };
@@ -187,19 +189,31 @@ export function rubricFor(promptId: string): RubricSpec | null {
 }
 
 /**
- * 按当前及格线重定结论：同一标准同一版本下分数可比，只是及格线调过；落盘记录原样不动，
- * 展示时统一按当前及格线判，免得同一分数在新旧记录上贴不同标签。待复核与闸门不过的不受影响。
+ * 按当前判定规则（及格线、关键标准门槛）重定结论：同一标准同一版本下分数可比，只是规则调过；
+ * 落盘记录原样不动，展示时统一按当前规则判，免得同一分数在新旧记录上贴不同标签。
+ * 结论与总分都没变时返回原对象。
  */
-export function withCurrentThreshold(judgement: Judgement): Judgement {
+export function withCurrentRules(judgement: Judgement): Judgement {
   const current = RUBRICS.get(judgement.rubric.id);
-  if (!current || current.version !== judgement.rubric.version || current.passThreshold === judgement.rubric.passThreshold) {
-    return judgement;
-  }
+  if (!current || current.version !== judgement.rubric.version) return judgement;
   const rubric = { ...judgement.rubric, passThreshold: current.passThreshold };
-  return { ...judgement, rubric, total: summarizeTotal(judgement.gates, judgement.criteria, rubric, judgement.total.judgedAt) };
+  const total = summarizeTotal(judgement.gates, judgement.criteria, rubric, judgement.total.judgedAt);
+  const unchanged = rubric.passThreshold === judgement.rubric.passThreshold
+    && total.score === judgement.total.score && total.verdict === judgement.total.verdict;
+  return unchanged ? judgement : { ...judgement, rubric, total };
 }
 
-/** 闸门任一不过即 0 分降智；有标准未判定为 pending；否则按阈值判 */
+/** 当前标准里各关键标准的门槛；版本不同或标准未知时为空 */
+export function criterionFloors(rubric: JudgeRubricRef): ReadonlyMap<string, number> {
+  const spec = RUBRICS.get(rubric.id);
+  if (!spec || spec.version !== rubric.version) return new Map();
+  return new Map(spec.criteria.flatMap((c) => (c.minScore === undefined ? [] : [[c.id, c.minScore] as const])));
+}
+
+/**
+ * 闸门任一不过即 0 分降智；关键标准低于门槛即不计那一项的分并判降智（关键结构不满足，
+ * 其余分数不该把它抬过线）；有标准未判定为 pending；否则按及格线判
+ */
 export function summarizeTotal(
   gates: readonly GateResult[],
   criteria: readonly CriterionResult[],
@@ -207,7 +221,10 @@ export function summarizeTotal(
   judgedAt: string,
 ): JudgeTotal {
   if (gates.some((g) => !g.passed)) return { score: 0, maxScore: 100, verdict: "degraded", judgedAt };
-  const score = criteria.reduce((sum, c) => sum + (c.score ?? 0), 0);
+  const floors = criterionFloors(rubric);
+  const belowFloor = (c: CriterionResult) => c.score !== null && c.score < (floors.get(c.id) ?? 0);
+  const score = criteria.reduce((sum, c) => sum + (c.score === null || belowFloor(c) ? 0 : c.score), 0);
+  if (criteria.some(belowFloor)) return { score, maxScore: 100, verdict: "degraded", judgedAt };
   if (criteria.some((c) => c.score === null)) return { score, maxScore: 100, verdict: "pending", judgedAt };
   return { score, maxScore: 100, verdict: score >= rubric.passThreshold ? "online" : "degraded", judgedAt };
 }

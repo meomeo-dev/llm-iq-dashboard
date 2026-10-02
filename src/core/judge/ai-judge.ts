@@ -192,7 +192,7 @@ interface AiActorInfo {
   asks: number;
 }
 
-/** 把 AI 分并进记录：C6 受盲描述约束；judges 追加 ai 一项；总分与结论重算 */
+/** 把 AI 分并进记录：C6 受盲描述约束，关键标准低于门槛的理由加注；judges 追加 ai 一项；总分与结论重算 */
 export function applyAiResults(
   judgement: Judgement, rubric: RubricSpec, scores: readonly AiScore[], blindDescription: string, actor: AiActorInfo,
 ): Judgement {
@@ -203,6 +203,10 @@ export function applyAiResults(
     if (c.id === "C6" && !recognized) {
       const cap = Math.floor(c.maxScore / 2);
       return { ...c, score: Math.min(given.score, cap), reason: `${given.reason}（盲描述未认出鹈鹕，上限减半为 ${cap}）` };
+    }
+    const floor = rubric.criteria.find((spec) => spec.id === c.id)?.minScore;
+    if (floor !== undefined && given.score < floor) {
+      return { ...c, score: given.score, reason: `${given.reason}（低于门槛 ${floor} 分：不计入总分，直接判降智）` };
     }
     return { ...c, score: given.score, reason: given.reason };
   });

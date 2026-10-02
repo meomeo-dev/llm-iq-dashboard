@@ -85,6 +85,20 @@ describe("AI 层", () => {
     assert.match(blind.criteria.find((c) => c.id === "C6")?.reason ?? "", /上限减半/);
   });
 
+  test("关键标准门槛：C9 低于 6 分时理由加注、那一项不计入总分、结论为降智", () => {
+    const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
+    const scores = [
+      { id: "C5", score: 10, reason: "齐全" }, { id: "C6", score: 10, reason: "长喙" },
+      { id: "C7", score: 10, reason: "坐稳" }, { id: "C8", score: 20, reason: "跟随" }, { id: "C9", score: 3, reason: "翅膀收在身侧" },
+    ];
+    const judged = applyAiResults(base, ANIMATED_PELICAN_RUBRIC, scores, "一只鹈鹕在骑自行车", actor);
+    assert.equal(judged.total.verdict, "degraded");
+    assert.equal(judged.total.score, base.total.score + 50, "C9 的 3 分不计入");
+    const c9 = judged.criteria.find((c) => c.id === "C9");
+    assert.equal(c9?.score, 3, "裁判给的分原样保留");
+    assert.match(c9?.reason ?? "", /低于门槛 6 分/);
+  });
+
   test("重跑代码层：同版本下带上旧记录的 AI 分与裁判；版本不同或没有 AI 分时不带", () => {
     const base = { ...judgeStatic({ source: GOOD, subject, rubric: ANIMATED_PELICAN_RUBRIC }), contactSheet: sheet };
     const scores = [

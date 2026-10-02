@@ -2,9 +2,11 @@ import React from "react";
 import type { ContactSheet, Judgement } from "@/core/judge/schema";
 import type { DashboardCard } from "@/core/types";
 import { formatCost, JUDGE_TEXT, judgeCostLine } from "../components/card/card-format";
+import { criterionFloors, type CriterionResult } from "@/core/judge/schema";
 
 /** 单件作品查看页的评审抽屉（ACR-019）：结论、闸门与逐条标准的分与理由 */
 export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; judgeCost?: DashboardCard["judgeCost"] }) {
+  const floors = criterionFloors(judge.rubric);
   const { total, rubric } = judge;
   return (
     <details className="viewer-drawer viewer-judge">
@@ -33,10 +35,13 @@ export function JudgeDrawer({ judge, judgeCost = null }: { judge: Judgement; jud
               </tr>
             ))}
             {judge.criteria.map((c) => (
-              <tr key={c.id} className={c.score === null ? "judge-pending" : ""}>
+              <tr key={c.id} className={c.score === null ? "judge-pending" : belowFloor(c, floors) ? "judge-floor-fail" : ""}>
                 <td className="judge-id">{c.id}</td>
                 <td className="judge-score">{c.score === null ? "-" : c.score}/{c.maxScore}</td>
-                <td className="judge-title" title={c.standard}>{c.title}</td>
+                <td className="judge-title" title={c.standard}>
+                  {c.title}
+                  {floors.has(c.id) && <span className="judge-floor" title="关键标准门槛：低于此分不计入总分，直接判降智">门槛 {floors.get(c.id)}</span>}
+                </td>
                 <td className="judge-reason">{c.reason ?? "待 AI 层判定"}</td>
               </tr>
             ))}
@@ -77,4 +82,8 @@ function ContactSheets({ runId, sheet }: { runId: string; sheet: ContactSheet })
       ))}
     </div>
   );
+}
+
+function belowFloor(c: CriterionResult, floors: ReadonlyMap<string, number>): boolean {
+  return c.score !== null && c.score < (floors.get(c.id) ?? 0);
 }

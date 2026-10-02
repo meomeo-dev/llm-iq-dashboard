@@ -126,3 +126,19 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+/* 关键标准门槛：标题旁的小标；低于门槛的那一行得分标红 */
+.judge-floor {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-faint);
+  font-size: 10.5px;
+  cursor: help;
+}
+
+.judge-floor-fail .judge-score {
+  color: var(--err);
+  font-weight: 600;
+}

@@ -10,7 +10,7 @@
 import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
-import { withCurrentThreshold } from "./judge/schema";
+import { withCurrentRules } from "./judge/schema";
 import { runDir, runsRoot } from "./paths";
 import type { Attempt, DashboardCard, RunRecord } from "./types";
 import { usageAndCost } from "../pricing/attempt-cost";
@@ -220,5 +220,5 @@ async function readSvg(runId: string, attempt: Attempt): Promise<string | null> 
 
 /** 展示用的评审记录按当前及格线重定结论；没有记录时仍是 null */
 function withJudgeThreshold(judgement: Awaited<ReturnType<typeof loadJudgement>>): Awaited<ReturnType<typeof loadJudgement>> {
-  return judgement === null ? null : withCurrentThreshold(judgement);
+  return judgement === null ? null : withCurrentRules(judgement);
 }
