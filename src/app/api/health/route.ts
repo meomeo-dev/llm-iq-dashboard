@@ -8,10 +8,9 @@
 import { NextResponse } from "next/server";
 import { checkDataRepoHealth } from "@/core/data-source";
 import { getDeployMode } from "@/core/deploy-mode";
+import packageJson from "../../../../package.json";
 
 export const dynamic = "force-dynamic";
-
-const APP_VERSION = "0.1.0";
 
 export async function GET(): Promise<NextResponse> {
   const modeInfo = getDeployMode();
@@ -28,6 +27,6 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json({
     mode,
     dataRepo,
-    version: APP_VERSION,
+    version: packageJson.version,
   });
 }

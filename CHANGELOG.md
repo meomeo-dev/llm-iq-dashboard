@@ -3,6 +3,14 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 修复
+
+- `/api/health` 的 `version` 改为读 `package.json`，不再是写死的 0.1.0。
+- 时间轴按当天轮次的疏密伸缩：相邻两轮挨得近时放大小时宽度（最多到缺省的 3 倍），
+  列不再被层层推到远离自己时刻的位置；轴刻度、现在线与导出图同一比例。
+
 ## [0.2.1] - 2026-10-02
 
 ### 变更
@@ -58,6 +66,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.2.1...HEAD
 [0.2.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.1
 [0.2.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.0
 [0.1.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.1.0
