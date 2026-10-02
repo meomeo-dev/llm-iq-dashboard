@@ -25,7 +25,7 @@ function card(effort: string, profile: string | undefined, status: DashboardCard
     usage: null, bindings: {}, trigger: "manual",
     error: status === "error" ? "unexpected status 503 <Service> Unavailable & retry later ".repeat(4) : null,
     judge: status === "ok" ? { total: { verdict: effort === "xhigh" ? "degraded" : "online", score: effort === "xhigh" ? 45 : 94 } } : null,
-    judgeCost: status === "ok" && effort === "medium" ? { judgeId: "claude/claude-sonnet-5-5@high", usage: null, asks: 3, cost: { status: "priced", usd: 0.021, modelId: "m", channelId: "c", serviceTier: "standard", catalogTag: "t", lines: [], note: null } } : null,
+    judgeCost: status === "ok" && effort === "medium" ? { judgeId: "claude/claude-sonnet-5-5@high", usage: { tokens: { input: 120_000, output: 27_048 }, reasoningTokens: 0, serviceTier: "standard", reportedCostUsd: null }, asks: 3, cost: { status: "priced", usd: 0.021, modelId: "m", channelId: "c", serviceTier: "standard", catalogTag: "t", lines: [], note: null } } : null,
     ...(profile === undefined ? {} : { profile }),
   } as unknown as DashboardCard;
 }
@@ -78,7 +78,7 @@ test("卡片与看板同形：上游徽章带色点、评审结论紧跟状态�
   assert.match(svg, /fill="#e6e8ee" font-size="11.5" >甲 &lt;稳定&gt; 0.07</, "上游徽章文字");
   assert.match(svg, /font-weight="600">成功<\/text><text x="[\d.]+" y="[\d.]+" fill="#4ade80" font-size="12" font-weight="600">智商在线 94</, "结论紧跟状态");
   assert.match(svg, /fill="#f87171" font-size="12" font-weight="600">降智 45</);
-  assert.match(svg, />裁判 \$0.021 · 3 次问答 · 用量未知</);
+  assert.match(svg, />裁判 \$0.021 · 3 次问答 · 147.0K</);
   assert.equal((svg.match(/手动/g) ?? []).length, 3);
   const folded = renderResultSetSvg(input({ cards: [{ ...card("xhigh", undefined), appliedEffort: "high" } as DashboardCard], columns: [{ name: "default", label: "登录态", color: null }] }));
   assert.match(folded.svg, /fill="#fbbf24" font-size="11.5" >effort: xhigh → high</);

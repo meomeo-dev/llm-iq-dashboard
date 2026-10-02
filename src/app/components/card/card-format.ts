@@ -23,6 +23,11 @@ export function formatBytes(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+/** token 数与体积同一种写法：千以上一位小数加 K，不带单位字——页脚里谁都知道这是 token */
+export function formatTokens(tokens: number): string {
+  return tokens < 1000 ? `${tokens}` : `${(tokens / 1000).toFixed(1)}K`;
+}
+
 /** 单独查看页的地址；只有抽出了 SVG 的结果才有 */
 export function viewHref(card: Pick<DashboardCard, "runId" | "svgFile">): string | null {
   return card.svgFile === null ? null : `/view/${card.runId}/${encodeURIComponent(card.svgFile)}`;
@@ -77,14 +82,12 @@ export function judgeCostLine(judgeCost: DashboardCard["judgeCost"]): string | n
   return [`AI 层裁判 ${judgeCost.judgeId} · ${judgeCost.asks} 次问答`, costTitle({ cost: judgeCost.cost, usage: judgeCost.usage })].join("\n");
 }
 
-/** 页脚第三行的短句：钱、问答次数、token；裁判是谁放在悬停说明里，窄卡片放不下 */
+/** 页脚第三行的短句：钱、问答次数、token 总数（与体积同一种写法）；裁判是谁与逐项明细放在悬停说明里 */
 export function judgeCostBrief(judgeCost: NonNullable<DashboardCard["judgeCost"]>): string {
-  return `裁判 ${formatCost(judgeCost.cost)} · ${judgeCost.asks} 次问答 · ${judgeTokens(judgeCost)}`;
-}
-
-function judgeTokens(judgeCost: NonNullable<DashboardCard["judgeCost"]>): string {
-  if (judgeCost.usage === null) return "用量未知";
-  return `${Object.values(judgeCost.usage.tokens).reduce((sum, n) => sum + n, 0).toLocaleString("en-US")} tok`;
+  const tokens = judgeCost.usage === null
+    ? "用量未知"
+    : formatTokens(Object.values(judgeCost.usage.tokens).reduce((sum, n) => sum + n, 0));
+  return `裁判 ${formatCost(judgeCost.cost)} · ${judgeCost.asks} 次问答 · ${tokens}`;
 }
 
 /** 评审的悬停说明：闸门与每条标准的分与理由，末尾是裁判成本 */
