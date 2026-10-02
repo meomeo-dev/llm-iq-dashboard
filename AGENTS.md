@@ -49,7 +49,8 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`，改口径要升
   `version`。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
 - **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`
-  串行交给配置 `judge.ai.judges` 里第一个厂商不同的裁判 CLI，以适配器「评审模式」（临时目录只放联系图，
+  交给配置 `judge.ai.judges` 里第一个厂商不同的裁判 CLI（作品之间并行，`judge.ai.concurrency` 是每个裁判同时评的件数，
+  缺省 5），以适配器「评审模式」（临时目录只放联系图，
   只放开读文件）先盲描述、再看首帧给五类部位的像素框由程序重切细节表（ACR-021，失败退回几何推断的表）、
   最后按 C5–C9 打 70 分，转录存 `<attemptKey>.judge-ai.txt`。评审进程中途退出的队列由下一个执行进程启动时
   `resumeInterruptedJudging` 续评（已落盘结论的只补标记），看板在此之前显示「评审中断」。裁判调用真实消耗配额，

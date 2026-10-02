@@ -67,13 +67,13 @@ targets:
 `;
 
 test("judge 段整体写回：开关、AI 开关、超时与裁判清单，再读回一致", async () => {
-  const judge = { enabled: true, ai: { enabled: true, timeoutMs: 120000, judges: [
+  const judge = { enabled: true, ai: { enabled: true, timeoutMs: 120000, concurrency: 3, judges: [
     { cli: "agy" as const, model: "gemini-3.8-flash", effort: "high" as const },
   ] } };
   const saved = await applyConfigPatch(path, { judge });
   assert.deepEqual(saved.judge, judge);
   const text = await readFile(path, "utf8");
-  assert.match(text, /judge:\n  enabled: true\n  ai:\n    enabled: true\n    timeoutMs: 120000\n    judges:\n      - cli: agy/);
+  assert.match(text, /judge:\n  enabled: true\n  ai:\n    enabled: true\n    timeoutMs: 120000\n    concurrency: 3\n    judges:\n      - cli: agy/);
   // 清空裁判并关掉 AI 层：清单写成空数组，不留旧条目
   const off = await applyConfigPatch(path, { judge: { ...judge, ai: { ...judge.ai, enabled: false, judges: [] } } });
   assert.deepEqual(off.judge.ai.judges, []);

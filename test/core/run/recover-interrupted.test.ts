@@ -43,7 +43,7 @@ function config(): AppConfig {
       rotation: { period: "day", timeZone: "UTC" },
     },
     retention: { days: null },
-    judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000 } },
+    judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },
     budget: { perRoundUsd: null, perDayUsd: null },
     upstreamTypes: [],
     profiles: [],

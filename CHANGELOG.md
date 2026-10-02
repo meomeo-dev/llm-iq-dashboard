@@ -3,6 +3,14 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- AI 层评审改为作品之间并行：新增配置 `judge.ai.concurrency`（每个裁判同时评的件数，缺省 5，1–20，
+  不同裁判各算各的槽位），配置页「作品评审」区块可改；同一轮共用一个裁判会话池。作品只在拿到裁判槽位时
+  才标「评审中」，进度面板显示同时评审中的件数；续评中断队列时同样并行。
+
 ## [0.2.2] - 2026-10-02
 
 ### 修复
@@ -69,6 +77,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.2.2...HEAD
 [0.2.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.2
 [0.2.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.1
 [0.2.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.0

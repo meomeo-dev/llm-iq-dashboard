@@ -7,7 +7,7 @@
 import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openSessionPool, type AgentReply, type AgentSession } from "../../adapters/index";
+import { openSessionPool, type AgentReply, type AgentSession, type SessionPool } from "../../adapters/index";
 import type { JudgeAiConfig, JudgeModel } from "../config/types";
 import { runDir } from "../paths";
 import type { Target } from "../types";
@@ -26,6 +26,19 @@ export interface AiJudgeInput {
   /** 题目原文，给裁判看的 */
   promptText: string;
   log?: (line: string) => void;
+  /** 整轮共用的会话池（codex 的 app-server 是长驻进程，不该每件作品起一个）；不给时自开自关 */
+  pool?: SessionPool;
+  /** 裁判槽位：拿到该裁判的槽才开始问，问完释放；不给时不限并行 */
+  slots?: JudgeSlots;
+}
+
+export interface JudgeSlots {
+  acquire: (judge: JudgeModel) => Promise<() => void>;
+}
+
+/** 裁判的键：并行度按它分配，与记录里 judges[].id 同一写法 */
+export function judgeKey(judge: JudgeModel): string {
+  return `${judge.cli}/${judge.model}@${judge.effort}`;
 }
 
 export type AiOutcome = { ok: true; judgement: Judgement } | { ok: false; reason: string };
@@ -53,13 +66,19 @@ export async function judgeWithAi(input: AiJudgeInput): Promise<AiOutcome> {
   const judges = pickJudges(config, judgement.subject.cli);
   if (judges.length === 0) return { ok: false, reason: `没有厂商不同于 ${judgement.subject.cli} 的裁判` };
   const workdir = await mkdtemp(join(tmpdir(), "pelican-judge-"));
-  const pool = openSessionPool();
+  const pool = input.pool ?? openSessionPool();
   const failures: string[] = [];
   try {
     const files = await stageSheets(judgement.subject.runId, judgement.contactSheet!, workdir);
     for (const judge of judges) {
       const asker = new JudgeAsker(pool.sessionFor(judge.cli), judge, config.timeoutMs, workdir);
-      const outcome = await judgeOnce(judgement, rubric, judge, asker, input.promptText, files, log);
+      const release = await input.slots?.acquire(judge);
+      let outcome: AiOutcome;
+      try {
+        outcome = await judgeOnce(judgement, rubric, judge, asker, input.promptText, files, log);
+      } finally {
+        release?.();
+      }
       if (outcome.ok) {
         log(`[judge-ai] ${judgement.subject.attemptKey} ${outcome.judgement.total.score} 分 ${outcome.judgement.total.verdict}（裁判 ${judge.cli}/${judge.model}）`);
         return outcome;
@@ -71,7 +90,7 @@ export async function judgeWithAi(input: AiJudgeInput): Promise<AiOutcome> {
   } catch (cause) {
     return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
   } finally {
-    await pool.closeAll();
+    if (input.pool === undefined) await pool.closeAll();
     await rm(workdir, { recursive: true, force: true });
   }
 }

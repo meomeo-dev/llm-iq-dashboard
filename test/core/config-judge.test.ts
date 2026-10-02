@@ -5,7 +5,7 @@ import { describe, test } from "node:test";
 import { parseJudge } from "@/core/config/loader";
 
 describe("parseJudge", () => {
-  const aiOff = { enabled: false, judges: [], timeoutMs: 300000 };
+  const aiOff = { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 };
 
   test("不写即关闭，AI 层也关闭", () => {
     assert.deepEqual(parseJudge(undefined, []), { enabled: false, ai: aiOff });
@@ -27,8 +27,18 @@ describe("parseJudge", () => {
       { cli: "claude", model: "claude-sonnet-5-5", effort: "medium" },
       { cli: "gemini", model: "x", effort: "low" },
     ], timeoutMs: 1000 } }, errors);
-    assert.deepEqual(parsed.ai, { enabled: true, judges: [{ cli: "claude", model: "claude-sonnet-5-5", effort: "medium" }], timeoutMs: 1000 });
+    assert.deepEqual(parsed.ai, { enabled: true, judges: [{ cli: "claude", model: "claude-sonnet-5-5", effort: "medium" }], timeoutMs: 1000, concurrency: 5 });
     assert.match(errors[0] ?? "", /judge\.ai\.judges\[1\]/);
+  });
+
+  test("judge.ai.concurrency：每个裁判的并行度，不写为 5；非整数、越界报错并回落 5", () => {
+    const judges = [{ cli: "claude", model: "claude-sonnet-5-5", effort: "medium" }];
+    assert.equal(parseJudge({ ai: { judges, concurrency: 3 } }, []).ai.concurrency, 3);
+    for (const bad of [0, 2.5, 21, "many"]) {
+      const errors: string[] = [];
+      assert.equal(parseJudge({ ai: { judges, concurrency: bad } }, errors).ai.concurrency, 5, String(bad));
+      assert.match(errors[0] ?? "", /judge\.ai\.concurrency/);
+    }
   });
 
   test("judge.ai 开启但没有裁判：报错且按关闭处理", () => {

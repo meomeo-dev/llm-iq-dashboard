@@ -96,12 +96,14 @@ retention:
 # 默认关闭；开启后已有的记录照常显示。看板 /config 页「作品评审」区块可改这一段。
 # AI 语义层（ACR-020）：代码层判「待复核」的作品在整轮结束后逐件交给裁判 CLI 看联系图打分
 # （C5–C8，共 70 分），裁判走该 CLI 的登录态、真实消耗配额；按顺序取第一个厂商与作品不同的裁判，
-# 前一个调用失败（未登录、超时）时换下一个，都失败则不评。默认关闭且没有裁判：要用先填 judges。
+# 前一个调用失败（未登录、超时）时换下一个，都失败则不评。作品之间并行评审，concurrency 是每个裁判
+# 同时评的件数（默认 5，不同裁判各算各的）。默认关闭且没有裁判：要用先填 judges。
 # judge:
 #   enabled: true
 #   ai:
 #     enabled: true
 #     timeoutMs: 300000
+#     concurrency: 5
 #     judges:
 #       - { cli: claude, model: claude-sonnet-5-5, effort: medium }
 #       - { cli: codex, model: gpt-6-sol, effort: medium }

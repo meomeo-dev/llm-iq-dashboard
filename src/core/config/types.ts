@@ -131,6 +131,11 @@ export interface JudgeModel {
   effort: EffortLevel;
 }
 
+/** judge.ai.concurrency 的缺省与上限：常量放这里，配置页（浏览器端）也要用，不能引 loader */
+export const JUDGE_AI_DEFAULT_CONCURRENCY = 5;
+/** 并行度上限：再高只是把裁判 CLI 的限流撞满 */
+export const JUDGE_AI_MAX_CONCURRENCY = 20;
+
 export interface JudgeAiConfig {
   /** 关闭后只出代码层分，记录停在「待复核」 */
   enabled: boolean;
@@ -138,6 +143,8 @@ export interface JudgeAiConfig {
   judges: JudgeModel[];
   /** 单次裁判调用的超时（毫秒） */
   timeoutMs: number;
+  /** 每个裁判（cli/model@effort）同时评审的作品数；不同裁判各算各的 */
+  concurrency: number;
 }
 
 export interface JudgeConfig {

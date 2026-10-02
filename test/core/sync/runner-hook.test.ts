@@ -56,7 +56,7 @@ describe("runner 自动同步挂钩与失败隔离", () => {
         rotation: { period: "day", timeZone: "UTC" },
       },
       retention: { days: null },
-      judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000 } },
+      judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },
       budget: { perRoundUsd: null, perDayUsd: null },
       upstreamTypes: [],
       profiles: [],

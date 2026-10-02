@@ -12,15 +12,17 @@ import { parsePrompts } from "../config-prompts";
 import { applyCeiling, readCeiling } from "../ceiling";
 import type { BudgetConfig } from "../budget";
 import type { RotationConfig } from "../variables";
-import type {
-  AppConfig,
-  DataRepoConfig,
-  RetentionConfig,
-  JudgeAiConfig,
-  JudgeConfig,
-  JudgeModel,
-  RunConfig,
-  ScheduleConfig,
+import {
+  JUDGE_AI_DEFAULT_CONCURRENCY,
+  JUDGE_AI_MAX_CONCURRENCY,
+  type AppConfig,
+  type DataRepoConfig,
+  type RetentionConfig,
+  type JudgeAiConfig,
+  type JudgeConfig,
+  type JudgeModel,
+  type RunConfig,
+  type ScheduleConfig,
 } from "./types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
 import { parseProfiles, parseUpstreamTypes } from "./profiles";
@@ -129,7 +131,7 @@ export function parseJudge(raw: unknown, errors: string[]): JudgeConfig {
 
 /** judge.ai：不写即关闭；judges 每项要有合法的 cli / model / effort */
 function parseJudgeAi(raw: unknown, errors: string[]): JudgeAiConfig {
-  const off: JudgeAiConfig = { enabled: false, judges: [], timeoutMs: JUDGE_AI_DEFAULT_TIMEOUT_MS };
+  const off: JudgeAiConfig = { enabled: false, judges: [], timeoutMs: JUDGE_AI_DEFAULT_TIMEOUT_MS, concurrency: JUDGE_AI_DEFAULT_CONCURRENCY };
   const node = asRecord(raw);
   if (node === null) return off;
   if (node.enabled !== undefined && typeof node.enabled !== "boolean") {
@@ -150,9 +152,21 @@ function parseJudgeAi(raw: unknown, errors: string[]): JudgeAiConfig {
   }
   const timeoutMs = optionalNumber(node.timeoutMs) ?? JUDGE_AI_DEFAULT_TIMEOUT_MS;
   if (!(timeoutMs > 0)) errors.push(`judge.ai.timeoutMs 必须是正数（毫秒），当前为 ${String(node.timeoutMs)}`);
+  const concurrency = parseJudgeConcurrency(node.concurrency, errors);
   const enabled = node.enabled ?? true;
   if (enabled && judges.length === 0) errors.push("judge.ai 开启时 judges 至少要有一个裁判");
-  return { enabled: enabled && judges.length > 0, judges, timeoutMs: timeoutMs > 0 ? timeoutMs : JUDGE_AI_DEFAULT_TIMEOUT_MS };
+  return { enabled: enabled && judges.length > 0, judges, timeoutMs: timeoutMs > 0 ? timeoutMs : JUDGE_AI_DEFAULT_TIMEOUT_MS, concurrency };
+}
+
+/** judge.ai.concurrency：1 到上限之间的整数，不写用缺省；坏值报错并回落缺省 */
+function parseJudgeConcurrency(raw: unknown, errors: string[]): number {
+  if (raw === undefined || raw === null) return JUDGE_AI_DEFAULT_CONCURRENCY;
+  const value = optionalNumber(raw);
+  if (value === null || !Number.isInteger(value) || value < 1 || value > JUDGE_AI_MAX_CONCURRENCY) {
+    errors.push(`judge.ai.concurrency 必须是 1 到 ${JUDGE_AI_MAX_CONCURRENCY} 的整数，当前为 ${String(raw)}`);
+    return JUDGE_AI_DEFAULT_CONCURRENCY;
+  }
+  return value;
 }
 
 export function parseBudget(raw: unknown, errors: string[]): BudgetConfig {

@@ -25,7 +25,7 @@ const sheet: ContactSheet = {
   sampleTimesMs: [0, 250, 500, 750, 1000, 1250, 1500, 1750],
   details: [{ kind: "crank", subject: "脚踏与脚", file: "k.sheet.crank.png", region: { x: 0, y: 0, width: 100, height: 100 }, zoom: 4, criteria: ["C2", "C4", "C7"] }],
 };
-const config = { enabled: true, timeoutMs: 1000, judges: [
+const config = { enabled: true, timeoutMs: 1000, concurrency: 5, judges: [
   { cli: "codex" as const, model: "gpt-5.5", effort: "medium" as const },
   { cli: "claude" as const, model: "claude-sonnet-5-5", effort: "medium" as const },
 ] };

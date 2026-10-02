@@ -71,7 +71,7 @@ describe("AI 层评审阶段（ACR-020）", () => {
 
   test("队列计数与按作品查找", () => {
     const view = judgingRun(null);
-    assert.deepEqual(countJudging(view.judging!.items), { total: 2, done: 1, failed: 0, running: view.judging!.items[1]! });
+    assert.deepEqual(countJudging(view.judging!.items), { total: 2, done: 1, failed: 0, running: 1 });
     assert.equal(judgeItemOf([view], view.runId, "b")?.state, "running");
     assert.equal(judgeItemOf([view], view.runId, "zzz"), null);
     assert.equal(judgeItemOf(null, view.runId, "a"), null);

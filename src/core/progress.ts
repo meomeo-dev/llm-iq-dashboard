@@ -50,7 +50,7 @@ export interface JudgeItemProgress {
 
 /**
  * 轮次定稿之后的 AI 层评审进度（ACR-020）：调用都结束了（finishedAt 已写），执行进程还在
- * 逐件请裁判打分。看板据此显示「评审中 k/n」；没开 AI 层的轮次没有这一段。
+ * 请裁判打分（作品之间并行，同时评审中的可以有多件）。看板据此显示「评审中 k/n」；没开 AI 层的轮次没有这一段。
  */
 export interface JudgingProgress {
   startedAt: string;

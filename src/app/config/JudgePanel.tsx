@@ -1,11 +1,11 @@
 "use client";
 
 import type { CapabilitySnapshot } from "@/capabilities/types";
-import type { JudgeConfig, JudgeModel } from "@/core/config/types";
+import { JUDGE_AI_MAX_CONCURRENCY, type JudgeConfig, type JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "@/core/types";
 import { judgeLabel, judgeRoutes, moveJudge } from "./judge-panel-model";
 
-/** 作品评审（ACR-019 / ACR-020）：代码层开关、AI 层开关、裁判清单与超时 */
+/** 作品评审（ACR-019 / ACR-020）：代码层开关、AI 层开关、裁判清单、超时与并行度 */
 export function JudgePanel({
   value,
   catalog,
@@ -42,6 +42,18 @@ export function JudgePanel({
             onChange={(e) => patchAi({ timeoutMs: Math.max(1, Number(e.target.value) || 1) * 1000 })}
           />
         </label>
+        <label>
+          每个裁判同时评的件数
+          <input
+            type="number"
+            min={1}
+            max={JUDGE_AI_MAX_CONCURRENCY}
+            step={1}
+            value={value.ai.concurrency}
+            disabled={!value.enabled || !value.ai.enabled}
+            onChange={(e) => patchAi({ concurrency: Math.min(JUDGE_AI_MAX_CONCURRENCY, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+          />
+        </label>
       </div>
       <JudgeTable
         judges={value.ai.judges}
@@ -54,7 +66,8 @@ export function JudgePanel({
       />
       <p className="note">
         裁判按清单顺序取第一个厂商与作品不同的（同厂商不能自评）；前一个调用失败（未登录、超时）时换下一个，
-        都失败则作品保持「待复核」。用「上移 / 下移」决定谁优先。
+        都失败则作品保持「待复核」。用「上移 / 下移」决定谁优先。作品之间并行评审，每个裁判最多同时评上面设的件数，
+        不同裁判各算各的。
       </p>
       {value.ai.judges.length > 0 && <JudgeRoutes judges={value.ai.judges} />}
     </div>

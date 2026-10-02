@@ -36,7 +36,7 @@ function config(aiEnabled: boolean): AppConfig {
       timeoutByCli: {}, timeoutByEffort: {}, rotation: { period: "day", timeZone: "UTC" },
     },
     retention: { days: null },
-    judge: { enabled: true, ai: { enabled: aiEnabled, judges: [], timeoutMs: 300000 } },
+    judge: { enabled: true, ai: { enabled: aiEnabled, judges: [], timeoutMs: 300000, concurrency: 5 } },
     budget: { perRoundUsd: null, perDayUsd: null },
     upstreamTypes: [], profiles: [], targets: [], customPrompts: [], customModels: {}, dataRepo: null,
   };

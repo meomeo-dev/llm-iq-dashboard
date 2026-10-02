@@ -85,6 +85,7 @@ function applyJudge(doc: YamlDoc, judge: JudgeConfig): void {
   doc.setIn(["judge", "enabled"], judge.enabled);
   doc.setIn(["judge", "ai", "enabled"], judge.ai.enabled);
   doc.setIn(["judge", "ai", "timeoutMs"], judge.ai.timeoutMs);
+  doc.setIn(["judge", "ai", "concurrency"], judge.ai.concurrency);
   doc.setIn(["judge", "ai", "judges"], judge.ai.judges.map((item) => ({ cli: item.cli, model: item.model, effort: item.effort })));
 }
 

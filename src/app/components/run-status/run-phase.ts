@@ -59,7 +59,8 @@ export interface JudgeCounts {
   total: number;
   done: number;
   failed: number;
-  running: JudgeItemProgress | null;
+  /** 同时评审中的件数：作品之间并行评审 */
+  running: number;
 }
 
 export function countJudging(items: readonly JudgeItemProgress[]): JudgeCounts {
@@ -67,7 +68,7 @@ export function countJudging(items: readonly JudgeItemProgress[]): JudgeCounts {
     total: items.length,
     done: items.filter((item) => item.state === "done").length,
     failed: items.filter((item) => item.state === "failed").length,
-    running: items.find((item) => item.state === "running") ?? null,
+    running: items.filter((item) => item.state === "running").length,
   };
 }
 
