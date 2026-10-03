@@ -42,9 +42,9 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
   const showPrompt = new Set(cards.map((card) => card.promptId)).size > 1;
   const rows = listRows(cards);
   const slots = planSlots(efforts);
-  const { columns, width, hourWidth } = useMemo(() => layoutColumns(moments, CELL_WIDTH), [moments]);
+  const { columns, width, scale } = useMemo(() => layoutColumns(moments, CELL_WIDTH), [moments]);
   // 今天定位到现在，其他日子定位到最后一轮
-  const anchorX = now !== null ? timeX(now.fraction, hourWidth) : (columns[columns.length - 1]?.x ?? null);
+  const anchorX = now !== null ? timeX(now.fraction, scale) : (columns[columns.length - 1]?.x ?? null);
   const scroller = useScrollAnchor(anchorX, scrollKey);
 
   return (
@@ -70,7 +70,7 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
         })}
       </div>
       <div className="track" ref={scroller}>
-        <TimelineAxis columns={columns} width={width} now={now} hourWidth={hourWidth} />
+        <TimelineAxis columns={columns} width={width} now={now} scale={scale} />
         <div style={{ width }}>
           <div className="lane-line" />
           {rows.map((row) => (

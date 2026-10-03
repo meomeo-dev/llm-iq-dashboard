@@ -1,7 +1,8 @@
 /**
- * 时间轨道的几何：轴与矩阵共用一条 x 轴，横向滚动。1 小时的像素数按当天轮次的疏密伸缩：
- * 缺省 HOUR_WIDTH，相邻两轮挨得近时放大到相邻列不重叠为止（上限 HOUR_WIDTH_MAX），
- * 免得被推开的列离自己的时刻越来越远。每轮一列，列中心对准准确时刻；仍重叠时后一列右移，
+ * 时间轨道的几何：轴与矩阵共用一条 x 轴，横向滚动。比例是分段线性的：缺省 1 小时
+ * HOUR_WIDTH 像素，相邻两轮挨得太近放不下两列时，只把这两轮之间的那一段撑到一个列宽，
+ * 其余时段不受影响；刻度、现在线与列都按同一映射定位，所以刻度不等距但位置准确。
+ * 每轮一列，列中心对准准确时刻；只有时间戳完全相同的轮次无法靠撑开分开，后一列右移，
  * 轴上标记留在原处。
  *
  * 高度常量须与 globals.css 的 --axis-height / --head-height / --lane-head-height /
@@ -11,8 +12,6 @@
 import type { Moment } from "./moments";
 
 export const HOUR_WIDTH = 320;
-/** 伸缩上限：再密的轮次（间隔不到 15 分钟）就只能推开 */
-export const HOUR_WIDTH_MAX = 960;
 /** 列宽，与 globals.css 的 --cell-width 一致 */
 export const CELL_WIDTH = 232;
 export const AXIS_HEIGHT = 56;
@@ -25,6 +24,23 @@ export const AXIS_LINE_Y = 34;
 export const TRACK_PADDING = 120;
 /** 相邻两列之间至少留的空隙 */
 const COLUMN_GAP = 6;
+/** 小于这个像素数的右移视作浮点误差，列仍算落在准确时刻 */
+const PUSH_TOLERANCE = 0.5;
+
+/** 分段线性比例上的一个锚点：一天中的位置（0–1）对应轨道上的 x */
+export interface ScaleAnchor {
+  fraction: number;
+  x: number;
+}
+
+/** 按 fraction 递增排列的锚点，首尾固定为 00:00 与 24:00；相邻锚点之间线性插值 */
+export type TimeScale = readonly ScaleAnchor[];
+
+/** 没有轮次时的等比例轴 */
+export const UNIFORM_SCALE: TimeScale = [
+  { fraction: 0, x: TRACK_PADDING },
+  { fraction: 1, x: TRACK_PADDING + HOUR_WIDTH * 24 },
+];
 
 export interface Column {
   moment: Moment;
@@ -38,54 +54,72 @@ export interface TrackLayout {
   columns: Column[];
   /** 轨道总宽：整天加两端留白，最后一列被推出 24:00 时再加宽 */
   width: number;
-  /** 这一天 1 小时的像素数，轴刻度与现在线都按它定位 */
-  hourWidth: number;
+  /** 这一天的时间比例，轴刻度与现在线都按它定位 */
+  scale: TimeScale;
 }
 
 /** 按时间从早到晚排列，重叠时只向右推，第一列始终位于准确时刻 */
 export function layoutColumns(moments: readonly Moment[], cellWidth: number): TrackLayout {
   const byTime = [...moments].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
-  const hourWidth = fitHourWidth(byTime, cellWidth);
+  const scale = buildScale(byTime, cellWidth);
   const columns: Column[] = [];
   for (const moment of byTime) {
-    const exactX = timeX(moment.fraction, hourWidth);
+    const exactX = timeX(moment.fraction, scale);
     const previous = columns[columns.length - 1];
-    const x = previous === undefined ? exactX : Math.max(exactX, previous.x + cellWidth + COLUMN_GAP);
+    const pushedX = previous === undefined ? exactX : previous.x + cellWidth + COLUMN_GAP;
+    // 撑开后的列刚好相切，浮点误差不算被推开
+    const x = pushedX - exactX > PUSH_TOLERANCE ? pushedX : exactX;
     columns.push({ moment, exactX, x });
   }
   const last = columns[columns.length - 1];
-  const dayWidth = hourWidth * 24 + TRACK_PADDING * 2;
+  const dayWidth = scale[scale.length - 1]!.x + TRACK_PADDING;
   const width = last === undefined ? dayWidth : Math.max(dayWidth, last.x + cellWidth / 2 + COLUMN_GAP);
-  return { columns, width, hourWidth };
+  return { columns, width, scale };
 }
 
 /**
- * 让相邻两列都放得下所需的小时宽度：取各相邻轮次「列宽加空隙 ÷ 间隔小时数」的最大值，
- * 夹在缺省与上限之间；超出上限的那几对（间隔太短）不参与，交给推开处理。
+ * 以 00:00、各轮时刻、24:00 为锚点建比例：每一段缺省按 HOUR_WIDTH 换算，两端都是轮次
+ * 且按缺省放不下两列的那一段撑到「列宽加空隙」。只撑不压，时刻相同的轮次合并成一个锚点。
  */
-export function fitHourWidth(byTime: readonly Moment[], cellWidth: number): number {
-  let needed = HOUR_WIDTH;
-  for (let index = 1; index < byTime.length; index += 1) {
-    const gapHours = (byTime[index]!.fraction - byTime[index - 1]!.fraction) * 24;
-    if (gapHours <= 0) continue;
-    const widthForPair = (cellWidth + COLUMN_GAP) / gapHours;
-    if (widthForPair <= HOUR_WIDTH_MAX) needed = Math.max(needed, widthForPair);
+export function buildScale(byTime: readonly Moment[], cellWidth: number): TimeScale {
+  const momentFractions = [...new Set(byTime.map((moment) => moment.fraction))].sort((a, b) => a - b);
+  const anchors: ScaleAnchor[] = [{ fraction: 0, x: TRACK_PADDING }];
+  // 累计撑开量单独记，x 由准确时刻加撑开量得出，不让逐段相加的浮点误差积到 24:00
+  let stretch = 0;
+  const place = (fraction: number, minWidth: number): void => {
+    const previous = anchors[anchors.length - 1]!;
+    const natural = (fraction - previous.fraction) * 24 * HOUR_WIDTH;
+    stretch += Math.max(0, minWidth - natural);
+    anchors.push({ fraction, x: TRACK_PADDING + fraction * 24 * HOUR_WIDTH + stretch });
+  };
+  momentFractions.forEach((fraction, index) => {
+    const betweenMoments = index > 0 && fraction > 0;
+    place(fraction, betweenMoments ? cellWidth + COLUMN_GAP : 0);
+  });
+  if (anchors[anchors.length - 1]!.fraction < 1) place(1, 0);
+  return anchors;
+}
+
+/** 一天中的位置（0–1）在轨道上的 x：在所属分段内线性插值 */
+export function timeX(fraction: number, scale: TimeScale = UNIFORM_SCALE): number {
+  const upperIndex = scale.findIndex((anchor) => anchor.fraction >= fraction);
+  if (upperIndex <= 0) {
+    const edge = upperIndex === 0 ? scale[0]! : scale[scale.length - 1]!;
+    return edge.x + (fraction - edge.fraction) * 24 * HOUR_WIDTH;
   }
-  return Math.ceil(needed);
+  const lower = scale[upperIndex - 1]!;
+  const upper = scale[upperIndex]!;
+  const ratio = (fraction - lower.fraction) / (upper.fraction - lower.fraction);
+  return lower.x + ratio * (upper.x - lower.x);
 }
 
-/** 一天中的位置（0–1）在轨道上的 x */
-export function timeX(fraction: number, hourWidth = HOUR_WIDTH): number {
-  return TRACK_PADDING + fraction * hourWidth * 24;
-}
-
-export function hourX(hour: number, hourWidth = HOUR_WIDTH): number {
-  return timeX(hour / 24, hourWidth);
+export function hourX(hour: number, scale: TimeScale = UNIFORM_SCALE): number {
+  return timeX(hour / 24, scale);
 }
 
 /** 与现在标签距离小于此值的钟点数字不显示，避免重叠 */
 const NOW_LABEL_CLEARANCE = 44;
 
-export function hourLabelVisible(hour: number, nowX: number | null, hourWidth = HOUR_WIDTH): boolean {
-  return nowX === null || Math.abs(hourX(hour, hourWidth) - nowX) >= NOW_LABEL_CLEARANCE;
+export function hourLabelVisible(hour: number, nowX: number | null, scale: TimeScale = UNIFORM_SCALE): boolean {
+  return nowX === null || Math.abs(hourX(hour, scale) - nowX) >= NOW_LABEL_CLEARANCE;
 }
