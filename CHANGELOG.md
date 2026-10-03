@@ -3,6 +3,14 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- 时间线「模型」列的行标签下显示鹈鹕通过率（只有带评分标准的题目，即动态鹈鹕车）：「合计 智商在线数/测试数」，
+  其下按思考强度分列成树状，最多露出四档、更多的在区域内滚动；分母就是页面上当前可见的卡片（选定日期、
+  时区与筛选之后，失败与待复核都算在内），可对着格子逐一核算。
+
 ## [0.4.0] - 2026-10-02
 
 ### 修复
@@ -92,6 +100,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.4.0
 [0.3.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.3.0
 [0.2.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.2.2

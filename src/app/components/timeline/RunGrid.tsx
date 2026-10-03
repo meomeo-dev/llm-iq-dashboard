@@ -6,10 +6,11 @@ import type { DashboardCard } from "@/core/types";
 import { profileColor } from "../profile/profile-color";
 import { useProfiles } from "../profile/profiles-context";
 import { FolderTile } from "./FolderTile";
+import { RowPassRate } from "./RowPassRate";
 import { TimelineAxis, type NowMark } from "./TimelineAxis";
 import { cellUpstreams, folderCell, planSlots } from "./effort-slots";
 import type { Moment } from "./moments";
-import { listRows, rowKeyOf, type Row } from "./rows";
+import { listRows, rowKeyOf } from "./rows";
 import { CELL_WIDTH, layoutColumns, timeX } from "./track-layout";
 
 /** 打开的格子：哪一轮的哪一行 */
@@ -54,15 +55,19 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
           模型
           <span className="lane-head-count">{rows.length} 个</span>
         </div>
-        {rows.map((row) => (
-          <div key={row.key} className="row-label" title={`${row.cli} · ${row.model} · ${row.promptId}`}>
-            <span className="row-label-name">
-              {row.cli} · {row.model}
-            </span>
-            {showPrompt && <span className="row-label-prompt">{row.promptId}</span>}
-            <RowUpstreams row={row} cards={cards} />
-          </div>
-        ))}
+        {rows.map((row) => {
+          const rowCards = cards.filter((card) => rowKeyOf(card) === row.key);
+          return (
+            <div key={row.key} className="row-label" title={`${row.cli} · ${row.model} · ${row.promptId}`}>
+              <span className="row-label-name">
+                {row.cli} · {row.model}
+              </span>
+              {showPrompt && <span className="row-label-prompt">{row.promptId}</span>}
+              <RowUpstreams cards={rowCards} />
+              <RowPassRate promptId={row.promptId} cards={rowCards} />
+            </div>
+          );
+        })}
       </div>
       <div className="track" ref={scroller}>
         <TimelineAxis columns={columns} width={width} now={now} hourWidth={hourWidth} />
@@ -86,9 +91,9 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
 }
 
 /** 行标题下的一排色点：这一行出现过的第三方上游，悬停显示名字；只有登录态时不渲染 */
-function RowUpstreams({ row, cards }: { row: Row; cards: readonly DashboardCard[] }) {
+function RowUpstreams({ cards }: { cards: readonly DashboardCard[] }) {
   const { profiles } = useProfiles();
-  const names = cellUpstreams(cards.filter((card) => rowKeyOf(card) === row.key), profiles);
+  const names = cellUpstreams(cards, profiles);
   if (names.length === 0) return null;
   return (
     <span className="row-label-profiles" aria-label={`上游：${names.map((name) => profileLabel(name, profiles)).join("、")}`}>

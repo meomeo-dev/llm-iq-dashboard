@@ -116,3 +116,37 @@
   color: var(--text-faint);
   font-size: 11px;
 }
+
+/* 行标签里的鹈鹕通过率：字号与颜色跟 CLI · 模型 一致；强度分列最多露出四行，更多的在区域内滚动 */
+.row-pass {
+  --row-pass-line: 18px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.row-pass-total {
+  display: block;
+  line-height: var(--row-pass-line);
+}
+
+.row-pass-efforts {
+  margin: 0;
+  padding: 0;
+  max-height: calc(var(--row-pass-line) * 4);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  list-style: none;
+}
+
+.row-pass-efforts li {
+  line-height: var(--row-pass-line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-pass-branch {
+  display: inline-block;
+  width: 1em;
+  color: var(--text-faint);
+}
