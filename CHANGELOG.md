@@ -5,6 +5,8 @@
 
 ## [未发布]
 
+## [0.6.1] - 2026-10-03
+
 ### 修复
 
 - 只读展台首页看不到数据仓的新提交：远程数据源的进程内请求缓存没有时效，serverless 实例暖起来后
@@ -128,7 +130,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.0...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.1
 [0.6.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.0
 [0.5.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.5.0
 [0.4.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.4.0
