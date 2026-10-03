@@ -5,6 +5,8 @@
 
 ## [未发布]
 
+## [0.6.0] - 2026-10-03
+
 ### 新增
 
 - 数据仓地址在配置页可改（ACR-023）：新区块「数据仓设置」填 GitHub 地址、本地路径、自动同步与自动推送，
@@ -120,7 +122,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.5.0...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.0
 [0.5.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.5.0
 [0.4.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.4.0
 [0.3.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.3.0
