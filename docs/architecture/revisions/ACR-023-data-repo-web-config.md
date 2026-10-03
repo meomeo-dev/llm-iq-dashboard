@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-10-03 |
 | 变更类型 | structure-change |
 | 触发来源 | 口头：数据仓是哪一个只能写在 YAML 里，网页改不了；用户要求在配置页填数据仓地址，本地没有就自动 clone |
@@ -95,11 +95,11 @@ GitHub App 连接与清单一律以这个地址为准。
 
 | 命令 | 覆盖 | 变更前 | 变更后 | commit | 备注 |
 |---|---|---|---|---|---|
-| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | - | | |
-| `pnpm test` | 单元测试 | pass | - | | |
-| `pnpm check:secrets` | 密钥扫描 | pass | - | | |
-| `pnpm build` | Next.js 看板生产构建 | pass | - | | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链、变量注入、强度折叠 | pass | - | | 变更前取 ACR-022 的同一次冒烟（轮次 20261003T060858Z，运行时代码自那以后未动） |
+| `pnpm lint` | 全仓类型检查（tsc --noEmit，当前唯一静态门） | pass | pass | 8dfa3d1 | |
+| `pnpm test` | 单元测试 | pass | pass | 8dfa3d1 | |
+| `pnpm check:secrets` | 密钥扫描 | pass | pass | 8dfa3d1 | |
+| `pnpm build` | Next.js 看板生产构建 | pass | pass | 8dfa3d1 | |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链、变量注入、强度折叠 | pass | pass | 8dfa3d1 | 变更前取 ACR-022 的同一次冒烟（轮次 20261003T060858Z，运行时代码自那以后未动）；变更后轮次 20261003T072222Z，10 次调用 8 ok，codex gpt-6-astra 两次 400 invalid_request 与 ACR-022 时相同，是上游模型侧错误 |
 
 ## 分步实施
 
@@ -136,7 +136,7 @@ GitHub App 连接与清单一律以这个地址为准。
 
 | 去处 | 内容 | 状态 |
 |---|---|---|
-| architecture.md §4 | 数据仓一节补「仓地址在配置里，执行器按地址 clone，remote 不一致报警」 | 待回填 |
-| architecture.md §5 | 配置项补 `dataRepo.repository`，配置页可改 | 待回填 |
-| architecture.md 表头「变更记录」 | 追加 ACR-023 | 待回填 |
+| architecture.md §4 | 数据仓一节补「仓地址在配置里，执行器按地址 clone，remote 不一致报警」 | 已回填 |
+| architecture.md §5 | 配置项补 `dataRepo.repository`，配置页可改 | 已回填 |
+| architecture.md 表头「变更记录」 | 追加 ACR-023 | 已回填 |
 | ADR（/adr-curator） | 不适用：非难逆转 | 不适用 |
