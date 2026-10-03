@@ -40,8 +40,9 @@ ENV CLAUDE_CODE_VERSION=2.1.283 \
     GIT_CONFIG_VALUE_0=/data-repo
 
 COPY --chown=node:node . .
-# postinstall 把价格目录下载到 data/，数据卷首次创建时随之复制进卷
-RUN pnpm install --frozen-lockfile && pnpm build
+# postinstall 把价格目录下载到 data/，数据卷首次创建时随之复制进卷；
+# CI=1 让 lefthook 的安装后脚本跳过装钩子（构建上下文没有 .git，容器里也不提交代码）
+RUN CI=1 pnpm install --frozen-lockfile && pnpm build
 
 EXPOSE 3000
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
