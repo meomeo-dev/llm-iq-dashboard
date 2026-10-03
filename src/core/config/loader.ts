@@ -325,6 +325,32 @@ export function parseCustomModels(
   return result;
 }
 
+/** GitHub 仓地址只认 https 写法；可带 .git 后缀或末尾斜杠，归一后一律去掉 */
+const GITHUB_HTTPS_REPOSITORY = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/;
+
+/** 把用户填的 GitHub 地址归一成 https://github.com/owner/repo；认不出来返回 null */
+export function normalizeGithubRepositoryUrl(value: string): string | null {
+  const match = GITHUB_HTTPS_REPOSITORY.exec(value.trim());
+  const [, owner, repo] = match ?? [];
+  if (!owner || !repo) return null;
+  return `https://github.com/${owner}/${repo}`;
+}
+
+/** 仓地址：缺省、null 或空串都是「未指定」；填了就必须是 GitHub https 地址 */
+function parseRepository(raw: unknown, errors: string[]): string | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "string") {
+    errors.push("dataRepo.repository 必须是 https://github.com/owner/repo 形式的地址");
+    return null;
+  }
+  if (raw.trim() === "") return null;
+  const normalized = normalizeGithubRepositoryUrl(raw);
+  if (normalized === null) {
+    errors.push("dataRepo.repository 必须是 https://github.com/owner/repo 形式的地址");
+  }
+  return normalized;
+}
+
 export function parseDataRepo(raw: unknown, errors: string[]): DataRepoConfig | null {
   if (raw === undefined || raw === null) return null;
   const node = asRecord(raw);
@@ -335,6 +361,7 @@ export function parseDataRepo(raw: unknown, errors: string[]): DataRepoConfig | 
 
   const rawPath = optionalString(node.path);
   if (rawPath === null) errors.push("dataRepo.path 必填");
+  const repository = parseRepository(node.repository, errors);
 
   if (node.autoSync !== undefined && typeof node.autoSync !== "boolean") {
     errors.push("dataRepo.autoSync 必须是布尔值");
@@ -347,6 +374,7 @@ export function parseDataRepo(raw: unknown, errors: string[]): DataRepoConfig | 
   if (rawPath === null) return null;
   return {
     path: resolve(process.cwd(), rawPath),
+    repository,
     autoSync: node.autoSync === true,
     push: node.push === true,
     publishPrompts,

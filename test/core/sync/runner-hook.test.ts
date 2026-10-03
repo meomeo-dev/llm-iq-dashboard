@@ -78,6 +78,7 @@ describe("runner 自动同步挂钩与失败隔离", () => {
       customModels: {},
       dataRepo: {
         path: repoPath,
+        repository: null,
         autoSync: true,
         push,
         publishPrompts: null,

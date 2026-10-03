@@ -11,6 +11,11 @@ import type { BudgetConfig } from "../budget";
 export interface DataRepoConfig {
   /** 本地数据仓的绝对路径（按进程 cwd 解析） */
   path: string;
+  /**
+   * 数据仓的 GitHub 地址，规范形式 https://github.com/owner/repo；
+   * 执行器据此把本地路径 clone 好并校验 origin。null 表示仓库由本地副本的 origin 决定
+   */
+  repository: string | null;
   /** 每轮评测结束后是否自动触发同步 */
   autoSync: boolean;
   /** 同步提交后是否自动推送至远端 */

@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { after, before, test } from "node:test";
 import { loadConfig } from "@/core/config";
 import { applyConfigPatch } from "@/core/config-writer";
@@ -103,4 +103,25 @@ test("只改一项的强度时复用原节点，保留注释与手写字段", as
 
   assert.equal(saved.targets.find((target) => target.effort === "medium")?.timeoutMs, 120_000);
   assert.match(await readFile(renamed, "utf8"), /# 低档，单独放宽超时\n\s+- cli: claude\n\s+model: m-a\n\s+effort: medium/);
+});
+
+test("dataRepo 段按子键写回：地址清空删 repository 键，整段 null 删段，段上方注释交给下一个键", async () => {
+  await writeFile(path, `${CONFIG_YAML}# 数据仓说明\ndataRepo:\n  path: ../old\n  publishPrompts: [classic-v1]\n# 调度说明\nschedule:\n  runOnStart: false\n`, "utf8");
+  const dataRepo = { path: "../llm-iq-data", repository: "https://github.com/acme/pelican-data", autoSync: true, push: false };
+  const saved = await applyConfigPatch(path, { dataRepo });
+  assert.deepEqual(saved.dataRepo, {
+    path: resolve(process.cwd(), "../llm-iq-data"), repository: dataRepo.repository, autoSync: true, push: false,
+    publishPrompts: ["classic-v1"],
+  });
+  assert.match(await readFile(path, "utf8"), /dataRepo:\n  path: \.\.\/llm-iq-data\n  publishPrompts: \[ classic-v1 \]\n  repository: https:\/\/github\.com\/acme\/pelican-data\n  autoSync: true\n  push: false\n/);
+
+  const cleared = await applyConfigPatch(path, { dataRepo: { ...dataRepo, repository: null } });
+  assert.equal(cleared.dataRepo?.repository, null);
+  assert.doesNotMatch(await readFile(path, "utf8"), /repository:/);
+
+  const removed = await applyConfigPatch(path, { dataRepo: null });
+  assert.equal(removed.dataRepo, null);
+  const text = await readFile(path, "utf8");
+  assert.doesNotMatch(text, /dataRepo:/);
+  assert.match(text, /# 数据仓说明\n# 调度说明\nschedule:/);
 });

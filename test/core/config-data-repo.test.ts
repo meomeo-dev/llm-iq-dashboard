@@ -115,4 +115,21 @@ dataRepo:
     assert.throws(() => loadConfig(configPath), /dataRepo\.publishPrompts 必须是题目 id 的字符串数组/);
   });
 
+  it("repository：缺省或空串为 null；https 地址归一去掉 .git 与末尾斜杠；ssh 或非 GitHub 地址报错", async () => {
+    const configPath = join(tempDir, "pelican.config.yaml");
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n`);
+    assert.equal(loadConfig(configPath).dataRepo?.repository, null);
+
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n  repository: ""\n`);
+    assert.equal(loadConfig(configPath).dataRepo?.repository, null);
+
+    await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n  repository: https://github.com/acme/pelican-data.git/\n`);
+    assert.equal(loadConfig(configPath).dataRepo?.repository, "https://github.com/acme/pelican-data");
+
+    for (const bad of ["git@github.com:acme/pelican-data.git", "https://gitlab.com/acme/pelican-data", "acme/pelican-data"]) {
+      await writeFile(configPath, `${baseConfigYaml}\ndataRepo:\n  path: ./repo\n  repository: "${bad}"\n`);
+      assert.throws(() => loadConfig(configPath), /dataRepo\.repository 必须是 https:\/\/github\.com\/owner\/repo 形式的地址/);
+    }
+  });
+
 });

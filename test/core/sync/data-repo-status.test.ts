@@ -85,7 +85,7 @@ describe("data-repo-status 状态聚合", () => {
   it("配置了路径但路径不可达时，标注 reachable=false 且 notice 说明原因", async () => {
     const config = mockBaseConfig();
     const missingPath = join(rootDir, "non-existent-repo");
-    config.dataRepo = { path: missingPath, autoSync: true, push: false, publishPrompts: null };
+    config.dataRepo = { path: missingPath, repository: null, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,
@@ -101,7 +101,7 @@ describe("data-repo-status 状态聚合", () => {
 
   it("数据仓目录有效但缺 index.json 时 manifest 为 null", async () => {
     const config = mockBaseConfig();
-    config.dataRepo = { path: testRepoDir, autoSync: true, push: false, publishPrompts: null };
+    config.dataRepo = { path: testRepoDir, repository: null, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,
@@ -130,7 +130,7 @@ describe("data-repo-status 状态聚合", () => {
     await writeFile(join(testRepoDir, "index.json"), JSON.stringify(manifestContent), "utf8");
 
     const config = mockBaseConfig();
-    config.dataRepo = { path: testRepoDir, autoSync: true, push: false, publishPrompts: null };
+    config.dataRepo = { path: testRepoDir, repository: null, autoSync: true, push: false, publishPrompts: null };
 
     const status = await collectDataRepoStatus(config, {
       dataDir: testDataDir,
@@ -241,7 +241,7 @@ describe("data-repo-status 状态聚合", () => {
     await writeFile(join(runsDir, runId, "run.json"), JSON.stringify({ inProgress: false, attempts: [] }), "utf8");
     await saveSyncLedger({ [runId]: { status: "skipped", reason: "discarded", skippedAt: "2026-09-26T02:00:00.000Z" } }, testDataDir);
 
-    const config = { ...mockBaseConfig(), dataRepo: { path: join(rootDir, "missing"), autoSync: false, push: false, publishPrompts: null } };
+    const config = { ...mockBaseConfig(), dataRepo: { path: join(rootDir, "missing"), repository: null, autoSync: false, push: false, publishPrompts: null } };
     const status = await collectDataRepoStatus(config as AppConfig, { dataDir: testDataDir });
     assert.ok(!status.local.pending.includes(runId));
     assert.ok(status.local.discarded?.includes(runId));

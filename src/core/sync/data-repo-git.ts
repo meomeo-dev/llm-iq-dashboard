@@ -112,14 +112,23 @@ export async function assertGitUserConfigured(repoDir: string): Promise<void> {
  * 获取当前分支对应的上游追踪分支。
  * 若尚未设置上游则返回 null。
  */
-export async function getUpstream(repoDir: string): Promise<string | null> {
+/** 读一个只读查询的单值输出；命令失败或输出为空都当 null */
+async function readGitValue(repoDir: string, args: string[]): Promise<string | null> {
   try {
-    const stdout = await gitExec(repoDir, ["rev-parse", "--abbrev-ref", "@{u}"]);
-    const trimmed = stdout.trim();
+    const trimmed = (await gitExec(repoDir, args)).trim();
     return trimmed.length > 0 ? trimmed : null;
   } catch {
     return null;
   }
+}
+
+/** origin 远程的抓取地址；没有 origin 或不是 git 仓时为 null */
+export function getOriginUrl(repoDir: string): Promise<string | null> {
+  return readGitValue(repoDir, ["remote", "get-url", "origin"]);
+}
+
+export function getUpstream(repoDir: string): Promise<string | null> {
+  return readGitValue(repoDir, ["rev-parse", "--abbrev-ref", "@{u}"]);
 }
 
 /**
@@ -426,6 +435,8 @@ export interface GitRepoInspection {
   clean: boolean;
   branch: string | null;
   upstream: string | null;
+  /** origin 远程地址；面板用它与配置的 repository 比对 */
+  originUrl: string | null;
   ahead: number | null;
   behind: number | null;
   aheadCommits: string[];
@@ -433,14 +444,8 @@ export interface GitRepoInspection {
 
 function emptyInspection(reachable: boolean): GitRepoInspection {
   return {
-    reachable,
-    isGitRepo: false,
-    clean: false,
-    branch: null,
-    upstream: null,
-    ahead: null,
-    behind: null,
-    aheadCommits: [],
+    reachable, isGitRepo: false, clean: false, branch: null, upstream: null, originUrl: null,
+    ahead: null, behind: null, aheadCommits: [],
   };
 }
 
@@ -467,10 +472,11 @@ export async function inspectGitRepo(repoDir: string): Promise<GitRepoInspection
   if (!existsSync(repoDir)) return emptyInspection(false);
   if (!(await isGitRepository(repoDir))) return emptyInspection(true);
 
-  const [clean, branch, upstream] = await Promise.all([
+  const [clean, branch, upstream, originUrl] = await Promise.all([
     isWorkingTreeClean(repoDir),
     getCurrentBranch(repoDir),
     getUpstream(repoDir),
+    getOriginUrl(repoDir),
   ]);
   const metrics = await collectUpstreamMetrics(repoDir, upstream);
 
@@ -480,6 +486,7 @@ export async function inspectGitRepo(repoDir: string): Promise<GitRepoInspection
     clean,
     branch,
     upstream,
+    originUrl,
     ahead: metrics.ahead,
     behind: metrics.behind,
     aheadCommits: metrics.aheadCommits,

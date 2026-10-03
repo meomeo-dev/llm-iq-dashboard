@@ -83,4 +83,5 @@ node $R validate
 | [ACR-020](ACR-020-judge-ai-layer.md) | AI 语义层评审与权重重配 | done | 2026-09-30 | new-module | 自研 | 8 包 | ✓ 2026-09-30 | 6/7 | — |
 | [ACR-021](ACR-021-judge-ai-locate.md) | 裁判定位取景框再切细节表 | done | 2026-10-01 | new-module | 自研 | 2 包 | ✓ 2026-10-01 | 5/6 | — |
 | [ACR-022](ACR-022-git-hooks-manager.md) | Git 钩子交给 lefthook 管理 | done | 2026-10-03 | add-dependency | lefthook：Go 单二进制，npm 包按平台装可选依赖（周下载 610 万），lefthook.yml 配置，命令可并行，钩子装进 git rev-parse --git-path hooks，worktree 共用主仓那一份 | 1 包 | ✓ 2026-10-03 | 6/6 | — |
+| [ACR-023](ACR-023-data-repo-web-config.md) | 数据仓地址在配置页可改，执行器按地址自动 clone | implementing | 2026-10-03 | structure-change | 自研 | 5 包 | ✓ 2026-10-03 | 0/5 | — |
 <!-- acr-index:end -->

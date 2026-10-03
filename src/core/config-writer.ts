@@ -38,6 +38,17 @@ export interface ConfigPatch {
   customModels?: Partial<Record<CliKind, string[]>>;
   /** 作品评审全表（ACR-020）：开关、AI 层开关、裁判清单与超时 */
   judge?: JudgeConfig;
+  /** 数据仓（ACR-023）：按子键写，null 删整段；publishPrompts 只在 YAML 里改，不经这里 */
+  dataRepo?: DataRepoPatch | null;
+}
+
+/** 配置页可改的数据仓字段；path 按用户填的原文写，不展开成绝对路径 */
+export interface DataRepoPatch {
+  path: string;
+  /** null 即删掉 repository 键：仓库退回由本地副本的 origin 决定 */
+  repository: string | null;
+  autoSync: boolean;
+  push: boolean;
 }
 
 export async function applyConfigPatch(
@@ -77,8 +88,23 @@ export async function applyConfigPatch(
   }
   if (patch.customModels !== undefined) doc.setIn(["customModels"], patch.customModels);
   if (patch.judge !== undefined) applyJudge(doc, patch.judge);
+  applyDataRepo(doc, patch.dataRepo);
 
   return commit(path, doc.toString());
+}
+
+/** 逐个子键写以保留段落注释；删整段时把段上方的说明注释移交给下一个键 */
+function applyDataRepo(doc: YamlDoc, dataRepo: ConfigPatch["dataRepo"]): void {
+  if (dataRepo === undefined) return;
+  if (dataRepo === null) {
+    deleteKeyKeepingComment(doc, [], "dataRepo");
+    return;
+  }
+  doc.setIn(["dataRepo", "path"], dataRepo.path);
+  if (dataRepo.repository === null) deleteKeyKeepingComment(doc, ["dataRepo"], "repository");
+  else doc.setIn(["dataRepo", "repository"], dataRepo.repository);
+  doc.setIn(["dataRepo", "autoSync"], dataRepo.autoSync);
+  doc.setIn(["dataRepo", "push"], dataRepo.push);
 }
 
 /** 逐个子键写，保留段落注释；裁判清单整体替换（条目小，没有值得保留的注释） */

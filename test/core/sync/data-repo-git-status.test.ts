@@ -85,6 +85,7 @@ describe("data-repo-git 只读状态查询", () => {
     assert.strictEqual(inspection.clean, true);
     assert.strictEqual(inspection.branch, "main");
     assert.strictEqual(inspection.upstream, null);
+    assert.strictEqual(inspection.originUrl, null);
     assert.strictEqual(inspection.ahead, null);
     assert.strictEqual(inspection.behind, null);
     assert.deepStrictEqual(inspection.aheadCommits, []);
@@ -98,6 +99,7 @@ describe("data-repo-git 只读状态查询", () => {
     // 此时与上游同步
     const synced = await inspectGitRepo(localDir);
     assert.strictEqual(synced.upstream, "origin/main");
+    assert.strictEqual(synced.originUrl, remoteDir);
     assert.strictEqual(synced.ahead, 0);
     assert.strictEqual(synced.behind, 0);
     assert.deepStrictEqual(synced.aheadCommits, []);
