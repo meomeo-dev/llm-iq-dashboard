@@ -5,6 +5,8 @@
 
 ## [未发布]
 
+## [0.7.0] - 2026-10-03
+
 ### 新增
 
 - 时间线导出菜单加「竖版 PNG」与「竖版 SVG」：横版的行列转置，模型按列横排，列头与横版行标签同形
@@ -151,7 +153,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.2...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.7.0
 [0.6.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.2
 [0.6.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.1
 [0.6.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.0
