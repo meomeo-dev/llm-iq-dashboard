@@ -5,6 +5,15 @@
 
 ## [未发布]
 
+## [0.6.2] - 2026-10-03
+
+### 修复
+
+- 时间线一对轮次挨得近就把整天拉宽：原来按全天最挤的一对放大小时宽度并套到整天，相隔一小时的
+  格子之间空出一大段。现在时间轴按各轮时刻分段换算，只把放不下两列的那一段撑到一个列宽，其余
+  时段保持缺省 320px/小时；刻度、现在线与列按同一映射定位，导出图同口径。推开只留给时间戳完全
+  相同的轮次。
+
 ## [0.6.1] - 2026-10-03
 
 ### 修复
@@ -130,7 +139,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.1...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.2
 [0.6.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.1
 [0.6.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.0
 [0.5.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.5.0
