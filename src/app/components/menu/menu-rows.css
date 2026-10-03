@@ -137,8 +137,9 @@
   font-size: 12px;
 }
 
+/* 四行「名称 + 提示」并排，最宽的一行（竖版 PNG · 时间竖排 · 2 倍清晰度）要放得下 */
 .menu-panel.export-panel {
-  min-width: 240px;
+  min-width: 300px;
 }
 
 @media (max-width: 640px) {

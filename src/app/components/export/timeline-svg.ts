@@ -1,5 +1,6 @@
 /**
- * 把一天的时间轴泳道画成独立 SVG：完整 24 小时轨道、按模型分行、2×2 文件夹格子。
+ * 把一天的时间轴泳道画成独立 SVG（横版）：完整 24 小时轨道、按模型分行、2×2 文件夹格子。
+ * 竖版（行列转置）见 timeline-portrait-svg.ts，文件夹格子与行标签的画法由这里导出共用。
  * 列布局与分行复用 track-layout.ts、rows.ts，与看板一一对应。缩略图以 <image> 嵌入，
  * 各自成为独立文档：id 不会冲突，残留脚本也不会执行。
  */
@@ -42,7 +43,7 @@ import {
 const LABEL_WIDTH = 176;
 const LANE_HEAD_HEIGHT = 36;
 const ROW_HEIGHT = 236;
-const TILE_SIZE = 216;
+export const TILE_SIZE = 216;
 const FOLDER_PADDING = 16;
 const FOLDER_GAP = 12;
 const MINI_SIZE = (TILE_SIZE - FOLDER_PADDING * 2 - FOLDER_GAP) / 2;
@@ -50,7 +51,7 @@ const PAD = 32;
 const HEADER_HEIGHT = 72;
 const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 /** 作为图片渲染时无法加载网页字体，使用各平台的系统字体 */
-const FONT = "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif";
+export const FONT = "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif";
 
 export interface Palette {
   bg: string;
@@ -89,8 +90,15 @@ export function thumbnailKey(card: Pick<DashboardCard, "runId" | "targetId" | "p
   return `${card.runId}/${card.targetId}/${card.promptId}`;
 }
 
+/** 画文件夹格子所需的最小上下文，横版与竖版导出共用 */
+export interface FolderDrawContext {
+  input: Pick<TimelineExport, "palette" | "thumbnails">;
+  /** 格子四角对应的档位，与看板一致 */
+  slots: readonly string[];
+}
+
 /** 泳道区域各绘制函数共用的上下文 */
-interface TrackContext {
+interface TrackContext extends FolderDrawContext {
   input: TimelineExport;
   columns: readonly Column[];
   /** 这一天的时间比例，与列位置同一映射 */
@@ -98,8 +106,6 @@ interface TrackContext {
   trackLeft: number;
   width: number;
   showPrompt: boolean;
-  /** 格子四角对应的档位，与看板一致 */
-  slots: readonly string[];
 }
 
 export function renderTimelineSvg(input: TimelineExport): RenderedSvg {
@@ -200,9 +206,15 @@ function rowSvg(context: TrackContext, row: Row, top: number): string {
 }
 
 /** 行标签里的一行：高度与画法分开，先把各行叠起来算总高，再整块垂直居中 */
-interface LabelLine {
+export interface LabelLine {
   height: number;
   draw: (lineTop: number) => string;
+}
+
+/** 画行标签所需的最小上下文，横版的行与竖版的列头共用 */
+export interface LabelContext {
+  input: Pick<TimelineExport, "palette" | "profiles">;
+  showPrompt: boolean;
 }
 
 /**
@@ -222,41 +234,42 @@ function rowLabelSvg(context: TrackContext, row: Row, rowCards: readonly Dashboa
     .join("");
 }
 
-function labelLines(context: TrackContext, row: Row, rowCards: readonly DashboardCard[]): LabelLine[] {
+/** 行标签各行：名称、题目、上游色点、通过率，左对齐在 x；横版画在行左，竖版画在列头 */
+export function labelLines(context: LabelContext, row: Row, rowCards: readonly DashboardCard[], x = PAD): LabelLine[] {
   const { palette, profiles = [] } = context.input;
-  const lines: LabelLine[] = [{ height: 18, draw: (y) => text(PAD, y + 13, `${row.cli} · ${row.model}`, palette.text, 12) }];
-  if (context.showPrompt) lines.push({ height: 16, draw: (y) => text(PAD, y + 12, row.promptId, palette.textFaint, 11) });
+  const lines: LabelLine[] = [{ height: 18, draw: (y) => text(x, y + 13, `${row.cli} · ${row.model}`, palette.text, 12) }];
+  if (context.showPrompt) lines.push({ height: 16, draw: (y) => text(x, y + 12, row.promptId, palette.textFaint, 11) });
   // 行标题下的上游色点，与看板一致；只有登录态时不画
   const upstreams = cellUpstreams(rowCards, profiles);
   if (upstreams.length > 0) {
     lines.push({
       height: 14,
-      draw: (y) => upstreams.map((name, index) => `<circle cx="${PAD + 4 + index * 12}" cy="${y + 9}" r="4" fill="${profileColor(name)}"/>`).join(""),
+      draw: (y) => upstreams.map((name, index) => `<circle cx="${x + 4 + index * 12}" cy="${y + 9}" r="4" fill="${profileColor(name)}"/>`).join(""),
     });
   }
-  return [...lines, ...passRateLines(row.promptId, rowCards, palette)];
+  return [...lines, ...passRateLines(row.promptId, rowCards, palette, x)];
 }
 
 /** 鹈鹕通过率：「合计 在线/总数」加按强度分列的树状行，与看板 RowPassRate 同口径；无评分标准不画 */
-function passRateLines(promptId: string, cards: readonly DashboardCard[], palette: Palette): LabelLine[] {
+function passRateLines(promptId: string, cards: readonly DashboardCard[], palette: Palette, x: number): LabelLine[] {
   const rate = rowPassRate(promptId, cards);
   if (rate === null) return [];
   const last = rate.byEffort.length - 1;
   // 合计行含看板 .row-pass 的 4px 上边距
-  const total: LabelLine = { height: 22, draw: (y) => text(PAD, y + 17, `合计 ${rate.total.online}/${rate.total.total}`, palette.textDim, 12) };
+  const total: LabelLine = { height: 22, draw: (y) => text(x, y + 17, `合计 ${rate.total.online}/${rate.total.total}`, palette.textDim, 12) };
   const byEffort = rate.byEffort.map(
     (item, index): LabelLine => ({
       height: 18,
       draw: (y) =>
-        text(PAD, y + 13, index === last ? "└" : "├", palette.textFaint, 12) +
-        text(PAD + 12, y + 13, `${item.effort} ${item.online}/${item.total}`, palette.textDim, 12),
+        text(x, y + 13, index === last ? "└" : "├", palette.textFaint, 12) +
+        text(x + 12, y + 13, `${item.effort} ${item.online}/${item.total}`, palette.textDim, 12),
     }),
   );
   return [total, ...byEffort];
 }
 
 /** 文件夹格子：圆角底板 + 2×2 小图，每角固定一个档位，与看板的 .folder 同形 */
-function folderSvg(context: TrackContext, cell: FolderCell, x: number, y: number): string {
+export function folderSvg(context: FolderDrawContext, cell: FolderCell, x: number, y: number): string {
   const { palette } = context.input;
   const parts = [
     `<rect x="${x}" y="${y}" width="${TILE_SIZE}" height="${TILE_SIZE}" rx="44" ` +
@@ -271,7 +284,7 @@ function folderSvg(context: TrackContext, cell: FolderCell, x: number, y: number
 }
 
 /** 文件夹里的一个角：作品、失败标记、空位或溢出计数 */
-function miniSvg(context: TrackContext, cell: FolderCell, slot: string, index: number, x: number, y: number): string {
+function miniSvg(context: FolderDrawContext, cell: FolderCell, slot: string, index: number, x: number, y: number): string {
   const { palette } = context.input;
   const box = `x="${x}" y="${y}" width="${MINI_SIZE}" height="${MINI_SIZE}" rx="18"`;
   const center = { x: x + MINI_SIZE / 2, y: y + MINI_SIZE / 2 };
@@ -302,7 +315,7 @@ function countBadge(cell: FolderCell, slot: string, x: number, y: number, palett
   );
 }
 
-function healthColor(moment: Moment, palette: Palette): string {
+export function healthColor(moment: Moment, palette: Palette): string {
   const health = momentHealth(moment);
   if (health === "ok") return palette.ok;
   return health === "partial" ? palette.warn : palette.err;
@@ -313,11 +326,11 @@ function statusColor(card: DashboardCard, palette: Palette): string {
   return card.status === "no-svg" ? palette.warn : palette.err;
 }
 
-function line(x1: number, y1: number, x2: number, y2: number, stroke: string, width: number): string {
+export function line(x1: number, y1: number, x2: number, y2: number, stroke: string, width: number): string {
   return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}"/>`;
 }
 
-function text(x: number, y: number, content: string, fill: string, size: number, extra = ""): string {
+export function text(x: number, y: number, content: string, fill: string, size: number, extra = ""): string {
   return `<text x="${x}" y="${y}" fill="${fill}" font-size="${size}" ${extra}>${escapeXml(content)}</text>`;
 }
 
