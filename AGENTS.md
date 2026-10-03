@@ -93,3 +93,8 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 `pnpm check:secrets`（对已跟踪文件套用与数据仓发布同一套泄漏规则加赋值启发，白名单与禁止入库清单见
 `config/secret-scan-policy.yaml`；假令牌逐文件登记原因，不整目录放行）。
 改动只读部署或远程数据源时，另跑 `pnpm showcase:smoke`。
+
+Git 钩子由 lefthook 管理（`lefthook.yml`，ACR-022）：`pnpm install` 自动装进 `.git/hooks`，同一仓的各
+worktree 共用。pre-commit 并行跑 `check:secrets`、`lint`、`check:length`；pre-push 跑 `validate:prompts`
+与 `test`。`build` 与 `showcase:smoke` 不挂钩子。确认误报时用 `LEFTHOOK=0 git commit` 绕过一次，
+不要删钩子；容器构建用 `CI=1 pnpm install` 跳过装钩子。

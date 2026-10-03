@@ -88,6 +88,12 @@ pnpm test
 PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once
 ```
 
+提交与推送前的门禁由 Git 钩子自动跑（lefthook，配置在仓库根 `lefthook.yml`，ACR-022）：
+`pnpm install` 时装进 `.git/hooks`，同一仓的各 worktree 共用这一份；pre-commit 并行跑
+`check:secrets`、`lint`、`check:length`（约 3 秒），pre-push 跑 `validate:prompts` 与 `test`（约
+40 秒）。钩子没装上时 `pnpm lefthook install` 补装；确认是误报要先过时 `LEFTHOOK=0 git commit`
+绕过一次，事后把假值登记进对应策略文件的白名单。
+
 SVG 净化依赖浏览器的 `DOMParser`，测试里由 jsdom 提供（见 `test/support/dom.ts`）。
 测试层只有这一个额外依赖：
 

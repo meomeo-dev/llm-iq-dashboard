@@ -10,6 +10,9 @@
 - 发布门加密钥扫描 `pnpm check:secrets`：对 git 已跟踪的文本文件逐行套用与数据仓发布同一套泄漏规则
   （私钥块、厂商令牌）再加赋值启发（`apiKey` / `secret` / `token` 后的长随机串），并核对本机配置、
   产物目录与 `.env` 没被加进版本库；白名单按文件登记原因（`config/secret-scan-policy.yaml`）。
+- Git 钩子交给 lefthook 管理（ACR-022）：`pnpm install` 自动装进 `.git/hooks`，各 worktree 共用；pre-commit
+  并行跑 `check:secrets`、`lint`、`check:length`，pre-push 跑 `validate:prompts` 与 `test`；`LEFTHOOK=0`
+  可绕过一次，容器构建以 `CI=1` 跳过装钩子。
 
 ### 修复
 

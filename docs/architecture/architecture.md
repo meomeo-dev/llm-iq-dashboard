@@ -31,6 +31,7 @@
 | [ACR-018](revisions/ACR-018-data-repo-profile-publish.md) | 2026-09-30 | 数据仓发布 profile 结果（记录带八字段公开视图）、题目白名单、面板按轮次勾选导出 | §4 §6 §8 |
 | [ACR-019](revisions/ACR-019-judge-scoring.md) | 2026-09-30 | 动态鹈鹕车代码层评审：静态解析 + 无头 Chromium 渲染量测，卡片贴智商在线 / 降智标签，引入 playwright-core | §3 §4 §7 |
 | [ACR-020](revisions/ACR-020-judge-ai-layer.md) | 2026-09-30 | 评审 AI 语义层：适配器评审模式，轮次定稿后裁判 CLI 看联系图打 C5–C8；代码层权重降到 30 分 | §3 §4 §7 |
+| [ACR-022](revisions/ACR-022-git-hooks-manager.md) | 2026-10-03 | Git 钩子交给 lefthook 管理：pre-commit 跑密钥扫描、类型检查与长度门，pre-push 跑测试与题库校验 | §0 §6 |
 | [ACR-021](revisions/ACR-021-judge-ai-locate.md) | 2026-10-01 | 裁判先看首帧定位四类部位的取景框，程序按框重切细节表再打分；几何推断只作兜底 | §3 §4 |
 
 ## 0. 技术选型总览
@@ -50,6 +51,7 @@
 | SVG 解析 | jsdom | 29.1 | MIT | 评审静态层在 Node 里解析 SVG 与样式；单测里也为 SVG 净化提供 DOM（ACR-019） |
 | 无头浏览器 | playwright-core | 1.63 | Apache-2.0 | 评审渲染层定格动画、量位置、截联系图；浏览器二进制运行时下载，不入仓库（ACR-019） |
 | TS 运行器 | tsx | 4.23 | MIT | 调度器、run-once 与单元测试免构建运行 |
+| Git 钩子 | lefthook | 2.1 | MIT | `pnpm install` 装钩子，pre-commit 跑密钥扫描、类型检查与长度门，pre-push 跑测试与题库校验；Go 单二进制，worktree 共用（ACR-022） |
 | 语言 | TypeScript | 5.9 | Apache-2.0 | 全仓 |
 
 ## 1. 系统总体架构
@@ -249,6 +251,8 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
 - 发布前对 run.json 与 SVG 做泄漏规则与凭据指纹双重扫描，命中的作品不发布；数据仓 CI 再校验一次。
+- 代码仓自身的密钥扫描 `check:secrets`（同一套泄漏规则加赋值启发，策略 `config/secret-scan-policy.yaml`）
+  由 lefthook 在 pre-commit 强制执行，推送前再跑测试；GitHub 侧只有厂商模式扫描与推送保护（ACR-022）。
 - `PELICAN_READONLY=1` 在服务端强制只读：不承认会话、写接口 403、配对 404、不拉起调度器（ACR-009）。
 - 数据仓推送凭据是所有者在浏览器里注册并安装的 GitHub App 用户令牌（仅授权数据仓一个仓库），
   只存在 runner 专用卷 `runner-secrets`（目录 700 / 文件 600），经 `GIT_ASKPASS` 只在推送时交给 git；
