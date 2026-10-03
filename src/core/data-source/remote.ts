@@ -333,6 +333,7 @@ export class RemoteDataSource implements DataSource {
     }
   }
 
+  /** 进程内缓存的时效与交给 fetch 的 revalidate 同一口径，到期后再次拉取才看得到数据仓的新提交 */
   private async fetchWithTimeout(url: string, revalidateSec: number): Promise<Response> {
     return this.pool.fetch(url, async () => {
       const init: RequestInit & { next?: { revalidate: number } } = {
@@ -340,7 +341,7 @@ export class RemoteDataSource implements DataSource {
         next: { revalidate: revalidateSec },
       };
       return this.fetchFn(url, init);
-    });
+    }, revalidateSec * 1000);
   }
 
   private async cardsOfPublicRun(run: PublicRunRecord): Promise<DashboardCard[]> {
