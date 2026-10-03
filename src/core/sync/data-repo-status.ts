@@ -15,6 +15,7 @@ import { configPath as defaultAppConfigPath, dataRoot } from "../paths";
 import { requestRunnerDataRepoStatus } from "../requests";
 import { runIdTime } from "../store";
 import { externalRunner } from "../runner-link";
+import { describeCheckout, sameGithubRepo } from "./data-repo-checkout";
 import { inspectGitRepo } from "./data-repo-git";
 import type {
   DataRepoStatus,
@@ -339,12 +340,27 @@ async function resolveRepoState(
       clean: false,
       branch: null,
       upstream: null,
+      originUrl: null,
       ahead: null,
       behind: null,
       aheadCommits: [],
     },
     manifest: null,
   };
+}
+
+/** 配置了仓地址且本地副本是 git 仓时比对 origin；对不上写进 notices，面板据此报警并拒绝同步 */
+function detectRemoteMismatch(
+  repository: string | null,
+  repo: DataRepoStatus["repo"],
+  notices: string[],
+): boolean {
+  if (repository === null || repo === null || !repo.isGitRepo) return false;
+  const originUrl = repo.originUrl ?? null;
+  if (sameGithubRepo(repository, originUrl)) return false;
+  const note = describeCheckout({ kind: "mismatch", repository, originUrl });
+  if (note !== null) notices.push(note);
+  return true;
 }
 
 /**
@@ -366,6 +382,8 @@ export async function collectDataRepoStatus(
   const repoState = configured
     ? await resolveRepoState(config, rawPath, options, notices)
     : { repo: null, manifest: null };
+  const repository = config.dataRepo?.repository ?? null;
+  const remoteMismatch = detectRemoteMismatch(repository, repoState.repo, notices);
 
   const { github, pushCapability } = await resolveGithubAndPushCapability(
     deploy.externalRunner,
@@ -376,9 +394,10 @@ export async function collectDataRepoStatus(
 
   return {
     configured,
+    repository,
     autoSync: config.dataRepo?.autoSync === true,
     deploy,
-    repo: repoState.repo,
+    repo: repoState.repo === null ? null : { ...repoState.repo, remoteMismatch },
     manifest: repoState.manifest,
     ledger,
     local,

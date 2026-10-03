@@ -154,6 +154,18 @@ describe("sync-orchestrator 同步流水线编排", () => {
     assert.equal(ledger[runId]?.commit, report.commit);
   });
 
+  it("配置的仓地址与本地副本 origin 不一致时拒绝同步；一致时照常", async () => {
+    const repository = "https://github.com/acme/pelican-data";
+    execFileSync("git", ["-C", repoDir, "remote", "set-url", "origin", "https://github.com/acme/other"]);
+    await assert.rejects(
+      () => syncDataRepo({ repoPath: repoDir, repository, dataDir, dryRun: true }),
+      /不是同一个仓/,
+    );
+    execFileSync("git", ["-C", repoDir, "remote", "set-url", "origin", "git@github.com:acme/pelican-data.git"]);
+    const report = await syncDataRepo({ repoPath: repoDir, repository, dataDir, dryRun: true });
+    assert.equal(report.totalCandidates, 0);
+  });
+
   it("支持 push：推送并经 merge-base 祖先校验确认，台账转为 published", async () => {
     const runId = "20260927T021708Z";
     const runDir = join(runsDir, runId);

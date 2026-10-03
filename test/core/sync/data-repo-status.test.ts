@@ -249,6 +249,29 @@ describe("data-repo-status 状态聚合", () => {
     assert.strictEqual(status.autoSync, false);
   });
 
+  it("配置了仓地址时比对本地副本的 origin：对不上标 remoteMismatch 并报警，一致则不报", async () => {
+    await execAsync("git", ["-C", testRepoDir, "remote", "add", "origin", "https://github.com/acme/other.git"]);
+    try {
+      const config = mockBaseConfig();
+      config.dataRepo = {
+        path: testRepoDir, repository: "https://github.com/acme/pelican-data",
+        autoSync: false, push: false, publishPrompts: null,
+      };
+      const mismatched = await collectDataRepoStatus(config, { dataDir: testDataDir, rawPath: "repo" });
+      assert.strictEqual(mismatched.repository, "https://github.com/acme/pelican-data");
+      assert.strictEqual(mismatched.repo?.originUrl, "https://github.com/acme/other.git");
+      assert.strictEqual(mismatched.repo?.remoteMismatch, true);
+      assert.ok(mismatched.notice?.includes("不是同一个仓"));
+
+      config.dataRepo.repository = "https://github.com/Acme/Other";
+      const matched = await collectDataRepoStatus(config, { dataDir: testDataDir, rawPath: "repo" });
+      assert.strictEqual(matched.repo?.remoteMismatch, false);
+      assert.ok(!matched.notice?.includes("不是同一个仓"));
+    } finally {
+      await execAsync("git", ["-C", testRepoDir, "remote", "remove", "origin"]);
+    }
+  });
+
   it("成功写入与回读 lastAction", async () => {
     const mockAction: SyncActionResult = {
       mode: "export",

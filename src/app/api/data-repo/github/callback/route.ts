@@ -65,7 +65,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   try {
     const full = loadConfig(configPath());
-    await performTokenExchange(code, full.dataRepo?.path);
+    await performTokenExchange(code, full.dataRepo);
 
     const redirectRes = NextResponse.redirect(new URL("/config#data-repo", requestOrigin(request)), 302);
     redirectRes.cookies.delete({

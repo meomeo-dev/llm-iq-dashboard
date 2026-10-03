@@ -11,7 +11,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
@@ -184,6 +184,23 @@ dataRepo:
       assert.ok(setCookie.includes(GITHUB_STATE_COOKIE));
       assert.ok(setCookie.includes("HttpOnly"));
       assert.ok(setCookie.includes("Path=/api/data-repo/github"));
+    });
+
+    it("配置了 dataRepo.repository 时清单里的仓地址以它为准", async () => {
+      const original = await readFile(configPath, "utf8");
+      await writeFile(configPath, `${original}  repository: https://github.com/acme/pelican-data\n`, "utf8");
+      try {
+        const req = new Request("http://localhost:3000/api/data-repo/github/connect", {
+          headers: { cookie: `${SESSION_COOKIE}=${sessionCookie}` },
+        });
+        const res = await connectGET(req);
+        assert.equal(res.status, 200);
+        const html = await res.text();
+        assert.ok(html.includes("https://github.com/acme/pelican-data"));
+        assert.ok(!html.includes("meomeo-dev/llm-iq-data"));
+      } finally {
+        await writeFile(configPath, original, "utf8");
+      }
     });
 
     it("清单回跳地址以 Host 头为准，而非服务监听地址", async () => {

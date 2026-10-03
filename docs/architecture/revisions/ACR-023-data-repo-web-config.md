@@ -46,11 +46,13 @@ GitHub App 连接与清单一律以这个地址为准。
 | `src/core/config-writer.ts` | modify | `ConfigPatch.dataRepo`：按子键写 `path / repository / autoSync / push`，`null` 删整段；`publishPrompts` 不动 | no |
 | `src/core/sync/data-repo-checkout.ts` | add | `ensureDataRepoCheckout`：有地址时本地路径不存在或为空目录 → clone；是 git 仓 → 比对 `origin`，不一致返回 mismatch 不动它；无地址 → 不做事 | no |
 | `src/core/sync/data-repo-git.ts` | modify | `inspectGitRepo` 增返回 `originUrl` | no |
-| `src/core/sync/sync-orchestrator.ts` | modify | `syncDataRepo` 开头先 `ensureDataRepoCheckout`，mismatch 直接报错中止 | no |
+| `src/core/sync/sync-orchestrator.ts` | modify | `SyncOptions.repository`，同步入口经 `resolveSyncContext` 先准备副本 | no |
+| `src/core/sync/sync-scope.ts` | modify | `syncOptionsFromConfig` 带上 `repository`；`resolveSyncContext` 开头 `ensureDataRepoCheckout`，mismatch 直接报错中止 | no |
 | `src/core/sync/data-repo-status.ts` | modify | 状态加 `repository` 与 `repo.originUrl`、`remoteMismatch`；不一致写进 notices | no |
 | `src/core/sync/data-repo-panel-types.ts` | modify | `DataRepoStatus` 对应字段 | no |
 | `src/app/api/data-repo/github/connect/route.ts` | modify | GitHub App 清单 `url` 用配置的 `repository`，没配才用缺省 | no |
 | `src/app/api/data-repo/github/github-helpers.ts` | modify | `resolveRepoFullNameAndId` 先用配置的 `repository`，再退回 remote，再退回缺省 | no |
+| `src/app/api/data-repo/github/callback/route.ts` | modify | 换令牌时传整段 `dataRepo` 而不只是路径 | no |
 | `src/bin/runner.ts` | modify | 同上的仓名解析；启动时与数据仓状态 / 同步请求前调用 `ensureDataRepoCheckout`，clone 结果写日志 | no |
 | `src/app/config/DataRepoForm.tsx` | add | 表单：启用开关、仓地址、本地路径、自动同步、自动推送 | no |
 | `src/app/config/ConfigEditor.tsx` | modify | 新区块 `data-repo-settings`「数据仓设置」 | no |
@@ -64,6 +66,8 @@ GitHub App 连接与清单一律以这个地址为准。
 | `test/core/sync/data-repo-checkout.test.ts` | add | clone 与 mismatch（本地裸仓做远端） | no |
 | `test/core/sync/data-repo-status.test.ts` | modify | remote 不一致报警；配置字面量补 `repository` | no |
 | `test/core/sync/data-repo-git-status.test.ts` | modify | `inspectGitRepo.originUrl` 断言 | no |
+| `test/core/sync/sync-orchestrator.test.ts` | modify | origin 不一致拒绝同步、一致照常 | no |
+| `test/app/api/data-repo-github.test.ts` | modify | 清单仓地址以配置为准 | no |
 | `test/core/sync/runner-hook.test.ts` | modify | 配置字面量补 `repository` | no |
 | `test/app/config/config-side-nav.test.ts` | modify | 导航项数 | no |
 | `test/app/config/config-nav-anchors.test.ts` | modify | 锚点清单 | no |

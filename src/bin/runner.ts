@@ -51,6 +51,7 @@ import type {
   SyncActionRequest,
   SyncActionResult,
 } from "../core/sync/data-repo-panel-types";
+import { describeCheckout, ensureDataRepoCheckout } from "../core/sync/data-repo-checkout";
 import {
   getRawDataRepoPath,
   readDataRepoManifest,
@@ -82,6 +83,8 @@ async function main(): Promise<void> {
     await refreshCatalog(config.customModels).catch((cause: unknown) => log(`探测失败：${describe(cause)}`));
   }
 
+  // 配置了数据仓地址时先把本地副本 clone 好，收尾与自动同步才有地方写
+  await prepareDataRepo(config);
   // 上一个进程退出前没跑完的轮次先收尾，已完成的作品照常导出
   const recovered = await recoverInterruptedRuns(config, log);
   // 没评完的评审队列在后台续评，不耽误调度与请求处理；裁判调用串行，与新一轮互不影响
@@ -187,14 +190,16 @@ async function handleGithubAppConvert(request: RunnerRequest): Promise<void> {
   }
 }
 
+/** 目标仓：配置里的 repository 优先，没配才看本地副本的 origin，都没有用缺省仓 */
 async function resolveRepoFullNameAndId(
-  repoPath?: string,
+  dataRepo?: AppConfig["dataRepo"],
 ): Promise<{ fullName: string; repoId: number | null }> {
   let fullName = "meomeo-dev/llm-iq-data";
   let repoId: number | null = null;
-  if (!repoPath) return { fullName, repoId };
+  if (!dataRepo) return { fullName, repoId };
   try {
-    const remote = (await gitExec(repoPath, ["remote", "get-url", "origin"])).trim();
+    const remote = dataRepo.repository
+      ?? (await gitExec(dataRepo.path, ["remote", "get-url", "origin"])).trim();
     const parsed = parseGitHubRemote(remote);
     if (parsed) {
       fullName = parsed;
@@ -224,7 +229,7 @@ async function handleGithubTokenExchange(
       await failRequest(request.id, "未找到 GitHub App 凭据，请重新发起连接");
       return;
     }
-    const { fullName, repoId } = await resolveRepoFullNameAndId(full.dataRepo?.path);
+    const { fullName, repoId } = await resolveRepoFullNameAndId(full.dataRepo);
     const tokens = await exchangeCode(app, code, repoId);
     const login = await fetchUserLogin(tokens.access_token);
     const now = Date.now();
@@ -271,18 +276,35 @@ async function handleGithubDisconnect(request: RunnerRequest): Promise<void> {
   }
 }
 
+/**
+ * 配置了仓地址就先把本地副本准备好（没有就 clone），结果写日志；
+ * 返回本地副本路径，没配或目录不存在为 null。clone 失败只记日志，面板按「路径不可达」提示
+ */
+async function prepareDataRepo(full: AppConfig): Promise<string | null> {
+  if (!full.dataRepo) return null;
+  if (full.dataRepo.repository !== null) {
+    try {
+      const note = describeCheckout(await ensureDataRepoCheckout(full.dataRepo, { log }));
+      if (note !== null) log(note);
+    } catch (cause) {
+      log(`数据仓 clone 失败：${describe(cause)}`);
+    }
+  }
+  return existsSync(full.dataRepo.path) ? full.dataRepo.path : null;
+}
+
 async function handleDataRepoStatus(request: RunnerRequest, full: AppConfig): Promise<void> {
   const conn = await readGithubConnection();
   const pushCapability: PushCapability =
     conn.state === "connected" ? "github-app" : "unavailable";
 
-  if (!full.dataRepo || !existsSync(full.dataRepo.path)) {
+  const repoPath = await prepareDataRepo(full);
+  if (repoPath === null) {
     await completeRequest(request.id, {
       statusResult: { repo: null, manifest: null, github: conn, pushCapability },
     });
     return;
   }
-  const repoPath = full.dataRepo.path;
   const gitInfo = await inspectGitRepo(repoPath);
   const rawPath = getRawDataRepoPath(full, configPath());
   const repo = { path: rawPath, ...gitInfo };
@@ -388,7 +410,7 @@ async function handleSyncData(request: RunnerRequest, full: AppConfig): Promise<
     await handleRunnerPush(request.id, action, full, startedAt);
     return;
   }
-  if (!full.dataRepo || !existsSync(full.dataRepo.path)) {
+  if ((await prepareDataRepo(full)) === null) {
     await recordSyncFailure(request.id, action.mode, "数据仓未配置", startedAt);
     return;
   }

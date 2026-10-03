@@ -56,6 +56,8 @@ export { syncOptionsFromConfig, type SyncScope } from "./sync-scope";
 
 export interface SyncOptions {
   repoPath: string;
+  /** 配置的 GitHub 仓地址：有则同步前先把本地副本准备好并校验 origin；缺省或 null 不校验 */
+  repository?: string | null;
   dataDir?: string;
   runIds?: readonly string[];
   dryRun?: boolean;

@@ -38,6 +38,8 @@ export interface PendingRun {
 export interface DataRepoStatus {
   /** 配置是否含 dataRepo 段 */
   configured: boolean;
+  /** 配置的 dataRepo.repository（GitHub 地址）；没配为 null，旧状态快照可能缺失 */
+  repository?: string | null;
   /** 配置的 dataRepo.autoSync：轮次结束后是否自动导出；旧状态快照可能缺失 */
   autoSync?: boolean;
   deploy: { readonly: boolean; externalRunner: boolean };
@@ -50,6 +52,10 @@ export interface DataRepoStatus {
     clean: boolean;
     branch: string | null;
     upstream: string | null;
+    /** origin 远程地址；旧执行器的代答可能缺失 */
+    originUrl?: string | null;
+    /** 配置了仓地址且本地副本的 origin 不是那个仓：面板报警，同步会被拒绝 */
+    remoteMismatch?: boolean;
     /** 本地领先 / 落后上游的提交数；无上游为 null */
     ahead: number | null;
     behind: number | null;

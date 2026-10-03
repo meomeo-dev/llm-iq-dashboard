@@ -7,7 +7,9 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/core/auth/guard";
 import { isReadonly } from "@/core/deploy-mode";
+import { loadConfig } from "@/core/config";
 import { buildManifest, createState } from "@/core/github-auth";
+import { configPath } from "@/core/paths";
 import { DEFAULT_REPOSITORY_URL } from "@/core/sync/data-repo-index";
 import {
   GITHUB_COOKIE_PATH,
@@ -78,7 +80,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const origin = requestOrigin(request);
-  const manifest = buildManifest(origin, DEFAULT_REPOSITORY_URL);
+  // 清单里的仓地址以配置为准，第三方用自己的数据仓时 App 指向他们的仓
+  const repositoryUrl = loadConfig(configPath()).dataRepo?.repository ?? DEFAULT_REPOSITORY_URL;
+  const manifest = buildManifest(origin, repositoryUrl);
   const state = createState();
   const html = renderAutoSubmitForm(state, JSON.stringify(manifest));
 

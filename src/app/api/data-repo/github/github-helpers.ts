@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { DataRepoConfig } from "@/core/config";
 import { externalRunner } from "@/core/runner-link";
 import {
   clearGithubCredentials,
@@ -116,14 +117,16 @@ export async function performAppConvert(code: string): Promise<string> {
   return creds.slug;
 }
 
+/** 目标仓：配置里的 repository 优先，没配才看本地副本的 origin，都没有用缺省仓 */
 async function resolveRepoFullNameAndId(
-  repoPath?: string,
+  dataRepo?: Pick<DataRepoConfig, "path" | "repository"> | null,
 ): Promise<{ fullName: string; repoId: number | null }> {
   let fullName = "meomeo-dev/llm-iq-data";
   let repoId: number | null = null;
-  if (!repoPath) return { fullName, repoId };
+  if (!dataRepo) return { fullName, repoId };
   try {
-    const remote = (await gitExec(repoPath, ["remote", "get-url", "origin"])).trim();
+    const remote = dataRepo.repository
+      ?? (await gitExec(dataRepo.path, ["remote", "get-url", "origin"])).trim();
     const parsed = parseGitHubRemote(remote);
     if (parsed) {
       fullName = parsed;
@@ -140,7 +143,7 @@ async function resolveRepoFullNameAndId(
 
 export async function performTokenExchange(
   code: string,
-  repoPath?: string,
+  dataRepo?: Pick<DataRepoConfig, "path" | "repository"> | null,
 ): Promise<void> {
   if (externalRunner()) {
     const res = await requestRunnerGithubAction("github-token-exchange", code);
@@ -153,7 +156,7 @@ export async function performTokenExchange(
   if (!app) {
     throw new Error("缺少 GitHub App 凭据");
   }
-  const { fullName, repoId } = await resolveRepoFullNameAndId(repoPath);
+  const { fullName, repoId } = await resolveRepoFullNameAndId(dataRepo);
   const tokens = await exchangeCode(app, code, repoId);
   const login = await fetchUserLogin(tokens.access_token);
   const now = Date.now();

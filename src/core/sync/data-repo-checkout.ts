@@ -94,7 +94,7 @@ async function cloneInto(repository: string, path: string, options: EnsureChecko
  * 按配置把数据仓本地副本准备好。只在路径不存在或为空目录时 clone，已有内容绝不覆盖。
  */
 export async function ensureDataRepoCheckout(
-  config: DataRepoConfig,
+  config: Pick<DataRepoConfig, "path" | "repository">,
   options: EnsureCheckoutOptions = {},
 ): Promise<CheckoutOutcome> {
   const { repository, path } = config;
