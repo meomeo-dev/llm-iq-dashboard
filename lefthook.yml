@@ -1,0 +1,23 @@
+# Git 钩子（ACR-022）：pnpm install 时由 lefthook 的安装后脚本装进 .git/hooks，同一仓的各 worktree 共用。
+# 绕过一次：LEFTHOOK=0 git commit / git push。各门禁的策略见 AGENTS.md「质量门」；
+# build 与 showcase:smoke 不挂钩子，仍在发布配方里手动跑。
+
+# 没装 lefthook 二进制（新 worktree 还没 pnpm install）时拦下而不是静默放行
+assert_lefthook_installed: true
+
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: pnpm check:secrets
+    types:
+      run: pnpm lint
+    length:
+      run: pnpm check:length
+
+pre-push:
+  commands:
+    prompts:
+      run: pnpm validate:prompts
+    tests:
+      run: pnpm test

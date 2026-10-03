@@ -1,4 +1,6 @@
 # 构建脚本白名单：只有列在这里的依赖可以运行安装后脚本。
 # tsx 依赖 esbuild 的原生二进制，必须允许其安装后脚本运行，否则脚本入口跑不起来。
+# lefthook 的安装后脚本把钩子装进 .git/hooks（ACR-022）。
 allowBuilds:
   esbuild: true
+  lefthook: true
