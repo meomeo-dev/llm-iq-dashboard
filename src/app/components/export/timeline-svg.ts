@@ -19,6 +19,7 @@ import {
 } from "../timeline/effort-slots";
 import { momentHealth, type Moment } from "../timeline/moments";
 import { verdictBadgesSvg } from "./verdict-badges-svg";
+import { rowPassRate } from "../timeline/pass-rate";
 import { listRows, rowKeyOf, type Row } from "../timeline/rows";
 import type { NowMark } from "../timeline/TimelineAxis";
 import {
@@ -185,24 +186,73 @@ function matrixHead({ input, width, slots, trackLeft }: TrackContext, rowCount: 
 
 function rowSvg(context: TrackContext, row: Row, top: number): string {
   const { palette, profiles = [] } = context.input;
-  const nameY = context.showPrompt ? top + ROW_HEIGHT / 2 - 3 : top + ROW_HEIGHT / 2 + 4;
+  const rowCards = context.input.moments.flatMap((moment) => moment.cards).filter((card) => rowKeyOf(card) === row.key);
   const parts = [
     line(0, top + ROW_HEIGHT, context.width, top + ROW_HEIGHT, palette.border, 0.5),
-    text(PAD, nameY, `${row.cli} · ${row.model}`, palette.text, 12),
+    rowLabelSvg(context, row, rowCards, top),
   ];
-  if (context.showPrompt) parts.push(text(PAD, nameY + 16, row.promptId, palette.textFaint, 11));
-  // 行标题下的上游色点，与看板一致；只有登录态时不画
-  const rowCards = context.input.moments.flatMap((moment) => moment.cards).filter((card) => rowKeyOf(card) === row.key);
-  cellUpstreams(rowCards, profiles).forEach((name, index) => {
-    const dotY = nameY + (context.showPrompt ? 28 : 14);
-    parts.push(`<circle cx="${PAD + 4 + index * 12}" cy="${dotY}" r="4" fill="${profileColor(name)}"/>`);
-  });
   for (const { moment, x } of context.columns) {
     const cell = folderCell(moment, row, context.slots, context.input.efforts, profiles);
     if (cell === null) continue;
     parts.push(folderSvg(context, cell, context.trackLeft + x - TILE_SIZE / 2, top + (ROW_HEIGHT - TILE_SIZE) / 2));
   }
   return parts.join("");
+}
+
+/** 行标签里的一行：高度与画法分开，先把各行叠起来算总高，再整块垂直居中 */
+interface LabelLine {
+  height: number;
+  draw: (lineTop: number) => string;
+}
+
+/**
+ * 行标签：CLI · 模型、题目、上游色点、鹈鹕通过率，整块在行内垂直居中，
+ * 与看板 .row-label（flex 列居中）同形。
+ */
+function rowLabelSvg(context: TrackContext, row: Row, rowCards: readonly DashboardCard[], top: number): string {
+  const lines = labelLines(context, row, rowCards);
+  const totalHeight = lines.reduce((sum, item) => sum + item.height, 0);
+  let lineTop = top + (ROW_HEIGHT - totalHeight) / 2;
+  return lines
+    .map((item) => {
+      const svg = item.draw(lineTop);
+      lineTop += item.height;
+      return svg;
+    })
+    .join("");
+}
+
+function labelLines(context: TrackContext, row: Row, rowCards: readonly DashboardCard[]): LabelLine[] {
+  const { palette, profiles = [] } = context.input;
+  const lines: LabelLine[] = [{ height: 18, draw: (y) => text(PAD, y + 13, `${row.cli} · ${row.model}`, palette.text, 12) }];
+  if (context.showPrompt) lines.push({ height: 16, draw: (y) => text(PAD, y + 12, row.promptId, palette.textFaint, 11) });
+  // 行标题下的上游色点，与看板一致；只有登录态时不画
+  const upstreams = cellUpstreams(rowCards, profiles);
+  if (upstreams.length > 0) {
+    lines.push({
+      height: 14,
+      draw: (y) => upstreams.map((name, index) => `<circle cx="${PAD + 4 + index * 12}" cy="${y + 9}" r="4" fill="${profileColor(name)}"/>`).join(""),
+    });
+  }
+  return [...lines, ...passRateLines(row.promptId, rowCards, palette)];
+}
+
+/** 鹈鹕通过率：「合计 在线/总数」加按强度分列的树状行，与看板 RowPassRate 同口径；无评分标准不画 */
+function passRateLines(promptId: string, cards: readonly DashboardCard[], palette: Palette): LabelLine[] {
+  const rate = rowPassRate(promptId, cards);
+  if (rate === null) return [];
+  const last = rate.byEffort.length - 1;
+  // 合计行含看板 .row-pass 的 4px 上边距
+  const total: LabelLine = { height: 22, draw: (y) => text(PAD, y + 17, `合计 ${rate.total.online}/${rate.total.total}`, palette.textDim, 12) };
+  const byEffort = rate.byEffort.map(
+    (item, index): LabelLine => ({
+      height: 18,
+      draw: (y) =>
+        text(PAD, y + 13, index === last ? "└" : "├", palette.textFaint, 12) +
+        text(PAD + 12, y + 13, `${item.effort} ${item.online}/${item.total}`, palette.textDim, 12),
+    }),
+  );
+  return [total, ...byEffort];
 }
 
 /** 文件夹格子：圆角底板 + 2×2 小图，每角固定一个档位，与看板的 .folder 同形 */
