@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | implementing |
+| 状态 | done |
 | 日期 | 2026-10-03 |
 | 变更类型 | add-dependency |
 | 触发来源 | 口头：发布门加了 `check:secrets` 之后只在手动跑门禁时执行，要用现成的开源钩子管理器在提交与推送前自动拦，不自己造轮子 |
@@ -71,7 +71,7 @@ pre-push，钩子配置随仓库入库，`pnpm install` 后自动装好。
 | `pnpm test` | 单元测试 | pass | pass | c81165b | |
 | `pnpm check:secrets` | 密钥扫描 | pass | pass | c81165b | |
 | `pnpm build` | Next.js 看板生产构建 | pass | pass | c81165b | |
-| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链、变量注入、强度折叠 | - | - | | skip | skip | | 本 ACR 不动运行时代码；冒烟消耗三家配额，记 skip |
+| `PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once` | 端到端冒烟：三家 CLI 调用链、变量注入、强度折叠 | pass | pass | be25c7b | 本 ACR 不动运行时代码，经用户同意只跑一次（轮次 20261003T060858Z，10 次调用 8 ok），两列同记；codex gpt-6-astra 两次 400 invalid_request 是上游模型侧错误，与钩子无关 |
 | `docker compose -f compose.yaml -f compose.data-repo.yaml build web` | 容器镜像构建（非 git 上下文里 pnpm install 不被 lefthook 卡住） | pass | pass | c81165b | 构建日志无 lefthook 输出，钩子未装 |
 
 ## 分步实施
