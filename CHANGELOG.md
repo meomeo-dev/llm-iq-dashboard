@@ -3,6 +3,20 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- 发布门加密钥扫描 `pnpm check:secrets`：对 git 已跟踪的文本文件逐行套用与数据仓发布同一套泄漏规则
+  （私钥块、厂商令牌）再加赋值启发（`apiKey` / `secret` / `token` 后的长随机串），并核对本机配置、
+  产物目录与 `.env` 没被加进版本库；白名单按文件登记原因（`config/secret-scan-policy.yaml`）。
+
+### 修复
+
+- 数据仓根清单 `index.json` 首次生成时 `name` 与 `repository` 从该仓的 `origin` 远程推导（https 与
+  ssh 写法都认），第三方用自己的数据仓不再带着 `meomeo-dev/llm-iq-data` 的来源地址；已有清单里的
+  值仍优先。
+
 ## [0.5.0] - 2026-10-03
 
 ### 新增
@@ -100,6 +114,7 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.5.0
 [0.4.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.4.0
 [0.3.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.3.0

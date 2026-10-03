@@ -26,6 +26,11 @@
 | `PELICAN_DATA_SOURCE` | `remote` | 是 | 启用远程数据源，从数据仓读取数据。未设置 `PELICAN_READONLY` 时将自动隐含只读模式并记日志警告。 |
 | `PELICAN_DATA_REPO_URL` | `https://raw.githubusercontent.com/<org>/<repo>/main` | 否 | 公开数据仓根地址。缺省为 `https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`。 |
 
+自建数据仓：以 [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data) 为模板建仓
+（其 README「作为模板建立自己的数据仓」一节），执行侧 `dataRepo.path` 指向它的本地副本，首次同步生成的
+`index.json` 会从该仓的 `origin` 远程推导 `name` 与 `repository`；展台把 `PELICAN_DATA_REPO_URL` 指向
+它的 raw 根地址即可，数据仓的 CI 会在每次推送时复跑契约校验与泄漏扫描。
+
 ---
 
 ## 3. 部署前自检 (Pre-deployment Checklist)

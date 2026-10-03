@@ -3,12 +3,14 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import {
   buildRunSummary,
+  manifestMetaFromRemote,
   updateDayIndex,
   updateManifest,
 } from "@/core/sync/data-repo-index";
@@ -318,5 +320,51 @@ describe("data-repo-index 索引与清单维护", () => {
     assert.equal(summary.attempts, 1);
     assert.equal(summary.ok, 1);
     assert.deepEqual(summary.promptIds, ["classic-v1"]);
+  });
+});
+
+describe("data-repo-index 清单来源推导", () => {
+  let repoDir: string;
+
+  beforeEach(async () => {
+    repoDir = await mkdtemp(join(tmpdir(), "llm-iq-repo-remote-"));
+  });
+
+  afterEach(async () => {
+    await rm(repoDir, { recursive: true, force: true });
+  });
+
+  const git = (...args: string[]): void => {
+    execFileSync("git", ["-C", repoDir, ...args], { stdio: "ignore" });
+  };
+
+  it("没有 index.json 时 name 与 repository 从 origin 远程推导，https 与 ssh 写法都认", async () => {
+    git("init", "-q");
+    git("remote", "add", "origin", "https://github.com/acme/my-iq-data.git");
+    const manifest = await updateManifest(repoDir);
+    assert.equal(manifest.name, "my-iq-data");
+    assert.equal(manifest.repository, "https://github.com/acme/my-iq-data");
+
+    git("remote", "set-url", "origin", "git@github.com:acme/other-data.git");
+    assert.deepEqual(await manifestMetaFromRemote(repoDir), {
+      name: "other-data", repository: "https://github.com/acme/other-data",
+    });
+  });
+
+  it("不是 git 仓或远程不是 GitHub 时用缺省值；已有 index.json 里的 name / repository 优先", async () => {
+    assert.deepEqual(await manifestMetaFromRemote(repoDir), {
+      name: "llm-iq-data", repository: "https://github.com/meomeo-dev/llm-iq-data",
+    });
+    git("init", "-q");
+    git("remote", "add", "origin", "https://gitlab.example.com/acme/data.git");
+    assert.equal((await manifestMetaFromRemote(repoDir)).repository, "https://github.com/meomeo-dev/llm-iq-data");
+
+    git("remote", "set-url", "origin", "https://github.com/acme/my-iq-data.git");
+    await writeFile(join(repoDir, "index.json"), JSON.stringify({
+      schemaVersion: 1, name: "custom", description: "d", repository: "https://example.com/x", days: [],
+    }));
+    const manifest = await updateManifest(repoDir);
+    assert.equal(manifest.name, "custom");
+    assert.equal(manifest.repository, "https://example.com/x");
   });
 });

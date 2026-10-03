@@ -51,6 +51,11 @@ const JWT_PATTERN =
 const OPENAI_OR_ANTHROPIC_SK_PATTERN =
   /(?<![A-Za-z0-9_-])(?:sk-ant-|sk-proj-|sk-)[A-Za-z0-9_-]{32,}/g;
 
+/** 检查是否含私钥块（private-key） */
+export function checkPrivateKey(text: string): boolean {
+  return PRIVATE_KEY_PATTERN.test(text);
+}
+
 /** 将文本中的本机绝对路径替换为 ~ 形式 */
 export function sanitizeLocalPaths(text: string): string {
   return text.replace(LOCAL_PATH_REPLACE_PATTERN, (match) => {
@@ -89,7 +94,7 @@ export function scanText(text: string, leakGuard?: LeakGuard): LeakScanResult {
     return { leaked: true, reason: "local-path" };
   }
 
-  if (PRIVATE_KEY_PATTERN.test(text)) {
+  if (checkPrivateKey(text)) {
     return { leaked: true, reason: "private-key" };
   }
 

@@ -23,10 +23,39 @@ import {
   type PublicRunRecord,
   type RunSummary,
 } from "../data-repo/contract";
+import { gitExec } from "./data-repo-git";
 
 const DEFAULT_REPO_NAME = "llm-iq-data";
 const DEFAULT_REPO_DESCRIPTION = "LLM-IQ Benchmark Open Data";
 export const DEFAULT_REPOSITORY_URL = "https://github.com/meomeo-dev/llm-iq-data";
+
+/** GitHub 远程地址的 https 与 ssh 两种写法，取 owner/repo */
+const GITHUB_REMOTE_FORMS = [
+  /^https:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/,
+  /^git@github\.com:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/,
+];
+
+/**
+ * 没有根清单时仓名与地址从 origin 远程推导，第三方用自己的仓也能得到正确的来源；
+ * 不是 git 仓、没有 origin 或不是 GitHub 地址时用缺省值。
+ */
+export async function manifestMetaFromRemote(
+  repoDir: string,
+): Promise<Pick<ManifestMeta, "name" | "repository">> {
+  const fallback = { name: DEFAULT_REPO_NAME, repository: DEFAULT_REPOSITORY_URL };
+  let remote: string;
+  try {
+    remote = (await gitExec(repoDir, ["remote", "get-url", "origin"])).trim();
+  } catch {
+    return fallback;
+  }
+  for (const form of GITHUB_REMOTE_FORMS) {
+    const match = form.exec(remote);
+    const [, owner, repo] = match ?? [];
+    if (owner && repo) return { name: repo, repository: `https://github.com/${owner}/${repo}` };
+  }
+  return fallback;
+}
 
 /** 从 PublicRunRecord 提取 RunSummary */
 export function buildRunSummary(record: PublicRunRecord): RunSummary {
@@ -199,11 +228,12 @@ interface ManifestMeta {
   existingUpdatedAt: string | null;
 }
 
-/** 读取已有根清单元信息，损坏时报错中止 */
-async function loadManifestMeta(manifestPath: string): Promise<ManifestMeta> {
-  let name = DEFAULT_REPO_NAME;
+/** 读取已有根清单元信息，损坏时报错中止；清单里没写的仓名与地址从远程推导 */
+async function loadManifestMeta(repoDir: string, manifestPath: string): Promise<ManifestMeta> {
+  const derived = await manifestMetaFromRemote(repoDir);
+  let name = derived.name;
   let description = DEFAULT_REPO_DESCRIPTION;
-  let repository = DEFAULT_REPOSITORY_URL;
+  let repository = derived.repository;
   let existingUpdatedAt: string | null = null;
 
   try {
@@ -273,7 +303,7 @@ export async function updateManifest(
   now = new Date(),
 ): Promise<DataRepoManifest> {
   const manifestPath = join(repoDir, MANIFEST_FILE);
-  const meta = await loadManifestMeta(manifestPath);
+  const meta = await loadManifestMeta(repoDir, manifestPath);
 
   const days = await scanAllDays(repoDir);
   days.sort((a, b) => b.date.localeCompare(a.date));

@@ -89,5 +89,7 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 ## 质量门
 
 提交前运行：`pnpm lint`、`pnpm test`、`pnpm validate:prompts`、`pnpm build`、
-`pnpm check:length`（文件与函数长度阈值见 `config/code-length-policy.yaml`）。
+`pnpm check:length`（文件与函数长度阈值见 `config/code-length-policy.yaml`）、
+`pnpm check:secrets`（对已跟踪文件套用与数据仓发布同一套泄漏规则加赋值启发，白名单与禁止入库清单见
+`config/secret-scan-policy.yaml`；假令牌逐文件登记原因，不整目录放行）。
 改动只读部署或远程数据源时，另跑 `pnpm showcase:smoke`。

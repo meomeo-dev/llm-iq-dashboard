@@ -100,6 +100,9 @@ PELICAN_PORT=3100 docker compose up -d
 
 - **挂载与属主隔离**：挂载写在可选覆盖文件 `compose.data-repo.yaml` 中，启用时执行 `docker compose -f compose.yaml -f compose.data-repo.yaml up -d`，只把 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）；宿主机路径须加入 Docker Desktop 的 File Sharing。不叠加该文件时两容器照常运行，只是不做数据仓同步。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
 - **安全边界与凭据隔离**：容器内部不存放任何 GitHub Token、credential helper 或 SSH Key。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
+- **自建数据仓**：以 `meomeo-dev/llm-iq-data` 为模板建仓后把它的本地副本挂到 `/data-repo` 即可，
+  首次同步生成的 `index.json` 从该仓的 `origin` 远程推导 `name` 与 `repository`（步骤见数据仓 README
+  「作为模板建立自己的数据仓」）。
 - **容器内配置**：在 `/app/data/pelican.config.yaml` 中配置 `dataRepo`：
   ```yaml
   dataRepo:
