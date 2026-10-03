@@ -39,6 +39,7 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
     customPrompts: [],
     customModels: { claude: ["m1"] },
     judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },
+    dataRepo: { path: " ../llm-iq-data ", repository: "  ", autoSync: true, push: false },
   };
 
   const json = buildConfigPatchBody(draft);
@@ -50,4 +51,17 @@ test("config-editor-model: buildConfigPatchBody", async (t) => {
   assert.deepStrictEqual(parsed.profiles, draft.profiles);
   assert.deepStrictEqual(parsed.prompts, draft.customPrompts);
   assert.deepStrictEqual(parsed.customModels, draft.customModels);
+  // 地址留空写成 null（写回时删键），路径去掉首尾空白
+  assert.deepStrictEqual(parsed.dataRepo, { path: "../llm-iq-data", repository: null, autoSync: true, push: false });
+
+  await t.test("不启用数据仓时补丁体里 dataRepo 为 null，写回删整段", () => {
+    const parsed = JSON.parse(buildConfigPatchBody({ ...draft, dataRepo: null }));
+    assert.strictEqual(parsed.dataRepo, null);
+  });
+  await t.test("填了地址时原样带上", () => {
+    const parsed = JSON.parse(buildConfigPatchBody({
+      ...draft, dataRepo: { path: "/data-repo", repository: "https://github.com/acme/pelican-data ", autoSync: false, push: false },
+    }));
+    assert.strictEqual(parsed.dataRepo.repository, "https://github.com/acme/pelican-data");
+  });
 });

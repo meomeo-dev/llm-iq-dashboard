@@ -8,7 +8,7 @@
 | 触发来源 | 口头：数据仓是哪一个只能写在 YAML 里，网页改不了；用户要求在配置页填数据仓地址，本地没有就自动 clone |
 | 基线 | ARCH-001 |
 | 影响章节 | §4 §5 |
-| 改造面上限 | 5 个模块（src/core、src/app、src/bin 三个代码模块，各自的测试目录 test/core、test/app 同构随之计入；config、docs 与根文件不计） |
+| 改造面上限 | 6 个模块（src/core、src/app、src/bin 三个代码模块，各自的测试目录 test/core、test/app 同构随之计入，面板标记夹具 test/fixtures 随 test/app 的夹具测试计入；config、docs 与根文件不计） |
 | 取代 / 被取代 | 无 |
 
 目前 `dataRepo.path / autoSync / push` 只能在 `config/pelican.config.yaml` 里写，配置页「数据仓」区块只展示状态；
@@ -61,6 +61,9 @@ GitHub App 连接与清单一律以这个地址为准。
 | `src/app/config/page.tsx` | modify | 把配置的 `dataRepo` 交给编辑器初值 | no |
 | `src/app/config/DataRepoPanel.tsx` | modify | 标题显示配置的仓名而不是写死 `llm-iq-data`；remote 不一致时报警条 | no |
 | `src/app/config/DataRepoGithubCard.tsx` | modify | 按钮文案显示仓名 | no |
+| `src/app/config/config-data-repo.css` | modify | 「数据仓设置」表单字段样式 | no |
+| `test/app/config/config-editor-model.test.ts` | modify | 补丁体带 `dataRepo`，留空地址写成 null | no |
+| `test/fixtures/markup/wp-l/unconfigured.html` | modify | 未配置提示改指向「数据仓设置」区块 | no |
 | `test/core/config-data-repo.test.ts` | modify | `repository` 解析与校验 | no |
 | `test/core/config-writer.test.ts` | modify | `dataRepo` 写回与删段 | no |
 | `test/core/sync/data-repo-checkout.test.ts` | add | clone 与 mismatch（本地裸仓做远端） | no |
@@ -74,6 +77,7 @@ GitHub App 连接与清单一律以这个地址为准。
 | `config/pelican.example.yaml` | modify | `dataRepo.repository` 示例与说明 | no |
 | `README.md` | modify | 数据仓同步一节：配置页可改、空目录自动 clone | no |
 | `docs/deploy-docker.md` | modify | 容器里挂空目录即自动 clone | no |
+| `docs/deploy-public-showcase.md` | modify | 自建数据仓一段改为在配置页填地址 | no |
 | `docs/architecture/architecture.md` | modify | §4 §5 回填 | no |
 | `AGENTS.md` | modify | 架构速览补一句 | no |
 | `CHANGELOG.md` | modify | `[未发布]` 新增一条 | no |

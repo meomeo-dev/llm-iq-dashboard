@@ -33,6 +33,7 @@
 | [ACR-020](revisions/ACR-020-judge-ai-layer.md) | 2026-09-30 | 评审 AI 语义层：适配器评审模式，轮次定稿后裁判 CLI 看联系图打 C5–C8；代码层权重降到 30 分 | §3 §4 §7 |
 | [ACR-022](revisions/ACR-022-git-hooks-manager.md) | 2026-10-03 | Git 钩子交给 lefthook 管理：pre-commit 跑密钥扫描、类型检查与长度门，pre-push 跑测试与题库校验 | §0 §6 |
 | [ACR-021](revisions/ACR-021-judge-ai-locate.md) | 2026-10-01 | 裁判先看首帧定位四类部位的取景框，程序按框重切细节表再打分；几何推断只作兜底 | §3 §4 |
+| [ACR-023](revisions/ACR-023-data-repo-web-config.md) | 2026-10-03 | 数据仓地址 `dataRepo.repository` 在配置页可改，执行器按地址 clone 本地副本、origin 不一致拒绝同步，GitHub App 以地址为目标仓 | §4 §5 |
 
 ## 0. 技术选型总览
 
@@ -201,6 +202,11 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   缺 `run.json` 的残轮超过保留期两倍记 `skipped/abandoned` 后删除；其余未发布轮次保留（ACR-009、ACR-012）。
 - 执行进程启动时先收尾上次没跑完的轮次：有 `run.json` 的按已停止收尾（保留已完成调用）并自动导出，
   只有 `progress.json` 的空目录删除（ACR-012）。
+- 数据仓是哪一个由配置 `dataRepo.repository`（GitHub 地址）决定（ACR-023）：执行器启动与每次同步前
+  先 `ensureDataRepoCheckout`——`dataRepo.path` 不存在或为空目录就按地址 clone，已是 git 仓则比对
+  `origin`，不是同一个仓就报警并拒绝同步，绝不覆盖已有内容；没配地址时仓库仍由本地副本的 `origin`
+  决定。面板状态带 `repository`、`repo.originUrl` 与 `repo.remoteMismatch`；GitHub App 清单与令牌
+  换取的目标仓同样先取配置地址。
 - 公开数据仓 `meomeo-dev/llm-iq-data`：`pnpm sync:data` 把已结束轮次脱敏导出为
   `runs/YYYY/MM/DD/<runId>/`（UTC 分区，只追加），不含原始转录；布局契约是
   `src/core/data-repo/contract.ts`。台账 `sync-state.json` 记 exported / published / skipped（原因
@@ -231,7 +237,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `pelican.example.yaml`（起步模板）生成。配置页写回时在 YAML 语法树上改值，保留注释，
   先校验后替换。作品评审 `judge`（缺省关闭）：代码层开关、AI 层开关、裁判清单
   `judge.ai.judges[]`（`cli × model × effort`，须与被评作品厂商不同）与单次问答超时，配置页
-  「作品评审」区块可改（ACR-020）。
+  「作品评审」区块可改（ACR-020）。数据仓 `dataRepo`：GitHub 地址 `repository`、本地路径 `path`、
+  `autoSync`、`push` 在配置页「数据仓设置」区块可改，写回按子键改值、关闭时删整段；题目白名单
+  `publishPrompts` 只在文件里改（ACR-023）。
 - `config/pricing-catalog.lock.json`：价格目录 Release 的 tag 与附件 sha256。
 - `config/smoke.config.yaml`：端到端冒烟配置。
 

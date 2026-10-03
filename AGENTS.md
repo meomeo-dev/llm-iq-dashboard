@@ -72,6 +72,8 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 - 运行结果只经 `pnpm sync:data` 脱敏后写入公开数据仓
   [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data)，
   本地工作副本位于同级目录 `../llm-iq-data`。
+- 数据仓是哪一个由配置 `dataRepo.repository` 决定，配置页「数据仓设置」区块可改；执行器启动与同步前按地址
+  把 `dataRepo.path` clone 好（只在路径不存在或为空目录时），本地 `origin` 对不上就报警并拒绝同步（ACR-023）。
 - 向数据仓推送（`--push` 或 `git push`）会公开发布数据，须先经人工确认。
 - 数据仓布局与记录格式的唯一契约是 `src/core/data-repo/contract.ts`；改动契约时同步更新
   数据仓的 `schemas/` 与 `scripts/lib/validator.mjs`。

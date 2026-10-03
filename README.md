@@ -98,7 +98,8 @@ docker exec -it llm-iq-runner pnpm pair
 不开端口，负责调度与执行，看板发起的一轮经数据卷交给它。镜像不含 CLI，runner 首次启动时从
 各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。公开数据仓工作副本通过 bind mount
 （`${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo`，由可选覆盖文件 `compose.data-repo.yaml` 启用）挂入 runner，容器内脱敏导出并本地提交，
-由宿主机安全推送并通过 `pnpm sync:data --confirm-published` 确认发布。卷、配置、更新与设计取舍见
+由宿主机安全推送并通过 `pnpm sync:data --confirm-published` 确认发布。配置页「数据仓设置」填了数据仓地址后，
+挂进来的是空目录也行，runner 启动时自动 clone。卷、配置、更新与设计取舍见
 [`docs/deploy-docker.md`](docs/deploy-docker.md)。
 
 ## 公网只读展台部署
@@ -315,14 +316,19 @@ pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后�
 
 ### 配置
 
-在 `config/pelican.config.yaml` 中配置 `dataRepo` 节点：
+在配置页「数据仓设置」区块填写（或直接改 `config/pelican.config.yaml` 的 `dataRepo` 节点）：
 
 ```yaml
 dataRepo:
   path: ../llm-iq-data    # 本地数据仓路径（相对路径按 cwd 解析；容器部署时填 /data-repo）
+  repository: https://github.com/meomeo-dev/llm-iq-data   # 数据仓地址（可选）：本地路径不存在或为空目录时按它 clone
   autoSync: false         # 评测完成后是否自动触发同步（默认 false）
   push: false             # 同步提交后是否自动 git push 到远程（默认 false）
 ```
+
+填了 `repository` 时，执行器启动与每次同步前都会核对本地副本：路径不存在或是空目录就按地址 clone，
+已是别的仓的副本（`origin` 对不上）则面板报警并拒绝同步，绝不覆盖已有内容。不填则仓库由本地副本的
+`origin` 决定。题目白名单 `publishPrompts` 仍只在配置文件里改。
 
 开启 `autoSync: true` 时，`runner` 在每轮评测生成最终 `run.json` 后自动调用同步流水线。若未挂载或不是 Git 仓库则记录清晰日志并跳过；同步失败仅记录日志，不影响评测本身与结果。
 

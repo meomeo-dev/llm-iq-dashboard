@@ -27,8 +27,8 @@
 | `PELICAN_DATA_REPO_URL` | `https://raw.githubusercontent.com/<org>/<repo>/main` | 否 | 公开数据仓根地址。缺省为 `https://raw.githubusercontent.com/meomeo-dev/llm-iq-data/main`。 |
 
 自建数据仓：以 [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data) 为模板建仓
-（其 README「作为模板建立自己的数据仓」一节），执行侧 `dataRepo.path` 指向它的本地副本，首次同步生成的
-`index.json` 会从该仓的 `origin` 远程推导 `name` 与 `repository`；展台把 `PELICAN_DATA_REPO_URL` 指向
+（其 README「作为模板建立自己的数据仓」一节），执行侧在配置页「数据仓设置」填它的 GitHub 地址与本地路径，
+本地副本由执行器自动 clone，首次同步生成的 `index.json` 会从该仓的 `origin` 远程推导 `name` 与 `repository`；展台把 `PELICAN_DATA_REPO_URL` 指向
 它的 raw 根地址即可，数据仓的 CI 会在每次推送时复跑契约校验与泄漏扫描。
 
 ---

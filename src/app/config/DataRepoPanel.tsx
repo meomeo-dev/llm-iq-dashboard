@@ -34,16 +34,40 @@ export interface DataRepoPanelProps {
   autoLoad?: boolean;
 }
 
+/** 面板标题里的仓名：配置了地址就显示 owner/repo，没配沿用缺省仓名 */
+function repositoryLabel(status: DataRepoStatus | null): string {
+  const url = status?.repository;
+  if (!url) return "llm-iq-data";
+  return url.replace(/^https:\/\/github\.com\//, "");
+}
+
+function DataRepoHeader({ label }: { label: string }) {
+  return (
+    <header>
+      <h2>数据仓</h2>
+      <p>公开评测数据仓（{label}）的同步与发布状态。</p>
+    </header>
+  );
+}
+
 /** 渲染提示或禁用说明的精简区块 */
-function DataRepoNoticeSection({ message }: { message: string }) {
+function DataRepoNoticeSection({ message, label }: { message: string; label: string }) {
   return (
     <section id="data-repo" className="config-section data-repo-section">
-      <header>
-        <h2>数据仓</h2>
-        <p>公开评测数据仓（llm-iq-data）的同步与发布状态。</p>
-      </header>
+      <DataRepoHeader label={label} />
       <p className="data-repo-notice">{message}</p>
     </section>
+  );
+}
+
+/** 本地副本指向别的仓：同步已被执行器拒绝，告诉所有者两条出路 */
+function DataRepoMismatchBar({ status }: { status: DataRepoStatus | null }) {
+  if (status?.repo?.remoteMismatch !== true) return null;
+  return (
+    <div className="status error data-repo-error-bar">
+      本地副本的 origin 与配置的数据仓地址不是同一个仓，同步已拒绝：改「数据仓设置」里的地址，
+      或换一个空目录作本地路径让执行器重新 clone。
+    </div>
   );
 }
 
@@ -79,7 +103,7 @@ function getSpecialNotice(
 ): string | null {
   if (loading && status === null) return "正在读取数据仓状态…";
   if (status !== null && !status.configured) {
-    return "当前配置未启用数据仓（dataRepo）。如需同步评测数据到公开数据仓，请在配置文件中添加 dataRepo 节点。";
+    return "当前配置未启用数据仓（dataRepo）。如需同步评测数据到公开数据仓，在上方「数据仓设置」区块启用并保存。";
   }
   if (status !== null && status.deploy.readonly) {
     return "当前为只读部署（只读展台或远程数据源），数据仓同步功能已禁用。";
@@ -157,21 +181,20 @@ export function DataRepoPanel({
   const currentResult = hookResult ?? initialActionResult;
   const pending = usePendingSelection(status);
 
+  const label = repositoryLabel(status);
   const notice = getSpecialNotice(status, loading);
-  if (notice !== null) return <DataRepoNoticeSection message={notice} />;
+  if (notice !== null) return <DataRepoNoticeSection message={notice} label={label} />;
 
   const { health, counts, pushConfirm, summary, issues } =
     derivePanelData(status, currentResult);
 
   return (
     <section id="data-repo" className="config-section data-repo-section">
-      <header>
-        <h2>数据仓</h2>
-        <p>公开评测数据仓（llm-iq-data）的同步与发布状态。</p>
-      </header>
+      <DataRepoHeader label={label} />
 
       <DataRepoCards health={health} counts={counts} />
-      {status?.github && <DataRepoGithubCard github={status.github} />}
+      <DataRepoMismatchBar status={status} />
+      {status?.github && <DataRepoGithubCard github={status.github} repositoryName={label} />}
       {status?.notice && (
         <div className="status notice data-repo-notice-bar">{status.notice}</div>
       )}

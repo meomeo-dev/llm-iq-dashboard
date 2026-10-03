@@ -6,6 +6,8 @@ import type { GithubConnection } from "@/core/sync/data-repo-panel-types";
 export interface DataRepoGithubCardProps {
   github?: GithubConnection | null;
   onDisconnect?: () => Promise<void> | void;
+  /** 安装按钮上显示的目标仓名；缺省为公共数据仓 */
+  repositoryName?: string;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -21,11 +23,12 @@ interface BodyProps {
   login?: string | null;
   appSlug?: string | null;
   settingsUrl: string;
+  repositoryName: string;
   busy: boolean;
   onDisconnect: () => void;
 }
 
-function DataRepoGithubBody({ state, login, appSlug, settingsUrl, busy, onDisconnect }: BodyProps) {
+function DataRepoGithubBody({ state, login, appSlug, settingsUrl, repositoryName, busy, onDisconnect }: BodyProps) {
   if (state === "disconnected") {
     return (
       <>
@@ -41,7 +44,7 @@ function DataRepoGithubBody({ state, login, appSlug, settingsUrl, busy, onDiscon
       <>
         <p className="data-repo-github-desc">GitHub App（{appSlug}）已创建，请安装到目标仓库。</p>
         <a href="/api/data-repo/github/connect" className="data-repo-btn data-repo-btn-primary">
-          继续安装到 llm-iq-data
+          继续安装到 {repositoryName}
         </a>
       </>
     );
@@ -71,7 +74,7 @@ function DataRepoGithubBody({ state, login, appSlug, settingsUrl, busy, onDiscon
   );
 }
 
-export function DataRepoGithubCard({ github, onDisconnect }: DataRepoGithubCardProps) {
+export function DataRepoGithubCard({ github, onDisconnect, repositoryName = "llm-iq-data" }: DataRepoGithubCardProps) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -124,6 +127,7 @@ export function DataRepoGithubCard({ github, onDisconnect }: DataRepoGithubCardP
           login={login}
           appSlug={appSlug}
           settingsUrl={settingsUrl}
+          repositoryName={repositoryName}
           busy={busy}
           onDisconnect={() => void handleDisconnect()}
         />

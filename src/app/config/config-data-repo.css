@@ -249,4 +249,6 @@
 .data-repo-github-card .data-repo-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
 .data-repo-btn-primary { background: var(--accent); color: #fff; text-decoration: none; }
 
-
+/* 「数据仓设置」表单：地址与路径各占一行，说明放在输入框下方 */
+.data-repo-field { display: flex; flex-direction: column; gap: 6px; }
+.data-repo-field input { width: 100%; max-width: 820px; font-family: inherit; }

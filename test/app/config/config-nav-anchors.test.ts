@@ -131,6 +131,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
           customPrompts: [],
           customModels: {},
           judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },
+          dataRepo: { path: "../llm-iq-data", repository: "", autoSync: false, push: false },
         },
         builtinPrompts: [],
         initialCatalog: catalog,
@@ -138,7 +139,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
       })
     );
     const ids = extractSectionIds(html);
-    const expected = ["capability", "prompts", "harness-guard", "profiles", "matrix", "schedule", "timeout", "judge"];
+    const expected = ["capability", "prompts", "harness-guard", "profiles", "matrix", "schedule", "timeout", "judge", "data-repo-settings"];
     assert.deepStrictEqual(ids, expected);
     assert.strictEqual(new Set(ids).size, ids.length, "区块 id 不得重复");
   });
@@ -218,6 +219,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
           customPrompts: [],
           customModels: {},
           judge: { enabled: false, ai: { enabled: false, judges: [], timeoutMs: 300000, concurrency: 5 } },
+          dataRepo: null,
         },
         builtinPrompts: [],
         initialCatalog: catalog,

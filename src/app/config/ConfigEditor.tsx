@@ -13,6 +13,7 @@ import { RotationForm } from "./RotationForm";
 import { TimeoutForm } from "./TimeoutForm";
 import { HarnessGuardForm } from "./HarnessGuardForm";
 import { JudgePanel } from "./JudgePanel";
+import { DataRepoSettingsSection } from "./DataRepoForm";
 import { ConfigSection } from "./ConfigSection";
 import { ProfilePanel, type ProfilePanelProps } from "./ProfilePanel";
 import type { ProfileCredentialTable } from "@/core/profile-credentials";
@@ -91,6 +92,8 @@ export function ConfigEditor({
       <TimeoutSection run={draft.run} onChange={(updated) => patch("run", updated)} />
 
       <JudgeSection judge={draft.judge} catalog={catalog} onChange={(v) => patch("judge", v)} />
+
+      <DataRepoSettingsSection value={draft.dataRepo} onChange={(v) => patch("dataRepo", v)} />
 
       <ConfigEditorActions
         status={status}

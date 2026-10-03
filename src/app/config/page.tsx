@@ -6,6 +6,9 @@ import { configPath } from "@/core/paths";
 import { BUILTIN_PROMPTS } from "@/core/prompt";
 import { isReadonly } from "@/core/deploy-mode";
 import { readCredentialStatus } from "@/core/profile-credentials";
+import { getRawDataRepoPath } from "@/core/sync/data-repo-status";
+import type { AppConfig } from "@/core/config";
+import type { DataRepoDraft } from "./DataRepoForm";
 import { ConfigEditor } from "./ConfigEditor";
 import { DataRepoPanel } from "./DataRepoPanel";
 import { DevicePanel } from "./DevicePanel";
@@ -22,6 +25,17 @@ import {
 
 /** 配置可能被其他进程改写，每次请求重读 */
 export const dynamic = "force-dynamic";
+
+/** 表单里的路径要是配置文件里的原文，不能是加载后展开的绝对路径 */
+function dataRepoDraftOf(config: AppConfig, path: string): DataRepoDraft | null {
+  if (!config.dataRepo) return null;
+  return {
+    path: getRawDataRepoPath(config, path),
+    repository: config.dataRepo.repository ?? "",
+    autoSync: config.dataRepo.autoSync,
+    push: config.dataRepo.push,
+  };
+}
 
 export default async function ConfigPage() {
   if (isReadonly()) redirect("/");
@@ -57,6 +71,7 @@ export default async function ConfigPage() {
               customPrompts: config!.customPrompts,
               customModels: config!.customModels,
               judge: config!.judge,
+              dataRepo: dataRepoDraftOf(config!, path),
             }}
             builtinPrompts={[...BUILTIN_PROMPTS]}
             initialCatalog={catalog}

@@ -122,6 +122,9 @@ retention:
 
 # 数据仓同步配置（可选）：自动或手动将已完成的评测脱敏同步到独立公开数据仓（llm-iq-data）。
 # path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析；容器部署时填 /data-repo）。
+# repository 为数据仓的 GitHub 地址（可选，https://github.com/<owner>/<repo>）：执行器启动与同步前，
+# path 不存在或为空目录时按它 clone；本地副本的 origin 与它不是同一个仓时报警并拒绝同步。
+# 不写则仓库由本地副本的 origin 决定。这几项都能在配置页「数据仓设置」区块改。
 # autoSync 为每轮评测结束后是否自动触发同步（默认 false）。
 # push 为同步提交后是否自动 git push 到远端（默认 false；容器部署建议保持 false，由宿主机人工发布后通过发布确认回填）。
 # publishPrompts 为允许发布的题目 id 清单（默认不写 = 全部）；导出时不在清单里的题目连同其调用一并剔除，
@@ -130,6 +133,7 @@ retention:
 # 分组、官网、倍率、是否启用），接口地址、查询参数与 key 不会写进数据仓；配置里已删除的 profile 其调用不发布。
 # dataRepo:
 #   path: ../llm-iq-data
+#   repository: https://github.com/meomeo-dev/llm-iq-data
 #   autoSync: false
 #   push: false
 #   publishPrompts: [animated-pelican-v1]
