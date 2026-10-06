@@ -97,7 +97,7 @@ docker exec -it llm-iq-runner pnpm pair
 两个容器共用一个镜像：`llm-iq-web` 只跑看板、开端口；`llm-iq-runner` 装三家 CLI、挂登录态、
 不开端口，负责调度与执行，看板发起的一轮经数据卷交给它。镜像不含 CLI，runner 首次启动时从
 各家官方渠道安装；各家用订阅账号在 runner 里独立登录一次即可。公开数据仓工作副本通过 bind mount
-（`${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo`，由可选覆盖文件 `compose.data-repo.yaml` 启用）挂入 runner，容器内脱敏导出并本地提交，
+（`${PELICAN_DATA_REPO_DIR:-../llm-iq-data}:/data-repo`，在 `compose.yaml` 中默认配置）挂入 runner，容器内脱敏导出并本地提交，
 由宿主机安全推送并通过 `pnpm sync:data --confirm-published` 确认发布。配置页「数据仓设置」填了数据仓地址后，
 挂进来的是空目录也行，runner 启动时自动 clone。卷、配置、更新与设计取舍见
 [`docs/deploy-docker.md`](docs/deploy-docker.md)。

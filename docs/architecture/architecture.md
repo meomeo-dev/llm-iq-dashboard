@@ -319,7 +319,7 @@ llm_iq_dashboard/
   run.json，作品由服务端 `/art` 代理；只展示、不运行评测，适合 serverless 托管（如 Vercel）。
   `pnpm showcase:smoke` 端到端自检，`/api/health` 报告数据仓连通性；见
   `docs/deploy-public-showcase.md`。
-- Docker 部署的数据仓同步：叠加 `compose.data-repo.yaml` 把宿主机数据仓挂入 runner；`autoSync`
+- Docker 部署的数据仓同步：`compose.yaml` 默认把宿主机数据仓挂入 runner；`autoSync`
   开启时轮次结束后 runner 自动导出并本地提交，关闭时在配置页数据仓面板勾选轮次后导出（ACR-018）；
   推送在面板确认后由 runner 用 GitHub App 令牌完成（ACR-010、ACR-011）；未连接 GitHub 时仍可在
   宿主机推送并以 `--confirm-published` 回填发布状态。
