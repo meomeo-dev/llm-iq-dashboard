@@ -173,3 +173,69 @@ export const ICE_WATER_PROMPT: PromptSpec = {
     referenceSource: "https://en.wikipedia.org/wiki/Archimedes%27_principle",
   },
 };
+
+/**
+ * 动态火星网袜犰狳步态基准。
+ * 考察四足对角相交步态、曲面适形菱形网袜、背甲俯仰与尾部波动节律。
+ */
+export const ANIMATED_ARMADILLO_FISHNET_MARS_PROMPT: PromptSpec = {
+  id: "animated-armadillo-fishnet-mars-v1",
+  label: "动态火星网袜犰狳步态 (Animated Armadillo in Fishnets on Mars)",
+  template: [
+    "Generate an animated SVG of a nine-banded armadillo wearing tight fishnet tights jaywalking across the red Martian surface featuring pure inline SVG animation (SMIL <animateTransform>/<animate> or inline CSS @keyframes).",
+    "The armadillo must feature its characteristic banded armor carapace, pointed snout, tapered tail, and four legs clad in a distinct cross-hatched diamond grid (fishnet pattern).",
+    "Animations must run smoothly and continuously in a modern browser with zero JavaScript:",
+    "1. The armadillo's four legs must smoothly animate in an anatomically coordinated quadrupedal walking gait cycle (alternating diagonal limb pairs), with claws making clean, non-slipping contact with the Martian ground.",
+    "2. The diamond mesh of the fishnet tights must remain tightly conformed to the contours of the flexing legs and thighs throughout the walking motion.",
+    "3. The segmented dorsal carapace and arched back must gently bob vertically and pitch rhythmically in synchrony with the stride cadence.",
+    "4. The tail must undulate in a rhythmic kinematic wave trailing behind the walking body.",
+    "5. The entire walking gait cycle must loop seamlessly with zero seam jump: visual states at t = 0s and t = T must be mathematically identical.",
+    "The entire output must be completely self-contained within a single valid SVG element (ensure strictly well-formed XML: if using <style>, wrap CSS inside <![CDATA[ ... ]]> or avoid raw unescaped '&' and '<'), requiring no external scripts or stylesheets (absolutely NO JavaScript / 0 <script> tags).",
+  ].join(" "),
+  variables: [],
+  candidates: [],
+  source: "https://news.ycombinator.com/item?id=49982139",
+  verified: true,
+  immutable: true,
+  originDate: "2026-10",
+  registeredAt: "2026-10-10",
+  standard: {
+    coreKey: "四足步行对角步态、曲面贴体网袜变形、甲壳俯仰节律与无缝循环",
+    groundTruth: "四足对角相交步态（无溜冰滑步）；网袜菱形网格紧密适形贴合四肢屈伸；甲壳多节重叠随步频上下起伏；火星氧化铁红沙地貌；步态周期无缝对接 MAE ≡ 0 且 max MAE >= 0.015；严禁任何 script 脚本。",
+    evaluationCriteria: "Pass: 四足对角协调步行且着地真实，网袜钻石纹随腿部连续贴体运动，背壳起伏连贯，火星地貌鲜明，首尾无缝对接 MAE ≡ 0 且有效动量 max MAE >= 0.015，0 script 且 XML 零错误；Partial: 动物形态与火星环境存在但四腿平移溜冰、网袜退化为散乱杂点或背景为地球马路；Fail: 纯静态死图（max MAE < 0.015）、含 script、画成自行车/鹈鹕等陈旧先验、肢体脱离身体或 XML 语法错误。",
+    referenceSource: "https://news.ycombinator.com/item?id=49982139",
+  },
+};
+
+/**
+ * 动态环尾狐猴骑电动滑板车正视图基准。
+ * 考察 100% 正交对称视角、单腿蹬地推进动力学、前后轮同轴投影与环尾摆动平衡。
+ */
+export const ANIMATED_LEMUR_SCOOTER_FRONT_PROMPT: PromptSpec = {
+  id: "animated-lemur-scooter-front-v1",
+  label: "动态环尾狐猴骑电动滑板车正视图 (Animated Lemur on Electric Scooter Front View)",
+  template: [
+    "Generate an animated SVG of a ring-tailed lemur riding an electric kick scooter strictly from a direct HEAD-ON FRONT VIEW (orthographic/central front perspective) featuring pure inline SVG animation (SMIL <animateTransform>/<animate> or inline CSS @keyframes).",
+    "The composition must be strictly front-facing: the horizontal handlebar faces directly forward, the front tire is seen head-on (occluding the rear tire behind it), and the lemur's face and upright body display clear bilateral symmetry.",
+    "Animations must run smoothly and continuously in a modern browser with zero JavaScript:",
+    "1. Ground-kick propulsion cycle: While one foot remains planted on the front-facing scooter deck and hands grip the horizontal handlebar, the other leg must execute a rhythmic, continuous kicking stroke (swinging forward, touching down to push backward against the ground, and lifting back up).",
+    "2. Vertical suspension bounce: The scooter deck and handlebar stem must demonstrate subtle vertical oscillation and slight lateral roll tilt synchronized with the kick cadence.",
+    "3. Tail counter-balance: The lemur's characteristic black-and-white banded tail, held high in an arch, must gently sway left-to-right in balanced counter-motion, with its alternating bands maintaining clean cylindrical perspective.",
+    "4. Front wheel rolling: The front tire (viewed head-on) must display continuous vertical tread pattern rolling animation.",
+    "5. The entire propulsion cycle must loop seamlessly with zero seam jump: visual states at t = 0s and t = T must be mathematically identical.",
+    "The entire output must be completely self-contained within a single valid SVG element (ensure strictly well-formed XML: if using <style>, wrap CSS inside <![CDATA[ ... ]]> or avoid raw unescaped '&' and '<'), requiring no external scripts or stylesheets (absolutely NO JavaScript / 0 <script> tags).",
+  ].join(" "),
+  variables: [],
+  candidates: [],
+  source: "https://news.ycombinator.com/item?id=49578488",
+  verified: true,
+  immutable: true,
+  originDate: "2026-09",
+  registeredAt: "2026-10-10",
+  standard: {
+    coreKey: "正交对称正视图、单腿后蹬推进动力学、前后轮同轴投影与环尾摆动",
+    groundTruth: "严格正面视角（侧视一票否决）；车体对称性 RMSE <= 2.0%；单腿向前摆动-触地蹬推-抬腿连贯运动；前轮同轴遮挡后轮并呈现滚动纹理；无缝循环 MAE ≡ 0 且 max MAE >= 0.015；严禁任何 script 脚本。",
+    evaluationCriteria: "Pass: 100% 正视视角（车把水平展开无侧向偏斜），单腿周期蹬地推进真实，车把踏板微幅减震，黑白环尾摆动，首尾闭合 MAE ≡ 0 且有效动量 max MAE >= 0.015，0 script 且 XML 零错误；Partial: 大体正视但蹬地机械抽动、尾环画成杂乱横线或车体严重水平晃动；Fail: 直接退化为侧视图（一票否决零分）、纯静态死图（max MAE < 0.015）、含 script 或 XML 语法错误。",
+    referenceSource: "https://news.ycombinator.com/item?id=49578488",
+  },
+};

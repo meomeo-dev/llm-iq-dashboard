@@ -10,7 +10,10 @@ import {
   CLOCK_PROMPT,
   PENROSE_PROMPT,
   ICE_WATER_PROMPT,
+  ANIMATED_ARMADILLO_FISHNET_MARS_PROMPT,
+  ANIMATED_LEMUR_SCOOTER_FRONT_PROMPT,
 } from "./data-classic";
+import { PROMPTS_2026_09 } from "./data-2026-09";
 import {
   FOUR_STROKE_ENGINE_PROMPT,
   MOBIUS_STRIP_PROMPT,
@@ -37,6 +40,7 @@ import { LANDMARKS_ANIM_PROMPT, LANDMARKS_PROMPT } from "../prompts/landmarks";
 import { ALL_FRONTIER_PROMPTS } from "../prompts";
 
 export * from "./data-classic";
+export * from "./data-2026-09";
 export * from "./data-engineering";
 export * from "./data-frontier-visual";
 
@@ -47,6 +51,9 @@ export const BUILTIN_PROMPTS: readonly PromptSpec[] = [
   CLOCK_PROMPT,
   PENROSE_PROMPT,
   ICE_WATER_PROMPT,
+  ANIMATED_ARMADILLO_FISHNET_MARS_PROMPT,
+  ANIMATED_LEMUR_SCOOTER_FRONT_PROMPT,
+  ...PROMPTS_2026_09,
   FOUR_STROKE_ENGINE_PROMPT,
   MOBIUS_STRIP_PROMPT,
   CART_POLE_PROMPT,
