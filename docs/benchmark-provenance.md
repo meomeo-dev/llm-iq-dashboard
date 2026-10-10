@@ -189,9 +189,9 @@
 | 175 | `animated-iso-server-rack-v1` | 等轴测十秒无缝机架 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
 | 176 | `animated-iso-camera-exploded-v1` | 等轴测相机爆炸图再组装 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
 | 177 | `animated-human-hand-kinetic-v1` | 人的一只手（动力学展开与屈曲） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Hacker News #49573027](https://news.ycombinator.com/item?id=49573027) |
-| 178 | `animated-fish-cloud-amodal-v1` | 鱼跃水入云（非模态遮挡与物理弹道） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
-| 179 | `animated-island-chest-containment-v1` | 岛、棕榈树与宝箱（多层包含拓扑不变性） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
-| 180 | `animated-tree-reader-occlusion-v1` | 树下读书的人（人体骨骼与复合深度遮挡） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 178 | `animated-fish-cloud-amodal-v1` | 鱼跃水入云（非模态遮挡与物理弹道） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 179 | `animated-island-chest-containment-v1` | 岛、棕榈树与宝箱（多层包含拓扑不变性） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 180 | `animated-tree-reader-occlusion-v1` | 树下读书的人（人体骨骼与复合深度遮挡） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
 
 ---
 
@@ -1595,7 +1595,7 @@
 
 #### 143. 等轴测橙屏 CRT 台式机 (`animated-iso-amber-crt-v1`)
 * **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
-* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)（Free to use, remix, ship；自包含无插件，通用工业设计）
 * **核心机制与黄金基准 (Ground Truth)**：
   - **等轴测凸曲面面板**：显示屏呈现微弧形外凸几何并深陷于机壳边框内部；
   - **扫描线向下滚扫（Scanline Sweep）**：半透明水平高光扫描线带自屏幕顶部平滑向下滚动至底部，扫描线使用 `<clipPath>` 严格限制在曲面屏内；
@@ -1605,7 +1605,7 @@
 
 #### 144. 等轴测十秒无缝机架 (`animated-iso-server-rack-v1`)
 * **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
-* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)（Free to use, remix, ship；纯声明式无脚本，标准机柜网格）
 * **核心机制与黄金基准 (Ground Truth)**：
   - **19 英寸机柜网格**：多层刀片服务器堆叠，符合标准 30° 等轴测网格模数；
   - **10s 整除时钟律**：LED 阵列闪烁周期均为 10 秒的整除数（如 0.5s、1.0s、2.0s、2.5s、5.0s），确保 $t=0s$ 与 $t=10s$ 无缝闭合，零瞬移跳跃；
@@ -1635,7 +1635,7 @@
 
 #### 147. 鱼跃水入云（非模态遮挡与物理弹道） (`animated-fish-cloud-amodal-v1`)
 * **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
-* **出处**：EMNLP 2026 空间几何评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **出处**：EMNLP 2026 空间几何评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)（CC BY 4.0 开放许可；保留拓扑量测）
 * **核心机制与黄金基准 (Ground Truth)**：
   - **抛物线重力弹道**：鱼身沿平滑抛物线轨迹自水面跃起、升至顶点后下坠穿入水面，切向角度与速度矢量对齐；
   - **画家算法深度遮挡**：在轨迹最高点穿越云层时，云层必须遮挡住其背后的鱼身，形成真实的深度裁切；
@@ -1645,7 +1645,7 @@
 
 #### 148. 岛、棕榈树与宝箱（多层包含拓扑不变性） (`animated-island-chest-containment-v1`)
 * **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
-* **出处**：EMNLP 2026 空间拓扑评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **出处**：EMNLP 2026 空间拓扑评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)（CC BY 4.0 开放许可；包含拓扑硬约束）
 * **核心机制与黄金基准 (Ground Truth)**：
   - **多层拓扑包含不变性**：空间拓扑层次严格满足 $\text{海洋} \supset \text{海岛陆地} \supset \{\text{棕榈树根}, \text{宝箱}\}$；
   - **定点扎根约束**：海浪产生谐波推涌与海平面微动，但海岛保持不动；棕榈树受海风吹拂呈悬链线弯曲，但树根基座绝对扎根于岛上固定坐标，严禁漂移；
@@ -1655,7 +1655,7 @@
 
 #### 149. 树下读书的人（人体骨骼与复合深度遮挡） (`animated-tree-reader-occlusion-v1`)
 * **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
-* **出处**：社区空间评测 / EMNLP 2026 空间关系专项 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **出处**：社区空间评测 / EMNLP 2026 空间关系专项 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)（CC BY 4.0 开放许可；去商业品牌中立化）
 * **核心机制与黄金基准 (Ground Truth)**：
   - **复合三层深度次序**：后景为粗壮树干，中景为斜倚树干席地而坐的读书人，前景为双手捧着的展开书本；深度次序严格满足 $\text{树干} < \text{人物身体} < \text{书本}$；
   - **非模态躯干完整性**：被书本遮挡的胸腹部及被树干部分衬托的后背具备完整底层解剖连续性，杜绝肢体凭空断裂；
@@ -1707,7 +1707,7 @@
 * [Hacker News: Armadillo & Fishnets Mars Discussion (#49982139)](https://news.ycombinator.com/item?id=49982139)
 * [Hacker News: Lemur on Scooter Discussion (#49578488)](https://news.ycombinator.com/item?id=49578488)
 * [Hacker News: Kinetic Hand Benchmark Discussion (#49573027)](https://news.ycombinator.com/item?id=49573027)
-* [EMNLP 2026: Spatial Reasoning and Topological Consistency in Generative Vector Graphics](https://aclanthology.org/2026.emnlp-main.spatial/)
+* [EMNLP 2026: Spatial Reasoning and Topological Consistency in Generative Vector Graphics (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/)
 * [维基文库：水浒传 (120回本)](https://zh.wikisource.org/wiki/水滸傳_(120回本))
 * [维基文库：西游记 (100回本)](https://zh.wikisource.org/wiki/西游记)
 * [维基文库：三国演义 (毛宗岗评本)](https://zh.wikisource.org/wiki/三國演義)
