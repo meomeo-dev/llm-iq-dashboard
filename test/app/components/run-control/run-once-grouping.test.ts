@@ -10,10 +10,28 @@ import {
 
 describe("run-once-grouping", () => {
   describe("classifyPrompt", () => {
-    test("经典基准分类", () => {
+    test("经典基准分类（含犰狳与狐猴）", () => {
       assert.equal(classifyPrompt({ id: "classic-v1", label: "经典", defaultSelected: false }), "经典基准");
       assert.equal(classifyPrompt({ id: "upgraded-v2", label: "升级", defaultSelected: false }), "经典基准");
       assert.equal(classifyPrompt({ id: "animated-pelican-v1", label: "动态", defaultSelected: true }), "经典基准");
+      assert.equal(classifyPrompt({ id: "animated-armadillo-fishnet-mars-v1", label: "犰狳", defaultSelected: false }), "经典基准");
+      assert.equal(classifyPrompt({ id: "animated-lemur-scooter-front-v1", label: "狐猴", defaultSelected: false }), "经典基准");
+    });
+
+    test("2026-09 分组分类", () => {
+      const ids = [
+        "animated-iso-vintage-pc-v1",
+        "animated-iso-amber-crt-v1",
+        "animated-iso-server-rack-v1",
+        "animated-iso-camera-exploded-v1",
+        "animated-human-hand-kinetic-v1",
+        "animated-fish-cloud-amodal-v1",
+        "animated-island-chest-containment-v1",
+        "animated-tree-reader-occlusion-v1",
+      ];
+      for (const id of ids) {
+        assert.equal(classifyPrompt({ id, label: id, defaultSelected: false }), "2026-09");
+      }
     });
 
     test("四大名著分类", () => {
@@ -52,6 +70,24 @@ describe("run-once-grouping", () => {
       assert.equal(groups[1]?.name, "2026 前沿工程评测 (FE-1 ~ FE-8)");
       assert.equal(groups[2]?.name, "自定义提示词");
       assert.equal(groups[0]?.items[0]?.id, "classic-v1");
+    });
+
+    test("全部分组顺序严格保证 2026-09 紧随微观物理之后", () => {
+      const allPrompts: PromptOption[] = [
+        { id: "custom-abc", label: "自定义", defaultSelected: false },
+        { id: "animated-iso-vintage-pc-v1", label: "复古PC", defaultSelected: false },
+        { id: "quantum-double-slit-v1", label: "量子双缝", defaultSelected: false },
+        { id: "classic-v1", label: "经典", defaultSelected: false },
+      ];
+      const groups = groupPrompts(allPrompts);
+      const names = groups.map((g) => g.name);
+      assert.deepEqual(names, [
+        "经典基准",
+        "微观物理与前沿探索",
+        "2026-09",
+        "自定义提示词",
+      ]);
+      assert.equal(names.indexOf("2026-09"), names.indexOf("微观物理与前沿探索") + 1);
     });
 
     test("空输入返回空数组", () => {
