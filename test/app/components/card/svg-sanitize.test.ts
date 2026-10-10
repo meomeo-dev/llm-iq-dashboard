@@ -97,4 +97,12 @@ describe("sanitizeSvg", () => {
     );
     assert.match(markup, /@keyframes roll/);
   });
+
+  test("HTML 命名实体（如 &bull;、&approx;、&copy;）被自动规范为 Unicode 字符，避免 XML 解析失败", () => {
+    const markup = sanitizedMarkup(
+      `<svg ${SVG_NS}><text>KINETIC &bull; BIOMECHANICS &approx; 1.18 &copy; 2026</text></svg>`,
+    );
+    assert.match(markup, /KINETIC • BIOMECHANICS ≈ 1.18 © 2026/);
+  });
 });
+

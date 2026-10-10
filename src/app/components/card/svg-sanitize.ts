@@ -80,8 +80,80 @@ function pruneTree(root: Element): void {
  * 容错处理：修复模型输出中破坏 W3C XML 规范的常见语法问题：
  * 1. <style> 块若未包含 CDATA，将其自动包裹，避免选择器/注释中含 & 或 < 导致解析失败；
  * 2. XML 规范严禁在注释内部出现连续短横线 `--`（如常见分割线 `<!-- ------------ -->`），将其规整为单个短横线；
- * 3. XML 规范严禁同一个标签内出现同名属性（如两个 font-family），去重仅保留首个有效声明。
+ * 3. XML 规范严禁同一个标签内出现同名属性（如两个 font-family），去重仅保留首个有效声明；
+ * 4. 常见 HTML 命名实体转义：模型常写出 &bull;、&approx;、&nbsp; 等 HTML5 命名实体，
+ *    而独立 XML 仅内建 5 个实体（amp/lt/gt/quot/apos），未声明实体会导致解析器报 undefined entity。
  */
+const XML_BUILTIN_ENTITIES = new Set(["amp", "lt", "gt", "quot", "apos"]);
+
+const HTML_ENTITY_MAP: Readonly<Record<string, string>> = {
+  bull: "•",
+  approx: "≈",
+  asymp: "≈",
+  equiv: "≡",
+  ne: "≠",
+  le: "≤",
+  ge: "≥",
+  plusmn: "±",
+  times: "×",
+  divide: "÷",
+  infin: "∞",
+  radic: "√",
+  sum: "∑",
+  prod: "∏",
+  part: "∂",
+  int: "∫",
+  deg: "°",
+  nbsp: "\u00A0",
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+  middot: "·",
+  prime: "′",
+  Prime: "″",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  sect: "§",
+  para: "¶",
+  permil: "‰",
+  euro: "€",
+  pound: "£",
+  yen: "¥",
+  cent: "¢",
+  larr: "←",
+  rarr: "→",
+  uarr: "↑",
+  darr: "↓",
+  harr: "↔",
+  laquo: "«",
+  raquo: "»",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  alpha: "α",
+  beta: "β",
+  gamma: "γ",
+  delta: "δ",
+  theta: "θ",
+  lambda: "λ",
+  mu: "μ",
+  pi: "π",
+  sigma: "σ",
+  tau: "τ",
+  omega: "ω",
+  Delta: "Δ",
+  Omega: "Ω",
+};
+
+function replaceHtmlNamedEntities(svg: string): string {
+  return svg.replace(/&([a-zA-Z]+);/g, (match, name: string) => {
+    if (XML_BUILTIN_ENTITIES.has(name)) return match;
+    return HTML_ENTITY_MAP[name] ?? match;
+  });
+}
+
 export function normalizeXmlWellFormedness(svg: string): string {
   // 1. <style> 块 CDATA 包裹
   let normalized = svg.replace(/<style(\s[^>]*)?>([\s\S]*?)<\/style>/gi, (match, attrs = "", content) => {
@@ -99,6 +171,9 @@ export function normalizeXmlWellFormedness(svg: string): string {
     /<([a-zA-Z0-9:-]+)(\s+[^>]*?)(\/?>)/g,
     (_match, tagName: string, attrs: string, closing: string) => `<${tagName}${dedupeTagAttributes(attrs)}${closing}`,
   );
+
+  // 4. HTML 命名实体转为 Unicode 字符
+  normalized = replaceHtmlNamedEntities(normalized);
 
   return normalized;
 }
