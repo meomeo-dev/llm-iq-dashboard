@@ -27,5 +27,5 @@
 |---|---|---|---|---|
 | [M1-01](M1-01-register-viral-prompts.md) | 核心题库注册：经典与2026-09题目录入 | 通过 | 2026-10-10 | `bc9dcdf` |
 | [M1-02](M1-02-grouping-classic-and-september.md) | 看板运行控制分类与2026-09分组 | 通过 | 2026-10-10 | `5c5cec4` |
-| [M1-03](M1-03-benchmark-provenance-and-acceptance.md) | 基准出处台账更新与全量质量门禁验收 | 待定 | — | — |
+| [M1-03](M1-03-benchmark-provenance-and-acceptance.md) | 基准出处台账更新与全量质量门禁验收 | 通过 | 2026-10-10 | `9713d49` |
 <!-- acceptance-index:end -->

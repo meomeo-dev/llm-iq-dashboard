@@ -8,9 +8,9 @@
 |---|---|
 | 对应工单 | [M1-03](../workorders/M1-03-benchmark-provenance-and-acceptance.md) |
 | 覆盖功能点 | 无（本单不挂功能点） |
-| 验收日期 | 待定 |
-| 验收结论 | 待定 |
-| commit | 待回填 |
+| 验收日期 | 2026-10-10 |
+| 验收结论 | 通过 |
+| commit | `9713d49` |
 
 > 「验收结论」只能是 **通过** / **有条件通过（条件列明）** / **不通过** / **待定**。
 > 「commit」是代码提交的哈希；**回填单独一个提交，不要 `--amend`**——本文是 commit 号的唯一记录处。
@@ -19,12 +19,12 @@
 
 | # | 判定条目 | 预期 | 实际 | 证据 | 状态 |
 |---|---|---|---|---|---|
-| 1 | 出处台账新增 10 道题目完整记录 | 包含来源、许可协议与一票否决规则 | 待执行 | 待填 | ⏳ |
-| 2 | validate:prompts 门禁通过 | 46 道题目全量验证通过，0 错误 | 待执行 | 待填 | ⏳ |
-| 3 | lint 类型安全门禁通过 | tsc --noEmit 0 错误 | 待执行 | 待填 | ⏳ |
-| 4 | 全量单测 test 门禁通过 | 全量单元测试 100% 通过 | 待执行 | 待填 | ⏳ |
-| 5 | 代码行数 check:length 门禁通过 | 零超标违规 | 待执行 | 待填 | ⏳ |
-| 6 | 密钥安全 check:secrets 门禁通过 | 零敏感信息泄漏 | 待执行 | 待填 | ⏳ |
+| 1 | 出处台账新增 10 道题目完整记录 | 包含来源、许可协议与一票否决规则 | 已在 docs/benchmark-provenance.md 新增第二十四节并扩充总表 | `docs/benchmark-provenance.md#L182-L192` | ✅ |
+| 2 | validate:prompts 门禁通过 | 54 道内置题、140 道前沿单题、16 套题 candidate 全量校验通过，0 错误 | 扫描 194 项提示词与候选，0 项属性缺失 | `pnpm validate:prompts` | ✅ |
+| 3 | lint 类型安全门禁通过 | tsc --noEmit 0 错误 | tsc --noEmit 0 错误通过 | `pnpm lint` | ✅ |
+| 4 | 全量单测 test 门禁通过 | 全量单元测试 100% 通过 | 911/911 tests passed (147 suites) | `pnpm test` | ✅ |
+| 5 | 代码行数 check:length 门禁通过 | 零超标违规 | 扫描 422 个文件，超标 0 项 | `pnpm check:length` | ✅ |
+| 6 | 密钥安全 check:secrets 门禁通过 | 零敏感信息泄漏 | 扫描 843 个已跟踪文件，问题 0 项 | `pnpm check:secrets` | ✅ |
 
 ## 2. 功能点逐条验收
 
@@ -45,11 +45,11 @@ pnpm check:secrets
 
 | 命令 | 结果 | 前置条件 |
 |---|---|---|
-| `pnpm validate:prompts` | ⏳ | 无 |
-| `pnpm lint` | ⏳ | 无 |
-| `pnpm test` | ⏳ | 无 |
-| `pnpm check:length` | ⏳ | 无 |
-| `pnpm check:secrets` | ⏳ | 无 |
+| `pnpm validate:prompts` | 通过 (194 项 0 缺失) | 无 |
+| `pnpm lint` | 通过 (0 errors) | 无 |
+| `pnpm test` | 通过 (911/911 passed) | 无 |
+| `pnpm check:length` | 通过 (0 violations) | 无 |
+| `pnpm check:secrets` | 通过 (0 leaks) | 无 |
 
 ## 4. 交付物
 
