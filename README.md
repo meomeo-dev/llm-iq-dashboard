@@ -169,7 +169,9 @@ docker exec -it llm-iq-runner pnpm pair
 | --- | --- |
 | `classic-v1` | Simon Willison 原文 `Generate an SVG of a pelican riding a bicycle`，一字不改，锁定不可编辑，是与外部结果对齐的锚点 |
 | `upgraded-v2` | Simon Willison 2025-11-18 发布的升级版原文（加州褐鹈鹕、辐条与车架、喉囊与羽毛、踩踏动作、繁殖羽），已逐字核对 |
-| `animated-pelican-v1` | 动态鹈鹕车：带 SMIL 动画的鹈鹕骑行，唯一带评分标准的题目，作品落盘后自动评审（见[作品评审](#作品评审)） |
+| `animated-pelican-v1` | 动态鹈鹕车：带 SMIL / CSS 动画的鹈鹕骑行，作品落盘后自动评审（见[作品评审](#作品评审)） |
+| `animated-armadillo-fishnet-mars-v1` / `animated-lemur-scooter-front-v1` | 经典基准扩展：动态火星网袜犰狳（四足对角相交步态与曲面网袜）与动态环尾狐猴（正交对称正视与单腿蹬地推车），对标动态鹈鹕车 |
+| `animated-iso-vintage-pc-v1` 等 8 道 | 2026-09 专属分组：等轴测硬件制图（初代 PC、橙屏 CRT、十秒机架、相机爆炸图）、动力学人手关节屈伸，以及前沿空间认知题（鱼跃入云非模态遮挡、海岛宝箱包含拓扑、树下读者复合深度遮挡） |
 | `clock-v1` / `penrose-v1` / `ice-water-v1` | 空间与常识视觉题：3:45 的时钟、彭罗斯三角、半杯浮冰水 |
 | `four-stroke-engine-v1` 等 7 道 | 前沿工程：四冲程发动机、莫比乌斯小车、倒立摆、赛博魔方、合成波赛道、全息 HUD、黑洞引力透镜 |
 | `jwst-deployment-v1` 等 7 道 | 前沿视觉：量子双缝、磁流体尖刺、韦伯望远镜展开、托卡马克、2nm GAA 晶体管、CRISPR-Cas9、脉冲星喷流 |
