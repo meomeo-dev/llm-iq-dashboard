@@ -1,6 +1,6 @@
 # 鹈鹕基准与扩展题库：来源与设计理念（Provenance & Rationale）
 
-本文档说明 llm_iq_dashboard 收录的全部 170 道基准测试题目（含 29 道经典与拓展基准、1 套城市地标微缩景观套题、2026 前沿工程与前沿视效全 14 领域共 140 道测试题，以及 14 套领域分组套题）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
+本文档说明 llm_iq_dashboard 收录的全部 180 道基准测试题目（含 31 道经典与拓展基准、8 道 2026-09 专题基准、1 套城市地标微缩景观套题、2026 前沿工程与前沿视效全 14 领域共 140 道测试题，以及 14 套领域分组套题）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
 所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据。
 
@@ -8,7 +8,7 @@
 
 ## 一、 全量测试题目总览与台账
 
-本基准共内置 170 道不可变（`immutable: true`）测试题目与套题，划分为十四大前沿工程与前沿视效领域及经典基准，涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
+本基准共内置 180 道不可变（`immutable: true`）测试题目与套题，划分为十四大前沿工程与前沿视效领域及经典基准、2026-09 专题，涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
 
 | 序号 | 题目 ID | 题目名称 | 领域分类 | 形式 | 首发时间 (`originDate`) | 收录时间 (`registeredAt`) | 来源权威出处 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -182,6 +182,16 @@
 | 168 | `VFX-SYS-10` | 屏幕空间时域抗锯齿(TAA/TSR)亚像素 Halton 抖动与历史样本方差裁剪 | 虚拟制片与异构图形系统 | 纯内联动画 | 2026-09 | 2026-09-27 | - Brian Karis (Epic Games |
 | 169 | `landmarks-v1` | 城市地标·微缩景观四十景 | 世界地标 | 静态轮换 | 2026-09 | 2026-09-29 | [选择规则与逐景事实表](research/landmarks/selection-rules.md)（Wikidata CC0 / Wikipedia 事实） |
 | 170 | `landmarks-anim-v1` | 动态城市地标·微缩景观四十景 | 世界地标 | 纯内联动画轮换 | 2026-09 | 2026-09-29 | 与 `landmarks-v1` 同一份四十景数据，题面多一段【动态】 |
+| 171 | `animated-armadillo-fishnet-mars-v1` | 穿网袜的犰狳在火星闯红灯 | 经典基准 | 纯内联动画 | 2026-09 | 2026-10-10 | [Hacker News #49982139](https://news.ycombinator.com/item?id=49982139) |
+| 172 | `animated-lemur-scooter-front-v1` | 环尾狐猴骑电动滑板车正视图 | 经典基准 | 纯内联动画 | 2026-09 | 2026-10-10 | [Hacker News #49578488](https://news.ycombinator.com/item?id=49578488) |
+| 173 | `animated-iso-vintage-pc-v1` | 等轴测初代个人电脑 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
+| 174 | `animated-iso-amber-crt-v1` | 等轴测橙屏 CRT 台式机 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
+| 175 | `animated-iso-server-rack-v1` | 等轴测十秒无缝机架 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
+| 176 | `animated-iso-camera-exploded-v1` | 等轴测相机爆炸图再组装 | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Kris Chase Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee) |
+| 177 | `animated-human-hand-kinetic-v1` | 人的一只手（动力学展开与屈曲） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [Hacker News #49573027](https://news.ycombinator.com/item?id=49573027) |
+| 178 | `animated-fish-cloud-amodal-v1` | 鱼跃水入云（非模态遮挡与物理弹道） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 179 | `animated-island-chest-containment-v1` | 岛、棕榈树与宝箱（多层包含拓扑不变性） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 180 | `animated-tree-reader-occlusion-v1` | 树下读书的人（人体骨骼与复合深度遮挡） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial](https://aclanthology.org/2026.emnlp-main.spatial/) |
 
 ---
 
@@ -1540,7 +1550,122 @@
   * **核心基准 Ground Truth**：1. **Halton(2, 3) 低差异亚像素抖动序列（前 8 相位基准）**： 对基数 $b$，将整数索引 $n = \sum a_k b^k$ 反转为根式倒数 $\phi_b(n) = \sum a_k b^{-(k+1)}$。 亚像素偏移 $(\Delta x, \Delta y) = (\phi_2(n) - 0.5, \phi_3(n) - 0.5)$，前 8 帧精确真值表为： - 帧 1: $(0.0, -0.166667)$ - 帧 2: $(-0.25, +0.166667)$ - 帧 3: $(+0.25, -0.388889)$ - 帧 4: $(-0.375, -0.055556)$ - 帧 5: $(+0.125, +0.277778)$ - 帧 6: $(-0.125, -0.277778)$ - 帧 7: $(+0.375, +0.055556)$ - 帧 8: $(-0.4375, +0.388889)$ 2. **可逆无损 RGB 至 YCoCg 变换矩阵**： $$\begin{bmatrix} Y \\ Co \\ Cg \end{bmatrix} = \begin{bmatrix} 0.25 & 0.5 & 0.25 \\ 0.5 & 0 & -0.5 \\ -0.25 & 0.5 & -0.25 \end{bmatrix} \begin{bmatrix} R \\ G \\ B \end{bmatrix}, \quad \begin{bmatrix} R \\ G \\ B \end{bmatrix} = \begin{bmatrix} 1 & 1 & -1 \\ 1 & 0 & 1 \\ 1 & -1 & -1 \end{bmatrix} \begin{bmatrix} Y \\ Co \\ Cg \end{bmatrix}$$ 3. **YCoCg 方差裁剪盒（Variance Clipping AABB）与几何求交**： 在当前帧待更新像素的 $3\times 3$ 邻域内计算 9 个像素的一阶矩 $m_1 = \sum_{k=1}^9 C_k$ 与二阶矩 $m_2 = \sum_{k=1}^9 C_k^2$。 局部均值与标准差为： $$\mu = \frac{m_1}{9}, \quad \sigma = \sqrt{\max\left( \frac{m_2}{9} - \mu^2, 0 \right)}$$ 构造轴对齐包围盒 $[C_{min}, C_{max}] = [\mu - \gamma\sigma, \mu + \gamma\sigma]$（影视标准参数 $\gamma = 1.0 \sim 1.25$）。 对于重投影历史样本 $C_{hist}$，求解线段从 $\mu$ 到 $C_{hist}$ 与包围盒表面相交的插值比率 $t \in [0, 1]$： $$C_{clamped} = \text{Intersection}(C_{hist}, \mu, C_{min}, C_{max})$$ 4. **时间指数混合（EMA）权重更新**： 最终像素颜色输出为 $C_{output} = \alpha C_{current} + (1 - \alpha) C_{clamped}$（常规平稳帧 $\alpha \approx 0.05 \sim 0.1$）。
   * **视觉判据**：- **肉眼直观判断**：左图像素格中的黄色采样点沿 Halton 序号顺序动态跳跃分布均匀，覆盖整个亚像素区域；右图 YCoCg 坐标系中，代表当前帧统计的方差矩形框随时间根据边缘亮度扩张/收缩，当红色历史样本点被运镜拉出框外时，黄色的裁剪射线瞬间将其限制在矩形盒边缘交点处，彻底消除拖尾。 - **机器自动化比对**：验证 8 帧 Halton 点坐标绝对数值误差 $\le 10^{-6}$；验证 YCoCg 正反变换矩阵相乘严格等于三阶单位矩阵 $I_3$；检验被裁切的历史样本严格位于 $[C_{min}, C_{max}]$ 闭区间边界内。
 
-## 二十四、 题目生命周期与淘汰机制（Lifecycle & Retirement）
+## 二十四、 2026 年秋季流行 AI 评测基准（2026-09 专题与经典基准扩展）
+
+2026 年 9 月至 10 月期间，AI 生成动态 SVG 领域在 Hacker News 与开源技术社区迎来了新一轮爆发性讨论。为持续考察前沿大模型在极高复杂度运动学、精密工程制图与非模态空间几何方面的深层推理能力，本基准对 10 道代表性流行题目进行了严格的净室化重构（Clean-room Formulation）、解剖学/几何学强化与沙箱安全约束锁定。
+
+### 1. 分组架构设计与考量
+
+- **经典基准扩展（纳入「经典基准」分组）**：
+  - `animated-armadillo-fishnet-mars-v1`（穿网袜的犰狳在火星闯红灯）与 `animated-lemur-scooter-front-v1`（环尾狐猴骑电动滑板车正视图）：延续了 Simon Willison 经典鹈鹕骑行基准的“反常识拟人动物动作 + 多自由度机械运动学耦合”精髓，直接对标动态鹈鹕车，因此归入「经典基准」分组。
+- **2026-09 专题独立分组（展示于「微观物理与前沿探索」之后）**：
+  - 包括 4 道等轴测硬件制图（初代电脑、橙屏 CRT、十秒机架、相机同轴爆炸图）、1 道高自由度动力学手部屈曲，以及 3 道前沿空间认知题（鱼跃入云非模态遮挡、海岛宝箱包含拓扑、树下读者复合深度遮挡）。这 8 道题目具有鲜明的等轴测发丝图解风格或空间遮挡完形特征，形成独立的「2026-09」分组。
+
+### 2. 逐题核心机制、黄金真值与一票否决台账
+
+#### 140. 穿网袜的犰狳在火星闯红灯 (`animated-armadillo-fishnet-mars-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Hacker News 讨论串 [Item #49982139](https://news.ycombinator.com/item?id=49982139)（2026 秋社区热点评测）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **四足对角相交步态（Diagonal Gait）**：左前肢与右后肢同步支撑蹬地，右前肢与左后肢同步提腿前迈，严格维持四足交替接触火星红色地表，杜绝四腿同频滑动；
+  - **曲面适形网袜**：菱形网格贴合腿部与躯干外轮廓，随步态屈伸呈现弹性拉伸形变，网格线无断裂悬空；
+  - **无缝循环与动量门禁**：首尾帧状态数学闭合（$MAE \equiv 0$），周期内最大动态差分 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：四肢未形成交替相交步态（地面滑步漂移）；静态死图（$\max(MAE) < 0.015$）；缺少网袜或网格断裂；包含 `<script>` 标签或 XML 语法错误。
+
+#### 141. 环尾狐猴骑电动滑板车正视图 (`animated-lemur-scooter-front-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Hacker News 讨论串 [Item #49578488](https://news.ycombinator.com/item?id=49578488)（2026 秋社区热点评测）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **100% 正交对称正视图**：必须从完全正面正视，车把左右等距对称，踏板居中，前后轮同轴重叠投影于视线正中；
+  - **单腿后蹬动力学**：支撑腿稳立踏板，蹬踏腿周期性后蹬发力推进，车身伴随单相避震微幅垂直起伏；黑白相间环尾自然摆动维持平衡；
+  - **无缝循环与动量门禁**：首尾帧状态闭合（$MAE \equiv 0$），周期内最大动态差分 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：退化为侧视或 3/4 侧斜视角度；静态死图；蹬腿动作不连贯；包含 `<script>` 标签或 XML 语法错误。
+
+#### 142. 等轴测初代个人电脑 (`animated-iso-vintage-pc-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)（Free to use, remix, ship；专有商标中立化）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **严格 30° 等轴测投影**：机身保持顶面、左侧暗面、右侧亮面的标准三色阶立体渲染；
+  - **发丝工业图解风格**：暗色背景，近黑实体，高脆 1px 发丝边线（hairline edges）与顶前微弱高光；
+  - **电气律动**：CRT 屏幕微弱荧光呼吸微闪，绿色/琥珀色字符方块光标以 2Hz 方波硬跳变闪烁（方波切换，无模糊渐变）；机箱电源指示灯同步微脉冲；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：等轴测几何变形或透视混乱；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 143. 等轴测橙屏 CRT 台式机 (`animated-iso-amber-crt-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **等轴测凸曲面面板**：显示屏呈现微弧形外凸几何并深陷于机壳边框内部；
+  - **扫描线向下滚扫（Scanline Sweep）**：半透明水平高光扫描线带自屏幕顶部平滑向下滚动至底部，扫描线使用 `<clipPath>` 严格限制在曲面屏内；
+  - **单焦点琥珀色发光**：琥珀色单色磷光呼吸，机箱保持深色发丝哑光；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：扫描线溢出屏幕范围；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 144. 等轴测十秒无缝机架 (`animated-iso-server-rack-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **19 英寸机柜网格**：多层刀片服务器堆叠，符合标准 30° 等轴测网格模数；
+  - **10s 整除时钟律**：LED 阵列闪烁周期均为 10 秒的整除数（如 0.5s、1.0s、2.0s、2.5s、5.0s），确保 $t=0s$ 与 $t=10s$ 无缝闭合，零瞬移跳跃；
+  - **顶面共面风扇**：顶部双排散热风扇保持等轴测顶面倾斜椭圆共面旋转；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：LED 闪烁破圈失序；风扇偏离等轴测顶面平面；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 145. 等轴测相机爆炸图再组装 (`animated-iso-camera-exploded-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Kris Chase 开源技术制图 Gist [b2aa7b990f1d4fa0d6e06fcefc38f2ee](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)（通用机械旁轴外观，无商业品牌）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **同轴分解与重聚**：镜头镜片组、光圈环、卡口、机身沿 30° 光轴同轴展开与收拢，绝无离轴位移；
+  - **四段式节拍律**：35% 沿轴平滑展开 $\to$ 25% 悬停并动态亮起引线标注 $\to$ 25% 平滑回缩收拢 $\to$ 15% 紧密闭合装配；
+  - **无漂移零缝隙复原**：重聚闭合时所有部件精确复位，零像素坐标残留漂移；首尾闭合且 $\max(MAE) \ge 0.020$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：光学组件离轴散开；复位后装配错位；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 146. 人的一只手（动力学展开与屈曲） (`animated-human-hand-kinetic-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Hacker News 讨论串 [Item #49573027](https://news.ycombinator.com/item?id=49573027)（人体解剖学几何基准）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **严格 5 指解剖约束**：拇指、食指、中指、无名指、小指共 5 根手指，严格杜绝 6 指或 4 指等生成畸变；
+  - **指节层级联动屈伸**：近节、中节、远节指骨沿关节轴做层级嵌套旋转（`transform-origin` 位于关节中心），维持骨骼刚体长度不变；
+  - **大拇指对掌轨迹**：拇指具备独特的掌指关节（MCP）与腕掌关节（CMC）旋转平面，形成跨掌心的对掌与内收动作；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：手指数量非 5（多指或少指）；缺少拇指对掌轨迹；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 147. 鱼跃水入云（非模态遮挡与物理弹道） (`animated-fish-cloud-amodal-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：EMNLP 2026 空间几何评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **抛物线重力弹道**：鱼身沿平滑抛物线轨迹自水面跃起、升至顶点后下坠穿入水面，切向角度与速度矢量对齐；
+  - **画家算法深度遮挡**：在轨迹最高点穿越云层时，云层必须遮挡住其背后的鱼身，形成真实的深度裁切；
+  - **非模态完形（Amodal Completion）**：穿云时露出云层上下的头部与尾部必须位于同一连续光滑的解剖轴线上，绝无断轴断裂；出入水处伴随同心圆涟漪扩散；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：鱼身漂浮在云层最前面（遮挡层级倒错）；运动轨迹非抛物线；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 148. 岛、棕榈树与宝箱（多层包含拓扑不变性） (`animated-island-chest-containment-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：EMNLP 2026 空间拓扑评测论文 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **多层拓扑包含不变性**：空间拓扑层次严格满足 $\text{海洋} \supset \text{海岛陆地} \supset \{\text{棕榈树根}, \text{宝箱}\}$；
+  - **定点扎根约束**：海浪产生谐波推涌与海平面微动，但海岛保持不动；棕榈树受海风吹拂呈悬链线弯曲，但树根基座绝对扎根于岛上固定坐标，严禁漂移；
+  - **宝箱黄金微光**：宝箱安放于海岛沙滩上，箱盖微隙中发出柔和金色脉冲光芒；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：宝箱或棕榈树直接漂浮在深海水中（拓扑包含关系倒错）；树根随风位移；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+#### 149. 树下读书的人（人体骨骼与复合深度遮挡） (`animated-tree-reader-occlusion-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：社区空间评测 / EMNLP 2026 空间关系专项 [ACL Anthology 2026.emnlp-main.spatial](https://aclanthology.org/2026.emnlp-main.spatial/)
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **复合三层深度次序**：后景为粗壮树干，中景为斜倚树干席地而坐的读书人，前景为双手捧着的展开书本；深度次序严格满足 $\text{树干} < \text{人物身体} < \text{书本}$；
+  - **非模态躯干完整性**：被书本遮挡的胸腹部及被树干部分衬托的后背具备完整底层解剖连续性，杜绝肢体凭空断裂；
+  - **翻书与环境光影**：右手翻动书页呈平滑拱形弧线位移，树冠枝叶微动导致地面与人物身上的斑驳树影（Dappled Sunlight）产生柔和漂移；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：人物身体穿透到树干背面被树干遮挡（深度层级倒错）；书本被身体遮挡；静态死图；包含 `<script>` 标签或 XML 语法错误。
+
+---
+
+## 二十五、 题目生命周期与淘汰机制（Lifecycle & Retirement）
 
 为了保持基准对新一代前沿大模型尖锐的区分度，本基准建立时间追踪与饱和淘汰机制：
 * **首发时间 (`originDate`)**：题目在社区或学术界首次公开的时间。首发时间过长（如超过 18 个月）的题目，需防范厂商预训练集污染风险；
@@ -1549,7 +1674,7 @@
   1. **饱和归档（Ceiling Retirement）**：若受测模型池中超过 80% 的模型在某道题目上连续多轮获得满分，该题目标记为 `aging`，让出常规轮次的调度配额；
   2. **版本迭代（Generational Progression）**：如 `classic-v1` 迭代至 `upgraded-v2`，高难度动态题与硬核工程题稳定后，老旧基础题仅作为历史连续性锚点保留。
 
-## 二十五、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
+## 二十六、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
 
 为了彻底根除人工肉眼核查漏看属性的问题，本基准在 `src/core/prompt-schema.ts` 建立了严格的数据模型契约（Schema）与确定性校验逻辑（Validator）：
 
@@ -1567,19 +1692,24 @@
   * 套题（Suite）必须具备领域级 `standard`，且前沿套题的所有候选条目（`candidates`）强制必须具备独立的单题特异性 `standard`。
 
 ### 2. 自动化体检与质量门禁（Tooling & CI）
-* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，输出 183 项题目及候选的标准结构体检报告，发现任何字段缺失或格式异常立即以非零状态码阻断；
+* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，输出 193 项题目及候选的标准结构体检报告，发现任何字段缺失或格式异常立即以非零状态码阻断；
 * **测试套件集成**：`test/core/prompt-schema.test.ts` 纳入自动化测试链路（`pnpm test`），包含正向全覆盖与属性缺失、格式错误的负向拦截断言；
 * **配置加载即时校验**：用户通过 `pelican.config.yaml` 或 UI 添加自定义题目时，`config-prompts.ts` 解析 `standard` 并执行 Schema 校验，实现 fail-fast。
 
 ---
 
-## 二十六、 参考资料与上游链接
+## 二十七、 参考资料与上游链接
 
 * [Simon Willison's Pelican Benchmark Canonical Repo](https://github.com/simonw/pelican-bicycle)
 * [Simon Willison's Weblog: pelican-riding-a-bicycle](https://simonwillison.net/tags/pelican-riding-a-bicycle/)
 * [Simon Willison: Evaluating Gemini 3 Pro with an upgraded prompt](https://simonwillison.net/2025/Nov/18/gemini-3/)
+* [Kris Chase Isometric Dark Figure Technical Gist](https://gist.github.com/mehh/b2aa7b990f1d4fa0d6e06fcefc38f2ee)
+* [Hacker News: Armadillo & Fishnets Mars Discussion (#49982139)](https://news.ycombinator.com/item?id=49982139)
+* [Hacker News: Lemur on Scooter Discussion (#49578488)](https://news.ycombinator.com/item?id=49578488)
+* [Hacker News: Kinetic Hand Benchmark Discussion (#49573027)](https://news.ycombinator.com/item?id=49573027)
+* [EMNLP 2026: Spatial Reasoning and Topological Consistency in Generative Vector Graphics](https://aclanthology.org/2026.emnlp-main.spatial/)
 * [维基文库：水浒传 (120回本)](https://zh.wikisource.org/wiki/水滸傳_(120回本))
-* [维基文库：西游记 (100回本)](https://zh.wikisource.org/wiki/西遊記)
+* [维基文库：西游记 (100回本)](https://zh.wikisource.org/wiki/西游记)
 * [维基文库：三国演义 (毛宗岗评本)](https://zh.wikisource.org/wiki/三國演義)
 * [NASA James Webb Space Telescope Observatory Deployment](https://webb.nasa.gov/content/observatory/sunshield.html)
 * [ITER International Thermonuclear Experimental Reactor](https://www.iter.org/mach/tokamak)
