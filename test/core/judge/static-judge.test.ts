@@ -125,6 +125,50 @@ describe("judgeStatic 计分", () => {
   });
 });
 
+describe("judgeStatic CSS 变量与 calc", () => {
+  // 与上面 CSS 用例同构，时长都经 :root 上的变量给出；腿命名为 thigh
+  const varArt = (rootDecl: string, legDuration: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><style>
+      :root { ${rootDecl} }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .wheel { animation: spin var(--cycle) linear infinite; }
+      #rear { transform-origin: 100px 200px; } #front { transform-origin: 300px 200px; }
+      #crank { animation: spin var(--cycle) linear infinite; transform-origin: 200px 190px; }
+      .thigh { animation: kick ${legDuration} linear infinite; } @keyframes kick { to { transform: rotate(20deg); } }
+    </style>
+      <g id="rear" class="wheel"><circle cx="100" cy="200" r="40"/></g>
+      <g id="front" class="wheel"><circle cx="300" cy="200" r="40"/></g>
+      <g id="crank"><circle cx="200" cy="190" r="12"/></g>
+      <path class="thigh" d="M200 150 L200 190"/>
+    </svg>`;
+
+  test(":root 上声明的变量代入时长：曲柄周期已知，腿同步满分", () => {
+    const j = judge(varArt("--cycle: 1.6s;", "var(--cycle)"));
+    assert.deepEqual(j.criteria.slice(0, 4).map((c) => c.score), [10, 8, 4, 8]);
+    assert.match(j.criteria[3]?.reason ?? "", /周期 1600ms 与曲柄 1600ms 同步/);
+  });
+
+  test("calc() 里时间与数字的乘除：半周期的腿与曲柄成整数比", () => {
+    const c4 = judge(varArt("--cycle: 1.6s;", "calc(var(--cycle) / 2)")).criteria.find((c) => c.id === "C4");
+    assert.equal(c4?.score, 8);
+    assert.match(c4?.reason ?? "", /周期 800ms/);
+  });
+
+  test("变量未声明时用回退值；既没声明也没回退值时浏览器不播放，这条动画不算", () => {
+    const fallback = varArt("", "var(--cycle)").replaceAll("var(--cycle)", "var(--cycle, 2s)");
+    assert.equal(score(fallback, "C4"), 8);
+    const undefinedVar = judge(varArt("", "var(--cycle)"));
+    assert.equal(undefinedVar.gates.find((g) => g.id === "G2")?.passed, false);
+  });
+
+  test("祖先元素上声明的变量向下继承，近处的声明覆盖远处", () => {
+    const scoped = varArt("--cycle: 9s;", "var(--cycle)")
+      .replace('<path class="thigh"', '<g style="--cycle: 1.6s"><path class="thigh"')
+      .replace('d="M200 150 L200 190"/>', 'd="M200 150 L200 190"/></g>');
+    const c4 = judge(scoped).criteria.find((c) => c.id === "C4");
+    assert.match(c4?.reason ?? "", /周期 1600ms 与曲柄 9000ms 不成整数比/);
+  });
+});
+
 describe("attemptKeyOf", () => {
   test("去掉 .svg 与目录", () => {
     assert.equal(attemptKeyOf("20260930T000000Z/a__b__c__p.svg"), "a__b__c__p");

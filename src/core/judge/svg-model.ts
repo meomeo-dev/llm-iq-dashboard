@@ -5,7 +5,10 @@
  */
 
 import { JSDOM } from "jsdom";
-import { parseCssDuration, parseInlineAnimation, parseStyleSheet, type CssAnimationRule, type StyleSheetInfo } from "./svg-css";
+import {
+  parseCssDuration, parseDeclarations, parseInlineAnimation, parseStyleSheet, resolveAnimationRule, usesVariables,
+  type CssAnimationRule, type CustomPropertyLookup, type StyleSheetInfo,
+} from "./svg-css";
 
 export interface Point {
   x: number;
@@ -336,14 +339,36 @@ function smilRotateCenter(anim: Element): Point {
 
 function collectCssAnimations(root: Element, sheet: StyleSheetInfo): AnimationInfo[] {
   const out: AnimationInfo[] = [];
+  const push = (target: Element, rule: CssAnimationRule) => {
+    // var() 按目标元素求值：同一条规则落在不同元素上可能继承到不同的值
+    const effective = usesVariables(rule) ? resolveAnimationRule(rule, customPropertyLookup(target, sheet)) : rule;
+    if (effective) out.push(cssAnimationInfo(target, effective, sheet, root));
+  };
   for (const rule of sheet.rules) {
-    for (const target of safeQuery(root, rule.selector)) out.push(cssAnimationInfo(target, rule, sheet, root));
+    for (const target of safeQuery(root, rule.selector)) push(target, rule);
   }
   for (const target of root.querySelectorAll("[style*='animation']")) {
     const rule = parseInlineAnimation(target.getAttribute("style") ?? "");
-    if (rule) out.push(cssAnimationInfo(target, rule, sheet, root));
+    if (rule) push(target, rule);
   }
   return out;
+}
+
+/**
+ * 元素上生效的自定义属性：自身找不到就沿祖先往上找（自定义属性默认继承）。同一元素上行内 style
+ * 优先，样式表里匹配的声明取文档顺序最后一条；不比较选择器优先级，模型写的样式里几乎不冲突。
+ */
+function customPropertyLookup(target: Element, sheet: StyleSheetInfo): CustomPropertyLookup {
+  return (name) => {
+    for (let el: Element | null = target; el !== null; el = el.parentElement) {
+      const inline = parseDeclarations(el.getAttribute("style") ?? "").get(name);
+      if (inline !== undefined) return inline;
+      const node = el;
+      const declared = sheet.customProperties.filter((p) => p.name === name && safeMatches(node, p.selector)).at(-1);
+      if (declared) return declared.value;
+    }
+    return null;
+  };
 }
 
 function cssAnimationInfo(target: Element, rule: CssAnimationRule, sheet: StyleSheetInfo, root: Element): AnimationInfo {

@@ -8,7 +8,8 @@ import { summarizeTotal, type CriterionResult, type GateResult, type JudgeSubjec
 import { identifyParts, scoreCrank, scoreLegs, scoreLoop, scoreWheels, type BikeParts } from "./static-criteria";
 import { parseSvgModel, type SvgModel } from "./svg-model";
 
-export const STATIC_JUDGE_ID = "static-judge@1";
+/** 实现版本：解析逻辑变化使同一作品可能得分不同时递增；评分标准本身不变时不升 rubric version */
+export const STATIC_JUDGE_ID = "static-judge@2";
 
 export interface StaticJudgeInput {
   source: string;
