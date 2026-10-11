@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 选型依据 | ARCH-001（accepted） |
-| 最近回填 | 2026-09-29 |
+| 最近回填 | 2026-10-11 |
 
 ### 变更记录
 
@@ -71,7 +71,8 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   推送：连上即推全量快照，之后只在内容变化时推送，断线由浏览器自动重连；发起执行、拨动开关、
   保存配置走 HTTP 请求。前端不轮询。
 - 页面数据不携带 SVG 源码：卡片只带作品地址，浏览器在作品进入视口附近时经 `/art/{runId}/{file}`
-  取源码、按地址缓存，在浏览器端净化后挂进 DOM。整页数据刷新只由推送的完成数变化触发，
+  取源码、按地址缓存，在浏览器端净化、id 加前缀后挂进作品框的 shadow root（样式隔离），按 viewBox
+  比例以容器查询单位定尺寸，viewBox 外的内容不显示。整页数据刷新只由推送的完成数变化触发，
   没有定时刷新（ACR-003）。
 - 推送的来源：看板进程用 chokidar 监听 `auto-run.json`、`scheduler.json` 与最近几轮的
   `progress.json`，写入方是哪个进程都一样；执行进程被直接杀掉、下一次触发点到期这两种不落盘的
@@ -95,8 +96,9 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   （`timeline/pass-rate.ts`），分母是当前可见的卡片（日期、时区与筛选之后，失败与待复核都算），与格子可逐一核对。
 - 结果集弹窗可整图导出 PNG / SVG / GIF（ACR-017）：合成图是纯函数生成的 SVG，标题、卡片框、
   文字与作品一并画进不透明底色，横向滚动看不到的列也在图里；GIF 的帧不靠实时录制，而是把时刻
-  烘进作品副本（SMIL `begin` 减 t、CSS 动画负延时并暂停）逐帧解码后画进作品框，标签页不可见时
-  也正确。作品源码走与看板相同的净化。
+  烘进作品副本（SMIL `begin` 减 t；CSS 动画先在隐藏的 shadow root 里读出各元素实际生效的
+  `animation-delay`，再逐元素减 t 写进行内样式并暂停，元素间的相位差得以保留）逐帧解码后画进作品框，
+  标签页不可见时也正确。作品源码走与看板相同的净化；导出图的缩略图以嵌套 `<svg viewBox>` 裁到作品画布。
 - 两种轮次读同一份配置、同一时机：都在发起时读。调度器每个触发点重读配置按最新的定时目标与
   题目开轮，节奏（cron / 间隔 / 时区）每 30 秒核对一次、变了即重建定时器，不必重启。
   `schedule` 只定节奏，到点是否执行只看 `auto-run.json`。
@@ -143,7 +145,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   ACR-016）：接口地址、查询参数、key 状态与模型清单不进页面，信息卡因此也不可能显示它们。
   倍率只用于信息卡里的折算显示，卡片与统计仍按官价。
 - `src/core`：编排（提示词 × 目标，按 profile × 模型分道并发、道内串行）、强度折叠“不越级加码”、
-  提示词登记（Simon Willison 原文与四大名著候选集，均不可编辑）、轮换状态、存储与进度、
+  提示词登记（经典基准、2026-09 动态题、前沿工程与视觉题、四大名著与城市地标候选集、前沿工程 / 视觉
+  特效 14 个领域套题，内置条目均不可编辑；登记在 `src/core/prompt/`，题目数据在 `src/core/prompts/` 与
+  `src/core/classics/`）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
 - 失败分类：`ok` / `no-svg` / `error` / `timeout` 分开记录。
 - 作品评审（ACR-019）：有评分标准的题目（首期 `animated-pelican-v1`）在 `ok` 落盘后由 `src/core/judge`
@@ -152,7 +156,9 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   驱动无头 Chromium：一个周期取 8 帧，判在动、不出画布，量轮心漂移、循环闭合与脚是否踩在脚踏上——
   首帧脚踏点随曲柄刚体搬到各帧后应始终贴在腿上——与静态分取低）；联系图分帧序表（一行 8 帧整幅）
   与按类别（鹈鹕整体、头与喙、脚踏与脚、座垫与臀、左右轮）各一张的细节表，同帧号、同取样时刻，
-  帧间留灰色间隔，`judge.json` 的 `contactSheet` 就是给 AI 层的图件清单；
+  帧间留灰色间隔，每帧把 viewBox 以外刷白（出画布由 G5 按几何坐标判定，不受影响），`judge.json` 的
+  `contactSheet` 就是给 AI 层的图件清单；静态层按浏览器规则代入 CSS `var()` 与 `calc()` 求动画时长；
+  解析、量测或截帧逻辑修正而口径不变时只升实现版本（`static-judge@N` / `render-judge@N`），不重评已有记录；
   闸门任一不过判「降智」，关键标准 C8、C9 任一低于 6 分即不计那一项并判「降智」，总分 ≥ 78 判「智商在线」（及格线与门槛不升 rubric 版本，旧记录展示时按当前规则重定结论），AI 层标准未判前为「待复核」。浏览器不可用时只出
   静态分；评审缺省关闭，`judge.enabled: true` 开启（ACR-020 把缺省从开改为关）。
 - AI 语义层（ACR-020）：代码层 C1–C4 只占 30 分，C5–C9（自行车结构、主体是鹈鹕、坐姿与脚位、
@@ -274,31 +280,37 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 llm_iq_dashboard/
 ├── src/
 │   ├── app/            ← 看板页面与 /api 路由；components/ 按功能分目录
-│   ├── bin/            ← scheduler、run-once 入口
+│   ├── bin/            ← 命令行入口：run-once、scheduler、runner、pair、preflight、onboard、
+│   │                     pricing-sync、sync-data、validate-prompts
 │   ├── core/           ← 领域逻辑；judge/ 为作品评审（静态解析、渲染量测、AI 裁判、记录读写）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检
-│   └── pricing/        ← 用量解析与成本折算
-├── config/             ← 调度策略与被测矩阵（YAML）
+│   ├── pricing/        ← 用量解析与成本折算
+│   └── types/          ← 无官方类型的依赖的最小声明（jsdom）
+├── config/             ← 调度策略与被测矩阵（YAML）、价格目录锁文件、长度门与密钥扫描策略
 ├── data/               ← 运行产物与运行态，不入库
 ├── test/               ← node:test 单元测试，与 src/ 同构
 ├── docs/               ← 出处、界面、部署、架构文档
 ├── docker/             ← 镜像定义与构建忽略规则、容器入口、CLI 安装脚本
 ├── issues/             ← 本地 issue
-└── scripts/            ← 生产启动脚本（dashboard-prod）与本地 issue、治理脚本
+└── scripts/            ← 生产启动（dashboard-prod）、长度门、密钥扫描、评审补跑、展台冒烟与本地 issue、
+                          治理脚本
 ```
 
 - `src/app` 依赖 `src/core`，并读取 `src/capabilities` 的能力目录、就绪缓存与类型；
   不引用 `src/adapters`，调用 CLI 只经 `src/core` 的执行入口。客户端组件经 `/api` 取数，
   不直接读文件。
 - `src/core` 不依赖 `src/app`；`src/adapters` 只被 `src/core` 调用。
-- `src/app/components/` 根目录只放页面装配入口 `Dashboard.tsx`，其余按功能分目录：`card/`（结果卡片、
-  作品框与 SVG 净化）、`toolbar/`（工具栏、筛选、月历）、`menu/`（共用下拉菜单）、`timeline/`、
-  `run-control/`、`run-status/`、`model-modal/`、`export/`、`cli-status/`、`live-state/`。
+- `src/app/components/` 根目录放页面装配入口 `Dashboard.tsx` 与少量共用件（`action-fetch.ts`、
+  `ReferenceSourceDisplay.tsx`），其余按功能分目录：`card/`（结果卡片、作品框、SVG 净化、id 隔离与
+  shadow root 挂载）、`toolbar/`（工具栏、筛选、月历）、`menu/`（共用下拉菜单）、`timeline/`、
+  `run-control/`、`run-status/`、`model-modal/`、`export/`、`cli-status/`、`live-state/`、`dashboard/`、
+  `icons/`、`profile/`。
 - `data/` 是两个进程交换状态的唯一通道。
 - 根目录只放工具按固定位置查找的入口：`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`
   （pnpm），`tsconfig.json`（tsc、tsx 与编辑器），`next.config.ts`（Next.js），`compose.yaml`
-  （docker compose），`.nvmrc`，以及 README、许可证与第三方声明。其余代码按职责放进子目录；
+  （docker compose），`lefthook.yml`（lefthook），`.nvmrc`，以及 README、`AGENTS.md` / `CLAUDE.md`、
+  `CHANGELOG.md`、`handoff.md`、许可证与第三方声明。其余代码按职责放进子目录；
   工具生成物（`next-env.d.ts`、`*.tsbuildinfo`）不入库，tsc 增量缓存写在 `.next/cache`。
 
 ## 8. 部署与运行形态

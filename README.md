@@ -220,8 +220,8 @@ docker exec -it llm-iq-runner pnpm pair
   另有竖版，是横版的行列转置：模型按列横排，列头与横版的行标签同形（名称、题目、上游色点、
   鹈鹕通过率），每一轮一行从上往下按时间排列，行左是健康点、钟点与结果数；行高相等，不按
   时间间隔伸缩，不画 24 小时轨道与现在线。PNG 按 2 倍清晰度栅格化（超出画布上限时自动降倍率），SVG 为矢量原图；缩略图经与
-  看板相同的净化后各自以独立图片嵌入。点开格子的结果集同样可导出 PNG / SVG / GIF，
-  GIF 按时刻定格各作品的动画帧合成。
+  看板相同的净化后各自以独立图片嵌入，并按作品画布裁切。点开格子的结果集同样可导出 PNG / SVG / GIF，
+  GIF 按时刻定格各作品的动画帧合成，每个元素保留自身的动画相位。
 ![跑一次：按 CLI · 模型勾选强度与题目，显示调用数与预计成本](docs/ui/screenshots/run-once.png)
 
 - **跑一次**：工具栏上的“▶ 跑一次”展开后选范围（按 CLI · 模型分行，每行逐个勾选强度）
@@ -269,6 +269,8 @@ docker exec -it llm-iq-runner pnpm pair
   左右键切同一轮同组合的其余上游。
 - 完整卡片尺寸固定：表头、4:3 图框、页脚三段各自定高，失败以同样大小的图框说明原因，
   同一轮的结果可以并排对照。
+- 作品按自身 viewBox 的宽高比完整显示在图框里，画布外的内容不显示；每件作品挂在独立的
+  shadow root 中，内联样式与动画只作用于自身，同屏多件作品互不影响。
 
 有调用完成或轮次结束时，页面随即重新载入结果。所选日期记在地址里
 （`/?day=2026-09-23`），页面只载入那一天的结果；日历按全部轮次的开始时刻标出保留期内
@@ -285,7 +287,9 @@ docker exec -it llm-iq-runner pnpm pair
 未达门槛直接判“降智”，只过了代码层的为“待复核”。评审记录、联系图与裁判转录各自独立落盘，
 不改 `run.json`；评审进程中途退出的队列由下一个执行进程启动时续评，看板在此之前显示
 “评审中断”。裁判调用真实消耗配额，历史作品不补评。评分标准在 `src/core/judge/schema.ts`，
-设计记录见 [`docs/research/judge/`](docs/research/judge/)。
+设计记录见 [`docs/research/judge/`](docs/research/judge/)。评审记录的 `judges` 记下各层的实现版本
+（如 `static-judge@2`、`render-judge@2`）：解析或量测逻辑修正只升实现版本，评分标准的 `version`
+不变，已有记录不重评。
 
 ## 成本（API 等价）
 
@@ -395,9 +399,16 @@ CLI 能力探测与强度折叠、考题与考场规则分离、每次调用一�
 ## 开发
 
 ```bash
-pnpm lint   # tsc 类型检查，含 test/
-pnpm test   # node:test 单元测试，不调用 CLI、不读本机 data/
+pnpm lint               # tsc 类型检查，含 test/
+pnpm test               # node:test 单元测试，不调用 CLI、不读本机 data/
+pnpm validate:prompts   # 题库校验
+pnpm check:length       # 文件与函数长度门禁（config/code-length-policy.yaml）
+pnpm check:secrets      # 已跟踪文件的密钥扫描（config/secret-scan-policy.yaml）
 ```
+
+提交前另跑 `pnpm build`；改动只读部署或远程数据源时再跑 `pnpm showcase:smoke`。Git 钩子由
+lefthook 管理，`pnpm install` 时自动安装：pre-commit 跑 `check:secrets`、`lint`、`check:length`，
+pre-push 跑 `validate:prompts` 与 `test`。
 
 新增一家 CLI 的步骤、测试范围与测试依赖（jsdom）的选型记录见
 [`docs/development.md`](docs/development.md)。

@@ -10,11 +10,10 @@
 选型是架构文档的上游：`accepted` 的选型回填进 `architecture.md` 的 §0 / §2 / §7 / §8，
 之后下游只引用 `architecture.md`。
 
-选型由 [`/arch-selection`](../../.claude/skills/arch-selection/SKILL.md) 技能产出。评估判准见
-[`evaluation-rubric.md`](../../.claude/skills/arch-selection/references/evaluation-rubric.md)，
-命名见 [`naming.md`](../../.claude/skills/arch-selection/references/naming.md)，
-台账 schema 见
-[`architecture.catalog.schema.json`](../../.claude/skills/arch-selection/references/architecture.catalog.schema.json)。
+选型由本机的 `/arch-selection` 技能产出。技能目录 `.claude/skills/arch-selection/` 不入库
+（`.gitignore` 忽略 `.claude/skills/`），评估判准 `references/evaluation-rubric.md`、命名
+`references/naming.md` 与台账 schema `references/architecture.catalog.schema.json` 都在该目录下，
+克隆本仓库后看不到。
 
 ## 目录结构
 
@@ -41,6 +40,8 @@ docs/architecture/
 同一时刻只有一份 `accepted`，`register` 会拦第二份。
 
 ## 常用命令
+
+以下命令需要本机装有 `/arch-selection` 技能目录。
 
 ```bash
 A=.claude/skills/arch-selection/scripts/arch.mjs

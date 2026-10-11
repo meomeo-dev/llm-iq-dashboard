@@ -51,6 +51,7 @@ docker exec -it llm-iq-runner pnpm pair
 | 卷 / 路径 | 挂载点 | 内容 |
 | --- | --- | --- |
 | `pelican-data` | `/app/data`（两个容器） | 运行记录、配置 `pelican.config.yaml`、价格目录、自动任务开关、设备表、审计日志、请求文件 |
+| `runner-secrets` | `/app/secrets`（仅 runner） | GitHub App 凭据与推送令牌、非默认 profile 的 API key（目录 700 / 文件 600） |
 | `cli-tools` | `/opt/clis`（仅 runner） | 三家 CLI 的程序文件；删掉后下次启动重新下载，不影响登录态 |
 | `claude-auth` / `codex-auth` / `agy-auth` | `/home/node/.claude` 等（仅 runner） | 各家登录态；删掉某个卷即退出该 CLI 的登录 |
 | `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`（bind mount） | `/data-repo`（仅 runner） | 宿主机公开数据仓工作副本，供 runner 脱敏导出与本地提交；在 `compose.yaml` 中默认配置 |
@@ -99,7 +100,7 @@ PELICAN_PORT=3100 docker compose up -d
 容器部署通过 bind mount 将宿主机的数据仓工作副本挂载进 runner 容器：
 
 - **挂载与属主隔离**：挂载在 `compose.yaml` 中默认配置，执行 `docker compose up -d` 即可直接将 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）；宿主机路径须加入 Docker Desktop 的 File Sharing。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
-- **安全边界与凭据隔离**：容器内部不存放任何 GitHub Token、credential helper 或 SSH Key。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
+- **安全边界与凭据隔离**：容器内不存放 SSH Key 或 credential helper；连接 GitHub App 后，推送令牌只存放在 runner 专用卷 `runner-secrets`（`/app/secrets`），web 容器不挂该卷，详见下文「在网页连接 GitHub」。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
 - **自建数据仓**：以 `meomeo-dev/llm-iq-data` 为模板建仓（步骤见数据仓 README「作为模板建立自己的数据仓」），
   在看板配置页「数据仓设置」填它的 GitHub 地址；挂到 `/data-repo` 的宿主机目录可以是空目录，runner 启动时
   按地址 clone。首次同步生成的 `index.json` 从该仓的 `origin` 远程推导 `name` 与 `repository`；
@@ -134,12 +135,12 @@ PELICAN_PORT=3100 docker compose up -d
 1. **连接步骤**：
    - 配对并以所有者身份登录看板，进入 `/config` 页「数据仓」区块，在 GitHub 授权卡片点击「连接 GitHub」；
    - 浏览器自动跳转至 GitHub App 清单页面，清单已预置权限与回调，所有者点击「Create GitHub App」；
-   - 创建成功后自动回跳看板，看板无缝重定向至 GitHub App 安装页面，所有者勾选「Only select repositories → llm-iq-data」并确认授权；
+   - 创建成功后自动回跳看板，看板无缝重定向至 GitHub App 安装页面，所有者勾选「Only select repositories」，选中配置页「数据仓设置」里填写的数据仓并确认授权；
    - 授权完成后自动跳回看板 `/config#data-repo`，卡片显示「已连接 {login}」，推送按钮立即解锁。
 
 2. **权限范围与安全性**：
    - **权限极小化**：应用仅申请 Contents 读写（`contents: write`）与 Metadata 只读（`metadata: read`），关闭 Webhook（`active: false`）；
-   - **仓库限定**：安装时严格限定仅访问单一公开数据仓（`llm-iq-data`），无法触碰账号下其他仓库；
+   - **仓库限定**：安装时只勾选配置的那一个数据仓，应用无法触碰账号下其他仓库；
    - **双重作用域**：生成的 User-to-Server 访问令牌同时受限于用户自身权限与应用安装范围的交集。
 
 3. **凭据存放与隔离**：
@@ -155,7 +156,7 @@ PELICAN_PORT=3100 docker compose up -d
 5. **备用路径（网络限制下手建应用）**：
    若因特定网络环境无法自动提交 Manifest，可在 GitHub 网页（`https://github.com/settings/apps/new`）手工创建应用并填写对应项：
    - GitHub App name: `llm-iq-data-publisher-<随机后缀>`
-   - Homepage URL: `https://github.com/meomeo-dev/llm-iq-data`
+   - Homepage URL: 配置 `dataRepo.repository` 的数据仓地址（缺省 `https://github.com/meomeo-dev/llm-iq-data`）
    - Callback URL: `http://localhost:3000/api/data-repo/github/callback`
    - Setup URL (redirect on install): `http://localhost:3000/api/data-repo/github/app-created`
    - Webhook: 取消勾选 Active

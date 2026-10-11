@@ -57,8 +57,9 @@
      且保证不泄露任何本机文件绝对路径或系统环境变量。
 
 4. **刷新节奏 60 秒的含义与限制**：
-   - **含义**：清单（`index.json`）与日索引附带 `next: { revalidate: 60 }`，由 Next.js
-     在边缘节点维护 60 秒增量再生成（ISR）缓存；
+   - **含义**：清单（`index.json`）、日索引与轮次记录（`run.json`）附带 `next: { revalidate: 60 }`，
+     由 Next.js 维护 60 秒增量再生成（ISR）缓存；服务端进程内的请求缓存按同一时效过期，
+     同 URL 的进行中请求合并；
    - **限制**：数据仓有新轮次发布后，公开看板最长在 60 秒内同步展示，不支持秒级强实时；
      已入库的作品 SVG 为只追加且不可变，返回 24 小时长期缓存。
 
@@ -88,6 +89,9 @@
    - 点击 **Deploy** 开始构建；
    - 构建完成后即可分配自定义域名或使用 Vercel 分配的 `.vercel.app` 域名访问公开看板。
 
+当前公开展台：<https://llm-iq-dashboard.vercel.app>，经 Vercel 的 GitHub 集成从 `main` 自动部署；
+`/api/health` 的 `version` 读自 `package.json`，可用来确认线上版本。
+
 ---
 
 ## 5. 安全边界（服务端强制）
@@ -116,15 +120,16 @@
 
 ## 6. 缓存与刷新节奏
 
-- **目录与日索引**：
-  - `index.json`（Manifest）与 `runs/YYYY/MM/DD/index.json`（DayIndex）
-    在 fetch 时附加 `next: { revalidate: 60 }`，每 60 秒在边缘节点自动刷新，保持数据新鲜。
+- **目录、日索引与轮次记录**：
+  - `index.json`（Manifest）、`runs/YYYY/MM/DD/index.json`（DayIndex）与各轮的 `run.json`
+    在 fetch 时附加 `next: { revalidate: 60 }`，作品 SVG 为一天；服务端进程内请求缓存按同一时效过期
+    （JSON 60 秒、作品一天），到期后再次拉取才看得到数据仓的新提交。
 - **轮次与作品（只追加、不可变）**：
   - 数据仓契约保证已入库的轮次目录不改写、不删除；
   - `/art` 接口向浏览器与 CDN 返回 `Cache-Control: public, max-age=86400, immutable`，
     可被公网缓存 24 小时，极大节省带宽并提升加载性能。
 - **SSE 事件通道**：
-  - `/api/events` 在 remote 模式下不拉起本地 `chokidar` 监视器，返回即时全量快照并保持连接，避免客户端频繁重连。
+  - `/api/events` 在 remote 模式下不拉起本地 `chokidar` 监视器，推一份空的执行进度与空的自动任务状态后保持连接，避免客户端频繁重连。
 
 ---
 

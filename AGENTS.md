@@ -45,12 +45,14 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `run.harnessGuard`（缺省关）开启后每条提示词末尾另起一段附上直出约束原文（不联网、不跑代码自测、
   不截图自检），题目原文不动，附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布。
 - **提示词**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
-  `src/core/prompt*`，题目数据在 `src/core/prompts/`，改动后跑 `pnpm validate:prompts`。
+  `src/core/prompt*`，题目数据在 `src/core/prompts/` 与 `src/core/classics/`（四大名著），改动后跑
+  `pnpm validate:prompts`。
 - **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
   `<attemptKey>.judge.json`、帧序联系表 `.sheet.png` 与各类细节联系表 `.sheet.<kind>.png`（同帧号），
   不改 `run.json`；静态层用 jsdom，渲染层用 playwright-core 驱动本机 Chromium（没有则跳过）。
   `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`，改口径要升
-  `version`。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
+  `version`；口径不变、只修解析量测或截帧逻辑时只升 `STATIC_JUDGE_ID` / `RENDER_JUDGE_ID`，不升
+  rubric `version`（升了会让已有记录失去当前口径的展示与分项门槛），也不重评已有记录。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
 - **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`
   交给配置 `judge.ai.judges` 里第一个厂商不同的裁判 CLI（作品之间并行，`judge.ai.concurrency` 是每个裁判同时评的件数，
   缺省 5），以适配器「评审模式」（临时目录只放联系图，
@@ -61,7 +63,9 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `run.json` 的调用发布（`PublicAttempt.judge`），数据仓 validator 同步认这个字段；容器镜像装了
   chromium（`PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX`）给渲染层用。
 - **模型产物不可信**：SVG 在浏览器端净化（`src/app/components/card/`），`/art` 路由以 CSP
-  sandbox 返回原图。
+  sandbox 返回原图。净化后的作品各自挂进 shadow root（`svg-shadow.ts`），内联样式不外溢；
+  按 viewBox 比例定尺寸，画布外的内容不显示。导出缩略图以嵌套 `<svg viewBox>` 按画布裁切
+  （`artImageSvg`）。
 - **写入与权限**：JSON 一律写临时文件后原子替换；配置页写回在 YAML 语法树上改值并保留注释。
   写接口只对配对设备开放（`pnpm pair`）；`PELICAN_READONLY=1` 或
   `PELICAN_DATA_SOURCE=remote` 为只读展台模式。

@@ -49,7 +49,7 @@ flowchart TB
 
     subgraph 云端展示台 ["云端只读展示台 (Vercel Edge Showcase)"]
         direction TB
-        C1["Vercel 部署看板<br/>(开启 PELICAN_READONLY=1 或 PELICAN_DATA_SOURCE=remote)"]
+        C1["Vercel 部署看板<br/>(PELICAN_DATA_SOURCE=remote，隐含只读；建议同时设 PELICAN_READONLY=1)"]
         C2["边缘缓存与增量静态再生 (ISR)<br/>通过 GitHub Raw 拉取数据"]
         C3["公众/同行浏览器<br/>(时间线瀑布流、作品大图、模态窗对比)"]
         C1 --> C2 --> C3
@@ -102,7 +102,7 @@ sequenceDiagram
     Runner->>HotDir: 1. 评测每轮开始前，由 executeRun 经 prepareRunStorage 触发修剪守卫
     Runner->>Guard: 触发过期修剪巡检
     Guard->>Ledger: 读取各轮同步状态 (不存在等同于全部未发布)
-    alt 超过 retentionDays 且 台账为 published 或 skipped/unpublishable-prompt
+    alt 超过 retentionDays 且 台账为 published 或 skipped/unpublishable-prompt、empty、discarded
         Guard->>HotDir: 安全物理擦除 (rm -rf)，释放热区磁盘
     else 超过 retentionDays 且 台账为 skipped/rejected
         Guard->>HotDir: 【安全保留】永不自动删除，汇总日志提示需人工处理
@@ -130,15 +130,15 @@ sequenceDiagram
     end
 ```
 
-1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published`、`skipped/unpublishable-prompt` 与 `skipped/empty` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
+1. **执行前修剪分级（Retention Guard）**：每轮评测开始前由 `executeRun` 经 `prepareRunStorage` 调用 `pruneExpiredRuns`，按台账状态与超期程度分级修剪：对 `published`、`skipped/unpublishable-prompt`、`skipped/empty` 与 `skipped/discarded` 执行物理删除；超过两倍保留期的残轮先在台账补记 `skipped/abandoned` 再删除；`skipped/rejected` 永不自动删除，日志汇总提示人工处理；未发布的轮次熔断保留，防止数据丢失；
 2. **即时落盘（Write Hot）**：评测结束后第一时间写入本地 `data/runs/<runId>/`，本地看板即刻渲染，零延迟；
 3. **脱敏归档（Sanitize & Archive）**：同步流水线按 `runs/YYYY/MM/DD/<runId>` 规则增量导出脱敏后的 `run.json`（有评审的调用内嵌去掉联系图与裁判转录引用的评审记录 `judge`，ACR-020）与通过检验的 `*.svg`，更新日索引 `DayIndex` 与顶层 `DataRepoManifest`，并生成标准 Git 提交；非预演时不可发布与被拒绝轮次写入台账 `skipped` 记录；
 4. **推送与台账确认（Push & Ledger Gate）**：`--push` 时在导出前执行 `git fetch` 与 `git merge --ff-only @{u}`（无上游则跳过，不能快进时中止且零写入）；随后执行 `git push`（绝不使用 force，命令带 120s 超时），无论本次是否有新提交均推送，并通过 `git merge-base --is-ancestor` 逐轮验证远端分支已包含，方在 `<PELICAN_DATA_DIR>/sync-state.json` 台账中更新为 `published`；数据仓已有同内容目录但台账缺失时自动补记为 `exported` 并关联目录最新提交；
 5. **发布确认模式（Confirm Published）与宿主机/容器分工**：
-   - **容器安全凭据隔离**：容器内不存放任何 GitHub Token 或 SSH 凭据，runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；
-   - **宿主机人工发布**：推送操作由宿主机操作者使用自身凭据在宿主机终端执行 `git -C ../llm-iq-data push` 完成，确保公开数据发布经过人工确认；
+   - **容器凭据隔离**：runner 挂载宿主机数据仓工作副本（`/data-repo`），配置 `autoSync: true` 与 `push: false`，负责本地脱敏导出与提交（台账记录为 `status: exported`）；容器内不存放 SSH 凭据，连接 GitHub App（ACR-011）后推送令牌只存放在 runner 专用卷 `runner-secrets`，web 容器不挂该卷；
+   - **人工确认的发布**：已连接 GitHub App 时，所有者在面板核对领先提交清单并二次确认后由 runner 推送；未连接时推送请求返回 409，由宿主机操作者使用自身凭据执行 `git -C ../llm-iq-data push`；
    - **发布确认回填**：执行 `pnpm sync:data --confirm-published`（或 runner 在 `push: false` 自动同步导出后顺带触发），通过公开数据仓的匿名 `git fetch` 拉取远端引用，基于 `git merge-base --is-ancestor` 校验提交是否已被远端上游分支包含；若已包含，则将台账中对应轮次安全转换为 `status: published` 并记录 `publishedAt`；此模式不导出、不提交、不推送，与 `--push` 互斥，fetch 失败或无上游分支时报错中止且台账不变；
-   - **网页同步面板与请求通道（ACR-010）**：所有者看板 `/config` 页新增数据仓面板，支持网页端直接查看健康状态、执行演练（dry-run）、脱敏导出（export）、发布确认（confirm）与带二次确认的推送（push）；分容器部署下经 `data/requests/` 通道由 runner 代办，容器内禁推，须在宿主机推送。
+   - **网页同步面板与请求通道（ACR-010）**：所有者看板 `/config` 页新增数据仓面板，支持网页端直接查看健康状态、执行演练（dry-run）、脱敏导出（export）、发布确认（confirm）与带二次确认的推送（push）；分容器部署下经 `data/requests/` 通道由 runner 代办；推送需 runner 已连接 GitHub App，否则在宿主机推送后以发布确认回填。
 
 ### 3.3.1 同步台账状态表（Sync Ledger States）
 
@@ -150,6 +150,7 @@ sequenceDiagram
 | `published` | - | 已推送到远程仓库，且经远程追踪分支祖先比对确认已包含 | `exportedAt`, `commit`, `publishedAt`, `redactions` | 过期后由修剪守卫安全删除 |
 | `skipped` | `unpublishable-prompt` | 整轮题目均在 `UNPUBLISHABLE_PROMPT_IDS` 清单中（如测试题 `leijun-v1`），跳过导出 | `skippedAt`, `reason` | 过期后由修剪守卫安全删除 |
 | `skipped` | `empty` | 轮次结束时一次调用都没完成（如刚开始就被取消），没有可发布内容 | `skippedAt`, `reason` | 过期后由修剪守卫安全删除 |
+| `skipped` | `discarded` | 所有者在面板丢弃的轮次：不出现在待导出清单，任何同步都不导出；已导出或已发布的轮次不能丢弃 | `skippedAt`, `reason` | 可在面板恢复；过期后由修剪守卫删除 |
 | `skipped` | `rejected` | 命中敏感绝对路径、私钥或令牌样式规则，泄漏扫描拦截拒绝发布 | `skippedAt`, `reason`, `details`（仅含文件与规则名） | **永不自动删除**，需人工核实处理 |
 | `skipped` | `abandoned` | 残轮（缺 `run.json` 或 `inProgress: true` 超过保留期两倍），自动标记废弃 | `skippedAt`, `reason` | 标记的同时物理删除释放空间 |
 
@@ -163,6 +164,8 @@ sequenceDiagram
 | :--- | :--- | :--- | :--- | :--- |
 | 正常已完成轮次 | `published` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
 | 正常不可发布轮次 | `skipped/unpublishable-prompt` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 无内容轮次 | `skipped/empty` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
+| 所有者丢弃的轮次 | `skipped/discarded` | `now - runIdTime > retentionDays` | 物理删除目录 | 计入`清理了 N 个过期轮次` |
 | 泄漏拦截轮次 | `skipped/rejected` | 任意超期时长 | **安全保留，绝不自动删除** | `保留 N 个被拒绝的过期轮次（需人工处理）` |
 | 残轮（缺 run.json 或 inProgress 为 true） | 未记录或非受保护状态 | `now - runIdTime > 2 × retentionDays` | 删除前重读最新台账合并 `skipped/abandoned` 原子保存，物理删除目录 | 计入`清理了 N 个过期轮次` |
 | 残轮（缺 run.json 或 inProgress 为 true） | 未记录或非受保护状态 | `now - runIdTime ≤ 2 × retentionDays` | 安全保留 | 无独立日志（静默保留） |
@@ -180,7 +183,7 @@ sequenceDiagram
 对于部署在 Vercel 上的在线看板（远程只读模式）：
 * **服务端拉取与缓存**：服务端请求时从 GitHub Raw 拉取数据，请求配置 Next.js `revalidate` 60 秒，另受 GitHub Raw CDN 自身约 5 分钟缓存影响；单件矢量作品（`/art`）缓存 24 小时；
 * **日历计数拉取上界**：日历通过 `listRunStarts` 获取时刻，仅对根清单 `index.json` 中最近 62 天（`CALENDAR_DETAIL_DAYS`）的日期拉取日索引以获得精确时刻；更早的远期日期直接按清单 `days[].runs` 计数合成 UTC 正午时刻（`<date>T12:00:00.000Z`，避免多数时区跨日），将全量日历请求数严格控制在常数上界（≤ 62 次请求）；单个日索引拉取失败时自动降级回退到清单计数合成，不丢弃轮次；
-* **历史追溯**：日历组件解析历史日期；当访客点击历史上某一天时（如 `2026-06-15`），前端**按需单次直接加载**对应日期目录 `runs/2026/06/15/` 的数据，既实现了“任意历史无限期可查”，又杜绝了一次性将冷数据塞满浏览器内存。
+* **历史追溯**：访客在日历上选中历史上某一天时（如 `2026-06-15`），浏览器以 `?day=2026-06-15` 请求页面，由服务端拉取对应日期目录 `runs/2026/06/15/` 的日索引与记录；浏览器不直接访问 GitHub Raw，也不会一次性载入全部历史。
 
 
 ---
@@ -197,19 +200,19 @@ sequenceDiagram
                 ┌──────────────────┴──────────────────┐
                 ▼                                     ▼
    【本地端: Control Plane】               【Vercel端: Read-Only Viewer】
-   • 监听: localhost:3001                 • 域名: iq.xxx.vercel.app
-   • 单次运行: 完整可用                   • 单次运行: 优雅隐藏 (展示只读徽标)
-   • 自动任务: 完整可用 (长驻守护)         • 自动任务: 状态只读灯 (展示更新时刻)
+   • 监听: 127.0.0.1:3000 / 开发 3001     • 域名: llm-iq-dashboard.vercel.app
+   • 单次运行: 所有者可用                 • 单次运行: 隐藏 (工具栏显示「只读展台」徽章)
+   • 自动任务: 所有者可拨开关             • 自动任务: 不显示
    • 配置管理 (/config): 允许修改         • 配置管理: 屏蔽访问 (403/重定向)
    • 设备配对 (/pair): 允许配对           • 设备配对: 屏蔽访问
 ```
 
 1. **单次运行（Run Once）**：
-   * **本地端**：用户点击触发本地 `runner.ts`，驱动各 CLI 执行；
-   * **云端**：界面隐藏“跑一次”按钮，替换为运行节点状态（例如显示：`Runner: 官方集群运行中 | 最后同步于 12 分钟前`）。
+   * **本地端**：所有者点击后，宿主机直跑时由看板进程在进程内执行；分容器部署时看板把请求写进 `data/requests/`，交给 runner 执行；
+   * **云端**：不显示“跑一次”，工具栏显示「只读展台」徽章。
 2. **开启自动任务（Auto Run Toggle）**：
-   * **本地端**：切换本地开关文件，本地 `scheduler.ts` 守护进程常驻调度；
-   * **云端**：展示只读指示器（绿灯闪烁表示基准测试自动化在线），防止公网任意访客操纵或刷爆 API 预算。
+   * **本地端**：所有者切换开关文件 `data/auto-run.json`，由常驻调度器（宿主机直跑）或 runner（分容器）按节奏执行；未配对的访客只能看到只读状态；
+   * **云端**：不显示自动任务开关，公网访客无法操纵执行或消耗 API 预算。
 
 ---
 
@@ -282,18 +285,24 @@ meomeo-dev/llm-iq-data/
    * `leak-scan.ts`：共享泄漏扫描与本机绝对路径脱敏替换；
    * `export-run.ts`：构建 `PublicRunRecord`、旧版记录规范化、用量解析回填与 SVG 脱敏；
    * `data-repo-index.ts`：维护 `DayIndex`、迁移与更新根目录 `DataRepoManifest`；
-   * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账（支持 exported、published 与 skipped 三态及三种 skip reason）；
+   * `sync-ledger.ts`：原子维护 `<PELICAN_DATA_DIR>/sync-state.json` 同步台账（exported、published、skipped 三态；skipped 的五种原因为 unpublishable-prompt、rejected、abandoned、empty、discarded）；
+   * `ledger-skip.ts`、`ledger-decisions.ts`：写入 skipped 记录；所有者的丢弃与恢复，以及导出子集的沿用规则；
+   * `sync-scope.ts`、`attempt-selection.ts`：从生效配置取同步范围（数据仓路径、profile 清单、题目白名单）；一轮之内按调用挑选导出子集；
+   * `sync-writer.ts`、`sync-content-check.ts`：数据仓文件写入与索引持久化；已有产物与本次导出内容的一致性校验；
+   * `data-repo-checkout.ts`：按 `dataRepo.repository` 在路径不存在或为空目录时 clone 本地副本，`origin` 不一致时拒绝同步（ACR-023）；
+   * `data-repo-status.ts`、`sync-actions.ts`、`data-repo-action-lock.ts`：面板状态聚合；面板动作的分发（看板进程与执行器共用）；同步与修剪共用的动作互斥锁；
    * `data-repo-git.ts`：Git 工作区检查、提交身份校验、规范提交与安全推送；
    * `confirm-published.ts`：基于匿名 fetch 与祖先关系比对的安全发布确认；
    * `sync-orchestrator.ts`：串联候选过滤、幂等判定、冲突检测与完整同步流水线。
 2. **命令行工具（`src/bin/sync-data.ts`）**：
    * 支持通过 `pnpm sync:data` 调用，提供 `--repo`、`--dry-run`、`--run`、`--push`、`--confirm-published`、`--json` 参数与结构化状态退出码（0 成功、1 出错、2 拦截或冲突）。
 3. **执行引擎与修剪守护**：
-   * `src/core/runner.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
-   * `src/core/retention.ts`：实施修剪分级守卫（过期且 published、skipped/unpublishable-prompt 或 skipped/empty 执行物理删除，rejected 永不自动删除，残轮超 2 倍标记 abandoned 后清理，未发布轮次安全熔断保留）。
+   * `src/core/run/post-sync.ts`：在每轮评测终稿落盘后，按 `dataRepo.autoSync` 配置自动触发同步；当 `push: false` 时在导出后顺带执行发布确认；若 `/data-repo` 未挂载或非 Git 仓库则输出清晰日志并跳过，具备完全的异常隔离保护；
+   * `src/core/retention.ts`：实施修剪分级守卫（过期且 published、skipped/unpublishable-prompt、skipped/empty 或 skipped/discarded 执行物理删除，rejected 永不自动删除，残轮超 2 倍标记 abandoned 后清理，未发布轮次安全熔断保留）。
 4. **所有者看板网页入口与 API（ACR-010）**：
    * `GET /api/data-repo`：所有者聚合查询数据仓工作副本健康度、清单、台账与本地未同步轮次；
-   * `POST /api/data-repo/sync`：所有者触发同步动作，支持 dry-run / export / confirm / push 模式，带并发互斥锁与 push 二次提交确认；
-   * 分容器部署下经 `data/requests/` 请求通道由执行器代答与执行导出，容器内禁推兜底；
+   * `POST /api/data-repo/sync`：所有者触发同步动作，支持 dry-run / export / confirm / push 与丢弃、恢复，带并发互斥锁与 push 二次提交确认；
+   * 分容器部署下经 `data/requests/` 请求通道由执行器代答与执行；推送需执行器已连接 GitHub App，否则返回 409；
+   * `/config` 页「数据仓设置」区块写回 `dataRepo.repository`、`path`、`autoSync` 与 `push`（ACR-023）；
    * `/config` 页提供可视化同步面板、被拦截轮次清单与弹窗二次确认推送。
 
