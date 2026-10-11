@@ -107,6 +107,9 @@
 - 评审结论图标 `src/app/components/icons/verdict-icons.tsx` 内嵌 [Phosphor Icons](https://github.com/phosphor-icons/core)
   2.1.1 的 fill 字重三个图标（brain、smiley-x-eyes、hourglass）的 SVG 路径，未改形。
   MIT License，Copyright (c) 2023 Phosphor Icons。
+- 只读展台工具栏的 GitHub 标志 `src/app/components/toolbar/ToolbarIcons.tsx` 内嵌
+  [Primer Octicons](https://github.com/primer/octicons) 19.40.0 的 `mark-github-16` 图标的 SVG 路径，未改形。
+  MIT License，Copyright (c) 2026 GitHub Inc.；GitHub 标志仅用于指向本项目的 GitHub 仓库。
 
 ## 不随本仓库分发的组件
 

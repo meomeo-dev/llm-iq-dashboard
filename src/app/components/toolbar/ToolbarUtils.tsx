@@ -3,7 +3,7 @@ import type { TimeZoneOption } from "../timeline/zoned-time";
 import { RunStatus } from "../run-status/RunStatus";
 import { LiveClock } from "./LiveClock";
 import { TimeZoneMenu } from "./TimeZoneMenu";
-import { KeyIcon, SettingsIcon } from "./ToolbarIcons";
+import { KeyIcon, RepositoryLink, SettingsIcon } from "./ToolbarIcons";
 
 interface ToolbarUtilsProps {
   readonly owner: boolean;
@@ -17,7 +17,7 @@ interface ToolbarUtilsProps {
   readonly onCloseMenus: () => void;
 }
 
-/** 工具栏右侧工具区：运行状态、时钟、时区切换与配置/登录入口 */
+/** 工具栏右侧工具区：运行状态、时钟、时区切换与配置/登录入口；只读展台改为徽章与源码仓库入口 */
 export function ToolbarUtils({
   owner,
   readonly,
@@ -52,9 +52,12 @@ export function ToolbarUtils({
         />
       </div>
       {readonly ? (
-        <span className="badge-readonly" title="只读展台">
-          只读展台
-        </span>
+        <>
+          <span className="badge-readonly" title="只读展台">
+            只读展台
+          </span>
+          <RepositoryLink />
+        </>
       ) : owner ? (
         <a className="icon-link" href="/config" title="配置" aria-label="配置">
           <SettingsIcon />
