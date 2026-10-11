@@ -25,7 +25,7 @@ export interface StageInfo {
   viewBox: { x: number; y: number; width: number; height: number };
 }
 
-/** 统一根元素尺寸、补 viewBox、暂停全部动画；返回 viewBox 供越界判断 */
+/** 统一根元素尺寸、补 viewBox、暂停全部动画、刷白画布外；返回 viewBox 供越界判断 */
 export function prepareStage(size: number): StageInfo {
   const root = document.documentElement as unknown as SVGSVGElement;
   if (!root.getAttribute("viewBox")) {
@@ -43,7 +43,30 @@ export function prepareStage(size: number): StageInfo {
   root.pauseAnimations();
   for (const animation of document.getAnimations()) animation.pause();
   const vb = root.viewBox.baseVal;
-  return { viewBox: { x: vb.x, y: vb.y, width: vb.width, height: vb.height } };
+  const viewBox = { x: vb.x, y: vb.y, width: vb.width, height: vb.height };
+  maskOutsideCanvas(viewBox);
+  return { viewBox };
+}
+
+/**
+ * 画布（viewBox）以外刷白：方框截图时 viewBox 与方框比例不同会留白，细节取景框也可能越过画布边缘，
+ * 留白里会露出画布外的内容，而看板与导出都只显示画布以内。蒙版是根元素的最后一个子元素，
+ * 画在最上层，坐标在根的用户空间里，换取景框后仍盖住同一片画布外区域；不挪动已有子元素，
+ * 按子元素下标定位的量测路径不受影响。行内 !important 压住作者写的 `path { … }` 之类样式。
+ * 出画布的判定（G5）按几何坐标量，不看像素，不受蒙版影响。
+ */
+export function maskOutsideCanvas(viewBox: StageInfo["viewBox"]): void {
+  const pad = Math.max(viewBox.width, viewBox.height) * 100;
+  const outer = `M${viewBox.x - pad},${viewBox.y - pad}h${viewBox.width + pad * 2}v${viewBox.height + pad * 2}h${-(viewBox.width + pad * 2)}Z`;
+  const inner = `M${viewBox.x},${viewBox.y}h${viewBox.width}v${viewBox.height}h${-viewBox.width}Z`;
+  const mask = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  mask.setAttribute("d", outer + inner);
+  mask.setAttribute("data-judge-mask", "");
+  mask.setAttribute("style", [
+    "fill:#fff", "fill-rule:evenodd", "fill-opacity:1", "stroke:none", "opacity:1", "display:inline",
+    "visibility:visible", "transform:none", "animation:none", "filter:none", "clip-path:none", "mask:none",
+  ].map((declaration) => `${declaration} !important`).join(";"));
+  document.documentElement.appendChild(mask);
 }
 
 /** 把 SMIL 与 CSS 动画一起定格到 ms 时刻，等两帧让布局更新 */
@@ -241,7 +264,9 @@ export function measureLeg(
 }
 
 /** 随页面函数一起注入的助手；顺序无关，都是函数声明 */
-export const PAGE_HELPERS = [resolvePath, matrixToRoot, shapesOf, samplePoints, distance, measureCrank, carryByCrank, measureLeg];
+export const PAGE_HELPERS = [
+  resolvePath, matrixToRoot, shapesOf, samplePoints, distance, measureCrank, carryByCrank, measureLeg, maskOutsideCanvas,
+];
 
 /** 脚尖与脚踏的位置：把腿与曲柄的几何沿路径采样后在根坐标里量 */
 export function measureFeet(spec: FeetSpec): FeetMeasure {
@@ -283,7 +308,7 @@ export function measureRider(spec: RiderSpec): Box | null {
   const wheelTop = spec.wheelTop ?? vb.y + vb.height / 2;
   let union: Box | null = null;
   for (const shape of root.querySelectorAll("*")) {
-    if (!(shape instanceof SVGGeometryElement) || shape.closest("defs")) continue;
+    if (!(shape instanceof SVGGeometryElement) || shape.closest("defs") || shape.hasAttribute("data-judge-mask")) continue;
     if (excluded.some((node) => node.contains(shape))) continue;
     const ctm = shape.getScreenCTM();
     if (!ctm) continue;

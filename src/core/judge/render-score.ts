@@ -6,7 +6,8 @@
 import { summarizeTotal, type CriterionResult, type GateResult, type JudgeActor, type Judgement, type RubricSpec } from "./schema";
 import type { FeetMeasure, TrackSample } from "./render-page";
 
-export const RENDER_JUDGE_ID = "render-judge@1";
+/** 实现版本：量测或截帧逻辑变化使同一作品可能得分不同时递增；评分标准本身不变时不升 rubric version */
+export const RENDER_JUDGE_ID = "render-judge@2";
 
 /** 一帧：定格时刻、各跟踪元素的量测、截图 */
 export interface FrameCapture {
