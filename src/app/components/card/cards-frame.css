@@ -9,10 +9,9 @@
   overflow: hidden;
 }
 
-.frame-art svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+/* 作品挂在 shadow root 里，按本框内容区的容器查询单位定尺寸（见 svg-shadow.ts） */
+.frame-art {
+  container-type: size;
 }
 
 .card-frame {

@@ -18,6 +18,15 @@ export function fitToFrame(svg: SVGElement): SVGElement {
   return svg;
 }
 
+/** viewBox 的宽高；取值不合法或宽高非正时返回 null */
+export function viewBoxSize(viewBox: string | null): { width: number; height: number } | null {
+  if (viewBox === null) return null;
+  const parts = viewBox.trim().split(/[\s,]+/).map(Number);
+  if (parts.length !== 4 || !parts.every(Number.isFinite)) return null;
+  const [, , width = 0, height = 0] = parts;
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
 function readLength(value: string | null): number | null {
   if (value === null || value.trim().endsWith("%")) return null;
   const parsed = Number.parseFloat(value);

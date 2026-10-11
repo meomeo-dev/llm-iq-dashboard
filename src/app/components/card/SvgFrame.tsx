@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { sanitizeSvg } from "./svg-sanitize";
 import { scopeSvgIds } from "./svg-scope";
 import { fitToFrame } from "./svg-fit";
+import { mountInShadow } from "./svg-shadow";
 
 /**
  * 固定尺寸的作品框：净化后的 SVG 按 contain 缩放进框内，框尺寸由调用方 CSS 决定，
@@ -11,7 +12,8 @@ import { fitToFrame } from "./svg-fit";
  *
  * 净化后的元素直接挂进 DOM，不用 dangerouslySetInnerHTML；净化只在浏览器端的
  * useEffect 中执行，服务端渲染的 HTML 不含模型生成的标记；净化逻辑即使有疏漏，
- * 非浏览器消费者也取不到原样标记。
+ * 非浏览器消费者也取不到原样标记。作品挂在框的 shadow root 里，样式不外溢，
+ * 超出 viewBox 的部分被裁掉（见 svg-shadow.ts）。
  */
 export function SvgFrame({ source, className }: { source: string; className?: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -22,10 +24,11 @@ export function SvgFrame({ source, className }: { source: string; className?: st
     if (host === null) return;
 
     const { element, error: failure } = sanitizeSvg(source);
-    host.replaceChildren();
-    // id 隔离须在挂载前完成：进入文档后重名 id 会互相抢引用
-    if (element !== null) host.appendChild(fitToFrame(scopeSvgIds(element)));
+    host.shadowRoot?.replaceChildren();
     setError(failure);
+    if (element === null) return;
+    // id 隔离须在挂载前完成：进入文档后重名 id 会互相抢引用
+    return mountInShadow(host, fitToFrame(scopeSvgIds(element)));
   }, [source]);
 
   const classes = ["frame", className].filter(Boolean).join(" ");
