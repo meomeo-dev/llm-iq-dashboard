@@ -6,6 +6,8 @@
  */
 
 import { Encoder } from "modern-gif";
+import { viewBoxSize } from "../card/svg-fit";
+import { mountInShadow } from "../card/svg-shadow";
 import { rasterize, svgDataUri } from "./export-image";
 import type { ArtFrame, RenderedResultSet } from "./result-set-svg";
 
@@ -36,12 +38,38 @@ export function planFrames(width: number, height: number): FramePlan {
   return { count: GIF_FPS * GIF_SECONDS, delayMs: Math.round(1000 / GIF_FPS), scale };
 }
 
+/** 作品各元素（根在前、文档顺序）每条 CSS 动画的延时（秒）；没有 CSS 动画的元素为 null */
+export type AnimationDelays = readonly (readonly number[] | null)[];
+
+/**
+ * 在文档里求出作品各元素的 animation-delay。作者常用 `calc(var(--cycle) * -0.5)` 这类延时错开
+ * 相位，只有经过层叠才能得到数值。副本挂进隐藏宿主的 shadow root（样式不外溢、:root 变量照常
+ * 生效），读完即移除。
+ */
+export function readAnimationDelays(svg: SVGElement): AnimationDelays {
+  const host = document.createElement("div");
+  host.hidden = true;
+  document.body.appendChild(host);
+  const copy = svg.cloneNode(true) as SVGElement;
+  const unmount = mountInShadow(host, copy);
+  try {
+    return documentOrder(copy).map((element) => {
+      const style = getComputedStyle(element);
+      if (style.animationName === "" || style.animationName === "none") return null;
+      return style.animationDelay.split(",").map((token) => parseClock(token) ?? 0);
+    });
+  } finally {
+    unmount();
+    host.remove();
+  }
+}
+
 /**
  * 作品副本停在第 seconds 秒：SMIL 的 begin 是时钟值（列表）时逐项减去 seconds，缺省视为 0s；
- * 事件或同步基准（如 `click`、`a.end+1s`）不改写，这类动画停在起始态。CSS 动画统一加负延时并暂停，
- * 作者写的 animation-delay 会被覆盖。
+ * 事件或同步基准（如 `click`、`a.end+1s`）不改写，这类动画停在起始态。CSS 动画全部暂停；给了
+ * delays 的元素按各自延时减去 seconds 写进行内样式，保留作者错开的相位，其余元素统一用负延时。
  */
-export function bakeTime(svg: SVGElement, seconds: number): SVGElement {
+export function bakeTime(svg: SVGElement, seconds: number, delays: AnimationDelays = []): SVGElement {
   const copy = svg.cloneNode(true) as SVGElement;
   for (const element of copy.querySelectorAll(SMIL_ELEMENTS)) {
     const begin = element.getAttribute("begin");
@@ -49,10 +77,22 @@ export function bakeTime(svg: SVGElement, seconds: number): SVGElement {
     if (offsets.some((offset) => offset === null)) continue;
     element.setAttribute("begin", offsets.map((offset) => `${formatSeconds((offset as number) - seconds)}`).join(";"));
   }
+  // 行内 !important 高于样式表里的 !important，逐元素的延时覆盖下面的统一负延时
+  for (const [index, element] of documentOrder(copy).entries()) {
+    const own = delays[index];
+    const inline = (element as Partial<ElementCSSInlineStyle>).style;
+    if (!own || inline === undefined) continue;
+    inline.setProperty("animation-delay", own.map((delay) => formatSeconds(delay - seconds)).join(", "), "important");
+  }
   const style = copy.ownerDocument.createElementNS(SVG_NS, "style");
   style.textContent = `* { animation-delay: ${formatSeconds(-seconds)} !important; animation-play-state: paused !important; }`;
   copy.insertBefore(style, copy.firstChild);
   return copy;
+}
+
+/** 根在前的全部元素；同一作品的副本之间顺序一致，readAnimationDelays 与 bakeTime 靠它对位 */
+function documentOrder(svg: SVGElement): Element[] {
+  return [svg, ...svg.querySelectorAll("*")];
 }
 
 /** SMIL 时钟值的常见写法：`1.5s`、`500ms`、`0.2`（秒）；其余返回 null */
@@ -76,11 +116,9 @@ export function fitRect(natural: { width: number; height: number } | null, box: 
   return { x: box.x + (box.width - width) / 2, y: box.y + (box.height - height) / 2, width, height };
 }
 
-/** 从 viewBox 读作品的固有尺寸；fitToFrame 已把宽高改成 100%，只能从这里知道比例 */
+/** 从 viewBox 读作品的固有尺寸；推不出 viewBox 时作品宽高是 100%，没有固有尺寸 */
 export function naturalSize(svg: SVGElement): { width: number; height: number } | null {
-  const parts = (svg.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) return null;
-  return { width: parts[2]!, height: parts[3]! };
+  return viewBoxSize(svg.getAttribute("viewBox"));
 }
 
 export function scaleRect(rect: Rect, scale: number): Rect {
@@ -112,10 +150,14 @@ export async function encodeResultSetGif(
   if (context === null) throw new Error("浏览器无法创建画布");
   const encoder = new Encoder({ width: canvas.width, height: canvas.height, workerUrl: workerUrl(), maxColors: MAX_COLORS, looped: true });
   const frames = rendered.artFrames.filter((frame) => sources.has(frame.key));
+  // 延时只与作品有关，取帧前每件求一次
+  const delays = new Map(frames.map((frame) => [frame.key, readAnimationDelays(sources.get(frame.key)!)]));
 
   for (let index = 0; index < plan.count; index += 1) {
     const seconds = index / GIF_FPS;
-    const images = await Promise.all(frames.map((frame) => loadFrameImage(sources.get(frame.key)!, seconds, frame)));
+    const images = await Promise.all(
+      frames.map((frame) => loadFrameImage(sources.get(frame.key)!, seconds, frame, delays.get(frame.key))),
+    );
     context.drawImage(base, 0, 0);
     for (const { image, frame, natural } of images) {
       const rect = fitRect(natural, scaleRect(frame, plan.scale));
@@ -128,8 +170,8 @@ export async function encodeResultSetGif(
   return encoder.flush("blob");
 }
 
-async function loadFrameImage(svg: SVGElement, seconds: number, frame: ArtFrame) {
-  const baked = bakeTime(svg, seconds);
+async function loadFrameImage(svg: SVGElement, seconds: number, frame: ArtFrame, delays: AnimationDelays | undefined) {
+  const baked = bakeTime(svg, seconds, delays);
   const image = new Image();
   image.src = svgDataUri(new XMLSerializer().serializeToString(baked));
   await image.decode();

@@ -9,7 +9,7 @@
 import type { DashboardCard } from "@/core/types";
 import { formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, STATUS_TEXT } from "../card/card-format";
 import { formatZonedDateTime } from "../timeline/zoned-time";
-import { escapeXml, thumbnailKey, type Palette, type RenderedSvg } from "./timeline-svg";
+import { artImageSvg, escapeXml, thumbnailKey, type ArtThumbnail, type Palette, type RenderedSvg } from "./timeline-svg";
 
 export interface ResultSetColumn {
   /** `default` 为登录态 */
@@ -28,8 +28,8 @@ export interface ResultSetExport {
   /** 强度档位，按高低；只画有结果的 */
   efforts: readonly string[];
   timeZone: string;
-  /** 成功作品的 data URI，键见 thumbnailKey */
-  thumbnails: ReadonlyMap<string, string>;
+  /** 成功作品的图片，键见 thumbnailKey */
+  thumbnails: ReadonlyMap<string, ArtThumbnail>;
   palette: Palette;
   /** `embed` 把作品嵌进图里（PNG / SVG）；`blank` 只留白底框并报告位置，帧由 GIF 录制逐帧画上 */
   artMode?: "embed" | "blank";
@@ -213,11 +213,7 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
     artFrames.push(inner);
     const white = `<rect x="${x}" y="${y}" width="${CARD_WIDTH}" height="${FRAME_HEIGHT}" fill="#fff"/>`;
     if (input.artMode === "blank") return white;
-    return (
-      white +
-      `<image href="${escapeXml(art)}" x="${inner.x}" y="${inner.y}" width="${inner.width}" height="${inner.height}" ` +
-      `preserveAspectRatio="xMidYMid meet"/>`
-    );
+    return white + artImageSvg(art, inner);
   }
   const redacted = card.status === "ok";
   const status = redacted ? "已脱敏，未发布" : STATUS_TEXT[card.status];

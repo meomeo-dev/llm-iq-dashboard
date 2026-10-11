@@ -73,11 +73,30 @@ export interface TimelineExport {
   moments: readonly Moment[];
   efforts: readonly string[];
   now: NowMark | null;
-  /** 成功作品的 data URI，键见 thumbnailKey */
-  thumbnails: ReadonlyMap<string, string>;
+  /** 成功作品的图片，键见 thumbnailKey */
+  thumbnails: ReadonlyMap<string, ArtThumbnail>;
   palette: Palette;
   /** 配置里的上游，决定色点顺序与每角的代表作品；缺省为空 */
   profiles?: readonly ProfileView[];
+}
+
+/** 成功作品的导出图：data URI 与 viewBox 尺寸（推不出 viewBox 时为 null） */
+export interface ArtThumbnail {
+  href: string;
+  natural: { width: number; height: number } | null;
+}
+
+/**
+ * 作品图片在框内等比居中。嵌进 <image> 的 SVG 以整个 <image> 框为视口，框与 viewBox 比例不同时，
+ * 画在 viewBox 外的内容会露在留白里；知道 viewBox 尺寸时外套一层同尺寸 viewBox 的 <svg>，
+ * 让 <image> 与作品画布同比例，越界的部分落在 <image> 外被裁掉。
+ */
+export function artImageSvg(art: ArtThumbnail, box: { x: number; y: number; width: number; height: number }): string {
+  const href = escapeXml(art.href);
+  const frame = `x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" preserveAspectRatio="xMidYMid meet"`;
+  if (art.natural === null) return `<image href="${href}" ${frame}/>`;
+  const { width, height } = art.natural;
+  return `<svg ${frame} viewBox="0 0 ${width} ${height}"><image href="${href}" width="${width}" height="${height}"/></svg>`;
 }
 
 export interface RenderedSvg {
@@ -297,8 +316,7 @@ function miniSvg(context: FolderDrawContext, cell: FolderCell, slot: string, ind
   const content =
     art === undefined
       ? `<rect ${box} fill="${palette.surface}"/>` + text(center.x, center.y + 7, "✕", palette.err, 20, 'text-anchor="middle"')
-      : `<rect ${box} fill="#fff"/><image href="${escapeXml(art)}" x="${x + 2}" y="${y + 2}" ` +
-        `width="${MINI_SIZE - 4}" height="${MINI_SIZE - 4}" preserveAspectRatio="xMidYMid meet"/>`;
+      : `<rect ${box} fill="#fff"/>` + artImageSvg(art, { x: x + 2, y: y + 2, width: MINI_SIZE - 4, height: MINI_SIZE - 4 });
   const dot = `<circle cx="${x + MINI_SIZE - 10}" cy="${y + 10}" r="5" fill="${statusColor(card, palette)}" stroke="${palette.surfaceHi}" stroke-width="2"/>`;
   return content + dot + countBadge(cell, slot, x, y, palette) + verdictBadgesSvg(slotMarks(cell, slot), x, y, MINI_SIZE, palette);
 }

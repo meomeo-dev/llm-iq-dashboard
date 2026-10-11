@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { clip, estimateWidth, renderResultSetSvg, wrap, type ResultSetExport } from "@/app/components/export/result-set-svg";
-import type { Palette } from "@/app/components/export/timeline-svg";
+import { artImageSvg, type Palette } from "@/app/components/export/timeline-svg";
 import type { DashboardCard } from "@/core/types";
 
 const palette: Palette = {
@@ -38,7 +38,7 @@ function input(overrides: Partial<ResultSetExport>): ResultSetExport {
     columns: [{ name: "default", label: "登录态", color: null }, { name: "relay-a", label: "甲 <稳定> 0.07", color: "#f28b5b" }],
     efforts: ["low", "medium", "xhigh"],
     timeZone: "Asia/Shanghai",
-    thumbnails: new Map([["r1/codex__gpt-6-astra__medium/animated-pelican-v1", "data:image/svg+xml;charset=utf-8,%3Csvg%3E"]]),
+    thumbnails: new Map([["r1/codex__gpt-6-astra__medium/animated-pelican-v1", { href: "data:image/svg+xml;charset=utf-8,%3Csvg%3E", natural: { width: 1000, height: 700 } }]]),
     palette,
     ...overrides,
   };
@@ -91,4 +91,18 @@ test("estimateWidth / clip / wrap：中文按 1 em，超宽截断加省略号，
   assert.equal(clip("短", 30, 10), "短");
   assert.deepEqual(wrap("一二三四五六七", 30, 10, 2), ["一二三", "四五…"]);
   assert.deepEqual(wrap("一二", 30, 10, 2), ["一二"]);
+});
+
+test("artImageSvg：知道 viewBox 尺寸时外套同比例的 <svg>，<image> 与画布同比例；不知道时退回铺满框", () => {
+  const box = { x: 10, y: 20, width: 280, height: 205 };
+  const nested = artImageSvg({ href: "data:a&b", natural: { width: 1000, height: 700 } }, box);
+  assert.equal(
+    nested,
+    '<svg x="10" y="20" width="280" height="205" preserveAspectRatio="xMidYMid meet" viewBox="0 0 1000 700">' +
+      '<image href="data:a&amp;b" width="1000" height="700"/></svg>',
+  );
+  assert.equal(
+    artImageSvg({ href: "data:x", natural: null }, box),
+    '<image href="data:x" x="10" y="20" width="280" height="205" preserveAspectRatio="xMidYMid meet"/>',
+  );
 });

@@ -7,9 +7,9 @@ import type { DashboardCard } from "@/core/types";
 import type { Moment } from "../timeline/moments";
 import { fetchArtSource } from "../card/art-source";
 import { rawSvgHref } from "../card/card-format";
-import { fitToFrame } from "../card/svg-fit";
+import { fitToFrame, viewBoxSize } from "../card/svg-fit";
 import { sanitizeSvg } from "../card/svg-sanitize";
-import { thumbnailKey, type Palette, type RenderedSvg } from "./timeline-svg";
+import { thumbnailKey, type ArtThumbnail, type Palette, type RenderedSvg } from "./timeline-svg";
 
 /** 画布上限（Chrome 单边约 16384px、面积约 2.68 亿像素）；超出时降低倍率 */
 const MAX_CANVAS_SIDE = 16_000;
@@ -20,7 +20,7 @@ const PNG_SCALE = 2;
  * 取回作品源码（页面数据不含源码，见 ACR-003），经与看板相同的净化后序列化为 data URI；
  * 取不到的作品跳过。XMLSerializer 会补上 xmlns，缺它的 SVG 作为图片加载时是空白。
  */
-export async function buildThumbnails(moments: readonly Moment[]): Promise<Map<string, string>> {
+export async function buildThumbnails(moments: readonly Moment[]): Promise<Map<string, ArtThumbnail>> {
   return thumbnailsFrom(await buildArtSources(moments.flatMap((moment) => moment.cards)));
 }
 
@@ -38,9 +38,13 @@ export async function buildArtSources(cards: readonly DashboardCard[]): Promise<
   return sources;
 }
 
-export function thumbnailsFrom(sources: ReadonlyMap<string, SVGElement>): Map<string, string> {
+/** 序列化为 data URI，并带上 viewBox 尺寸供 artImageSvg 按作品画布比例落位 */
+export function thumbnailsFrom(sources: ReadonlyMap<string, SVGElement>): Map<string, ArtThumbnail> {
   const serializer = new XMLSerializer();
-  return new Map([...sources].map(([key, element]) => [key, svgDataUri(serializer.serializeToString(element))]));
+  return new Map([...sources].map(([key, element]) => [key, {
+    href: svgDataUri(serializer.serializeToString(element)),
+    natural: viewBoxSize(element.getAttribute("viewBox")),
+  }]));
 }
 
 export function svgDataUri(source: string): string {

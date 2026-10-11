@@ -46,6 +46,20 @@ test("bakeTime：begin 缺省与时钟值列表逐项减 t，事件与同步基�
   assert.equal(bakeTime(svg, 0).querySelector("animate")?.getAttribute("begin"), "0s");
 });
 
+test("bakeTime：给了逐元素延时时按各自延时减 t 写进行内样式，保留错开的相位", () => {
+  const svg = parse(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<g class="arm"/><g class="arm-2"/><rect class="still"/></svg>',
+  );
+  // 文档顺序：根、arm、arm-2、still；arm-2 反相半个周期，still 没有动画
+  const baked = bakeTime(svg, 0.4, [null, [0], [-0.8, 0.2], null]);
+  const delayOf = (selector: string) => (baked.querySelector(selector) as SVGElement).style.getPropertyValue("animation-delay");
+  assert.equal(delayOf(".arm"), "-0.4s");
+  assert.equal(delayOf(".arm-2"), "-1.2s, -0.2s");
+  assert.equal(delayOf(".still"), "");
+  assert.equal((baked.querySelector(".arm-2") as SVGElement).style.getPropertyPriority("animation-delay"), "important");
+});
+
 test("parseClock / naturalSize / fitRect / scaleRect", () => {
   assert.equal(parseClock("1.5s"), 1.5);
   assert.equal(parseClock("500ms"), 0.5);
@@ -67,7 +81,7 @@ test("renderResultSetSvg blank 模式：作品框留白并报告内框位置，�
     bindings: {}, trigger: "manual", error: null, usage: null,
   } as unknown as import("@/core/types").DashboardCard;
   const palette = { bg: "#000", surface: "#111", surfaceHi: "#222", border: "#333", text: "#fff", textDim: "#ccc", textFaint: "#999", accent: "#08f", ok: "#0f0", warn: "#ff0", err: "#f00" };
-  const base = { title: "t", subtitle: "s", cards: [card], columns: [{ name: "default", label: "登录态", color: null }], efforts: ["low"], timeZone: "UTC", thumbnails: new Map([["r1/t/p", "data:x"]]), palette };
+  const base = { title: "t", subtitle: "s", cards: [card], columns: [{ name: "default", label: "登录态", color: null }], efforts: ["low"], timeZone: "UTC", thumbnails: new Map([["r1/t/p", { href: "data:x", natural: null }]]), palette };
   const blank = renderResultSetSvg({ ...base, artMode: "blank" });
   assert.doesNotMatch(blank.svg, /<image/);
   assert.deepEqual(blank.artFrames, [{ key: "r1/t/p", x: 32 + 10, y: 32 + 72 + 96 + 10, width: 280, height: 205 }]);
