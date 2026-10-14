@@ -5,6 +5,7 @@
 export interface ConfigMessages {
   headerTitle: string;
   headerSubtitle: string;
+  backLink: string;
   unsavedChanges: string;
   savedSuccess: string;
   saveFailed: string;
@@ -75,8 +76,9 @@ export interface ConfigMessages {
 }
 
 export const zhCNConfig: ConfigMessages = {
-  headerTitle: "基准运行与矩阵配置",
+  headerTitle: "基准配置",
   headerSubtitle: "修改直接写回 pelican.config.yaml 并保留原有注释，下一轮触发即生效",
+  backLink: "← 看板",
   unsavedChanges: "有未保存的改动",
   savedSuccess: "配置已保存并生效",
   saveFailed: "保存失败",
@@ -147,8 +149,9 @@ export const zhCNConfig: ConfigMessages = {
 };
 
 export const enConfig: ConfigMessages = {
-  headerTitle: "Benchmark Matrix & Runtime Configuration",
+  headerTitle: "Benchmark Configuration",
   headerSubtitle: "Changes are written atomically to pelican.config.yaml preserving comments",
+  backLink: "← Dashboard",
   unsavedChanges: "Unsaved changes",
   savedSuccess: "Configuration saved",
   saveFailed: "Failed to save configuration",

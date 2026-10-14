@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import React from "react";
@@ -23,6 +24,14 @@ import type { DashboardCard } from "@/core/types";
 import { EmptyDay } from "@/app/components/dashboard/EmptyDay";
 import { ConfigPageHeader } from "@/app/config/ConfigPageHeader";
 import { PairCodeForm } from "@/app/pair/PairCodeForm";
+
+const CJK_RE = /[\u4e00-\u9fff]/;
+const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
+  "common.languageSwitchLabel",
+  "common.languageSwitchTitle",
+]);
+const EXPECTED_BUILTIN_PROMPTS_SHA256 =
+  "97adfdad892945b18d21a8248265bd4886fb3f8722eed819c7b391e0d9ffe22b";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
@@ -99,9 +108,14 @@ const SAMPLE_CARD: DashboardCard = {
 };
 
 describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
-  it("verifies 100% key symmetry, non-empty values, and identical {placeholder} sets between en and zh-CN dictionaries", () => {
-    const enLeaves = collectLeafEntries(getMessages("en"));
-    const zhLeaves = collectLeafEntries(getMessages("zh-CN"));
+  it("verifies 100% key symmetry, zero CJK in en leaves, Monday-first calendar weekdays, and identical {placeholder} sets", () => {
+    const enMsg = getMessages("en");
+    const zhMsg = getMessages("zh-CN");
+    assert.equal(enMsg.toolbar.calendarWeekdays[0], "Mo");
+    assert.equal(zhMsg.toolbar.calendarWeekdays[0], "一");
+
+    const enLeaves = collectLeafEntries(enMsg);
+    const zhLeaves = collectLeafEntries(zhMsg);
 
     assert.deepEqual(
       [...enLeaves.keys()].sort(),
@@ -113,6 +127,13 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
       const zhVal = zhLeaves.get(key)!;
       assert.ok(enVal.trim().length > 0, `en key "${key}" must not be empty`);
       assert.ok(zhVal.trim().length > 0, `zh-CN key "${key}" must not be empty`);
+      if (!INTENTIONAL_ZH_SWITCH_KEYS.has(key)) {
+        assert.equal(
+          CJK_RE.test(enVal),
+          false,
+          `en dictionary key "${key}" must not contain CJK characters, got: "${enVal}"`,
+        );
+      }
       assert.deepEqual(
         extractPlaceholders(enVal),
         extractPlaceholders(zhVal),
@@ -121,11 +142,25 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     }
   });
 
-  it("verifies all 54 BUILTIN_PROMPTS and 300 candidates have bilingual metadata and zero mutation of prompt templates", () => {
+  it("verifies all 54 BUILTIN_PROMPTS and 300 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
     assert.equal(BUILTIN_PROMPTS.length, 54);
     const classic = BUILTIN_PROMPTS.find((p) => p.id === "classic-v1");
     assert.ok(classic);
     assert.equal(classic.template, "Generate an SVG of a pelican riding a bicycle");
+
+    const shaPayload = JSON.stringify(
+      BUILTIN_PROMPTS.map((p) => ({
+        id: p.id,
+        template: p.template,
+        candidates: p.candidates.map((c) => ({ id: c.id, text: c.text })),
+      })),
+    );
+    const actualSha256 = crypto.createHash("sha256").update(shaPayload).digest("hex");
+    assert.equal(
+      actualSha256,
+      EXPECTED_BUILTIN_PROMPTS_SHA256,
+      "BUILTIN_PROMPTS templates and candidate texts must remain byte-for-byte identical",
+    );
 
     let candidateTotal = 0;
     for (const spec of BUILTIN_PROMPTS) {
@@ -134,6 +169,7 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
       const zhLabel = localizePromptLabel(spec.id, spec.label, "zh-CN");
       assert.ok(enLabel.trim().length > 0, `en label for ${spec.id} must be non-empty`);
       assert.ok(zhLabel.trim().length > 0, `zh-CN label for ${spec.id} must be non-empty`);
+      assert.equal(CJK_RE.test(enLabel), false, `CJK in en label for ${spec.id}: ${enLabel}`);
 
       if (spec.standard) {
         const enStd = localizePromptStandard(spec.id, spec.standard, "en");
@@ -141,6 +177,13 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
         assert.ok(enStd && enStd.coreKey.trim().length > 0 && enStd.groundTruth.trim().length > 0);
         assert.ok(zhStd && zhStd.coreKey.trim().length > 0 && zhStd.groundTruth.trim().length > 0);
         assert.ok(enStd.evaluationCriteria.trim().length > 0);
+        assert.equal(CJK_RE.test(enStd.coreKey), false, `CJK in coreKey for ${spec.id}`);
+        assert.equal(CJK_RE.test(enStd.groundTruth), false, `CJK in groundTruth for ${spec.id}`);
+        assert.equal(
+          CJK_RE.test(enStd.evaluationCriteria),
+          false,
+          `CJK in evaluationCriteria for ${spec.id}`,
+        );
       }
 
       const localizedEn = localizePromptSpec(spec, "en");
@@ -151,10 +194,11 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
         candidateTotal += 1;
         const c = spec.candidates[i]!;
         const origText = c.text;
-        const enCand = localizeCandidateLabel(c.id, c.label, "en", c.text);
-        const zhCand = localizeCandidateLabel(c.id, c.label, "zh-CN", c.text);
+        const enCand = localizeCandidateLabel(c.id, c.label, "en");
+        const zhCand = localizeCandidateLabel(c.id, c.label, "zh-CN");
         assert.ok(enCand.trim().length > 0);
         assert.ok(zhCand.trim().length > 0);
+        assert.equal(CJK_RE.test(enCand), false, `CJK in en candidate label ${c.id}: ${enCand}`);
         assert.equal(localizedEn.candidates[i]?.text, origText, "localizePromptSpec must never alter candidate text");
       }
     }

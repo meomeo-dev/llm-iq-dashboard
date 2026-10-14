@@ -6,6 +6,7 @@
 import type { RunOptionsView } from "@/app/api/run/route";
 import { PROFILE_CLIS } from "@/core/config/profiles";
 import { DEFAULT_PROFILE } from "@/core/types";
+import { localizePromptLabel, type Locale } from "@/i18n";
 
 export interface ProfileChoice {
   /** `default` 为登录态，其余为 profile 名 */
@@ -37,16 +38,21 @@ function profileCombos(options: RunOptionsView, picked: ReadonlySet<string>): Ta
  * 本轮可选的上游；勾选的组合都不支持上游时为空数组（面板与引入上游之前相同）。
  * 上游要对勾选的每个组合都可用才算可用：清单非空且缺任一模型即不可用。
  */
-export function profileChoices(options: RunOptionsView, picked: ReadonlySet<string>): ProfileChoice[] {
+export function profileChoices(
+  options: RunOptionsView,
+  picked: ReadonlySet<string>,
+  locale: Locale = "zh-CN",
+): ProfileChoice[] {
   const combos = profileCombos(options, picked);
   if (combos.length === 0) return [];
+  const isEn = locale === "en";
   const clis = new Set(combos.map((combo) => combo.cli));
   const loginBlocked = options.loginUnavailable.some((cli) => clis.has(cli));
   const login: ProfileChoice = {
     id: DEFAULT_PROFILE,
-    label: "登录态",
+    label: isEn ? "Official Login" : "登录态",
     available: !loginBlocked,
-    reason: loginBlocked ? "未登录" : null,
+    reason: loginBlocked ? (isEn ? "Not signed in" : "未登录") : null,
   };
   const upstreams = options.profiles
     .filter((profile) => clis.has(profile.cli))
@@ -54,7 +60,13 @@ export function profileChoices(options: RunOptionsView, picked: ReadonlySet<stri
       const missing = combos.find(
         (combo) => combo.cli === profile.cli && profile.models.length > 0 && !profile.models.includes(combo.model),
       );
-      const reason = !profile.enabled ? "已停用" : !profile.hasKey ? "未填 key" : missing ? `没有 ${missing.model}` : null;
+      const reason = !profile.enabled
+        ? isEn ? "Disabled" : "已停用"
+        : !profile.hasKey
+          ? isEn ? "Missing API key" : "未填 key"
+          : missing
+            ? isEn ? `Missing ${missing.model}` : `没有 ${missing.model}`
+            : null;
       return { id: profile.name, label: profile.label, available: reason === null, reason };
     });
   return [login, ...upstreams];
@@ -88,12 +100,15 @@ export function startMode(
   options: RunOptionsView | null,
   picked: ReadonlySet<string>,
   promptCount: number,
+  locale: Locale = "zh-CN",
 ): StartMode {
   if (options === null) return { kind: "direct", profiles: undefined, calls: picked.size * promptCount };
-  const choices = profileChoices(options, picked);
+  const choices = profileChoices(options, picked, locale);
   if (choices.length === 0) return { kind: "direct", profiles: undefined, calls: picked.size * promptCount };
   const available = choices.filter((choice) => choice.available);
-  if (available.length === 0) return { kind: "none", reason: "没有可用的上游" };
+  if (available.length === 0) {
+    return { kind: "none", reason: locale === "en" ? "No available profiles" : "没有可用的上游" };
+  }
   if (available.length === 1) {
     const only = available[0]!;
     return { kind: "direct", profiles: [only.id], calls: countCalls(options, picked, promptCount, [only.id]) };
@@ -102,13 +117,36 @@ export function startMode(
 }
 
 /** 模态首行：复述本轮条件，组合多于三个时收成"等 N 个" */
-export function describeRound(options: RunOptionsView, picked: ReadonlySet<string>, prompts: ReadonlySet<string>): string {
-  const combos = options.targets.filter((target) => target.id && picked.has(target.id)).map((target) => `${target.model} · ${target.effort}`);
-  const titles = options.prompts.filter((prompt) => prompts.has(prompt.id)).map((prompt) => prompt.label);
-  return `${shorten(combos)} × ${shorten(titles)}`;
+export function describeRound(
+  options: RunOptionsView,
+  picked: ReadonlySet<string>,
+  prompts: ReadonlySet<string>,
+  locale: Locale = "zh-CN",
+): string {
+  const combos = options.targets
+    .filter((target) => target.id && picked.has(target.id))
+    .map((target) => `${target.model} · ${target.effort}`);
+  const titles = options.prompts
+    .filter((prompt) => prompts.has(prompt.id))
+    .map((prompt) => localizePromptLabel(prompt.id, prompt.label, locale));
+  return `${shorten(combos, locale)} × ${shorten(titles, locale)}`;
 }
 
-function shorten(items: readonly string[]): string {
-  if (items.length <= 3) return items.join("、");
-  return `${items.slice(0, 3).join("、")} 等 ${items.length} 个`;
+function shorten(items: readonly string[], locale: Locale = "zh-CN"): string {
+  const sep = locale === "en" ? ", " : "、";
+  if (items.length <= 3) return items.join(sep);
+  return locale === "en"
+    ? `${items.slice(0, 3).join(sep)}... (${items.length} total)`
+    : `${items.slice(0, 3).join(sep)} 等 ${items.length} 个`;
 }
+
+export function localizeReadinessDetail(detail: string | null, locale: Locale): string {
+  if (detail === null) return "";
+  if (locale === "zh-CN") return detail;
+  return detail
+    .replace(/不在 PATH 中。安装：/g, "is not in PATH. Install: ")
+    .replace(/未安装。安装：/g, "is not installed. Install: ")
+    .replace(/未登录。登录：/g, "is not signed in. Sign in: ")
+    .replace(/已安装且已登录/g, "is installed and signed in");
+}
+

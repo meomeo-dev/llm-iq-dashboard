@@ -1,4 +1,5 @@
-import { cookies } from "next/headers";
+import type { Metadata } from "next";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
 import { commandHint } from "@/core/command-hint";
@@ -8,6 +9,7 @@ import { isReadonly } from "@/core/deploy-mode";
 import { readCredentialStatus } from "@/core/profile-credentials";
 import { getRawDataRepoPath } from "@/core/sync/data-repo-status";
 import type { AppConfig } from "@/core/config";
+import { DEFAULT_LOCALE, getMessages, LOCALE_COOKIE, resolveLocale } from "@/i18n";
 import type { DataRepoDraft } from "./DataRepoForm";
 import { ConfigEditor } from "./ConfigEditor";
 import { DataRepoPanel } from "./DataRepoPanel";
@@ -25,6 +27,20 @@ import {
 
 /** 配置可能被其他进程改写，每次请求重读 */
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const cookieStore = await cookies();
+    const headerStore = await headers();
+    const locale = resolveLocale(
+      cookieStore.get(LOCALE_COOKIE)?.value ?? null,
+      headerStore.get("accept-language"),
+    );
+    return { title: getMessages(locale).common.configPageTitle };
+  } catch {
+    return { title: getMessages(DEFAULT_LOCALE).common.configPageTitle };
+  }
+}
 
 /** 表单里的路径要是配置文件里的原文，不能是加载后展开的绝对路径 */
 function dataRepoDraftOf(config: AppConfig, path: string): DataRepoDraft | null {

@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { useI18n } from "@/i18n/context";
+import { useI18n, type Locale } from "@/i18n";
 import { parseModelList } from "./profile-panel-model";
 import type { ModelSyncOutcome } from "./use-profile-credentials";
+
+function syncButtonTitle(canSync: boolean, isEn: boolean): string {
+  if (canSync) return isEn ? "Query upstream /models endpoint" : "请求上游的 /models 接口";
+  return isEn ? "Save config and set API key first" : "先保存配置并填好 API key";
+}
 
 /**
  * profile 的模型清单：手填，或从上游 `/models` 同步后再删改。
@@ -17,7 +22,7 @@ export function ProfileModelsField({
   /** 已保存且已填 key 才能向上游拉清单 */
   canSync: boolean;
   onChange: (models: string[]) => void;
-  onSync: () => Promise<ModelSyncOutcome>;
+  onSync: (locale?: Locale) => Promise<ModelSyncOutcome>;
 }) {
   const { locale } = useI18n();
   const isEn = locale === "en";
@@ -27,7 +32,7 @@ export function ProfileModelsField({
 
   const sync = async (): Promise<void> => {
     setBusy(true);
-    const outcome = await onSync();
+    const outcome = await onSync(locale);
     setBusy(false);
     if (!outcome.ok) {
       setMessage({ kind: "error", text: outcome.error });
@@ -35,12 +40,10 @@ export function ProfileModelsField({
     }
     setText(outcome.models.join(", "));
     onChange(outcome.models);
-    setMessage({
-      kind: "ok",
-      text: isEn
-        ? `Upstream returned ${outcome.models.length} model(s); trim unneeded ones and save config`
-        : `上游返回 ${outcome.models.length} 个模型，删掉不测的再保存配置`,
-    });
+    const okText = isEn
+      ? `Upstream returned ${outcome.models.length} model(s); trim unneeded ones and save config`
+      : `上游返回 ${outcome.models.length} 个模型，删掉不测的再保存配置`;
+    setMessage({ kind: "ok", text: okText });
   };
 
   return (
@@ -58,27 +61,8 @@ export function ProfileModelsField({
         />
       </label>
       <div className="field-row">
-        <button
-          type="button"
-          disabled={!canSync || busy}
-          title={
-            canSync
-              ? isEn
-                ? "Query upstream /models endpoint"
-                : "请求上游的 /models 接口"
-              : isEn
-                ? "Save config and set API key first"
-                : "先保存配置并填好 API key"
-          }
-          onClick={sync}
-        >
-          {busy
-            ? isEn
-              ? "Syncing…"
-              : "同步中…"
-            : isEn
-              ? "Sync from Upstream"
-              : "从上游同步"}
+        <button type="button" disabled={!canSync || busy} title={syncButtonTitle(canSync, isEn)} onClick={sync}>
+          {busy ? (isEn ? "Syncing…" : "同步中…") : isEn ? "Sync from Upstream" : "从上游同步"}
         </button>
         {message !== null && <span className={`status ${message.kind}`}>{message.text}</span>}
       </div>

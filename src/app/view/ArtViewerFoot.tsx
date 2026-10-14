@@ -56,41 +56,45 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
         </details>
       )}
       {card.judge != null && <JudgeDrawer judge={card.judge} judgeCost={card.judgeCost ?? null} liveState={liveState} />}
-      {localizedStd != null && (
-        <details className="viewer-drawer viewer-standard">
-          <summary>
-            <span className="drawer-icon" aria-hidden="true">📐</span>
-            <span className="drawer-title">
-              {isEn ? "Objective Reference Standard & Criteria" : "客观参考标准与判定依据"}
-            </span>
-            <span className="drawer-core-pill">{localizedStd.coreKey}</span>
-          </summary>
-          <div className="viewer-drawer-body standard-body">
-            <div className="standard-grid">
-              <div className="standard-col">
-                <div className="standard-heading">
-                  <span className="standard-tag gt">Ground Truth</span>
-                  <h4>{isEn ? "Objective Ground Truth" : "客观黄金标准"}</h4>
-                </div>
-                <p className="standard-desc">{localizedStd.groundTruth}</p>
-              </div>
-              <div className="standard-col">
-                <div className="standard-heading">
-                  <span className="standard-tag eval">Evaluation</span>
-                  <h4>{isEn ? "Evaluation Criteria" : "判断与鉴别标准"}</h4>
-                </div>
-                <p className="standard-desc">{localizedStd.evaluationCriteria}</p>
-              </div>
-            </div>
-            {localizedStd.referenceSource && (
-              <div className="standard-source-row">
-                <span className="source-label">{isEn ? "Reference: " : "出处参考："}</span>
-                <ReferenceSourceDisplay source={localizedStd.referenceSource} className="source-link" />
-              </div>
-            )}
-          </div>
-        </details>
-      )}
+      {localizedStd != null && <StandardDrawer standard={localizedStd} isEn={isEn} />}
     </footer>
+  );
+}
+
+function StandardDrawer({ standard, isEn }: { standard: PromptStandard; isEn: boolean }) {
+  return (
+    <details className="viewer-drawer viewer-standard">
+      <summary>
+        <span className="drawer-icon" aria-hidden="true">📐</span>
+        <span className="drawer-title">
+          {isEn ? "Objective Reference Standard & Criteria" : "客观参考标准与判定依据"}
+        </span>
+        <span className="drawer-core-pill">{standard.coreKey}</span>
+      </summary>
+      <div className="viewer-drawer-body standard-body">
+        <div className="standard-grid">
+          <div className="standard-col">
+            <div className="standard-heading">
+              <span className="standard-tag gt">Ground Truth</span>
+              <h4>{isEn ? "Objective Ground Truth" : "客观黄金标准"}</h4>
+            </div>
+            <p className="standard-desc">{standard.groundTruth}</p>
+          </div>
+          <div className="standard-col">
+            <div className="standard-heading">
+              <span className="standard-tag eval">Evaluation</span>
+              <h4>{isEn ? "Evaluation Criteria" : "判断与鉴别标准"}</h4>
+            </div>
+            <p className="standard-desc">{standard.evaluationCriteria}</p>
+          </div>
+        </div>
+        {standard.referenceSource && (
+          <div className="standard-source-row">
+            <span className="source-label">{isEn ? "Reference: " : "出处参考："}</span>
+            <ReferenceSourceDisplay source={standard.referenceSource} className="source-link" />
+          </div>
+        )}
+      </div>
+    </details>
   );
 }

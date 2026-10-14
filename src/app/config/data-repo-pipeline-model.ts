@@ -85,7 +85,7 @@ function checkCommonBlocker(
   return null;
 }
 
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 import { checkPushCapabilityReasonEn, derivePipelineEn } from "./data-repo-panel-i18n";
 
 /** 推送凭据是否可用：分容器部署下须已连接 GitHub（执行器上报 github-app 能力） */

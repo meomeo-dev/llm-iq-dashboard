@@ -2,7 +2,7 @@
  * 配置页侧边导航栏配置项定义
  */
 
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 export interface ConfigNavItem {
   /** 区块锚点标识符（kebab-case） */

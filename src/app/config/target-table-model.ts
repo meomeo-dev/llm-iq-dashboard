@@ -11,7 +11,7 @@ import {
   type EffortLevel,
   type Target,
 } from "@/core/types";
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 export const SOURCE_LABEL: Record<ModelOption["sources"][number], string> = {
   probe: "已探测",

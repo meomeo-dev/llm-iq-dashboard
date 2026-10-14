@@ -49,9 +49,9 @@ pnpm check:length
 
 ## 4. 交付物
 
-- 新增 `src/core/prompts/i18n/labels-en.ts`、`src/core/prompts/i18n/standards-en.ts`、`src/core/prompts/i18n/index.ts`；
+- 新增 `src/core/prompts/i18n/labels-en.ts`、`src/core/prompts/i18n/standards-en.ts`（含 `standards-single-en.ts`、`standards-suites-en.ts`、`standards-landmarks-en.ts`、`standards-fe-part1-en.ts`、`standards-fe-part2-en.ts`、`standards-vfx-part1-en.ts`、`standards-vfx-part2-en.ts`）、`src/core/prompts/i18n/index.ts`；
 - 更新 `src/core/prompt/lifecycle.ts` 支持 `locale: Locale = "zh-CN"`；
-- 新增 `src/i18n/judge-rubric.ts` 并在 `src/i18n/index.ts` 统一导出；
+- 新增 `src/i18n/judge-rubric.ts` 与 `src/i18n/judge-evidence-en.ts` 并在 `src/i18n/index.ts` 统一导出；
 - 新增 `test/i18n/prompt-judge-i18n.test.ts`。
 
 ## 5. 与计划的偏差

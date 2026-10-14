@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SessionView } from "@/app/api/session/route";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { actionFetch } from "../components/action-fetch";
 
 export function useDevicePanel() {

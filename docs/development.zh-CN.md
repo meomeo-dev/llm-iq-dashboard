@@ -8,10 +8,11 @@
 
 ```
 config/          起步配置模板、冒烟配置、价格目录锁文件、长度门与密钥扫描策略；本机配置 pelican.config.yaml 不入库
-docs/            基准来源考证、设计要点、部署、数据同步与架构记录
+docs/            基准来源考证、设计要点、部署、数据同步与架构记录（对外文档按 .md 英文主版与 .zh-CN.md 简体中文版成对互链）
 docker/          镜像定义、构建忽略规则与容器入口、CLI 安装脚本（编排见根目录 compose.yaml）
 scripts/         生产看板启动、长度门、密钥扫描、评审补跑、展台冒烟与本地 issue 脚本
 src/core/        领域逻辑：配置与写回、提示词与变量、编排、调度、存储、SVG 提取
+src/core/prompts/i18n/ 提示词与评分标准的展示层双语映射（index.ts、labels-en.ts、standards-en.ts 及分域 standards-*-en.ts），不改题面原文与存储契约
 src/core/judge/  作品评审：静态解析、渲染量测、AI 裁判与评审记录读写
 src/core/sync/   数据仓同步：脱敏导出、台账、发布确认与本地副本核对
 src/core/data-repo/ 数据仓布局与记录格式的契约
@@ -20,6 +21,8 @@ src/core/auth/、github-auth/ 所有者配对与设备凭据；GitHub App 授权
 src/capabilities/ CLI 能力探测与多源合并、安装与登录预检
 src/adapters/    每家 CLI 一个适配器，实现统一的 AgentAdapter 契约
 src/pricing/     用量解析与按价格目录折算成本
+src/i18n/        中英双语（en / zh-CN）国际化：类型契约（types.ts）、服务端与客户端语言协商及 React Context（context.tsx）、
+                 词条字典（messages/）与评审标准 G1–G5 / C1–C9 及确定性证据展示层本地化（judge-rubric.ts、judge-evidence-en.ts）
 src/bin/         命令行入口：run-once、scheduler、runner（分容器时的执行器）、pair、preflight、onboard、
                  pricing-sync、sync-data 与 validate-prompts
 src/app/         Next.js 看板（/）、配置界面（/config）、单件查看（/view）、配对（/pair）、
@@ -31,7 +34,7 @@ data/pricing/    价格目录附件缓存（已 gitignore，由 pnpm pricing:syn
 ```
 
 根目录只放 pnpm、TypeScript、Next.js、docker compose、lefthook 按固定位置查找的入口文件，以及
-README、AGENTS.md、CHANGELOG.md、handoff.md 与许可证文件；`next-env.d.ts` 由 Next.js 生成，不入库。
+`README.md`（英文主版）/ `README.zh-CN.md`（简体中文版）、`AGENTS.md`、`CHANGELOG.md`、`handoff.md` 与许可证文件；对外说明文档遵循 `.md`（English primary）⇄ `.zh-CN.md`（Simplified Chinese）双语成对互链约定；`next-env.d.ts` 由 Next.js 生成，不入库。
 
 ## 运行产物
 
@@ -118,7 +121,8 @@ pnpm test
 当前覆盖的约束：`classic-v1` 逐字不变、SVG 提取、强度折叠、四层超时优先级、`runId` 与
 时区分日、考场规则三份一致、过期清理、SVG 净化与挂载、用量解析与成本折算、CLI 就绪预检的
 判定、预算的预测与放行；另覆盖作品评审的静态与渲染判定、数据仓同步与台账、远程数据源、
-配对鉴权与 GitHub 授权、调度排队、上游 profile、直出约束与导出合成图。模型画得好不好属于
+配对鉴权与 GitHub 授权、调度排队、上游 profile、直出约束、导出合成图，以及中英双语国际化
+（`test/i18n/locale.test.ts` 语言协商与持久化、`test/i18n/prompt-judge-i18n.test.ts` 提示词与评审标准展示层本地化及题面不变性、`test/i18n/i18n-integrity.test.ts` 词条完整性与双语文档链接校验）。模型画得好不好属于
 观测数据，不进 `pnpm test`；调用链是否还通，用冒烟配置手动验证：
 
 ```bash

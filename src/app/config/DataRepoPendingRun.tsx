@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { PendingAttempt, PendingRun } from "@/core/sync/data-repo-panel-types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { isAttemptPicked, runPick, type SelectionState } from "./pending-selection-model";
 
 const STATUS_LABELS: Record<string, string> = { ok: "成功", "no-svg": "无 SVG", error: "失败", timeout: "超时" };

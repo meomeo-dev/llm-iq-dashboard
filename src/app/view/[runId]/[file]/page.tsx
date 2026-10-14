@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
 import { loadArt, loadCard, loadCardsBetween } from "@/core/data-source";
 import { orderProfileNames, profileLabel, type ProfileView } from "@/core/profile-view";
 import { resolvePromptStandard } from "@/core/prompt";
 import { DEFAULT_PROFILE, type DashboardCard } from "@/core/types";
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  localizeCandidateLabel,
+  resolveLocale,
+  type Locale,
+} from "@/i18n";
 import { readDashboardSettings } from "../../../components/dashboard/dashboard-page-data";
 import { ArtViewer } from "../../ArtViewer";
 import "../../../components/card/cards.css";
@@ -17,6 +24,18 @@ export const dynamic = "force-dynamic";
 
 interface ViewPageProps {
   params: Promise<{ runId: string; file: string }>;
+}
+
+async function detectRequestLocale(): Promise<Locale> {
+  try {
+    const cookieStore = await cookies();
+    const explicit = cookieStore.get(LOCALE_COOKIE)?.value ?? null;
+    const headerStore = await headers();
+    const acceptLanguage = headerStore.get("accept-language");
+    return resolveLocale(explicit, acceptLanguage);
+  } catch {
+    return DEFAULT_LOCALE;
+  }
 }
 
 /** 单件作品的单独查看页：`/view/<runId>/<svgFile>`，作品占满窗口 */
@@ -51,13 +70,20 @@ async function loadSiblings(card: DashboardCard, profiles: readonly ProfileView[
 
 export async function generateMetadata({ params }: ViewPageProps): Promise<Metadata> {
   const { runId, file } = await params;
+  const locale = await detectRequestLocale();
+  const isEn = locale === "en";
   const card = await loadCard(runId, file);
-  if (card === null) return { title: "作品不存在 · 鹈鹕自行车基准" };
-  const scene = Object.values(card.bindings).join(" · ");
+  if (card === null) {
+    return { title: isEn ? "Artwork Not Found · Pelican Benchmark" : "作品不存在 · 鹈鹕自行车基准" };
+  }
+  const scene = Object.values(card.bindings)
+    .map((v) => localizeCandidateLabel(v, v, locale))
+    .join(" · ");
   // 经上游的目标显示名本就含上游名，标题改按 model · effort · 上游显示名 拼，避免重复
   const heading =
     card.profile === undefined
       ? card.label
-      : `${card.model} · ${card.effort} · ${profileLabel(card.profile, readDashboardSettings().profiles)}`;
-  return { title: [heading, scene].filter(Boolean).join(" · ") };
+      : `${card.model} · ${card.effort} · ${profileLabel(card.profile, readDashboardSettings().profiles, locale)}`;
+  const suffix = isEn ? "Pelican Benchmark" : "鹈鹕自行车基准";
+  return { title: [heading, scene, suffix].filter(Boolean).join(" · ") };
 }

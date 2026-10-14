@@ -3,31 +3,45 @@
 #
 # When config/pelican.config.yaml does not exist, it is copied from this file on first load.
 # Edit config/pelican.config.yaml (gitignored) or use the /config web console.
+# The starter matrix uses one lightweight model per CLI at low effort across 6 prompts (18 calls per round).
+# If a CLI is not installed or signed in, preflight skips its calls and displays install/login instructions;
+# remove unused CLIs from targets or run `pnpm preflight` to check readiness.
 # config/pelican.config.yaml 不存在时，首次加载会把本文件复制过去；之后只改那一份，
-# 它不入库，本文件保持为起步模板。起步矩阵刻意取便宜的组合：三家各一个轻量模型、
-# low 强度、两道题，一轮 6 次调用，按 API 等价成本约 $0.5。确认调用链都通了，再按
+# 它不入库，本文件保持为起步模板。起步矩阵取三家各一个轻量模型、
+# low 强度、六道题，一轮 18 次调用。确认调用链都通了，再按
 # 需要加模型、加强度、加题目，并同步调整下方 budget。
-#
 # 某家 CLI 没装或没登录时，每轮开始前的预检会拦下它的调用，看板上给出安装或登录
 # 命令；不打算用的 CLI 直接删掉对应的 targets 项即可。`pnpm preflight` 可随时自查。
 
 # schedule defines the cadence; execution is gated by the Auto-Run toggle on the dashboard toolbar.
+# Omit both cron and intervalMinutes to disable scheduled runs. Changes take effect without restarting the scheduler.
 # schedule 只定节奏；到点是否执行由看板工具栏的“自动任务”开关决定。
 # cron 与 intervalMinutes 都不写即不定时。改动无需重启调度器。
 schedule:
+  # Either cron or intervalMinutes (cron takes precedence). 5-field format: min hour day month weekday.
+  # Starter default is 09:00 daily; Auto-Run is off by default until enabled on the dashboard toolbar.
   # cron 与 intervalMinutes 二选一，cron 优先。五段式：分 时 日 月 周。
   # 起步为每天 9 点一轮。自动任务默认关闭，在看板工具栏上打开“自动任务”后才会
   # 按这个节奏跑（没有调度器在运行时看板会拉起一个）。
   cron: "0 9 * * *"
   # intervalMinutes: 360
 
+  # Timezone for cron evaluation; defaults to host timezone when omitted.
   # cron 的时区；留空则跟随本机时区。
   # timezone: "Asia/Shanghai"
 
+  # Whether to trigger an immediate round when the scheduler starts.
   # 调度器启动时是否立刻先跑一轮。
   runOnStart: false
 
 run:
+  # Prompt IDs executed in each round (registered in src/core/prompt.ts or custom prompts: below).
+  # Calls per round = promptIds count × enabled targets count.
+  # - classic-v1 / upgraded-v2: Simon Willison's verbatim prompts for external comparability.
+  # - Frontier engineering & science visual prompts: jwst-deployment-v1, tokamak-plasma-v1,
+  #   gaa-nanosheet-v1, crispr-cas9-rloop-v1, pulsar-jet-v1.
+  # - Candidate suites (shuihu-v1 / xiyou-v1 / sanguo-v1 / honglou-v1, landmarks-v1, fe-*-v1, vfx-*-v1):
+  #   draw one candidate per rotation period without replacement.
   # 本轮要跑的提示词条目，登记在 src/core/prompt.ts，也可在下方 prompts: 自定义。
   # 每轮的调用次数 = 提示词条数 × 启用的 targets 数。
   # - classic-v1 / upgraded-v2  Simon Willison 公开发布的原文，逐字不改，与外部公开结果对齐。
@@ -48,11 +62,15 @@ run:
     - crispr-cas9-rloop-v1
     - pulsar-jet-v1
 
+  # Candidate-set rotation cadence: `day` shares one candidate across all rounds on the same day (by timezone); `run` rotates every scheduled round.
   # 候选集多久换一次：day 为同一天各轮共用一条（按 timezone 划分），run 为每轮都换。
   rotation:
     period: day
     timezone: UTC
 
+  # Direct-output guard (off by default): appends `text` as a separate paragraph after each prompt to suppress
+  # CLI web search, code execution, and self-screenshots while keeping the original prompt text untouched;
+  # recorded in run.json's harnessGuard field. Configurable in /config under "Direct-Output Guard".
   # 直出约束：开启后每条提示词末尾另起一段附上 text，要求模型直接作答，抑制 CLI 工具自带的
   # 联网检索、跑代码自测与截图自检，让结果反映模型本身而不是 harness 的兜底。题目原文不改
   # （classic-v1 仍逐字保留），附加的原文记进 run.json 的 harnessGuard，与不加约束的轮次区分。
@@ -64,17 +82,24 @@ run:
   #     do not run or test any code, and do not render, screenshot, or otherwise inspect your own
   #     output to check it. Output the final SVG straight away.
 
+  # Maximum number of model lanes running concurrently. Different models run in parallel;
+  # efforts and prompts for the same model run serially within its lane.
   # 同时在跑的模型数上限。按模型分道：不同模型并行，同一模型的各强度、各提示词
   # 在自己的道里串行。取启用的模型数即全部并行。
   concurrency: 3
 
+  # Maximum number of upstream profiles running concurrently (default 5; default login session counts as 1).
+  # Each profile spawns an isolated codex process and runs model lanes up to `concurrency` inside it.
   # 同时在跑的上游 profile 数上限（登录态也算一个，缺省 5）。每个 profile 一个独立的
   # codex 进程，profile 之间并行，各自内部再按 concurrency 分道。
   # profileConcurrency: 5
 
-  # 全局默认超时（毫秒）。
+  # Global default timeout per attempt in milliseconds (1800000 = 1800s / 30 min).
+  # 全局默认超时（毫秒，1800000 即 1800 秒 / 30 分钟）。
   defaultTimeoutMs: 1800000
 
+  # Per-CLI timeout overrides in milliseconds.
+  # Precedence: targets[].timeoutMs > timeoutByEffort[effort] > timeoutByCli[cli] > defaultTimeoutMs.
   # 按 CLI 覆盖超时。
   # 优先级：targets[].timeoutMs > timeoutByEffort[effort] > timeoutByCli[cli] > defaultTimeoutMs。
   timeoutByCli:
@@ -82,6 +107,7 @@ run:
     agy: 600000
     codex: 600000
 
+  # Per-effort timeout overrides: low/medium/high = 600s (10 min); xhigh/max/ultra = 1800s (30 min).
   # 按思考强度分段覆盖超时：high 及以下（low, medium, high）600 秒；high 以上（xhigh, max, ultra）1800 秒。
   timeoutByEffort:
     low: 600000
@@ -91,6 +117,9 @@ run:
     max: 1800000
     ultra: 1800000
 
+# Budget caps in API-equivalent USD (calculated from first-party API list prices regardless of subscription).
+# Before each call, cost is forecast from recent historical averages; calls that would exceed a cap are skipped.
+# If the rolling 24h spend has already reached perDayUsd, the entire round is skipped. Remove this block for no cap.
 # 成本上限，按 API 等价成本（厂商自营 API 标价折算，与是否经订阅调用无关）计。
 # 每次发起调用前按该目标最近几次的平均成本预估，超出上限的调用不发起；已发起的
 # 调用会跑完，因此实际花费可能略超。近 24 小时已达每日上限时整轮不开始。
@@ -100,17 +129,24 @@ budget:
   perRoundUsd: 2
   perDayUsd: 10
 
+# Local retention window: keeps the last `days` of run directories (only prunes runs confirmed `published` in the data repo).
+# Remove this block to retain all local runs indefinitely.
 # 历史保留：只留最近 days 天的轮次，更早的整轮目录在每轮开始时删除。
 # 删掉这一段即全部保留。
 retention:
   days: 30
 
+# Artwork Judging (ACR-019 / ACR-020, off by default; configurable in /config under "Artwork Judging"):
+# - Code layer (30 pts): static AST analysis + 8-frame headless Chromium capture (requires Chrome or PELICAN_BROWSER_PATH)
+#   writing data/runs/<runId>/<attemptKey>.judge.json for prompts with a rubric (e.g. animated-pelican-v1).
+# - AI semantic layer (ACR-020, C5–C9, 70 pts total): after the round finishes, pending artworks are evaluated in parallel
+#   (`concurrency`, default 5 per judge) by the first cross-vendor judge CLI in `judges`. Consumes real CLI quota.
 # 作品评审（ACR-019）：有评分标准的题目（如 animated-pelican-v1）在每次调用抽出 SVG 后，
 # 由代码层按题目口径打分并写 data/runs/<runId>/<attemptKey>.judge.json；渲染层需要本机有
 # Chromium（Google Chrome 或 PELICAN_BROWSER_PATH 指定的可执行文件），没有时只出静态分。
 # 默认关闭；开启后已有的记录照常显示。看板 /config 页「作品评审」区块可改这一段。
 # AI 语义层（ACR-020）：代码层判「待复核」的作品在整轮结束后逐件交给裁判 CLI 看联系图打分
-# （C5–C8，共 70 分），裁判走该 CLI 的登录态、真实消耗配额；按顺序取第一个厂商与作品不同的裁判，
+# （C5–C9，共 70 分），裁判走该 CLI 的登录态、真实消耗配额；按顺序取第一个厂商与作品不同的裁判，
 # 前一个调用失败（未登录、超时）时换下一个，都失败则不评。作品之间并行评审，concurrency 是每个裁判
 # 同时评的件数（默认 5，不同裁判各算各的）。默认关闭且没有裁判：要用先填 judges。
 # judge:
@@ -124,6 +160,14 @@ retention:
 #       - { cli: codex, model: gpt-6-sol, effort: medium }
 #       - { cli: agy, model: gemini-3.8-flash, effort: high }
 
+# Public Data Repository Sync (optional; configurable in /config under "Data Repository Settings"):
+# - path: local Git checkout path (resolved relative to cwd; use /data-repo in Docker).
+# - repository: GitHub repository URL (https://github.com/<owner>/<repo>); auto-cloned if `path` is missing/empty,
+#   and verified against local `origin` before syncing.
+# - autoSync: automatically sanitize and commit completed rounds to the local data repo (default false).
+# - push: automatically `git push` after committing (default false).
+# - publishPrompts: allowlist of prompt IDs to publish (omit to publish all publishable prompts).
+# Non-default profile calls publish only public profile metadata (never baseUrl, queryParams, or API keys).
 # 数据仓同步配置（可选）：自动或手动将已完成的评测脱敏同步到独立公开数据仓（llm-iq-data）。
 # path 为本地数据仓 git 仓库路径（必填，相对路径按进程 cwd 解析；容器部署时填 /data-repo）。
 # repository 为数据仓的 GitHub 地址（可选，https://github.com/<owner>/<repo>）：执行器启动与同步前，
@@ -142,6 +186,10 @@ retention:
 #   push: false
 #   publishPrompts: [animated-pelican-v1]
 
+# Upstream Profiles (optional, currently supported for codex):
+# Defines third-party upstream endpoints for side-by-side comparison against the default login session (`default`).
+# API keys are never stored in this file—set them in /config (saved under PELICAN_SECRETS_DIR).
+# `pricing.multiplier` scales official API prices (or override per-model USD / 1M tokens in `pricing.overrides`).
 # profile（可选）：一家 CLI 通往某个第三方上游的一套配置，用来同时对比不同上游，目前只支持 codex。
 # 不写即只有隐式的 default profile，也就是该 CLI 的登录态；名字 default 保留，不能登记。
 # baseUrl 必填；models 可先留空，填好 API key 后在 /config 页从上游同步。API key 不写在这里，
@@ -163,6 +211,9 @@ retention:
 #     pricing:
 #       multiplier: 0.08
 
+# Target Matrix: each entry is a CLI × model × reasoning effort combination (`low`/`medium`/`high`/`xhigh`/`max`/`ultra`).
+# Unsupported high efforts are folded down to the highest supported level. `enabled: false` excludes a target from scheduled
+# runs while keeping it selectable in manual "Run Once". Set `profile` to route through a configured upstream profile.
 # 被测矩阵：每一项是一个 CLI × 模型 × 思考强度的组合，也就是看板上的一格。
 # effort 统一取 low / medium / high / xhigh / max / ultra 六档；各模型实际支持哪些档位
 # 由 CLI 实时探测（见 /config 页），请求超出时折叠到不高于它的最高可用档。
@@ -175,6 +226,8 @@ targets:
     effort: low
     label: Claude Sonnet 5 · low
 
+  # For agy gemini-* models, specify the base model name; the adapter passes `--model <base> --effort <level>`.
+  # For models without effort variants, `effort` is used only for dashboard grouping.
   # agy 的 gemini-* 填基名，适配器传 `--model <基名> --effort <档>`；
   # 无强度变体的模型（如 claude-sonnet-4-6）effort 仅用于看板分组。
   - cli: agy

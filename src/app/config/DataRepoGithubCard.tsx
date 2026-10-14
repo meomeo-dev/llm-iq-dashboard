@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import type { GithubConnection } from "@/core/sync/data-repo-panel-types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 
 export interface DataRepoGithubCardProps {
   github?: GithubConnection | null;

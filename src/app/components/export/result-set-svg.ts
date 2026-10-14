@@ -8,7 +8,16 @@
 
 import type { DashboardCard } from "@/core/types";
 import type { Locale } from "@/i18n/types";
-import { formatBytes, formatCost, formatDuration, judgeCostBrief, judgeText, statusText } from "../card/card-format";
+import {
+  formatBindingBadge,
+  formatBytes,
+  formatCost,
+  formatDuration,
+  judgeCostBrief,
+  judgeText,
+  localizeCardError,
+  statusText,
+} from "../card/card-format";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { artImageSvg, escapeXml, thumbnailKey, type ArtThumbnail, type Palette, type RenderedSvg } from "./timeline-svg";
 
@@ -178,7 +187,7 @@ function cardBadges(input: ResultSetExport, card: DashboardCard): Badge[] {
     effort,
     ...profile,
     { label: card.promptId, color: palette.textFaint },
-    ...Object.entries(card.bindings).map(([k, v]) => ({ label: `${k}: ${v}`, color: palette.accent })),
+    ...Object.entries(card.bindings).map(([k, v]) => ({ label: formatBindingBadge(k, v, locale), color: palette.accent })),
   ];
 }
 
@@ -220,7 +229,7 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
   }
   const redacted = card.status === "ok";
   const status = redacted ? (locale === "en" ? "Redacted, unpublished" : "已脱敏，未发布") : statusText(card.status, locale);
-  const reason = card.error ?? status;
+  const reason = localizeCardError(card.error, card.status, locale) ?? status;
   const color = card.status === "no-svg" ? palette.warn : card.status === "ok" ? palette.textDim : palette.err;
   const lines = wrap(reason, CARD_WIDTH - 40, 12, 5);
   const startY = y + FRAME_HEIGHT / 2 - (lines.length * 17) / 2 - 4;

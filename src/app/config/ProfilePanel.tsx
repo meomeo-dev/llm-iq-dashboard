@@ -1,6 +1,6 @@
 import type { ProfileConfig } from "@/core/config";
 import type { Target } from "@/core/types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { ProfileCard } from "./ProfileCard";
 import { UpstreamTypeEditor } from "./UpstreamTypeEditor";
 import { createProfile, profileUsage, renameProfile } from "./profile-panel-model";
@@ -66,7 +66,7 @@ export function ProfilePanel({
           onEnsureSaved={onEnsureSaved}
           onSaveKey={(apiKey) => credentials.saveKey(profile.cli, profile.name, apiKey)}
           onDeleteKey={() => credentials.deleteKey(profile.cli, profile.name)}
-          onSyncModels={() => credentials.syncModels(profile.cli, profile.name)}
+          onSyncModels={(syncLocale) => credentials.syncModels(profile.cli, profile.name, syncLocale)}
         />
       ))}
       <div className="field-row">

@@ -1,5 +1,5 @@
 import { type CliKind, type EffortLevel } from "@/core/types";
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 export interface RunDraft {
   promptIds: string[];

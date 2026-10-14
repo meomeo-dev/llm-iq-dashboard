@@ -137,3 +137,28 @@ export function formatElapsed(ms: number): string {
 export function promptTag(promptId: string): string {
   return promptId.split("-")[0] ?? promptId;
 }
+
+/** 按语言转换预算中止原因（来自 src/core/budget.ts） */
+export function localizeBudgetStop(budgetStop: string, locale: "en" | "zh-CN"): string {
+  if (locale === "zh-CN") return budgetStop;
+  const roundMatch = budgetStop.match(/^预计超出每轮上限 (\$\S+)（本轮已计 (\$\S+)，该调用预计 (\$\S+)）$/);
+  if (roundMatch) {
+    return `Estimated to exceed per-round cap ${roundMatch[1]} (round spent ${roundMatch[2]}, call est. ${roundMatch[3]})`;
+  }
+  const dayMatch = budgetStop.match(/^预计超出每日上限 (\$\S+)（近 24 小时已计 (\$\S+)(?:，该调用预计 (\$\S+))?）$/);
+  if (dayMatch) {
+    const callEst = dayMatch[3] ? `, call est. ${dayMatch[3]}` : "";
+    return `Estimated to exceed 24h cap ${dayMatch[1]} (24h spent ${dayMatch[2]}${callEst})`;
+  }
+  return budgetStop;
+}
+
+/** 按语言转换 AI 评审条目备注（来自 src/core/judge/ai-round.ts） */
+export function localizeJudgeItemNote(note: string | null, locale: "en" | "zh-CN"): string | null {
+  if (note === null || locale === "zh-CN") return note;
+  if (note === "评审记录不存在") return "Judge record not found";
+  if (note === "续评时 AI 层已关闭") return "AI judge disabled when resuming";
+  if (note === "没有不同厂商的可用裁判") return "No cross-vendor AI judge available";
+  return note;
+}
+

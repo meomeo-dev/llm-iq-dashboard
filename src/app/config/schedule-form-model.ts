@@ -46,7 +46,7 @@ export function resolveTimeZone(valueTz: string | null): string {
   return "Asia/Shanghai";
 }
 
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 export interface ScheduleNotice {
   kind: "warn" | "ok" | "muted";

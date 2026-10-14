@@ -21,7 +21,7 @@
 | 2 | 54 道内置题目与 300 条候选条目双语展示及不可变性 | 全部具备中英双语标题与标准，且 `template` 与 `candidates[].text` 零修改 | 54 道内置题与 300 条候选展示字段均非空，`localizePromptSpec` 未改动任何题面原文 | `test/i18n/i18n-integrity.test.ts` 用例 2 + `pnpm validate:prompts` (194 项 0 缺失) | ✅ |
 | 3 | 核心对外双语文档互链检查 | 6 组核心文档中英成对存在且顶部互链 | `README`、`development`、`design-notes`、`deploy-docker`、`deploy-public-showcase`、`data-sync-architecture` 共 6 组中英文文档存在且前 10 行含双向切换链接 | `test/i18n/i18n-integrity.test.ts` 用例 3 通过 | ✅ |
 | 4 | 导出图（横版/竖版时间线与结果集）双语渲染验证 | `locale: "en"` 与 `"zh-CN"` 输出对应语种标签 | 横版含 `Models`/`Tile corners`/`Now 12:30` 与 `模型`/`格内位置`/`现在 12:30`；竖版含 `1 results · 1 ok` 与 `1 个结果 · 成功 1`；结果集含 `Scheduled` 与 `定时` | `test/i18n/i18n-integrity.test.ts` 用例 4 通过 | ✅ |
-| 5 | 关键 UI 组件双语挂载渲染与全量 7 项质量门禁 | 组件按 `I18nProvider` 语言渲染；7 项门禁全绿 | `ConfigPageHeader`、`EmptyDay`、`PairCodeForm` 双语断言通过；`lint`、`test` (154 suites / 940 pass / 0 fail)、`validate:prompts`、`check:length` (436 files / 0 违规)、`check:secrets` (886 files / 0 问题)、`build`、`showcase:smoke` 全部通过 | `test/i18n/i18n-integrity.test.ts` 用例 5 + 7 项门禁实跑输出 | ✅ |
+| 5 | 关键 UI 组件双语挂载渲染与全量 7 项质量门禁 | 组件按 `I18nProvider` 语言渲染；7 项门禁全绿 | `ConfigPageHeader`、`EmptyDay`、`PairCodeForm` 双语断言通过；`lint`、`test` (154 suites / 940 pass / 0 fail)、`validate:prompts`、`check:length` (437 files / 0 违规)、`check:secrets` (886 files / 0 问题)、`build`、`showcase:smoke` 全部通过 | `test/i18n/i18n-integrity.test.ts` 用例 5 + 7 项门禁实跑输出 | ✅ |
 
 ## 2. 功能点逐条验收
 
@@ -47,7 +47,7 @@ pnpm showcase:smoke
 | `pnpm validate:prompts` | 通过（54 道内置题 + 140 道前沿单题 + 16 套题 220 候选，共 194 项 0 缺失） | Node 22+ |
 | `pnpm lint` | 通过（`tsc --noEmit` 0 errors） | Node 22+ |
 | `pnpm test` | 通过（154 suites / 940 tests pass / 0 fail，含 `i18n-integrity.test.ts`） | Node 22+ |
-| `pnpm check:length` | 通过（扫描 436 个文件，超标 0 项） | Node 22+ |
+| `pnpm check:length` | 通过（扫描 437 个文件，超标 0 项） | Node 22+ |
 | `pnpm check:secrets` | 通过（扫描 886 个已跟踪文件，白名单 7 个，问题 0 项） | Node 22+ |
 | `pnpm build` | 通过（Next.js 15.5.25 生产构建成功，全路由表无变更） | Node 22+ |
 | `pnpm showcase:smoke` | 通过（13 项只读展台端到端防线与健康检查全绿） | Node 22+ |

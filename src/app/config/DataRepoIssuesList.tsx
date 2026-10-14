@@ -1,5 +1,9 @@
 import React from "react";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
+import {
+  localizeRejectedReasonEn,
+  localizeSkippedReasonEn,
+} from "./data-repo-panel-i18n";
 import type { RejectedIssue, SkippedIssue } from "./data-repo-panel-model";
 
 interface DataRepoIssuesListProps {
@@ -32,7 +36,8 @@ export function DataRepoIssuesList({
           <ul className="data-repo-issue-items">
             {rejected.map((item, idx) => (
               <li key={`${item.runId}-${item.file}-${idx}`}>
-                <code>{item.runId}</code> ({item.file}): {item.reason}
+                <code>{item.runId}</code> ({item.file}):{" "}
+                {isEn ? localizeRejectedReasonEn(item.reason) : item.reason}
               </li>
             ))}
           </ul>
@@ -47,7 +52,8 @@ export function DataRepoIssuesList({
           <ul className="data-repo-issue-items">
             {skipped.map((item) => (
               <li key={item.runId}>
-                <code>{item.runId}</code>: {item.reason}
+                <code>{item.runId}</code>:{" "}
+                {isEn ? localizeSkippedReasonEn(item.reason) : item.reason}
               </li>
             ))}
           </ul>

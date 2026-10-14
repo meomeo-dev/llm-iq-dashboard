@@ -37,6 +37,10 @@ SVG 存成文件、只回一句“已保存到 …”，基准因此取不到作
 直接作答的原文，抑制 CLI 自带的联网、跑代码自测与截图自检；题目原文不变，附加原文记进
 `run.json` 的 `harnessGuard` 并随公开记录发布。
 
+同理，切换看板的界面语言（`EN` / `中文`）绝不改动发给 CLI 的提示词 `template`、`candidates[].text`、
+`house-rules.ts` 或 `ai-prompt.ts`，也不改动落盘的 `run.json` 与 `.judge.json`；只有面向人类读者的展示层元数据
+（题目标签 `label`、黄金评判标准 `standard`、题龄说明 `src/core/prompts/i18n/` 与评审标准 `G1`–`G5` / `C1`–`C9` 文案 `src/i18n/judge-rubric.ts`）按当前语言切换。
+
 ## 每次调用一个干净工作目录
 
 CLI 会自动加载所在目录的 agent 指令文件；在本仓库里运行会把本项目的文档带进上下文，

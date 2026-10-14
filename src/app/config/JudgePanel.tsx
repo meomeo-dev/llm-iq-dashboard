@@ -3,7 +3,7 @@
 import type { CapabilitySnapshot } from "@/capabilities/types";
 import { JUDGE_AI_MAX_CONCURRENCY, type JudgeConfig, type JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "@/core/types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { judgeLabel, judgeRoutes, moveJudge } from "./judge-panel-model";
 
 /** 作品评审（ACR-019 / ACR-020）：代码层开关、AI 层开关、裁判清单、超时与并行度 */
@@ -11,11 +11,7 @@ export function JudgePanel({
   value,
   catalog,
   onChange,
-}: {
-  value: JudgeConfig;
-  catalog: CapabilitySnapshot;
-  onChange: (next: JudgeConfig) => void;
-}) {
+}: { value: JudgeConfig; catalog: CapabilitySnapshot; onChange: (next: JudgeConfig) => void }) {
   const { locale } = useI18n();
   const isEn = locale === "en";
   const patchAi = (changes: Partial<JudgeConfig["ai"]>): void =>

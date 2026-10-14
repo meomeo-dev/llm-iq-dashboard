@@ -3,7 +3,7 @@
 > [English](README.md) | **简体中文**
 
 定时调用 `agy` / `codex` / `claude` 三家命令行工具，指定模型与思考强度执行**鹈鹕自行车
-基准**（pelican-on-a-bicycle），把历次结果以 24 小时时间线的形式呈现在一个看板上。
+基准**（pelican-on-a-bicycle）及内置 **54 个提示词条目**（30 道独立单题 + 24 套含 **300 个轮换场景候选**的套题，合计 **330 个唯一测试题面**），把历次结果以 24 小时时间线的形式呈现在一个看板上。
 
 ![状态](https://img.shields.io/badge/license-MIT-blue)
 
@@ -141,11 +141,13 @@ docker exec -it llm-iq-runner pnpm pair
 | `schedule.runOnStart` | 调度器启动时是否立刻先跑一轮；须同时设置节奏 |
 | `run.promptIds` | 本轮要跑的提示词条目，可多条并行 |
 | `run.concurrency` | 同时在跑的模型数上限（按模型分道，见下） |
-| `run.defaultTimeoutMs` | 全局默认超时（默认 300 秒） |
+| `run.profileConcurrency` | 同时在跑的上游 profile 数上限（缺省 5，登录态也算一个） |
+| `run.defaultTimeoutMs` | 全局默认超时（默认 1800 秒（30 分钟）） |
 | `run.timeoutByCli` | 按 CLI 覆盖超时，如 `codex: 600000` |
 | `run.timeoutByEffort` | 按思考强度覆盖超时，如 `max: 2700000`（45 分钟） |
 | `run.harnessGuard` | 直出约束（缺省关）：开启后每条提示词末尾另起一段附上要求直接作答的原文（缺省英文，`text` 可改），抑制 CLI 自带的联网、跑代码自测与截图自检；题目原文不改，附加原文记进 `run.json` |
 | `judge` | 作品评审（缺省关）：`judge.enabled` 开代码层，`judge.ai.enabled` 开 AI 语义层，`judge.ai.judges` 列裁判（CLI × 模型 × 强度，厂商须与作品不同），`judge.ai.concurrency` 是每个裁判同时评的件数（缺省 5） |
+| `dataRepo` | 公开数据仓同步配置（`path`、`repository`、`autoSync`、`push`、`publishPrompts`） |
 | `profiles` | 第三方上游（中转）：按 CLI 登记环境变量与倍率，目标可指定走哪个上游；只有登录态时不用填 |
 | `budget.perRoundUsd` | 每轮 API 等价成本上限（美元），见[成本](#成本api-等价)；不写即不限 |
 | `budget.perDayUsd` | 滚动 24 小时的成本上限（美元）；已达上限时整轮不开始 |
@@ -167,6 +169,8 @@ docker exec -it llm-iq-runner pnpm pair
 
 ## 提示词
 
+内置题库共 **54 个提示词条目**（**30 道独立单题** + **24 套轮换候选集**，候选集内含 **300 个场景候选**，合计 **330 个唯一测试题面**）：
+
 | 条目 | 说明 |
 | --- | --- |
 | `classic-v1` | Simon Willison 原文 `Generate an SVG of a pelican riding a bicycle`，一字不改，锁定不可编辑，是与外部结果对齐的锚点 |
@@ -178,7 +182,7 @@ docker exec -it llm-iq-runner pnpm pair
 | `four-stroke-engine-v1` 等 7 道 | 前沿工程：四冲程发动机、莫比乌斯小车、倒立摆、赛博魔方、合成波赛道、全息 HUD、黑洞引力透镜 |
 | `jwst-deployment-v1` 等 7 道 | 前沿视觉：量子双缝、磁流体尖刺、韦伯望远镜展开、托卡马克、2nm GAA 晶体管、CRISPR-Cas9、脉冲星喷流 |
 | `fe-*-v1` / `vfx-*-v1` 14 组 | 2026 前沿单题 140 道：AI、半导体、量子、生物、能源、航空、超材料、神经 8 个工程领域与模拟、光学、几何、科学可视化、运动、系统 6 个特效领域，每组 10 道候选轮换 |
-| `landmarks-v1` / `landmarks-anim-v1` | 城市地标微缩景观四十景（静态 / 动态），候选集轮换 |
+| `landmarks-v1` / `landmarks-anim-v1` | 城市地标微缩景观四十景（静态 40 景 / 动态 40 景，共 80 个候选），候选集轮换 |
 | `shuihu-v1` / `shuihu-anim-v1` | 《水浒传》十个经典回目的名场面（静态 / 动态），候选集轮换 |
 | `xiyou-v1` / `xiyou-anim-v1` | 《西游记》十个经典回目的名场面（静态 / 动态），候选集轮换 |
 | `sanguo-v1` / `sanguo-anim-v1` | 《三国演义》十个经典回目的名场面（静态 / 动态），候选集轮换 |
@@ -214,7 +218,7 @@ docker exec -it llm-iq-runner pnpm pair
   （月历，跑过的日子与今天可以点，格子里标着当天的轮数）与“筛选”。筛选是两级菜单：
   左列是 CLI / 模型 / 强度 / 提示词四个维度及各自的计数，右侧是所选维度的复选清单，
   顶部有“全选”“反选”；有维度被筛掉时按钮徽章显示被筛维度数。右端依次是当天总计
-  （成功率 / 轮数与作品数）、执行状态胶囊、时钟与时区菜单、配置图标。
+  （成功率 / 轮数与作品数）、执行状态胶囊、时钟与时区菜单、右上角 `EN / 中文` 双语切换器（即时切换界面、题目标签、黄金标准、评审标准与导出图表的语言）以及配置图标。
   清单按当天数据列出，配置里停用的提示词的历史结果也能筛。状态点图例在时间线
   标题旁，与格内位置图例并排。
 - **导出**：时间线标题右侧的“导出”菜单把当天完整的时间轴泳道存成一张图，包括整条
@@ -323,7 +327,7 @@ pnpm pricing:sync --latest   # 改用最新 Release，写回锁文件（随后�
 
 ## 数据仓同步
 
-将本地评测结果脱敏导出并同步到公开数据仓（如 `meomeo-dev/llm-iq-data`）。
+将本地评测结果脱敏导出并同步到公开数据仓（如 `meomeo-dev/llm-iq-data`）。完整的冷热分层、同步台账与修剪分级架构见 [`docs/data-sync-architecture.zh-CN.md`](docs/data-sync-architecture.zh-CN.md)。
 
 ### 配置
 

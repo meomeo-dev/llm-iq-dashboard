@@ -1,8 +1,40 @@
 # Benchmark Provenance & Prompt Rationale · 鹈鹕基准与扩展题库来源考证
 
-> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all 180 built-in benchmark prompts and candidate sets registered in `src/core/prompt.ts`. Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable.
+> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all **54 built-in `PromptSpec` entries** registered in `src/core/prompt.ts` (**30 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **330 unique benchmark prompt templates**; **180 rows** in the §一 master table below where the 14 `fe-*-v1` / `vfx-*-v1` suites are expanded into 140 individual `FE-*` / `VFX-*` candidate rows). Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable, while English and Chinese display labels and evaluation standards are localized at the UI presentation layer (`src/core/prompts/i18n/`).
 
-本文档说明 llm_iq_dashboard 收录的全部 180 道基准测试题目（含 31 道经典与拓展基准、8 道 2026-09 专题基准、1 套城市地标微缩景观套题、2026 前沿工程与前沿视效全 14 领域共 140 道测试题，以及 14 套领域分组套题）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
+### English Section & Prompt ID Index
+
+| Section | Topic (English / 中文) | Prompt IDs / Candidate Groups |
+| :--- | :--- | :--- |
+| **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 180 rows) | All 54 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
+| **§二** | Classic & Upgraded Pelican Series (经典基准与进阶) | `classic-v1`, `upgraded-v2` |
+| **§三** | Four Classic Chinese Novels Suites — Static & Animated (四大名著静态与纯内联动画候选集, 8 suites × 10 chapters = 80 candidates) | `shuihu-v1`, `shuihu-anim-v1`, `xiyou-v1`, `xiyou-anim-v1`, `sanguo-v1`, `sanguo-anim-v1`, `honglou-v1`, `honglou-anim-v1` |
+| **§四** | World City Landmarks Miniature Dioramas (世界地标微缩景观, 2 suites × 40 landmarks = 80 candidates) | `landmarks-v1`, `landmarks-anim-v1` |
+| **§五** | Cognitive Science & Spatio-Temporal Geometry (认知科学与时空几何逻辑) | `clock-v1`, `penrose-v1`, `ice-water-v1` |
+| **§六** | Classical Mechanics & Control Theory Dynamics (经典力学与控制理论动态仿真) | `animated-pelican-v1`, `four-stroke-engine-v1`, `cart-pole-v1` |
+| **§七** | Topological Manifolds & Quantum Physics (拓扑几何与前沿量子物理) | `mobius-strip-v1`, `quantum-double-slit-v1`, `ferrofluid-spikes-v1` |
+| **§八** | Astrophysics, General Relativity & Sci-Fi HUD (天体物理与纯视觉特效) | `black-hole-lensing-v1`, `pulsar-jet-v1`, `cyber-cube-v1`, `synthwave-drive-v1`, `cyber-hud-v1` |
+| **§九** | Standalone Frontier Hardcore Engineering (前沿硬核工程设计单题) | `jwst-deployment-v1`, `tokamak-plasma-v1`, `gaa-nanosheet-v1`, `crispr-cas9-rloop-v1` |
+| **§十** | FE-1: AI Compute, Autonomous Agents & Physical AI (`fe-ai-v1`, 10 candidates) | `FE-AI-01` – `FE-AI-10` |
+| **§十一** | FE-2: Sub-Angstrom Semiconductors & Co-Packaged Optics (`fe-semi-v1`, 10 candidates) | `FE-SEMI-01` – `FE-SEMI-10` |
+| **§十二** | FE-3: Fault-Tolerant Quantum & Post-Quantum Systems (`fe-quantum-v1`, 10 candidates) | `FE-QUANTUM-01` – `FE-QUANTUM-10` |
+| **§十三** | FE-4: Engineering Biology & De Novo Protein Design (`fe-bio-v1`, 10 candidates) | `FE-BIO-01` – `FE-BIO-10` |
+| **§十四** | FE-5: Zero-Carbon Energy, Fusion & Extreme Storage (`fe-energy-v1`, 10 candidates) | `FE-ENERGY-01` – `FE-ENERGY-10` |
+| **§十五** | FE-6: Extreme Environments, Commercial Space & Hypersonics (`fe-aero-v1`, 10 candidates) | `FE-AERO-01` – `FE-AERO-10` |
+| **§十六** | FE-7: Metamaterials, Atomic Manufacturing & Nanomechanics (`fe-meta-v1`, 10 candidates) | `FE-META-01` – `FE-META-10` |
+| **§十七** | FE-8: Neuroengineering, High-Bandwidth BCI & Electronic Skin (`fe-neuro-v1`, 10 candidates) | `FE-NEURO-01` – `FE-NEURO-10` |
+| **§十八** | VFX-1: Continuum Mechanics & Contact Dynamics (`vfx-sim-v1`, 10 candidates) | `VFX-SIM-01` – `VFX-SIM-10` |
+| **§十九** | VFX-2: Wave Optics, Spectral Rendering & Radiance Fields (`vfx-optics-v1`, 10 candidates) | `VFX-OPTICS-01` – `VFX-OPTICS-10` |
+| **§二十** | VFX-3: Discrete Differential Geometry & Topological Manifolds (`vfx-geom-v1`, 10 candidates) | `VFX-GEOM-01` – `VFX-GEOM-10` |
+| **§二十一** | VFX-4: Multiphysics, Tensor Fields & Scientific Visualization (`vfx-scivis-v1`, 10 candidates) | `VFX-SCIVIS-01` – `VFX-SCIVIS-10` |
+| **§二十二** | VFX-5: Physics-Based Locomotion & Biomechanical CFX (`vfx-motion-v1`, 10 candidates) | `VFX-MOTION-01` – `VFX-MOTION-10` |
+| **§二十三** | VFX-6: In-Camera VFX, Deep Compositing & Graphics Systems (`vfx-sys-v1`, 10 candidates) | `VFX-SYS-01` – `VFX-SYS-10` |
+| **§二十四** | Autumn 2026 Community Benchmarks (`2026-09` Isometric Hardware, Kinetic Hand & Spatial Occlusion + Classic Dynamic Extensions, 10 standalone prompts) | `animated-armadillo-fishnet-mars-v1`, `animated-lemur-scooter-front-v1`, `animated-iso-vintage-pc-v1`, `animated-iso-amber-crt-v1`, `animated-iso-server-rack-v1`, `animated-iso-camera-exploded-v1`, `animated-human-hand-kinetic-v1`, `animated-fish-cloud-amodal-v1`, `animated-island-chest-containment-v1`, `animated-tree-reader-occlusion-v1` |
+| **§二十五** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
+| **§二十六** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
+| **§二十七** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
+
+本文档说明 `llm_iq_dashboard` 收录的全部 **54 个内置提示词条目**（`PromptSpec`：**30 道独立单题** + **24 套轮换候选集**，候选集内含 **300 个场景候选**，合计 **330 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **180 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
 所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据（支持中英双语切换）。
 
@@ -10,7 +42,7 @@
 
 ## 一、 全量测试题目总览与台账
 
-本基准共内置 180 道不可变（`immutable: true`）测试题目与套题，划分为十四大前沿工程与前沿视效领域及经典基准、2026-09 专题，涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
+本基准共内置 **54 个不可变（`immutable: true`）提示词条目**（30 道独立单题 + 24 套含 300 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 180 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
 
 | 序号 | 题目 ID | 题目名称 | 领域分类 | 形式 | 首发时间 (`originDate`) | 收录时间 (`registeredAt`) | 来源权威出处 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -1694,7 +1726,7 @@
   * 套题（Suite）必须具备领域级 `standard`，且前沿套题的所有候选条目（`candidates`）强制必须具备独立的单题特异性 `standard`。
 
 ### 2. 自动化体检与质量门禁（Tooling & CI）
-* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，输出 193 项题目及候选的标准结构体检报告，发现任何字段缺失或格式异常立即以非零状态码阻断；
+* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 54 个内置提示词条目、140 道前沿工程/视效单题（合计 194 项）及 16 套带候选特异性标准的套题（220 个候选条目，全部 24 套候选集共 300 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
 * **测试套件集成**：`test/core/prompt-schema.test.ts` 纳入自动化测试链路（`pnpm test`），包含正向全覆盖与属性缺失、格式错误的负向拦截断言；
 * **配置加载即时校验**：用户通过 `pelican.config.yaml` 或 UI 添加自定义题目时，`config-prompts.ts` 解析 `standard` 并执行 Schema 校验，实现 fail-fast。
 

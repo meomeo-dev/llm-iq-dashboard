@@ -88,3 +88,33 @@ export function buildPromptStandards(prompts: readonly PromptSpec[]): Record<str
   }
   return promptStandards;
 }
+
+const REMOTE_CONTEXT_EN: Record<string, string> = {
+  获取轮次开始时间列表失败: "Failed to fetch run start timestamps",
+  加载轮次卡片数据失败: "Failed to load benchmark round cards",
+  获取运行记录列表失败: "Failed to fetch run record list",
+};
+
+/** 将 RemoteDataSource 的中文降级/异常提示转换为当前语言 */
+export function localizeRemoteNotice(notice: string, locale: "en" | "zh-CN" = "zh-CN"): string {
+  if (locale !== "en") return notice;
+  if (notice === "部分轮次加载失败") return "Some benchmark rounds failed to load";
+  if (notice === "全部轮次加载失败") return "All benchmark rounds failed to load";
+  const repoVer = /^不支持的数据仓版本 \(schemaVersion: (.+)\)，请升级看板$/.exec(notice);
+  if (repoVer) return `Unsupported data repository schema (schemaVersion: ${repoVer[1]}). Please upgrade the dashboard.`;
+  const dayVer = /^不支持的日索引版本 \(schemaVersion: (.+)\)，请升级看板$/.exec(notice);
+  if (dayVer) return `Unsupported day index schema (schemaVersion: ${dayVer[1]}). Please upgrade the dashboard.`;
+  const runVer = /^不支持的运行记录版本 \(publicSchemaVersion: (.+)\)，请升级看板$/.exec(notice);
+  if (runVer) return `Unsupported run record schema (publicSchemaVersion: ${runVer[1]}). Please upgrade the dashboard.`;
+  const pullErr = /^(.+)：远程数据源拉取失败（(.+)）$/.exec(notice);
+  if (pullErr) {
+    const ctx = REMOTE_CONTEXT_EN[pullErr[1]!] ?? pullErr[1]!;
+    const detail = pullErr[2]!
+      .replace("数据仓清单缺少 days 数组", "Data repository manifest is missing the days array")
+      .replace("日索引缺少 runs 数组", "Day index is missing the runs array")
+      .replace("运行记录缺少 attempts 数组", "Run record is missing the attempts array")
+      .replace(/^解析 JSON 失败 /u, "Failed to parse JSON ");
+    return `${ctx}: remote data source fetch failed (${detail})`;
+  }
+  return notice;
+}

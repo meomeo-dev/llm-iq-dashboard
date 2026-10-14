@@ -6,7 +6,7 @@
 
 import type { JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, type CliKind } from "@/core/types";
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 /** 把第 index 个裁判移动 offset 位；越界时原样返回同一个数组 */
 export function moveJudge(judges: readonly JudgeModel[], index: number, offset: number): JudgeModel[] {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { ConfigSection } from "./ConfigSection";
 
 /** 配置页「数据仓设置」表单的草稿：仓地址与路径按用户填的原文保存，空地址表示仓库由本地副本的 origin 决定 */
@@ -42,10 +42,7 @@ export function DataRepoSettingsSection({
 export function DataRepoForm({
   value,
   onChange,
-}: {
-  value: DataRepoDraft | null;
-  onChange: (next: DataRepoDraft | null) => void;
-}) {
+}: { value: DataRepoDraft | null; onChange: (next: DataRepoDraft | null) => void }) {
   const { locale } = useI18n();
   const isEn = locale === "en";
   const enabled = value !== null;

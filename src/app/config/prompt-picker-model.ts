@@ -1,6 +1,6 @@
 import type { PromptSpec } from "@/core/prompt";
 import type { VariableMode, VariableSpec } from "@/core/variables";
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 export const MODES: readonly VariableMode[] = ["sequence", "shuffle", "random", "fixed"];
 
@@ -20,6 +20,14 @@ export const MODE_HINT_EN: Record<VariableMode, string> = {
 
 export function getModeHint(mode: VariableMode, locale: Locale = "zh-CN"): string {
   return locale === "en" ? MODE_HINT_EN[mode] : MODE_HINT[mode];
+}
+
+/** 英文模式下内置候选池题组（24 组）的说明文案转为英文，不改动原始 template */
+export function formatPromptTemplateDisplay(spec: PromptSpec, locale: Locale = "zh-CN"): string {
+  if (locale === "en" && spec.candidates.length > 0 && spec.immutable) {
+    return `${spec.label} — ${spec.candidates.length} rotating scene candidates. Shuffles one candidate per rotation cycle and sends its full prompt text verbatim.`;
+  }
+  return spec.template;
 }
 
 /** 生成不与现有条目冲突的 id */

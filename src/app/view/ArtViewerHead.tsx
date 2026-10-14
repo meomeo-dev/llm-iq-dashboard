@@ -3,6 +3,7 @@ import type { DashboardCard } from "@/core/types";
 import { LanguageSwitch, useI18n } from "@/i18n";
 import {
   costTitle,
+  formatBindingBadge,
   formatBytes,
   formatCost,
   formatDuration,
@@ -62,11 +63,14 @@ export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
           <span>{card.promptId}</span>
         </p>
         <div className="badges">
-          {Object.entries(card.bindings).map(([name, value]) => (
-            <span key={name} className="badge binding" title={`${name}: ${value}`}>
-              {name}: {value}
-            </span>
-          ))}
+          {Object.entries(card.bindings).map(([name, value]) => {
+            const badgeText = formatBindingBadge(name, value, locale);
+            return (
+              <span key={name} className="badge binding" title={badgeText}>
+                {badgeText}
+              </span>
+            );
+          })}
         </div>
       </div>
       <ArtViewerSiblings current={card} siblings={siblings} />

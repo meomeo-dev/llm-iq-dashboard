@@ -1,5 +1,5 @@
 import { CLI_KINDS, type CliKind, type EffortLevel } from "@/core/types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import {
   type RunDraft,
   getLowEfforts,

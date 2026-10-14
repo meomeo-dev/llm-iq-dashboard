@@ -101,11 +101,11 @@ function RowUpstreams({ cards, locale }: { cards: readonly DashboardCard[]; loca
   const { profiles } = useProfiles();
   const names = cellUpstreams(cards, profiles);
   if (names.length === 0) return null;
-  const joined = names.map((name) => profileLabel(name, profiles)).join(locale === "en" ? ", " : "、");
+  const joined = names.map((name) => profileLabel(name, profiles, locale)).join(locale === "en" ? ", " : "、");
   return (
     <span className="row-label-profiles" aria-label={locale === "en" ? `Profiles: ${joined}` : `上游：${joined}`}>
       {names.map((name) => (
-        <span key={name} className="profile-dot" style={{ background: profileColor(name) }} title={profileLabel(name, profiles)} />
+        <span key={name} className="profile-dot" style={{ background: profileColor(name) }} title={profileLabel(name, profiles, locale)} />
       ))}
     </span>
   );

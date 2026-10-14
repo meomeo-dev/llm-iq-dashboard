@@ -1,11 +1,12 @@
 import type { PromptSpec } from "@/core/prompt";
 import { localizePromptSpec } from "@/core/prompts/i18n";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import {
   togglePromptId,
   createCustomPrompt,
   updateCustomPromptAtIndex,
   removeCustomPromptAtIndex,
+  formatPromptTemplateDisplay,
 } from "./prompt-picker-model";
 import { CustomPromptEditor } from "./CustomPromptEditor";
 
@@ -65,6 +66,46 @@ export function PromptPicker({
   );
 }
 
+function PromptItemBadges({ spec, isEn }: { spec: PromptSpec; isEn: boolean }) {
+  return (
+    <>
+      {spec.immutable && (
+        <span className="badge lock">
+          {spec.candidates.length > 0
+            ? isEn ? "Built-in · Read-only" : "内置·不可编辑"
+            : isEn ? "Anchor · Read-only" : "锚点·不可编辑"}
+        </span>
+      )}
+      {spec.variables.length > 0 && (
+        <span className="badge">
+          {isEn ? `${spec.variables.length} variables` : `${spec.variables.length} 个变量`}
+        </span>
+      )}
+      {spec.candidates.length > 0 && (
+        <span className="badge">
+          {isEn ? `${spec.candidates.length} candidates` : `${spec.candidates.length} 条候选`}
+        </span>
+      )}
+      {spec.originDate && (
+        <span
+          className="badge"
+          title={isEn ? `First appeared: ${spec.originDate}` : `首次出现时间：${spec.originDate}`}
+        >
+          {isEn ? `Origin: ${spec.originDate}` : `首发: ${spec.originDate}`}
+        </span>
+      )}
+      {spec.registeredAt && (
+        <span
+          className="badge"
+          title={isEn ? `Registered date: ${spec.registeredAt}` : `收录日期：${spec.registeredAt}`}
+        >
+          {isEn ? `Added: ${spec.registeredAt}` : `收录: ${spec.registeredAt}`}
+        </span>
+      )}
+    </>
+  );
+}
+
 function PromptItem({
   spec,
   checked,
@@ -84,45 +125,9 @@ function PromptItem({
         <div className="prompt-head">
           <b>{displaySpec.label}</b>
           <code>{displaySpec.id}</code>
-          {displaySpec.immutable && (
-            <span className="badge lock">
-              {displaySpec.candidates.length > 0
-                ? isEn
-                  ? "Built-in · Read-only"
-                  : "内置·不可编辑"
-                : isEn
-                  ? "Anchor · Read-only"
-                  : "锚点·不可编辑"}
-            </span>
-          )}
-          {displaySpec.variables.length > 0 && (
-            <span className="badge">
-              {isEn ? `${displaySpec.variables.length} variables` : `${displaySpec.variables.length} 个变量`}
-            </span>
-          )}
-          {displaySpec.candidates.length > 0 && (
-            <span className="badge">
-              {isEn ? `${displaySpec.candidates.length} candidates` : `${displaySpec.candidates.length} 条候选`}
-            </span>
-          )}
-          {displaySpec.originDate && (
-            <span
-              className="badge"
-              title={isEn ? `First appeared: ${displaySpec.originDate}` : `首次出现时间：${displaySpec.originDate}`}
-            >
-              {isEn ? `Origin: ${displaySpec.originDate}` : `首发: ${displaySpec.originDate}`}
-            </span>
-          )}
-          {displaySpec.registeredAt && (
-            <span
-              className="badge"
-              title={isEn ? `Registered date: ${displaySpec.registeredAt}` : `收录日期：${displaySpec.registeredAt}`}
-            >
-              {isEn ? `Added: ${displaySpec.registeredAt}` : `收录: ${displaySpec.registeredAt}`}
-            </span>
-          )}
+          <PromptItemBadges spec={displaySpec} isEn={isEn} />
         </div>
-        <div className="prompt-template">{displaySpec.template}</div>
+        <div className="prompt-template">{formatPromptTemplateDisplay(displaySpec, locale)}</div>
         {displaySpec.candidates.length > 0 && (
           <div className="prompt-candidates">
             {displaySpec.candidates.map((candidate) => candidate.label).join(" · ")}

@@ -52,7 +52,11 @@ export function orderProfileNames(names: Iterable<string>, profiles: readonly Pr
 }
 
 /** 上游的显示名：登录态、配置里的显示名，或已删除时退回标识 */
-export function profileLabel(name: string, profiles: readonly ProfileView[]): string {
-  if (name === DEFAULT_PROFILE) return "登录态";
+export function profileLabel(
+  name: string,
+  profiles: readonly ProfileView[],
+  locale: "en" | "zh-CN" = "zh-CN",
+): string {
+  if (name === DEFAULT_PROFILE) return locale === "en" ? "Official Login" : "登录态";
   return profiles.find((profile) => profile.name === name)?.label ?? name;
 }

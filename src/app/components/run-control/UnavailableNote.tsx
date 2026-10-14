@@ -2,6 +2,7 @@
 
 import type { UnavailableCli } from "@/capabilities/callable-targets";
 import { useI18n } from "@/i18n";
+import { localizeReadinessDetail } from "./run-once-profiles";
 
 /**
  * 范围清单下的一行说明：哪几家 CLI 未安装或未登录，其模型暂不可选。登录方法见页首
@@ -11,7 +12,7 @@ export function UnavailableNote({ unavailable }: { unavailable: readonly Unavail
   const { locale } = useI18n();
   const isEn = locale === "en";
   if (unavailable.length === 0) return null;
-  const detail = unavailable.map((item) => item.detail).join("\n");
+  const detail = unavailable.map((item) => localizeReadinessDetail(item.detail, locale)).join("\n");
   const text = unavailable
     .map((item) =>
       isEn

@@ -34,7 +34,7 @@ export const ACTION_LABELS_EN: Record<SyncActionMode, string> = {
   restore: "Restore",
 };
 
-const SKIP_REASON_LABELS_EN: Record<string, string> = {
+export const SKIP_REASON_LABELS_EN: Record<string, string> = {
   idempotent: "already exported",
   "内容无变化": "already exported",
   "已导出": "already exported",
@@ -51,28 +51,77 @@ const SKIP_REASON_LABELS_EN: Record<string, string> = {
   empty: "empty run",
   "空轮次": "empty run",
   discarded: "discarded",
+  "已丢弃": "discarded",
   "no-selected-attempts": "selected attempts not in run",
+  "勾选的调用已不在本轮": "selected attempts not in run",
 };
 
+const REJECT_REASON_LABELS_EN: Record<string, string> = {
+  "local-path": "local-path leak",
+  "local-path 泄漏": "local-path leak",
+  "private-key": "private-key leak",
+  "private-key 泄漏": "private-key leak",
+  "private-key 命中": "private-key match",
+  "secret-pattern": "secret-pattern match",
+  "secret-pattern 命中": "secret-pattern match",
+  "secret-pattern 泄漏": "secret-pattern leak",
+  "leak-guard": "leak-guard match",
+  "leak-guard 命中": "leak-guard match",
+  "leak-guard 泄漏": "leak-guard leak",
+};
+
+export function localizeSkippedReasonEn(reason: string): string {
+  return SKIP_REASON_LABELS_EN[reason] ?? reason;
+}
+
+export function localizeRejectedReasonEn(reason: string): string {
+  if (reason in REJECT_REASON_LABELS_EN) return REJECT_REASON_LABELS_EN[reason]!;
+  return reason.replace(/\s*泄漏$/, " leak").replace(/\s*命中$/, " match");
+}
+
+function localizeSingleNoticeEn(segment: string): string {
+  const s = segment.trim();
+  if (s === "数据仓目录不是有效的 Git 仓库") return "Data repository directory is not a valid Git repository";
+  if (s === "执行器代答数据仓状态不可得") return "Runner proxy data repository status unavailable";
+  const unreachable = /^数据仓路径不可达[：:]\s*(.+)$/.exec(s);
+  if (unreachable) return `Data repository path unreachable: ${unreachable[1]}`;
+  const ledgerFail = /^读取同步台账失败:\s*(.+)$/.exec(s);
+  if (ledgerFail) return `Failed to read sync ledger: ${ledgerFail[1]}`;
+  const cloned = /^数据仓已从 (.+) clone 到 (.+)$/.exec(s);
+  if (cloned) return `Data repository cloned from ${cloned[1]} to ${cloned[2]}`;
+  const noOrigin = /^数据仓本地副本没有 origin 远程，与配置的 (.+) 对不上$/.exec(s);
+  if (noOrigin) return `Data repository local copy has no origin remote and does not match configured ${noOrigin[1]}`;
+  const mismatch = /^数据仓本地副本的 origin 是 (.+)，与配置的 (.+) 不是同一个仓$/.exec(s);
+  if (mismatch) return `Data repository local copy origin is ${mismatch[1]}, which does not match configured ${mismatch[2]}`;
+  const notGit = /^数据仓路径 (.+) 非空且不是 git 仓，不会自动 clone$/.exec(s);
+  if (notGit) return `Data repository path ${notGit[1]} is non-empty and not a Git repository; auto-clone skipped`;
+  return s;
+}
+
+export function localizeStatusNoticeEn(notice: string): string {
+  return notice.split("；").map(localizeSingleNoticeEn).join("; ");
+}
+
+function localizeUnchangedReasonEn(reason: string): string {
+  if (reason === "已丢弃") return "already discarded";
+  if (reason === "已导出，不能丢弃") return "already exported, cannot discard";
+  if (reason === "未被丢弃") return "not discarded";
+  const skippedMatch = /^已跳过[（(](.+)[）)]$/.exec(reason);
+  if (skippedMatch) {
+    const inner = skippedMatch[1]!;
+    return `skipped (${SKIP_REASON_LABELS_EN[inner] ?? inner})`;
+  }
+  return SKIP_REASON_LABELS_EN[reason] ?? reason;
+}
+
 export function deriveHealthStatusEn(status: DataRepoStatus | null): HealthInfo {
-  if (status === null) {
-    return { level: "unavailable", label: "Unavailable", reason: "Status not loaded" };
-  }
-  if (!status.configured) {
-    return { level: "unavailable", label: "Unavailable", reason: "Data repository (dataRepo) not configured" };
-  }
-  if (status.deploy.readonly) {
-    return { level: "unavailable", label: "Unavailable", reason: "Read-only deployment; sync disabled" };
-  }
-  if (status.repo === null) {
-    return { level: "unavailable", label: "Unavailable", reason: "Data repo working copy unreachable" };
-  }
-  if (!status.repo.reachable) {
-    return { level: "unavailable", label: "Unavailable", reason: `Data repo path unreachable: ${status.repo.path}` };
-  }
-  if (!status.repo.isGitRepo) {
-    return { level: "unavailable", label: "Unavailable", reason: `Path is not a valid Git repository: ${status.repo.path}` };
-  }
+  const unavailable = (reason: string): HealthInfo => ({ level: "unavailable", label: "Unavailable", reason });
+  if (status === null) return unavailable("Status not loaded");
+  if (!status.configured) return unavailable("Data repository (dataRepo) not configured");
+  if (status.deploy.readonly) return unavailable("Read-only deployment; sync disabled");
+  if (status.repo === null) return unavailable("Data repo working copy unreachable");
+  if (!status.repo.reachable) return unavailable(`Data repo path unreachable: ${status.repo.path}`);
+  if (!status.repo.isGitRepo) return unavailable(`Path is not a valid Git repository: ${status.repo.path}`);
   return deriveWarningOrHealthyEn(status);
 }
 
@@ -88,7 +137,7 @@ function deriveWarningOrHealthyEn(status: DataRepoStatus): HealthInfo {
     return { level: "warning", label: "Warning", reason: "Upstream remote branch not configured" };
   }
   if (status.notice !== null && status.notice.trim() !== "") {
-    return { level: "warning", label: "Warning", reason: status.notice };
+    return { level: "warning", label: "Warning", reason: localizeStatusNoticeEn(status.notice) };
   }
   if (status.lastAction !== null && !status.lastAction.ok) {
     return { level: "warning", label: "Warning", reason: `Last action failed: ${status.lastAction.error ?? "execution error"}` };
@@ -146,41 +195,21 @@ function formatSkippedBreakdownEn(skipped: Array<{ runId: string; reason: string
   return `skipped ${skipped.length} run(s) (${parts.join(", ")})`;
 }
 
-export function deriveActionResultSummaryEn(result: SyncActionResult | null): ActionResultSummary | null {
-  if (result === null) return null;
-  if (!result.ok || result.error !== null) {
-    const error = result.error ?? "Execution failed";
-    return {
-      text: `Failed: ${error}`,
-      ok: false,
-      mode: result.mode,
-      exportedCount: 0,
-      skippedCount: 0,
-      rejectedCount: 0,
-      redactedCount: 0,
-      publishedCount: 0,
-      error,
-    };
-  }
-  if (result.mode === "discard" || result.mode === "restore") {
-    const report = result.report as LedgerDecisionReport | null;
-    const changed = report?.changed.length ?? 0;
-    const verb = result.mode === "discard" ? "Discarded" : "Restored";
-    const unchanged = (report?.unchanged ?? []).map((item) => `${item.runId} (${item.reason})`);
-    const text = unchanged.length > 0 ? `${verb} ${changed} run(s); unchanged: ${unchanged.join(", ")}` : `${verb} ${changed} run(s)`;
-    return { text, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount: 0, error: null };
-  }
-  if (result.mode === "confirm") {
-    const publishedCount = isConfirmReport(result.report) ? result.report.confirmed.length : 0;
-    const text = publishedCount > 0 ? `Remote contains ${publishedCount} run(s), marked as published` : "Remote does not yet contain any pending runs";
-    return { text, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount, error: null };
-  }
-  if (result.mode === "push") {
-    const publishedCount = isConfirmReport(result.report)
-      ? result.report.confirmed.length
-      : ((result.report as SyncReport | null)?.ledgerTransitions?.published?.length ?? 0);
-    return { text: `Pushed; ${publishedCount} run(s) marked as published`, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount, error: null };
-  }
+function formatLedgerDecisionSummaryEn(result: SyncActionResult): ActionResultSummary {
+  const report = result.report as LedgerDecisionReport | null;
+  const changed = report?.changed.length ?? 0;
+  const verb = result.mode === "discard" ? "Discarded" : "Restored";
+  const unchanged = (report?.unchanged ?? []).map(
+    (item) => `${item.runId} (${localizeUnchangedReasonEn(item.reason)})`,
+  );
+  const text =
+    unchanged.length > 0
+      ? `${verb} ${changed} run(s); unchanged: ${unchanged.join(", ")}`
+      : `${verb} ${changed} run(s)`;
+  return { text, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount: 0, error: null };
+}
+
+function formatExportOrDryRunSummaryEn(result: SyncActionResult): ActionResultSummary {
   const report = result.report as SyncReport | null;
   const exportedCount = report?.exported?.length ?? 0;
   const skipped = report?.skipped ?? [];
@@ -193,6 +222,29 @@ export function deriveActionResultSummaryEn(result: SyncActionResult | null): Ac
   if (redactedCount > 0) text += `; redacted ${redactedCount} item(s)`;
   if (publishedCount > 0) text += `; published ${publishedCount} run(s)`;
   return { text, ok: true, mode: result.mode, exportedCount, skippedCount: skipped.length, rejectedCount, redactedCount, publishedCount, error: null };
+}
+
+export function deriveActionResultSummaryEn(result: SyncActionResult | null): ActionResultSummary | null {
+  if (result === null) return null;
+  if (!result.ok || result.error !== null) {
+    const error = result.error ?? "Execution failed";
+    return { text: `Failed: ${error}`, ok: false, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount: 0, error };
+  }
+  if (result.mode === "discard" || result.mode === "restore") {
+    return formatLedgerDecisionSummaryEn(result);
+  }
+  if (result.mode === "confirm") {
+    const publishedCount = isConfirmReport(result.report) ? result.report.confirmed.length : 0;
+    const text = publishedCount > 0 ? `Remote contains ${publishedCount} run(s), marked as published` : "Remote does not yet contain any pending runs";
+    return { text, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount, error: null };
+  }
+  if (result.mode === "push") {
+    const publishedCount = isConfirmReport(result.report)
+      ? result.report.confirmed.length
+      : ((result.report as SyncReport | null)?.ledgerTransitions?.published?.length ?? 0);
+    return { text: `Pushed; ${publishedCount} run(s) marked as published`, ok: true, mode: result.mode, exportedCount: 0, skippedCount: 0, rejectedCount: 0, redactedCount: 0, publishedCount, error: null };
+  }
+  return formatExportOrDryRunSummaryEn(result);
 }
 
 export function deriveCountsSummaryEn(status: DataRepoStatus | null): DataRepoCountsSummary {
@@ -286,6 +338,25 @@ function resolvePrimaryActionEn(
   return null;
 }
 
+function resolvePipelineStageEn(status: DataRepoStatus): {
+  stage: PipelineStage | "all-published";
+  description: string;
+  kind: "export" | "push" | "confirm" | "none";
+} {
+  const ahead = status.repo?.ahead ?? 0;
+  if (status.local.pending.length > 0) {
+    return { stage: "local", description: `${status.local.pending.length} local run(s) not yet exported to data repo`, kind: "export" };
+  }
+  if (ahead > 0) {
+    const extra = status.ledger.exported > 0 ? ` (${status.ledger.exported} run(s))` : "";
+    return { stage: "exported", description: `${ahead} local commit(s) waiting to push to GitHub${extra}`, kind: "push" };
+  }
+  if (status.ledger.exported > 0) {
+    return { stage: "published", description: `${status.ledger.exported} run(s) on remote not yet marked as published`, kind: "confirm" };
+  }
+  return { stage: "all-published", description: `All ${status.ledger.published} run(s) published; local and remote are in sync`, kind: "none" };
+}
+
 export function derivePipelineEn(
   status: DataRepoStatus | null,
   inFlightMode: SyncActionMode | null = null,
@@ -307,15 +378,7 @@ export function derivePipelineEn(
   if (status === null) {
     return { steps: buildPipelineStepsEn(null, "local"), currentStage: "local", description: "Status not loaded", staticNotice, primaryAction: null, secondaryAction };
   }
-  const ahead = status.repo?.ahead ?? 0;
-  const stageInfo: { stage: PipelineStage | "all-published"; description: string; kind: "export" | "push" | "confirm" | "none" } =
-    status.local.pending.length > 0
-      ? { stage: "local", description: `${status.local.pending.length} local run(s) not yet exported to data repo`, kind: "export" }
-      : ahead > 0
-        ? { stage: "exported", description: `${ahead} local commit(s) waiting to push to GitHub${status.ledger.exported > 0 ? ` (${status.ledger.exported} run(s))` : ""}`, kind: "push" }
-        : status.ledger.exported > 0
-          ? { stage: "published", description: `${status.ledger.exported} run(s) on remote not yet marked as published`, kind: "confirm" }
-          : { stage: "all-published", description: `All ${status.ledger.published} run(s) published; local and remote are in sync`, kind: "none" };
+  const stageInfo = resolvePipelineStageEn(status);
   return {
     steps: buildPipelineStepsEn(status, stageInfo.stage),
     currentStage: stageInfo.stage,

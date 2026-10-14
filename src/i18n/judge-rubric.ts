@@ -9,6 +9,10 @@ import type {
   GateResult,
   Verdict,
 } from "../core/judge/schema";
+import {
+  localizeCriterionReasonEn,
+  localizeGateEvidenceEn,
+} from "./judge-evidence-en";
 import type { Locale } from "./types";
 
 interface LocalizedTextPair {
@@ -110,30 +114,30 @@ const VERDICT_LABELS: Readonly<Record<Locale, Readonly<Record<Verdict, string>>>
   },
 };
 
-/** 按语言转换 GateResult 的展示标题与标准说明 */
+/** 按语言转换 GateResult 的展示标题、标准说明与静态/渲染证据 */
 export function localizeGate(gate: GateResult, locale: Locale): GateResult {
   if (locale === "zh-CN") return gate;
   const en = GATES_EN[gate.id];
-  if (!en) return gate;
   return {
     ...gate,
-    title: en.title,
-    standard: en.standard,
+    title: en?.title ?? gate.title,
+    standard: en?.standard ?? gate.standard,
+    evidence: localizeGateEvidenceEn(gate.evidence),
   };
 }
 
-/** 按语言转换 CriterionResult 的展示标题与标准说明 */
+/** 按语言转换 CriterionResult 的展示标题、标准说明与静态/渲染判据理由 */
 export function localizeCriterion(
   criterion: CriterionResult,
   locale: Locale,
 ): CriterionResult {
   if (locale === "zh-CN") return criterion;
   const en = CRITERIA_EN[criterion.id];
-  if (!en) return criterion;
   return {
     ...criterion,
-    title: en.title,
-    standard: en.standard,
+    title: en?.title ?? criterion.title,
+    standard: en?.standard ?? criterion.standard,
+    reason: localizeCriterionReasonEn(criterion.reason),
   };
 }
 

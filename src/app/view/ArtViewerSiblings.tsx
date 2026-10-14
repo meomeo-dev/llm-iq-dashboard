@@ -44,7 +44,7 @@ export function ArtViewerSiblings({ current, siblings }: ArtViewerSiblingsProps)
       <span className="viewer-siblings-list">
         {siblings.map((card) => {
           const name = upstreamOf(card);
-          const displayLabel = name === DEFAULT_PROFILE && isEn ? "Official Login" : profileLabel(name, profiles);
+          const displayLabel = profileLabel(name, profiles, locale);
           return (
             <a
               key={card.targetId}

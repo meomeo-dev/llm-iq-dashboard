@@ -1,5 +1,5 @@
 import type { SessionView } from "@/app/api/session/route";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { formatDeviceTime } from "./device-panel-model";
 
 export function DeviceTable({

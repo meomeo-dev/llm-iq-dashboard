@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { useI18n, type Locale } from "@/i18n";
 import {
   parseReferenceSource,
   REFERENCE_SEGMENT_SEPARATOR,
@@ -24,25 +27,26 @@ export function ReferenceSourceDisplay({
   source,
   className = "source-link",
 }: ReferenceSourceDisplayProps) {
+  const { locale } = useI18n();
   const segments = parseReferenceSource(source);
   const [onlySegment] = segments;
 
   if (onlySegment === undefined) return null;
-  if (segments.length === 1) return renderSegment(onlySegment, className);
+  if (segments.length === 1) return renderSegment(onlySegment, className, locale);
 
   return (
     <span className="source-segments" style={{ wordBreak: "break-word" }}>
       {segments.map((segment, index) => (
         <React.Fragment key={index}>
           {index > 0 && <span className="source-sep">{REFERENCE_SEGMENT_SEPARATOR}</span>}
-          {renderSegment(segment, className)}
+          {renderSegment(segment, className, locale)}
         </React.Fragment>
       ))}
     </span>
   );
 }
 
-function renderSegment(segment: ReferenceSourceKind, className: string) {
+function renderSegment(segment: ReferenceSourceKind, className: string, locale: Locale) {
   if (segment.kind === "url") {
     return (
       <a href={segment.url} target="_blank" rel="noopener noreferrer" className={className}>
@@ -52,6 +56,7 @@ function renderSegment(segment: ReferenceSourceKind, className: string) {
   }
 
   if (segment.kind === "citation_with_link") {
+    const isEn = locale === "en";
     return (
       <span className="source-citation-wrap" style={{ wordBreak: "break-word" }}>
         <span className="source-citation-text">{segment.text}</span>
@@ -61,9 +66,9 @@ function renderSegment(segment: ReferenceSourceKind, className: string) {
           rel="noopener noreferrer"
           className={`${className} source-ext-link`}
           style={{ marginLeft: "8px", display: "inline-flex", alignItems: "center", gap: "2px", fontWeight: "600" }}
-          title={`在新标签页打开权威出处：${segment.url}`}
+          title={isEn ? `Open authoritative source in new tab: ${segment.url}` : `在新标签页打开权威出处：${segment.url}`}
         >
-          [权威文献 ↗]
+          {isEn ? "[Reference ↗]" : "[权威文献 ↗]"}
         </a>
       </span>
     );

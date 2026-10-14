@@ -1,5 +1,5 @@
 import type { EffortLevel } from "@/core/types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { formatSeconds, type EffortTierDefinition } from "./timeout-form-model";
 
 export function TimeoutTierCard({

@@ -65,7 +65,7 @@ export function parseModelList(text: string): string[] {
   return [...seen];
 }
 
-import type { Locale } from "@/i18n/types";
+import type { Locale } from "@/i18n";
 
 /** 添加上游类型：须是 kebab-case 且不重复；返回新清单或错误说明 */
 export function addUpstreamType(

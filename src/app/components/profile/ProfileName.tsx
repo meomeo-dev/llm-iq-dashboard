@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
+import { useI18n } from "@/i18n";
 import { profileColor } from "./profile-color";
 import { ProfileInfoCard } from "./ProfileInfoCard";
 import { useProfiles } from "./profiles-context";
@@ -20,6 +21,7 @@ interface ProfileNameProps {
  */
 export function ProfileName({ name, cards = [], className = "" }: ProfileNameProps) {
   const { profiles, owner } = useProfiles();
+  const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -34,7 +36,7 @@ export function ProfileName({ name, cards = [], className = "" }: ProfileNamePro
     wasOpen.current = open;
   }, [open]);
 
-  const label = profileLabel(name, profiles);
+  const label = profileLabel(name, profiles, locale);
   return (
     <span className={`profile-name-wrap ${className}`} ref={root}>
       <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { useLiveAutoRun } from "../components/live-state/live-store";
 import {
   type ScheduleDraft,

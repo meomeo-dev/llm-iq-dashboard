@@ -118,6 +118,13 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+export function localizeExportError(error: string, locale: "en" | "zh-CN" = "zh-CN"): string {
+  if (locale !== "en") return error;
+  if (error === "浏览器无法创建画布") return "Browser failed to create canvas context";
+  if (error === "PNG 编码失败") return "Failed to encode PNG image";
+  return error;
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

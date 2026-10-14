@@ -2,8 +2,8 @@
 
 import { criterionFloors } from "@/core/judge/schema";
 import type { Judgement, Verdict } from "@/core/judge/schema";
-import type { DashboardCard } from "@/core/types";
-import { localizeCriterion, localizeGate, type Locale } from "@/i18n";
+import type { AttemptStatus, DashboardCard } from "@/core/types";
+import { localizeCandidateLabel, localizeCriterion, localizeGate, type Locale } from "@/i18n";
 import type { PendingJudgeState } from "../run-status/run-phase";
 
 export const STATUS_TEXT: Record<DashboardCard["status"], string> = {
@@ -22,6 +22,56 @@ const STATUS_TEXT_EN: Record<DashboardCard["status"], string> = {
 
 export function statusText(status: DashboardCard["status"], locale: Locale = "zh-CN"): string {
   return locale === "en" ? STATUS_TEXT_EN[status] : STATUS_TEXT[status];
+}
+
+export function formatBindingBadge(name: string, value: string, locale: Locale = "zh-CN"): string {
+  if (locale !== "en") return `${name}: ${value}`;
+  const labelName = name === "回目" ? "Scene" : name;
+  return `${labelName}: ${localizeCandidateLabel(value, value, locale)}`;
+}
+
+export function localizeCardError(
+  error: string | null,
+  _status: AttemptStatus = "error",
+  locale: Locale = "zh-CN",
+): string | null {
+  if (error === null || locale !== "en") return error;
+  if (error === "已脱敏，未发布") return "Redacted (Unpublished)";
+  const redactedMatch = /^已脱敏，未发布（(.+)）$/.exec(error);
+  if (redactedMatch) return `Redacted, unpublished (${redactedMatch[1]})`;
+  const timeoutMatch = /^超过 (\d+) 秒未返回，已终止[\s\S]*$/.exec(error);
+  if (timeoutMatch) {
+    return `Timed out after ${timeoutMatch[1]}s and terminated. CLI latency may fluctuate; increase run.timeoutByCli or run.timeoutByEffort in configuration.`;
+  }
+  if (error === "回答中未找到成对的 <svg>…</svg>") {
+    return "No matching <svg>…</svg> tags found in response";
+  }
+  if (error === "输出含凭据指纹，已拦截：作品与转录未保存" || error === "输出含凭据指纹，已拦截且不落盘") {
+    return "Output contained credential fingerprint and was blocked without saving";
+  }
+  const preflightMatch = /^预检未通过，未发起调用：(.+)$/.exec(error);
+  if (preflightMatch) return `Preflight check failed, call skipped: ${preflightMatch[1]}`;
+  const unregisteredMatch = /^profile (.+) 未登记，未发起调用$/.exec(error);
+  if (unregisteredMatch) return `Profile ${unregisteredMatch[1]} is not registered; call skipped`;
+  const disabledMatch = /^profile (.+) 已停用，未发起调用$/.exec(error);
+  if (disabledMatch) return `Profile ${disabledMatch[1]} is disabled; call skipped`;
+  const missingKeyMatch = /^profile (.+) 还没有填 API key，未发起调用$/.exec(error);
+  if (missingKeyMatch) return `Profile ${missingKeyMatch[1]} is missing an API key; call skipped`;
+  return error;
+}
+
+function localizeCostNote(note: string | null, locale: Locale): string | null {
+  if (note === null || locale !== "en") return note;
+  if (note === "转录中没有用量记录") return "No token usage record in transcript";
+  const syncMatch = /^价格目录未同步，运行 (.+)$/.exec(note);
+  if (syncMatch) return `Pricing catalog not synced; run ${syncMatch[1]}`;
+  const modelMatch = /^价格目录中找不到唯一对应 (.+) 的模型$/.exec(note);
+  if (modelMatch) return `No unique model match for ${modelMatch[1]} in pricing catalog`;
+  const priceMatch = /^价格目录中没有 (.+) 在该时刻的 (.+) 档自营 API 价格$/.exec(note);
+  if (priceMatch) return `No official API price in catalog for ${priceMatch[1]} (${priceMatch[2]} tier) at that time`;
+  const meterMatch = /^目录中没有这些计价项的价格：(.+)$/.exec(note);
+  if (meterMatch) return `Missing catalog prices for meters: ${meterMatch[1]!.replaceAll("、", ", ")}`;
+  return note;
 }
 
 export function formatDuration(ms: number): string {
@@ -91,7 +141,7 @@ export function costTitle(
       : isEn
         ? `CLI self-reported $${usage.reportedCostUsd.toFixed(4)}`
         : `CLI 自报 $${usage.reportedCostUsd.toFixed(4)}`,
-    cost.note,
+    localizeCostNote(cost.note, locale),
     cost.catalogTag === null ? null : isEn ? `Pricing catalog ${cost.catalogTag}` : `价格目录 ${cost.catalogTag}`,
   ];
   return lines.filter((line): line is string => line !== null).join("\n");

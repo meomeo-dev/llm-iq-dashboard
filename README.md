@@ -2,7 +2,7 @@
 
 > **English** | [简体中文](README.zh-CN.md)
 
-Scheduled benchmark runner and visual observability dashboard that drives `agy`, `codex`, and `claude` command-line agents across models and reasoning efforts on the **Pelican on a Bicycle** SVG benchmark (and 170+ extended physics, engineering, and spatial cognition prompts), presenting results on a 24-hour timeline.
+Scheduled benchmark runner and visual observability dashboard that drives `agy`, `codex`, and `claude` command-line agents across models and reasoning efforts on the **Pelican on a Bicycle** SVG benchmark and **54 built-in prompt entries** (30 standalone prompts + 24 rotating candidate suites containing **300 scene candidates**, totaling **330 unique benchmark prompt templates**), presenting results on a 24-hour timeline.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -102,11 +102,13 @@ Both methods edit the same file (`config/pelican.config.yaml`):
 | `schedule.runOnStart` | Whether to trigger an immediate round when the scheduler starts |
 | `run.promptIds` | Prompt IDs executed in each round (run in parallel across models) |
 | `run.concurrency` | Maximum number of model lanes running concurrently |
-| `run.defaultTimeoutMs` | Global default timeout per attempt (default 300s) |
+| `run.profileConcurrency` | Maximum number of upstream profiles running concurrently (default `5`; default login session counts as one) |
+| `run.defaultTimeoutMs` | Global default timeout per attempt (default `1800s` / 30 min) |
 | `run.timeoutByCli` | Per-CLI timeout overrides, e.g. `codex: 600000` |
 | `run.timeoutByEffort` | Per-effort timeout overrides, e.g. `max: 2700000` (45m) |
 | `run.harnessGuard` | Direct-output guard (off by default): appends instructions requiring direct SVG output without web search, code execution, or self-screenshots; recorded in `run.json` |
 | `judge` | Automated & AI artwork judging (off by default): `judge.enabled` enables 30pt code layer, `judge.ai.enabled` enables 70pt cross-vendor AI judge layer |
+| `dataRepo` | Public data repository sync settings (`path`, `repository`, `autoSync`, `push`, `publishPrompts`) |
 | `profiles` | Third-party upstream endpoints and cost multipliers per CLI |
 | `budget.perRoundUsd` | Per-round API-equivalent USD cap |
 | `budget.perDayUsd` | Rolling 24-hour API-equivalent USD cap |
@@ -122,6 +124,8 @@ Override paths via `PELICAN_CONFIG` and `PELICAN_DATA_DIR`.
 
 ## Prompts & Rotation
 
+The registry ships with **54 built-in prompt entries** (**30 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **330 unique benchmark prompt templates**):
+
 | Prompt ID | Summary |
 | --- | --- |
 | `classic-v1` | Simon Willison's verbatim `Generate an SVG of a pelican riding a bicycle` (locked & immutable) |
@@ -133,8 +137,8 @@ Override paths via `PELICAN_CONFIG` and `PELICAN_DATA_DIR`.
 | `four-stroke-engine-v1` + 6 more | Frontier engineering: Four-Stroke Engine, Möbius Strip, Cart-Pole, Isometric Cyber-Cube, Synthwave Drive, Cyber HUD, Black Hole Lensing |
 | `jwst-deployment-v1` + 6 more | Frontier visual science: Quantum Double-Slit, Ferrofluid Spikes, JWST Deployment, Tokamak Plasma, 2nm GAA Nanosheet, CRISPR-Cas9, Pulsar Jet |
 | `fe-*-v1` / `vfx-*-v1` (14 suites) | 140 frontier engineering (AI, Semi, Quantum, Bio, Energy, Aero, Meta, Neuro) & visual effects (Sim, Optics, Geom, SciVis, Motion, Sys) prompts, 10 candidates per suite |
-| `landmarks-v1` / `landmarks-anim-v1` | 40 miniature world city landmarks (static & animated candidate sets) |
-| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels (10 iconic chapters each, static & animated candidate sets) |
+| `landmarks-v1` / `landmarks-anim-v1` | 80 miniature world city landmark prompts across 2 suites (40 static + 40 animated scene candidates) |
+| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels across 8 suites (10 iconic chapters each, 40 static + 40 animated scene candidates) |
 
 Candidate-set prompts shuffle and draw one candidate per rotation period (`day` or `run`) without replacement until the deck is exhausted. Full provenance is in [`docs/benchmark-provenance.md`](docs/benchmark-provenance.md).
 
@@ -183,6 +187,8 @@ pnpm test               # node:test unit tests (isolated from host data/ and CLI
 pnpm validate:prompts   # Prompt registry & standard schema validation
 pnpm check:length       # File and function length gate (config/code-length-policy.yaml)
 pnpm check:secrets      # Tracked file secret scan (config/secret-scan-policy.yaml)
+pnpm build              # Next.js production build check
+pnpm showcase:smoke     # Read-only remote showcase end-to-end smoke check
 ```
 
 ## License

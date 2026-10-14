@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { fetchArtSource } from "./art-source";
+import { useI18n } from "@/i18n";
+import { fetchArtSource, localizeArtError } from "./art-source";
 import { SvgFrame } from "./SvgFrame";
 
 /** 作品距视口这么远时开始预取 */
@@ -18,6 +19,7 @@ interface Loaded {
  * （见 ACR-003）。取回前渲染同尺寸空框，尺寸由调用方 CSS 决定，布局不跳动。
  */
 export function LazySvgFrame({ href, className }: { href: string; className?: string }) {
+  const { locale } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   // 地址变化后丢弃上一件作品的结果，回到空框
@@ -50,7 +52,7 @@ export function LazySvgFrame({ href, className }: { href: string; className?: st
   if (current?.error != null) {
     return (
       <div className={`${classes} frame-failed`}>
-        <p>{current.error}</p>
+        <p>{localizeArtError(current.error, locale)}</p>
       </div>
     );
   }

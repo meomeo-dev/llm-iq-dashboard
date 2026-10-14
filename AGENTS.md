@@ -25,14 +25,15 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 ## 架构速览
 
 权威记录是 `docs/architecture/architecture.md`（每次架构迭代在 `docs/architecture/revisions/`
-立 ACR 变更单）；设计取舍见 `docs/design-notes.md`，目录、产物与接口见 `docs/development.md`。
+立 ACR 变更单）；设计取舍见 `docs/design-notes.md`（中文 `docs/design-notes.zh-CN.md`），目录、产物与接口见 `docs/development.md`（中文 `docs/development.zh-CN.md`）。对外说明文档统一采用 `.md`（英文主版）与 `.zh-CN.md`（简体中文版）成对互链。
 
 - **进程只经文件协作**：看板（Next.js 15 + React 19）、调度器（`src/bin/scheduler.ts`，croner）、
   `run:once`、分容器时的 `runner` 互不直接通信，只读写 `data/`（`PELICAN_DATA_DIR`）。
   执行方写 `data/runs/<runId>/progress.json`，看板用 chokidar 监听后经 SSE（`/api/events`）
   推送，前端不轮询。停止一轮写 `cancel.json`；分容器时看板把请求写进 `data/requests/` 交给 runner。
-- **分层依赖**：`src/app` → `src/core`（+ `src/capabilities` 的类型与缓存）；`src/app` 不引用
+- **分层依赖**：`src/app` → `src/core` + `src/i18n`（+ `src/capabilities` 的类型与缓存）；`src/app` 不引用
   `src/adapters`，调用 CLI 只经 `src/core`；`src/core` 不依赖 `src/app`。
+- **中英双语国际化**（Sprint M2）：`src/i18n/` 提供 `en`（默认）与 `zh-CN` 双语词条字典、SSR + 客户端零闪烁语言协商（`pelican_locale` Cookie / `localStorage` + `Accept-Language`，不改 URL 路由）以及 SVG/PNG/GIF 导出图本地化。`src/core/prompts/i18n/` 与 `src/i18n/judge-rubric.ts` 在展示层本地化题目标签、黄金标准与评审标准 `G1`–`G5` / `C1`–`C9` 文案；发给 CLI 的提示词 `template`、`candidates[].text`、考场规则、AI 裁判提示词以及 `run.json` / `.judge.json` 的磁盘 schema 原封不动。
 - **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 low 到 max 串行；
   超时优先级 `targets[].timeoutMs` > `timeoutByEffort` > `timeoutByCli` > `defaultTimeoutMs`；
   预算按历史成本预估逐次放行。一次只跑一轮：手动发起时有轮次在跑直接拒绝；定时到点时有轮次在跑则排队
@@ -45,12 +46,12 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `run.harnessGuard`（缺省关）开启后每条提示词末尾另起一段附上直出约束原文（不联网、不跑代码自测、
   不截图自检），题目原文不动，附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布。
 - **提示词**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
-  `src/core/prompt*`，题目数据在 `src/core/prompts/` 与 `src/core/classics/`（四大名著），改动后跑
+  `src/core/prompt*`，题目数据在 `src/core/prompts/` 与 `src/core/classics/`（四大名著），展示层双语映射在 `src/core/prompts/i18n/`，改动后跑
   `pnpm validate:prompts`。
 - **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
   `<attemptKey>.judge.json`、帧序联系表 `.sheet.png` 与各类细节联系表 `.sheet.<kind>.png`（同帧号），
   不改 `run.json`；静态层用 jsdom，渲染层用 playwright-core 驱动本机 Chromium（没有则跳过）。
-  `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`，改口径要升
+  `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`（展示层双语映射在 `src/i18n/judge-rubric.ts`），改口径要升
   `version`；口径不变、只修解析量测或截帧逻辑时只升 `STATIC_JUDGE_ID` / `RENDER_JUDGE_ID`，不升
   rubric `version`（升了会让已有记录失去当前口径的展示与分项门槛），也不重评已有记录。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
 - **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`

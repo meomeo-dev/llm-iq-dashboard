@@ -28,14 +28,14 @@ export interface PairMessages {
 }
 
 export const zhCNPair: PairMessages = {
-  title: "配对所有者浏览器",
+  title: "所有者登录",
   subtitle: "输入在宿主机或 runner 容器终端生成的配对码，解锁配置管理、手动跑一轮与自动任务开关。",
-  codeLabel: "一次性配对码",
+  codeLabel: "配对码",
   codePlaceholder: "例如：ABCD-1234",
   deviceNameLabel: "设备备注名（可选）",
   deviceNamePlaceholder: "例如：MacBook Pro Chrome",
-  submitButton: "完成配对",
-  submitting: "验证中…",
+  submitButton: "配对",
+  submitting: "配对中…",
   howToTitle: "如何获取配对码？",
   howToStep1: "在运行看板的机器或容器内执行以下命令（10 分钟内有效、仅限使用一次）：",
   howToStep2: "将终端输出的配对码填入上方输入框即可完成授权。",
@@ -53,15 +53,15 @@ export const zhCNPair: PairMessages = {
 };
 
 export const enPair: PairMessages = {
-  title: "Pair Owner Browser",
+  title: "Owner Sign-In",
   subtitle:
     "Enter the one-time pairing code generated in your host or runner terminal to unlock configuration, manual runs, and auto-run controls.",
-  codeLabel: "One-Time Pairing Code",
+  codeLabel: "Pairing Code",
   codePlaceholder: "e.g. ABCD-1234",
   deviceNameLabel: "Device Label (optional)",
   deviceNamePlaceholder: "e.g. MacBook Pro Chrome",
-  submitButton: "Pair Device",
-  submitting: "Verifying…",
+  submitButton: "Pair",
+  submitting: "Pairing…",
   howToTitle: "How to get a pairing code?",
   howToStep1: "Run the following command on the host or inside the runner container (valid for 10 minutes, single use):",
   howToStep2: "Paste the printed pairing code above to authorize this browser.",

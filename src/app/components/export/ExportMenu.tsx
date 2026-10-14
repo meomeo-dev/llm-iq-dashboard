@@ -8,7 +8,7 @@ import { useProfiles } from "../profile/profiles-context";
 import type { Moment } from "../timeline/moments";
 import type { NowMark } from "../timeline/TimelineAxis";
 import { formatDayLabel, formatZonedDateTime, offsetLabel } from "../timeline/zoned-time";
-import { buildThumbnails, downloadPng, downloadSvg, readPalette } from "./export-image";
+import { buildThumbnails, downloadPng, downloadSvg, localizeExportError, readPalette } from "./export-image";
 import { renderTimelinePortraitSvg } from "./timeline-portrait-svg";
 import { renderTimelineSvg, type TimelineExport } from "./timeline-svg";
 
@@ -61,7 +61,7 @@ export function ExportMenu(props: ExportMenuProps) {
       <ExportRow choice="landscape-svg" busy={busy} onPick={exportAs} locale={locale} name={isEn ? "SVG Vector" : "SVG 矢量"} hint={isEn ? "Landscape · Lossless" : "横版 · 无损缩放"} />
       <ExportRow choice="portrait-png" busy={busy} onPick={exportAs} locale={locale} name={isEn ? "Portrait PNG" : "竖版 PNG"} hint={isEn ? "Vertical time · 2× Retina" : "时间竖排 · 2 倍清晰度"} />
       <ExportRow choice="portrait-svg" busy={busy} onPick={exportAs} locale={locale} name={isEn ? "Portrait SVG" : "竖版 SVG"} hint={isEn ? "Vertical time · Lossless" : "时间竖排 · 无损缩放"} />
-      {error !== null && <p className="export-error">{isEn ? `Export failed: ${error}` : `导出失败：${error}`}</p>}
+      {error !== null && <p className="export-error">{isEn ? `Export failed: ${localizeExportError(error, locale)}` : `导出失败：${localizeExportError(error, locale)}`}</p>}
     </Menu>
   );
 }

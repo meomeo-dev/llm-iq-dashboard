@@ -13,6 +13,7 @@ import {
   formatElapsed,
   isActivePhase,
   isTicking,
+  localizeBudgetStop,
   phaseOf,
   runClock,
   runElapsedMs,
@@ -199,7 +200,7 @@ function RunSection({
       )}
       {run.budgetStop != null && (
         <p className="run-warn">
-          {isEn ? `${run.budgetStop}; remaining calls were not started.` : `${run.budgetStop}，其余调用未发起。`}
+          {isEn ? `${localizeBudgetStop(run.budgetStop, locale)}; remaining calls were not started.` : `${run.budgetStop}，其余调用未发起。`}
         </p>
       )}
       {run.judging != null && <JudgingSection judging={run.judging} phase={phase} clock={clock} locale={locale} />}

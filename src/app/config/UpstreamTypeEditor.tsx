@@ -1,13 +1,11 @@
 import { useState } from "react";
 import type { ProfileConfig } from "@/core/config";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { addUpstreamType, upstreamTypeInUse } from "./profile-panel-model";
 
 /** 上游类型清单：profile 的 upstreamType 只能取其中之一；被 profile 使用中的不能删 */
 export function UpstreamTypeEditor({
-  types,
-  profiles,
-  onChange,
+  types, profiles, onChange,
 }: {
   types: readonly string[];
   profiles: readonly ProfileConfig[];
@@ -42,13 +40,7 @@ export function UpstreamTypeEditor({
                 type="button"
                 aria-label={isEn ? `Remove upstream type ${type}` : `删除上游类型 ${type}`}
                 disabled={inUse || types.length === 1}
-                title={
-                  inUse
-                    ? isEn
-                      ? "In use by a profile"
-                      : "有 profile 正在使用"
-                    : undefined
-                }
+                title={inUse ? (isEn ? "In use by a profile" : "有 profile 正在使用") : undefined}
                 onClick={() => onChange(types.filter((item) => item !== type))}
               >
                 ×

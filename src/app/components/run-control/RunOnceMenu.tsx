@@ -44,15 +44,11 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
   const selection = useRunOnceSelection();
-  const launcher = useRunOnceLauncher(selection.targets, selection.prompts, selection.candidateOverridesRef);
+  const launcher = useRunOnceLauncher(selection.targets, selection.prompts, selection.candidateOverridesRef, locale);
   const { applyResolved } = selection;
-  const { options } = useRunOnceOptions(
-    open,
-    useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]),
-    launcher.setNotice,
-  );
+  const onResolved = useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]);
+  const { options } = useRunOnceOptions(open, onResolved, launcher.setNotice, locale);
   const [mobileTab, setMobileTab] = useState<"models" | "prompts">("models");
-
   const activeRunId = useActiveRunId(options, launcher.startedRunId);
   const ownRunActive = activeRunId !== null && activeRunId === launcher.startedRunId;
   const stopping = useIsStopping(activeRunId);
@@ -63,6 +59,7 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
     storedProfiles: selection.profiles,
     start: launcher.start,
     onClosePanel: onClose,
+    locale,
   });
 
   return (
@@ -100,7 +97,7 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
       />
       {profiles.choosing && options !== null && (
         <RunOnceProfileModal
-          round={describeRound(options, selection.targets, selection.prompts)}
+          round={describeRound(options, selection.targets, selection.prompts, locale)}
           choices={profiles.choices}
           picked={profiles.pickedProfiles}
           calls={profiles.chosenCalls}

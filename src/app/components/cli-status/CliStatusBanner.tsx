@@ -51,7 +51,7 @@ export function CliStatusBanner() {
       )}
       {missing.map((record) => (
         <p key={record.cli}>
-          {record.detail}
+          {localizeReadinessDetail(record.detail, locale)}
           <DismissButton onClick={() => dismiss([record.cli])} locale={locale} />
         </p>
       ))}
@@ -60,6 +60,16 @@ export function CliStatusBanner() {
       </button>
     </aside>
   );
+}
+
+export function localizeReadinessDetail(detail: string | null, locale: Locale): string {
+  if (detail === null) return "";
+  if (locale === "zh-CN") return detail;
+  return detail
+    .replace(/不在 PATH 中。安装：/g, "is not in PATH. Install: ")
+    .replace(/未安装。安装：/g, "is not installed. Install: ")
+    .replace(/未登录。登录：/g, "is not signed in. Sign in: ")
+    .replace(/已安装且已登录/g, "is installed and signed in");
 }
 
 function DismissButton({ onClick, locale }: { onClick: () => void; locale: Locale }) {

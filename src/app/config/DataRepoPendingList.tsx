@@ -1,6 +1,6 @@
 import React from "react";
 import type { PendingRun } from "@/core/sync/data-repo-panel-types";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { PendingRunRow } from "./DataRepoPendingRun";
 import { runPick, type SelectionState } from "./pending-selection-model";
 

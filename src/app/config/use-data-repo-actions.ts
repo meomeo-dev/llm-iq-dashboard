@@ -15,6 +15,7 @@ import type {
   SyncActionMode,
   SyncActionResult,
 } from "@/core/sync/data-repo-panel-types";
+import { useI18n, type Locale } from "@/i18n";
 import { actionFetch } from "../components/action-fetch";
 
 export type FetchFn = (
@@ -66,7 +67,10 @@ function useMountedRef(): { current: boolean } {
 }
 
 /** 请求 GET /api/data-repo 状态并归约错误 */
-export async function requestRepoStatus(fetchFn: FetchFn): Promise<{
+export async function requestRepoStatus(
+  fetchFn: FetchFn,
+  locale: Locale = "zh-CN",
+): Promise<{
   data: DataRepoStatus | null;
   error: string | null;
 }> {
@@ -74,7 +78,8 @@ export async function requestRepoStatus(fetchFn: FetchFn): Promise<{
     const res = await fetchFn("/api/data-repo", { cache: "no-store" });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      return { data: null, error: body.error ?? `请求失败 (${res.status})` };
+      const fallback = locale === "en" ? `Request failed (${res.status})` : `请求失败 (${res.status})`;
+      return { data: null, error: body.error ?? fallback };
     }
     return { data: (await res.json()) as DataRepoStatus, error: null };
   } catch (cause) {
@@ -89,6 +94,7 @@ export async function postRepoAction(
   mode: SyncActionMode,
   confirmation?: { aheadCommits: string[] },
   scope: ActionScope = {},
+  locale: Locale = "zh-CN",
 ): Promise<{ result: SyncActionResult | null; error: string | null }> {
   try {
     const { runIds, attempts } = scope;
@@ -103,12 +109,10 @@ export async function postRepoAction(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const body = (await res.json().catch(() => ({}))) as
-      | SyncActionResult
-      | { error?: string };
+    const body = (await res.json().catch(() => ({}))) as SyncActionResult | { error?: string };
     if (!res.ok || !("ok" in body)) {
-      const msg =
-        ("error" in body ? body.error : null) ?? `操作失败 (${res.status})`;
+      const fallback = locale === "en" ? `Operation failed (${res.status})` : `操作失败 (${res.status})`;
+      const msg = ("error" in body ? body.error : null) ?? fallback;
       return { result: null, error: msg };
     }
     return { result: body as SyncActionResult, error: null };
@@ -122,19 +126,16 @@ export async function postRepoAction(
 function useRepoStatusLoader(
   fetchFn: FetchFn,
   mounted: { current: boolean },
+  locale: Locale,
   initialStatus?: DataRepoStatus | null,
   autoLoad?: boolean,
 ) {
-  const [status, setStatus] = useState<DataRepoStatus | null>(
-    initialStatus ?? null,
-  );
-  const [loading, setLoading] = useState(
-    initialStatus === undefined && autoLoad !== false,
-  );
+  const [status, setStatus] = useState<DataRepoStatus | null>(initialStatus ?? null);
+  const [loading, setLoading] = useState(initialStatus === undefined && autoLoad !== false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
-    const res = await requestRepoStatus(fetchFn);
+    const res = await requestRepoStatus(fetchFn, locale);
     if (!mounted.current) return;
     setLoading(false);
     if (res.error !== null) {
@@ -143,7 +144,7 @@ function useRepoStatusLoader(
     }
     setStatus(res.data);
     setError(null);
-  }, [fetchFn, mounted]);
+  }, [fetchFn, locale, mounted]);
 
   useEffect(() => {
     if (autoLoad !== false) void refresh();
@@ -156,6 +157,7 @@ function useRepoStatusLoader(
 function useRepoActionExecutor(
   fetchFn: FetchFn,
   mounted: { current: boolean },
+  locale: Locale,
   refresh: () => Promise<void>,
   setError: (e: string | null) => void,
   setActionResult: (r: SyncActionResult | null) => void,
@@ -173,7 +175,7 @@ function useRepoActionExecutor(
       inFlightRef.current = mode;
       setInFlightMode(mode);
       setError(null);
-      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf, scope);
+      const { result, error: actError } = await postRepoAction(fetchFn, mode, conf, scope, locale);
       inFlightRef.current = null;
       if (!mounted.current) return null;
       setInFlightMode(null);
@@ -186,7 +188,7 @@ function useRepoActionExecutor(
       await refresh();
       return result;
     },
-    [fetchFn, mounted, refresh, setError, setActionResult],
+    [fetchFn, locale, mounted, refresh, setError, setActionResult],
   );
 
   return { inFlightMode, executeAction };
@@ -195,21 +197,23 @@ function useRepoActionExecutor(
 export function useDataRepoActions(
   options: UseDataRepoActionsOptions = {},
 ): UseDataRepoActionsReturn {
+  const { locale } = useI18n();
   const fetchFn = options.fetchFn ?? defaultFetchFn;
   const mounted = useMountedRef();
   const { status, loading, error, setError, refresh } = useRepoStatusLoader(
     fetchFn,
     mounted,
+    locale,
     options.initialStatus,
     options.autoLoad,
   );
   const [actionResult, setActionResult] = useState<SyncActionResult | null>(
     options.initialStatus?.lastAction ?? null,
   );
-
   const { inFlightMode, executeAction } = useRepoActionExecutor(
     fetchFn,
     mounted,
+    locale,
     refresh,
     setError,
     setActionResult,

@@ -89,14 +89,7 @@ export function ConfigEditor({
   );
 }
 
-function PromptSection({
-  builtinPrompts,
-  customPrompts,
-  promptIds,
-  rotation,
-  onPatchRun,
-  onPatchCustomPrompts,
-}: {
+function PromptSection(props: {
   builtinPrompts: PromptSpec[];
   customPrompts: PromptSpec[];
   promptIds: string[];
@@ -104,8 +97,7 @@ function PromptSection({
   onPatchRun: (patch: Partial<EditableConfig["run"]>) => void;
   onPatchCustomPrompts: (prompts: PromptSpec[]) => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="prompts"
@@ -117,13 +109,13 @@ function PromptSection({
       }
     >
       <PromptPicker
-        builtins={builtinPrompts}
-        custom={customPrompts}
-        enabled={promptIds}
-        onEnabled={(ids) => onPatchRun({ promptIds: ids })}
-        onCustom={onPatchCustomPrompts}
+        builtins={props.builtinPrompts}
+        custom={props.customPrompts}
+        enabled={props.promptIds}
+        onEnabled={(ids) => props.onPatchRun({ promptIds: ids })}
+        onCustom={props.onPatchCustomPrompts}
       />
-      <RotationForm value={rotation} onChange={(next) => onPatchRun({ rotation: next })} />
+      <RotationForm value={props.rotation} onChange={(next) => props.onPatchRun({ rotation: next })} />
     </ConfigSection>
   );
 }
@@ -135,8 +127,7 @@ function HarnessGuardSection({
   value: EditableConfig["run"]["harnessGuard"];
   onChange: (value: EditableConfig["run"]["harnessGuard"]) => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="harness-guard"
@@ -156,8 +147,7 @@ function ProfileSection({
   draft,
   ...panel
 }: { draft: EditableConfig } & Omit<ProfilePanelProps, "upstreamTypes" | "profiles" | "targets">) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="profiles"
@@ -173,14 +163,7 @@ function ProfileSection({
   );
 }
 
-function MatrixSection({
-  targets,
-  profiles,
-  catalog,
-  customModels,
-  onTargets,
-  onCustomModels,
-}: {
+function MatrixSection(props: {
   targets: Target[];
   profiles: EditableConfig["profiles"];
   catalog: CapabilitySnapshot;
@@ -188,22 +171,14 @@ function MatrixSection({
   onTargets: (targets: Target[]) => void;
   onCustomModels: (models: Partial<Record<CliKind, string[]>>) => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="matrix"
       title={isEn ? "Target Matrix" : "被测矩阵"}
       hint={isEn ? "Only effort levels supported by the selected model are listed." : "强度只列出该模型支持的档位。"}
     >
-      <TargetTable
-        targets={targets}
-        profiles={profiles}
-        catalog={catalog}
-        customModels={customModels}
-        onTargets={onTargets}
-        onCustomModels={onCustomModels}
-      />
+      <TargetTable {...props} />
     </ConfigSection>
   );
 }
@@ -219,8 +194,7 @@ function ConfigEditorActions({
   onSave: () => Promise<boolean>;
   onRunNow: () => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <div className="actions">
       <button type="button" className="primary" onClick={onSave} disabled={busy}>
@@ -241,8 +215,7 @@ function ScheduleSection({
   schedule: EditableConfig["schedule"];
   onChange: (value: EditableConfig["schedule"]) => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="schedule"
@@ -267,8 +240,7 @@ function JudgeSection({
   catalog: CapabilitySnapshot;
   onChange: (value: EditableConfig["judge"]) => void;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <ConfigSection
       id="judge"

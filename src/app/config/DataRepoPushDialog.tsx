@@ -1,5 +1,5 @@
 import React from "react";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 
 interface DataRepoPushDialogProps {
   isOpen: boolean;

@@ -12,6 +12,7 @@ import {
   countJudging,
   elapsedMs,
   formatElapsed,
+  localizeJudgeItemNote,
   promptTag,
   type RunPhase,
 } from "./run-phase";
@@ -48,7 +49,6 @@ export function LaneGroups({
   locale: Locale;
 }) {
   const { profiles } = useProfiles();
-  const isEn = locale === "en";
   const groups = groupLanes(lanes, profiles);
   const grouped = groups.length > 1 || groups.some((group) => group.profile !== DEFAULT_PROFILE);
   return (
@@ -60,9 +60,7 @@ export function LaneGroups({
               {group.profile !== DEFAULT_PROFILE && (
                 <span className="profile-dot" style={{ background: profileColor(group.profile) }} aria-hidden="true" />
               )}
-              {group.profile === DEFAULT_PROFILE && isEn
-                ? "Official Login"
-                : profileLabel(group.profile, profiles)}
+              {profileLabel(group.profile, profiles, locale)}
             </div>
           )}
           {group.lanes.map((lane) => (
@@ -176,8 +174,9 @@ function JudgeItem({ item, clock, locale }: { item: JudgeItemProgress; clock: Cl
     item.verdict === "online" || item.verdict === "degraded" || item.verdict === "pending"
       ? judgeText(item.verdict, locale)
       : (item.verdict ?? "");
+  const note = localizeJudgeItemNote(item.note, locale);
   return (
-    <span className={`run-call ${tone}`} title={item.note ?? item.attemptKey}>
+    <span className={`run-call ${tone}`} title={note ?? item.attemptKey}>
       <span className="run-call-name">
         {item.targetId.split("__").slice(2).join(" · ")} · {promptTag(item.promptId)}
       </span>
@@ -188,7 +187,7 @@ function JudgeItem({ item, clock, locale }: { item: JudgeItemProgress; clock: Cl
         {item.state === "done" && `${verdictLabel} ${item.score} · ${formatElapsed(elapsed)}`}
         {item.state === "failed" && (isEn ? "Skipped" : "未评")}
       </span>
-      {item.state === "failed" && item.note !== null && <span className="run-call-note">{item.note}</span>}
+      {item.state === "failed" && note !== null && <span className="run-call-note">{note}</span>}
     </span>
   );
 }

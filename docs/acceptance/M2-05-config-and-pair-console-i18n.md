@@ -69,7 +69,7 @@ pnpm build
 
 ## 5. 与计划的偏差
 
-- 为保证 `src/app/config/data-repo-panel-model.ts`（449 行）与 `src/app/config/data-repo-pipeline-model.ts`（375 行）严格控制在 500 行上限内，将数据仓英文状态与流水线文案推导拆入同目录 `src/app/config/data-repo-panel-i18n.ts`（277 行）。
+- 为保证 `src/app/config/data-repo-panel-model.ts`（394 行）与 `src/app/config/data-repo-pipeline-model.ts`（375 行）严格控制在 500 行上限内，将数据仓英文状态与流水线文案推导拆入同目录 `src/app/config/data-repo-panel-i18n.ts`（390 行）。
 - 为使服务端组件 `src/app/pair/page.tsx` 能渲染客户端语言切换器，拆出轻量客户端头部 `src/app/pair/PairPageHeader.tsx`。
 
 ## 6. 技术决策

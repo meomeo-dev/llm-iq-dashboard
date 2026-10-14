@@ -1,7 +1,7 @@
 "use client";
 
 import type { SessionView } from "@/app/api/session/route";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { useDevicePanel } from "./use-device-panel";
 import { DeviceTable } from "./DeviceTable";
 

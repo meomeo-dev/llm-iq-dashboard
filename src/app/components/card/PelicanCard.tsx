@@ -11,6 +11,7 @@ import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
 import {
   costTitle,
+  formatBindingBadge,
   formatBytes,
   formatCost,
   formatDuration,
@@ -18,6 +19,7 @@ import {
   judgeCostLine,
   judgeText,
   judgeTitle,
+  localizeCardError,
   pendingJudgeText,
   rawSvgHref,
   statusText,
@@ -62,11 +64,14 @@ function CardHeader({ card, timeZone, locale }: { card: DashboardCard; timeZone:
         <EffortBadge card={card} locale={locale} />
         {card.profile !== undefined && <ProfileBadge name={card.profile} locale={locale} />}
         <span className="badge prompt-id">{card.promptId}</span>
-        {Object.entries(card.bindings).map(([name, value]) => (
-          <span key={name} className="badge binding" title={`${name}: ${value}`}>
-            {name}: {value}
-          </span>
-        ))}
+        {Object.entries(card.bindings).map(([name, value]) => {
+          const badgeText = formatBindingBadge(name, value, locale);
+          return (
+            <span key={name} className="badge binding" title={badgeText}>
+              {badgeText}
+            </span>
+          );
+        })}
       </div>
     </header>
   );
@@ -157,7 +162,7 @@ function JudgeTag({
 /** 上游徽章：色点与进度面板、时间线同色；登录态（无 profile）不出徽章 */
 function ProfileBadge({ name, locale }: { name: string; locale: Locale }) {
   const { profiles } = useProfiles();
-  const label = profileLabel(name, profiles);
+  const label = profileLabel(name, profiles, locale);
   return (
     <span className="badge profile" title={locale === "en" ? `Profile: ${label}` : `上游：${label}`}>
       <span className="profile-dot" style={{ background: profileColor(name) }} aria-hidden="true" />
@@ -219,7 +224,7 @@ function ArtFrame({ card, art, locale }: { card: DashboardCard; art: string; loc
 
 function FailureFrame({ card, locale }: { card: DashboardCard; locale: Locale }) {
   const statusLabel = statusText(card.status, locale);
-  const reason = card.error ?? statusLabel;
+  const reason = localizeCardError(card.error, card.status, locale) ?? statusLabel;
   return (
     <div className={`frame card-frame frame-failed failed-${card.status}`} title={reason}>
       <span className="failure-status">{statusLabel}</span>
@@ -230,7 +235,7 @@ function FailureFrame({ card, locale }: { card: DashboardCard; locale: Locale })
 
 function RedactedFrame({ card, locale }: { card: DashboardCard; locale: Locale }) {
   const fallback = locale === "en" ? "Redacted (Unpublished)" : "已脱敏，未发布";
-  const reason = card.error ?? fallback;
+  const reason = localizeCardError(card.error, card.status, locale) ?? fallback;
   return (
     <div className="frame card-frame frame-redacted" title={reason}>
       <span className="redacted-status">{fallback}</span>

@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 选型依据 | ARCH-001（accepted） |
-| 最近回填 | 2026-10-11 |
+| 最近回填 | 2026-10-14 |
 
 ### 变更记录
 
@@ -34,6 +34,7 @@
 | [ACR-022](revisions/ACR-022-git-hooks-manager.md) | 2026-10-03 | Git 钩子交给 lefthook 管理：pre-commit 跑密钥扫描、类型检查与长度门，pre-push 跑测试与题库校验 | §0 §6 |
 | [ACR-021](revisions/ACR-021-judge-ai-locate.md) | 2026-10-01 | 裁判先看首帧定位四类部位的取景框，程序按框重切细节表再打分；几何推断只作兜底 | §3 §4 |
 | [ACR-023](revisions/ACR-023-data-repo-web-config.md) | 2026-10-03 | 数据仓地址 `dataRepo.repository` 在配置页可改，执行器按地址 clone 本地副本、origin 不一致拒绝同步，GitHub App 以地址为目标仓 | §4 §5 |
+| Sprint M2 | 2026-10-14 | Sprint M2（中英双语全栈国际化改造）：新增 `src/i18n/` 与 `src/core/prompts/i18n/`，对外文档切换为 `.md` 英文主版与 `.zh-CN.md` 中文互链，回填 §1、§3、§7 | §1 §3 §7 |
 
 ## 0. 技术选型总览
 
@@ -99,6 +100,10 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   烘进作品副本（SMIL `begin` 减 t；CSS 动画先在隐藏的 shadow root 里读出各元素实际生效的
   `animation-delay`，再逐元素减 t 写进行内样式并暂停，元素间的相位差得以保留）逐帧解码后画进作品框，
   标签页不可见时也正确。作品源码走与看板相同的净化；导出图的缩略图以嵌套 `<svg viewBox>` 裁到作品画布。
+- 中英双语（`en` / `zh-CN`）服务端与客户端零闪烁语言协商（Sprint M2）：不引入 URL 路由前缀，全部路由路径保持不变；
+  服务端组件按 `pelican_locale` Cookie → `Accept-Language` 请求头 → 默认英文（`en`）解析初始语言并渲染首屏与 `<html lang>`；
+  客户端工具栏右上角 `EN / 中文` 切换器同时写回 `pelican_locale` Cookie 与 `localStorage` 并即时重渲染全页组件，
+  时间线横竖版与结果集模态窗导出的 SVG / PNG / GIF 图表均传入当前 `locale` 字典，按当前语言绘制标题、图例与卡片徽章。
 - 两种轮次读同一份配置、同一时机：都在发起时读。调度器每个触发点重读配置按最新的定时目标与
   题目开轮，节奏（cron / 间隔 / 时区）每 30 秒核对一次、变了即重建定时器，不必重启。
   `schedule` 只定节奏，到点是否执行只看 `auto-run.json`。
@@ -146,9 +151,15 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   倍率只用于信息卡里的折算显示，卡片与统计仍按官价。
 - `src/core`：编排（提示词 × 目标，按 profile × 模型分道并发、道内串行）、强度折叠“不越级加码”、
   提示词登记（经典基准、2026-09 动态题、前沿工程与视觉题、四大名著与城市地标候选集、前沿工程 / 视觉
-  特效 14 个领域套题，内置条目均不可编辑；登记在 `src/core/prompt/`，题目数据在 `src/core/prompts/` 与
+  特效 14 个领域套题，共 54 个内置条目与 300 条轮换场景候选，均不可编辑；登记在 `src/core/prompt/`，题目数据在 `src/core/prompts/` 与
   `src/core/classics/`）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
+- 考题文本锁定与展示层双语分离（Sprint M2）：发给被测 CLI 的题面原文（`PromptSpec.template`、`candidates[].text`）、
+  考场规则（`src/core/house-rules.ts`）与 AI 裁判提示词（`src/core/judge/ai-prompt.ts`）逐字锁定不可按界面语言改动，
+  保证历史结果与跨模型评测严格可比；而面向人类读者的展示元数据——题目标签（`label`）、候选场景标签、黄金评判标准
+  （`standard.coreKey` / `groundTruth` / `evaluationCriteria`）、生命周期题龄说明（`src/core/prompts/i18n/`）以及
+  动态鹈鹕车评审标准 `G1`–`G5` 闸门与 `C1`–`C9` 评分项文案（`src/i18n/judge-rubric.ts`）——均在展示层按 `locale`
+  动态本地化，不改变 `run.json` 与 `<attemptKey>.judge.json` 的磁盘存储契约。
 - 失败分类：`ok` / `no-svg` / `error` / `timeout` 分开记录。
 - 作品评审（ACR-019）：有评分标准的题目（首期 `animated-pelican-v1`）在 `ok` 落盘后由 `src/core/judge`
   按题目口径打分，结果只写独立的评审记录，不改 `Attempt`。代码层分静态解析（jsdom：XML 合法、
@@ -282,35 +293,36 @@ llm_iq_dashboard/
 │   ├── app/            ← 看板页面与 /api 路由；components/ 按功能分目录
 │   ├── bin/            ← 命令行入口：run-once、scheduler、runner、pair、preflight、onboard、
 │   │                     pricing-sync、sync-data、validate-prompts
-│   ├── core/           ← 领域逻辑；judge/ 为作品评审（静态解析、渲染量测、AI 裁判、记录读写）
+│   ├── core/           ← 领域逻辑；judge/ 为作品评审；prompts/i18n/ 为题目与标准展示层双语映射
+│   ├── i18n/           ← 中英双语国际化（types.ts、context.tsx、messages/ 字典、judge-rubric.ts 与 judge-evidence-en.ts 评审标准展示层翻译）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检
 │   ├── pricing/        ← 用量解析与成本折算
 │   └── types/          ← 无官方类型的依赖的最小声明（jsdom）
 ├── config/             ← 调度策略与被测矩阵（YAML）、价格目录锁文件、长度门与密钥扫描策略
 ├── data/               ← 运行产物与运行态，不入库
-├── test/               ← node:test 单元测试，与 src/ 同构
-├── docs/               ← 出处、界面、部署、架构文档
+├── test/               ← node:test 单元测试，与 src/ 同构（含 test/i18n/）
+├── docs/               ← 出处、界面、部署、架构文档（对外文档按 .md 英文主版与 .zh-CN.md 中文版成对互链）
 ├── docker/             ← 镜像定义与构建忽略规则、容器入口、CLI 安装脚本
 ├── issues/             ← 本地 issue
 └── scripts/            ← 生产启动（dashboard-prod）、长度门、密钥扫描、评审补跑、展台冒烟与本地 issue、
                           治理脚本
 ```
 
-- `src/app` 依赖 `src/core`，并读取 `src/capabilities` 的能力目录、就绪缓存与类型；
+- `src/app` 依赖 `src/core` 与 `src/i18n`，并读取 `src/capabilities` 的能力目录、就绪缓存与类型；
   不引用 `src/adapters`，调用 CLI 只经 `src/core` 的执行入口。客户端组件经 `/api` 取数，
   不直接读文件。
 - `src/core` 不依赖 `src/app`；`src/adapters` 只被 `src/core` 调用。
 - `src/app/components/` 根目录放页面装配入口 `Dashboard.tsx` 与少量共用件（`action-fetch.ts`、
   `ReferenceSourceDisplay.tsx`），其余按功能分目录：`card/`（结果卡片、作品框、SVG 净化、id 隔离与
-  shadow root 挂载）、`toolbar/`（工具栏、筛选、月历）、`menu/`（共用下拉菜单）、`timeline/`、
+  shadow root 挂载）、`toolbar/`（工具栏、筛选、月历、语言切换）、`menu/`（共用下拉菜单）、`timeline/`、
   `run-control/`、`run-status/`、`model-modal/`、`export/`、`cli-status/`、`live-state/`、`dashboard/`、
   `icons/`、`profile/`。
 - `data/` 是两个进程交换状态的唯一通道。
 - 根目录只放工具按固定位置查找的入口：`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`
   （pnpm），`tsconfig.json`（tsc、tsx 与编辑器），`next.config.ts`（Next.js），`compose.yaml`
-  （docker compose），`lefthook.yml`（lefthook），`.nvmrc`，以及 README、`AGENTS.md` / `CLAUDE.md`、
-  `CHANGELOG.md`、`handoff.md`、许可证与第三方声明。其余代码按职责放进子目录；
+  （docker compose），`lefthook.yml`（lefthook），`.nvmrc`，以及 `README.md` / `README.zh-CN.md`、`AGENTS.md` / `CLAUDE.md`、
+  `CHANGELOG.md`、`handoff.md`、许可证与第三方声明。对外说明文档采用 `.md`（英文主版）与 `.zh-CN.md`（简体中文版）双语互链。其余代码按职责放进子目录；
   工具生成物（`next-env.d.ts`、`*.tsbuildinfo`）不入库，tsc 增量缓存写在 `.next/cache`。
 
 ## 8. 部署与运行形态

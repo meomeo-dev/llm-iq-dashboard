@@ -135,10 +135,34 @@ export function splitParenthesizedLabel(
   rawLabel: string,
   locale: Locale,
 ): string | null {
-  const match = rawLabel.match(/^(.+?)\s*[（(]([A-Za-z0-9][^）)]+)[）)]\s*$/);
-  if (!match) return null;
-  const zhPart = match[1]?.trim() ?? rawLabel;
-  const enPart = match[2]?.trim() ?? rawLabel;
+  const trimmed = rawLabel.trim();
+  const lastChar = trimmed[trimmed.length - 1];
+  if (lastChar !== ")" && lastChar !== "）") return null;
+  let depth = 0;
+  let openIdx = -1;
+  for (let i = trimmed.length - 1; i >= 0; i -= 1) {
+    const ch = trimmed[i];
+    if (ch === ")" || ch === "）") {
+      depth += 1;
+    } else if (ch === "(" || ch === "（") {
+      depth -= 1;
+      if (depth === 0) {
+        openIdx = i;
+        break;
+      }
+    }
+  }
+  if (openIdx <= 0) return null;
+  const zhPart = trimmed.slice(0, openIdx).trim();
+  const enPart = trimmed.slice(openIdx + 1, trimmed.length - 1).trim();
+  if (
+    !zhPart ||
+    !enPart.includes(" ") ||
+    !/^[A-Za-z0-9]/.test(enPart) ||
+    /[\u4e00-\u9fff]/.test(enPart)
+  ) {
+    return null;
+  }
   return locale === "en" ? enPart : zhPart;
 }
 

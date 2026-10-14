@@ -1,5 +1,5 @@
 import type { AutoRunView } from "@/core/auto-run";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import { formatZonedClock } from "../components/timeline/zoned-time";
 
 export function ScheduleRuntimeCard({
@@ -105,12 +105,7 @@ function ScheduleRuntimeHeader({
 }
 
 function ScheduleNoticeBox({
-  scheduled,
-  isMasterEnabled,
-  state,
-  switching,
-  timeZone,
-  onToggleMaster,
+  scheduled, isMasterEnabled, state, switching, timeZone, onToggleMaster,
 }: {
   scheduled: boolean;
   isMasterEnabled: boolean;

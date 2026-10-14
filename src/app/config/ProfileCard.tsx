@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ProfileConfig } from "@/core/config";
 import type { ProfileCredentialStatus } from "@/core/profile-credentials";
-import { useI18n } from "@/i18n/context";
+import { useI18n, type Locale } from "@/i18n";
 import { isKebabName } from "./profile-panel-model";
 import { ProfileModelsField } from "./ProfileModelsField";
 import { ProfileCredentialField } from "./ProfileCredentialField";
@@ -21,7 +21,7 @@ export interface ProfileCardProps {
   onEnsureSaved: () => Promise<boolean>;
   onSaveKey: (apiKey: string) => Promise<CredentialOutcome>;
   onDeleteKey: () => Promise<CredentialOutcome>;
-  onSyncModels: () => Promise<ModelSyncOutcome>;
+  onSyncModels: (locale?: Locale) => Promise<ModelSyncOutcome>;
 }
 
 export function ProfileCard(props: ProfileCardProps) {

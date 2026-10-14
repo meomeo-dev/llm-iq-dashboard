@@ -1,12 +1,14 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
 import { listRunStarts, loadCardsBetween, getRemoteNotice } from "@/core/data-source";
 import { getDeployMode } from "@/core/deploy-mode";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, resolveLocale, type Locale } from "@/i18n";
 import { CliStatusBanner } from "./components/cli-status/CliStatusBanner";
 import { Dashboard } from "./components/Dashboard";
 import {
   buildPromptStandards,
   cardWindow,
+  localizeRemoteNotice,
   readDashboardSettings,
   sortNewestFirst,
 } from "./components/dashboard/dashboard-page-data";
@@ -19,8 +21,22 @@ interface PageProps {
   searchParams: Promise<{ day?: string | string[] }>;
 }
 
+async function detectRequestLocale(): Promise<Locale> {
+  try {
+    const cookieStore = await cookies();
+    const explicit = cookieStore.get(LOCALE_COOKIE)?.value ?? null;
+    const headerStore = await headers();
+    const acceptLanguage = headerStore.get("accept-language");
+    return resolveLocale(explicit, acceptLanguage);
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
+
 export default async function Page({ searchParams }: PageProps) {
   const { day } = await searchParams;
+  const locale = await detectRequestLocale();
+  const isEn = locale === "en";
   const { readonly, dataSource } = getDeployMode();
   const owner = (await verifySession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
   const isShowcase = readonly || dataSource === "remote";
@@ -43,8 +59,8 @@ export default async function Page({ searchParams }: PageProps) {
       {remoteNotice && (
         <aside className="cli-banner" role="status" style={{ borderLeftColor: "var(--warn)" }}>
           <p>
-            <b>数据提示：</b>
-            {remoteNotice}
+            <b>{isEn ? "Data Notice: " : "数据提示："}</b>
+            {localizeRemoteNotice(remoteNotice, locale)}
           </p>
         </aside>
       )}

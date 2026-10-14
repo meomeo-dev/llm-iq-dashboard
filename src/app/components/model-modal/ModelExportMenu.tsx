@@ -4,6 +4,7 @@ import { useState } from "react";
 import { profileLabel } from "@/core/profile-view";
 import { DEFAULT_PROFILE, type DashboardCard } from "@/core/types";
 import { useI18n } from "@/i18n";
+import { localizeExportError } from "../export/export-image";
 import { exportResultSet, type ResultSetFormat } from "../export/result-set-export";
 import { GIF_FPS, GIF_SECONDS } from "../export/result-set-gif";
 import type { ResultSetColumn } from "../export/result-set-svg";
@@ -56,7 +57,7 @@ export function ModelExportMenu({ moment, row, cards, upstreams, efforts, timeZo
     try {
       const columns: ResultSetColumn[] = upstreams.map((name) => ({
         name,
-        label: name === DEFAULT_PROFILE && isEn ? t.viewer.modal.officialLogin : profileLabel(name, profiles),
+        label: name === DEFAULT_PROFILE && isEn ? t.viewer.modal.officialLogin : profileLabel(name, profiles, locale),
         color: name === DEFAULT_PROFILE ? null : profileColor(name),
       }));
       const okCount = cards.filter((card) => card.status === "ok").length;
@@ -88,7 +89,7 @@ export function ModelExportMenu({ moment, row, cards, upstreams, efforts, timeZo
           <span className="menu-row-count">{hint}</span>
         </button>
       ))}
-      {error !== null && <p className="export-error">{isEn ? `Export failed: ${error}` : `导出失败：${error}`}</p>}
+      {error !== null && <p className="export-error">{isEn ? `Export failed: ${localizeExportError(error, locale)}` : `导出失败：${localizeExportError(error, locale)}`}</p>}
     </Menu>
   );
 }

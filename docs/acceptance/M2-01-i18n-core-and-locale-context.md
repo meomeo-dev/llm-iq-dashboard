@@ -20,8 +20,8 @@
 | # | 判定条目 | 预期 | 实际 | 证据 | 状态 |
 |---|---|---|---|---|---|
 | 1 | 建立 `src/i18n/` 类型、语言协商与分域字典 | 导出 `Locale`、`resolveLocale`、`formatText` 及 5 个分域双语字典 | 新建 `src/i18n/types.ts` (78 行) 与 `messages/{common,toolbar,viewer,config,pair,index}.ts`，`en` 与 `zh-CN` 字典全部叶子键 100% 对称 | `src/i18n/types.ts`、`src/i18n/messages/index.ts` | ✅ |
-| 2 | 实现 `I18nProvider`、`useI18n` 与 `<LanguageSwitch />` 并接入 `src/app/layout.tsx` | 根布局动态输出 `<html lang={locale}>` 与双语 `metadata` | `src/i18n/context.tsx` (122 行) 与 `src/app/layout.tsx` (46 行) 已接入，`tsc --noEmit` 0 错误 | `src/app/layout.tsx L14-L45` | ✅ |
-| 3 | 单测与代码长度门禁通过 | `test/i18n/locale.test.ts` 全绿，`pnpm check:length` 0 超标 | 5 个测试用例全部通过（2.35ms），扫描 432 文件 0 超标 | `pnpm exec tsx --test test/i18n/locale.test.ts` | ✅ |
+| 2 | 实现 `I18nProvider`、`useI18n` 与 `<LanguageSwitch />` 并接入 `src/app/layout.tsx` | 根布局动态输出 `<html lang={locale}>` 与双语 `metadata` | `src/i18n/context.tsx` (149 行) 与 `src/app/layout.tsx` (46 行) 已接入，客户端切换同步更新 `document.documentElement.lang` 与 `document.title`，`tsc --noEmit` 0 错误 | `src/app/layout.tsx L14-L45` | ✅ |
+| 3 | 单测与代码长度门禁通过 | `test/i18n/locale.test.ts` 全绿，`pnpm check:length` 0 超标 | 5 个测试用例全部通过，扫描 437 文件 0 超标 | `pnpm exec tsx --test test/i18n/locale.test.ts` | ✅ |
 
 ## 2. 功能点逐条验收
 

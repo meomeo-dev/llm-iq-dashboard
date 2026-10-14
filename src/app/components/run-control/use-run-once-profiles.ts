@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { RunOptionsView } from "@/app/api/run/route";
+import type { Locale } from "@/i18n";
 import { countCalls, profileChoices, resolvePickedProfiles, startMode, type ProfileChoice, type StartMode } from "./run-once-profiles";
 
 interface ProfileSelectionInput {
@@ -10,6 +11,7 @@ interface ProfileSelectionInput {
   storedProfiles: readonly string[] | null;
   start: (profiles?: readonly string[]) => Promise<boolean>;
   onClosePanel: () => void;
+  locale?: Locale;
 }
 
 export interface ProfileSelection {
@@ -29,7 +31,7 @@ export interface ProfileSelection {
 
 /** "跑一次"的上游选择状态：按钮形态、可选上游、勾选与二级模态的开合 */
 export function useRunOnceProfiles(input: ProfileSelectionInput): ProfileSelection {
-  const { options, targets, promptCount, storedProfiles, start, onClosePanel } = input;
+  const { options, targets, promptCount, storedProfiles, start, onClosePanel, locale = "zh-CN" } = input;
   const [choosing, setChoosing] = useState(false);
   const choosingRef = useRef(false);
   choosingRef.current = choosing;
@@ -37,8 +39,8 @@ export function useRunOnceProfiles(input: ProfileSelectionInput): ProfileSelecti
     if (!choosingRef.current) onClosePanel();
   }, [onClosePanel]);
 
-  const mode = startMode(options, targets, promptCount);
-  const choices = options === null ? [] : profileChoices(options, targets);
+  const mode = startMode(options, targets, promptCount, locale);
+  const choices = options === null ? [] : profileChoices(options, targets, locale);
   const pickedProfiles = new Set(resolvePickedProfiles(choices, storedProfiles));
   const chosenCalls = options === null ? 0 : countCalls(options, targets, promptCount, [...pickedProfiles]);
 

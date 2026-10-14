@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { PromptSpec } from "@/core/prompt";
 import type { VariableMode, VariableSpec } from "@/core/variables";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import {
   MODES,
   getModeHint,

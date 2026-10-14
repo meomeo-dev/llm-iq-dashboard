@@ -6,8 +6,8 @@ import type {
   SyncActionMode,
   SyncActionResult,
 } from "@/core/sync/data-repo-panel-types";
-import { useI18n } from "@/i18n/context";
-import type { Locale } from "@/i18n/types";
+import { useI18n, type Locale } from "@/i18n";
+import { localizeStatusNoticeEn } from "./data-repo-panel-i18n";
 import {
   getActionLabels,
   deriveActionResultSummary,
@@ -44,8 +44,7 @@ function repositoryLabel(status: DataRepoStatus | null): string {
 }
 
 function DataRepoHeader({ label }: { label: string }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   return (
     <header>
       <h2>{isEn ? "Data Repository" : "数据仓"}</h2>
@@ -70,8 +69,7 @@ function DataRepoNoticeSection({ message, label }: { message: string; label: str
 
 /** 本地副本指向别的仓：同步已被执行器拒绝，告诉所有者两条出路 */
 function DataRepoMismatchBar({ status }: { status: DataRepoStatus | null }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   if (status?.repo?.remoteMismatch !== true) return null;
   return (
     <div className="status error data-repo-error-bar">
@@ -97,9 +95,7 @@ function DataRepoSummaryBar({
     <>
       {error && <div className="status error data-repo-error-bar">{error}</div>}
       {summary && (
-        <div
-          className={`data-repo-action-summary ${summary.ok ? "ok" : "error"}`}
-        >
+        <div className={`data-repo-action-summary ${summary.ok ? "ok" : "error"}`}>
           <span className="data-repo-summary-label">
             {isEn
               ? `Last action result (${actionLabels[summary.mode]}): `
@@ -145,12 +141,10 @@ function derivePanelData(
     health: deriveHealthStatus(status, locale),
     counts: deriveCountsSummary(status, locale),
     pushConfirm: derivePushConfirmation(status, locale),
-    summary: deriveActionResultSummary(
-      actionResult ?? status?.lastAction ?? null,
-      locale,
-    ),
+    summary: deriveActionResultSummary(actionResult ?? status?.lastAction ?? null, locale),
     issues: extractReportIssues(
       actionResult?.report ?? status?.lastAction?.report ?? null,
+      locale,
     ),
   };
 }
@@ -193,38 +187,31 @@ export function DataRepoPanel({
   autoLoad,
 }: DataRepoPanelProps) {
   const { locale } = useI18n();
-  const {
-    status,
-    loading,
-    inFlightMode: hookMode,
-    actionResult: hookResult,
-    error,
-    refresh,
-    executeAction,
-  } = useDataRepoActions({ fetchFn, initialStatus, autoLoad });
+  const isEn = locale === "en";
+  const { status, loading, inFlightMode, actionResult, error, refresh, executeAction } =
+    useDataRepoActions({ fetchFn, initialStatus, autoLoad });
 
   const [showPushDialog, setShowPushDialog] = useState(initialShowPushDialog);
-  const currentInFlight = hookMode ?? initialInFlightMode;
-  const currentResult = hookResult ?? initialActionResult;
+  const currentInFlight = inFlightMode ?? initialInFlightMode;
+  const currentResult = actionResult ?? initialActionResult;
   const pending = usePendingSelection(status);
 
   const label = repositoryLabel(status);
   const notice = getSpecialNotice(status, loading, locale);
   if (notice !== null) return <DataRepoNoticeSection message={notice} label={label} />;
 
-  const { health, counts, pushConfirm, summary, issues } =
-    derivePanelData(status, currentResult, locale);
+  const { health, counts, pushConfirm, summary, issues } = derivePanelData(status, currentResult, locale);
+  const statusNotice = status?.notice
+    ? isEn ? localizeStatusNoticeEn(status.notice) : status.notice
+    : null;
 
   return (
     <section id="data-repo" className="config-section data-repo-section">
       <DataRepoHeader label={label} />
-
       <DataRepoCards health={health} counts={counts} />
       <DataRepoMismatchBar status={status} />
       {status?.github && <DataRepoGithubCard github={status.github} repositoryName={label} />}
-      {status?.notice && (
-        <div className="status notice data-repo-notice-bar">{status.notice}</div>
-      )}
+      {statusNotice && <div className="status notice data-repo-notice-bar">{statusNotice}</div>}
 
       <DataRepoPipeline
         status={status}

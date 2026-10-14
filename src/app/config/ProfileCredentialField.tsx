@@ -1,7 +1,26 @@
 import { useState } from "react";
 import type { ProfileCredentialStatus } from "@/core/profile-credentials";
-import { useI18n } from "@/i18n/context";
+import { useI18n } from "@/i18n";
 import type { CredentialOutcome } from "./use-profile-credentials";
+
+function deriveCredentialLabels(
+  saved: boolean,
+  status: ProfileCredentialStatus | undefined,
+  isEn: boolean,
+) {
+  const stateText =
+    status === undefined
+      ? isEn ? "Not set" : "未填"
+      : `${isEn ? "Set" : "已填"} · ${new Date(status.updatedAt).toLocaleString(isEn ? "en-US" : "zh-CN")}`;
+  const placeholderText =
+    status === undefined
+      ? isEn ? "Paste API key" : "粘贴 API key"
+      : isEn ? "Paste new key to replace" : "粘贴新 key 以替换";
+  const saveLabel = saved
+    ? isEn ? "Save Key" : "保存 key"
+    : isEn ? "Save Config & Write Key" : "保存配置并写入 key";
+  return { stateText, placeholderText, saveLabel };
+}
 
 /**
  * 单个 profile 的 API key 输入。输入框只写不读：已填时只显示填入时刻，
@@ -23,8 +42,7 @@ export function ProfileCredentialField({
   onSave: (apiKey: string) => Promise<CredentialOutcome>;
   onDelete: () => Promise<CredentialOutcome>;
 }) {
-  const { locale } = useI18n();
-  const isEn = locale === "en";
+  const isEn = useI18n().locale === "en";
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -39,27 +57,15 @@ export function ProfileCredentialField({
 
   const saveKey = async (): Promise<CredentialOutcome> => {
     if (!saved && !(await onEnsureSaved())) {
-      return {
-        ok: false,
-        error: isEn
-          ? "Configuration save failed (see bottom action bar); API key was not written"
-          : "配置没有保存成功（原因见底部操作栏），key 未写入",
-      };
+      const error = isEn
+        ? "Configuration save failed (see bottom action bar); API key was not written"
+        : "配置没有保存成功（原因见底部操作栏），key 未写入";
+      return { ok: false, error };
     }
     return onSave(draft);
   };
 
-  const stateText =
-    status === undefined
-      ? isEn ? "Not set" : "未填"
-      : `${isEn ? "Set" : "已填"} · ${new Date(status.updatedAt).toLocaleString()}`;
-  const placeholderText =
-    status === undefined
-      ? isEn ? "Paste API key" : "粘贴 API key"
-      : isEn ? "Paste new key to replace" : "粘贴新 key 以替换";
-  const saveLabel = saved
-    ? isEn ? "Save Key" : "保存 key"
-    : isEn ? "Save Config & Write Key" : "保存配置并写入 key";
+  const { stateText, placeholderText, saveLabel } = deriveCredentialLabels(saved, status, isEn);
 
   return (
     <div className="profile-key">

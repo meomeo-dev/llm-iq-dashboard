@@ -10,13 +10,27 @@ const MAX_CACHED = 500;
 
 const cache = new Map<string, Promise<string>>();
 
-export function fetchArtSource(href: string): Promise<string> {
+export function localizeArtError(error: string, locale: "en" | "zh-CN" = "zh-CN"): string {
+  if (locale !== "en") return error;
+  if (error === "作品不存在或已按保留期清理") {
+    return "Artwork not found or pruned by retention policy";
+  }
+  const httpMatch = /^读取作品失败（HTTP (\d+)）$/.exec(error);
+  if (httpMatch) return `Failed to load artwork (HTTP ${httpMatch[1]})`;
+  return error;
+}
+
+export function fetchArtSource(href: string, locale: "en" | "zh-CN" = "zh-CN"): Promise<string> {
   const cached = cache.get(href);
   if (cached !== undefined) return cached;
 
   const pending = fetch(href).then(async (response) => {
-    if (response.status === 404) throw new Error("作品不存在或已按保留期清理");
-    if (!response.ok) throw new Error(`读取作品失败（HTTP ${response.status}）`);
+    if (response.status === 404) {
+      throw new Error(localizeArtError("作品不存在或已按保留期清理", locale));
+    }
+    if (!response.ok) {
+      throw new Error(localizeArtError(`读取作品失败（HTTP ${response.status}）`, locale));
+    }
     return response.text();
   });
   // 失败不缓存，下次需要时重新请求

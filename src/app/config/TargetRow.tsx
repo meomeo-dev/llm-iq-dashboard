@@ -26,12 +26,7 @@ export interface TargetRowProps {
 }
 
 export function TargetRow({
-  target,
-  profiles,
-  catalog,
-  customModels,
-  onChange,
-  onRemove,
+  target, profiles, catalog, customModels, onChange, onRemove,
 }: TargetRowProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";

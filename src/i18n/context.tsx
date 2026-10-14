@@ -60,6 +60,28 @@ function readClientStoredLocale(): Locale | null {
   return null;
 }
 
+function syncDocumentTitle(locale: Locale): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const { common } = getMessages(locale);
+  const path = window.location.pathname;
+  if (path.startsWith("/config")) {
+    document.title = common.configPageTitle;
+  } else if (path.startsWith("/pair")) {
+    document.title = common.pairPageTitle;
+  } else if (path.startsWith("/view/")) {
+    document.title =
+      locale === "en"
+        ? document.title
+            .replace(/^作品不存在 · 鹈鹕自行车基准$/, "Artwork Not Found · Pelican Benchmark")
+            .replace(/· 鹈鹕自行车基准$/, "· Pelican Benchmark")
+        : document.title
+            .replace(/^Artwork Not Found · Pelican Benchmark$/, "作品不存在 · 鹈鹕自行车基准")
+            .replace(/· Pelican Benchmark$/, "· 鹈鹕自行车基准");
+  } else {
+    document.title = common.siteTitle;
+  }
+}
+
 function persistClientLocale(locale: Locale): void {
   if (typeof window === "undefined") return;
   try {
@@ -69,6 +91,7 @@ function persistClientLocale(locale: Locale): void {
   }
   document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(locale)}; path=/; max-age=31536000; SameSite=Lax`;
   document.documentElement.lang = locale;
+  syncDocumentTitle(locale);
 }
 
 export function I18nProvider({
@@ -81,13 +104,9 @@ export function I18nProvider({
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    const stored = readClientStoredLocale();
-    const effective = stored ?? resolveLocale(null, navigator.language);
-    if (effective !== locale) {
-      setLocaleState(effective);
-    }
+    const effective = readClientStoredLocale() ?? resolveLocale(null, navigator.language);
+    if (effective !== locale) setLocaleState(effective);
     persistClientLocale(effective);
-    // 仅在首次挂载时同步客户端存储或浏览器语言
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -101,14 +120,7 @@ export function I18nProvider({
   }, [locale, setLocale]);
 
   const value = useMemo<I18nContextValue>(
-    () => ({
-      locale,
-      setLocale,
-      toggleLocale,
-      t: getMessages(locale),
-      format: formatText,
-      hasProvider: true,
-    }),
+    () => ({ locale, setLocale, toggleLocale, t: getMessages(locale), format: formatText, hasProvider: true }),
     [locale, setLocale, toggleLocale],
   );
 
