@@ -8,7 +8,7 @@
 | 工单数 | 6 |
 | 收口日期 | 2026-10-14 |
 | 结论 | 通过 |
-| commit | a579bbc |
+| commit | 794f1a5 |
 | 完成判定 | 验了 6 条 / 共 6 条 |
 
 ## 1. Sprint 完成判定逐条
@@ -20,7 +20,7 @@
 | 3 | 54 道内置题目与 300 条候选的展示层 `label`、`PromptStandard`、题龄文案、分组标题以及评审标准 `G1`–`G3` / `C1`–`C9` 支持 `en` / `zh-CN` 双语输出，且题面 `template` / `text` 零字节改动 | 54 道内置题目、300 条候选、274 条 `PromptStandard`、题龄与分组标题、`G1`–`G5` 门槛与 `C1`–`C9` 判据均支持 `en` / `zh-CN` 双语映射；`src/core/prompt.ts` 题面原文零字节修改 | commit `94c0d8a`、[M2-03 验收](M2-03-prompt-and-judge-metadata-i18n.md)、`pnpm validate:prompts` 194 项 0 缺失、`test/i18n/prompt-judge-i18n.test.ts` 通过 | ✅ | — |
 | 4 | 主看板（`/`）、作品详情页（`/view`）与 SVG/PNG/GIF 社交分享导出图完整支持 `en` / `zh-CN` 切换 | 主看板顶栏、筛选栏、跑一次弹窗、预算与自动运行弹窗、详情页与评审抽屉、横版/竖版时间线及结果集 SVG/PNG/GIF 导出图均支持 `en` / `zh-CN` 切换 | commit `e1601d0`、[M2-04 验收](M2-04-dashboard-viewer-and-export-i18n.md)、`test/i18n/i18n-integrity.test.ts` 用例 4 通过 | ✅ | — |
 | 5 | 配置管理台（`/config`）与设备配对页（`/pair`）完整支持 `en` / `zh-CN` 切换 | `/config` 侧边栏与 9 个配置区块（53 个文件）及 `/pair` 配对码、已授权设备管理页均支持 `en` / `zh-CN` 实时切换 | commit `9ddf5ed`、[M2-05 验收](M2-05-config-and-pair-console-i18n.md)、`test/i18n/i18n-integrity.test.ts` 用例 5 通过 | ✅ | — |
-| 6 | 全套质量门禁（`pnpm lint`、`pnpm test`、`pnpm validate:prompts`、`pnpm check:length`、`pnpm check:secrets`、`pnpm build`、`pnpm showcase:smoke`）全部绿灯通过 | `pnpm lint` 0 error、`pnpm test` 154 suites / 940 pass / 0 fail、`pnpm validate:prompts` 194 项 0 缺失、`pnpm check:length` 437 文件 0 超标、`pnpm check:secrets` 886 文件 0 问题、`pnpm build` 成功、`pnpm showcase:smoke` 13 项只读防线全绿 | commit `a579bbc`、[M2-06 验收](M2-06-i18n-tests-and-quality-gates.md) | ✅ | — |
+| 6 | 全套质量门禁（`pnpm lint`、`pnpm test`、`pnpm validate:prompts`、`pnpm check:length`、`pnpm check:secrets`、`pnpm build`、`pnpm showcase:smoke`）全部绿灯通过 | `pnpm lint` 0 error、`pnpm test` 154 suites / 940 pass / 0 fail、`pnpm validate:prompts` 194 项 0 缺失、`pnpm check:length` 437 文件 0 超标、`pnpm check:secrets` 896 文件 0 问题、`pnpm build` 成功、`pnpm showcase:smoke` 13 项只读防线全绿 | commit `794f1a5`、[M2-06 验收](M2-06-i18n-tests-and-quality-gates.md) | ✅ | — |
 
 ## 2. 工单一览
 
@@ -31,7 +31,7 @@
 | [M2-03](../workorders/M2-03-prompt-and-judge-metadata-i18n.md) | 题库展示元数据与评审标准双语映射 | 通过 | 94c0d8a | [M2-03](M2-03-prompt-and-judge-metadata-i18n.md) |
 | [M2-04](../workorders/M2-04-dashboard-viewer-and-export-i18n.md) | 主看板、作品详情页与社交分享导出图国际化 | 通过 | e1601d0 | [M2-04](M2-04-dashboard-viewer-and-export-i18n.md) |
 | [M2-05](../workorders/M2-05-config-and-pair-console-i18n.md) | 配置管理台与设备配对页国际化 | 通过 | 9ddf5ed | [M2-05](M2-05-config-and-pair-console-i18n.md) |
-| [M2-06](../workorders/M2-06-i18n-tests-and-quality-gates.md) | 双语完整性单测与全量质量门禁收口 | 通过 | a579bbc | [M2-06](M2-06-i18n-tests-and-quality-gates.md) |
+| [M2-06](../workorders/M2-06-i18n-tests-and-quality-gates.md) | 双语完整性单测与全量质量门禁收口 | 通过 | 794f1a5 | [M2-06](M2-06-i18n-tests-and-quality-gates.md) |
 
 ## 3. 功能点汇总
 
