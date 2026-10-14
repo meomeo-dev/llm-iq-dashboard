@@ -101,3 +101,29 @@ body {
 .nav-link:hover {
   color: var(--accent);
 }
+
+/* ---------- 语言切换按钮 ---------- */
+
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.lang-switch:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--surface-hi);
+}
+
