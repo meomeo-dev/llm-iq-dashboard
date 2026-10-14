@@ -1,16 +1,12 @@
-# Docker 部署
+# Docker Deployment
 
-两个容器共用一个镜像：`llm-iq-web` 只跑看板、开端口、只挂数据卷；`llm-iq-runner` 装三家
-CLI（claude / codex / agy）、挂登录态卷、不开端口，负责调度与执行。看板发起的一轮经数据卷里
-的请求文件交给 runner，凭据从不出现在开端口的容器里。镜像只含开源组件，三家 CLI 在 runner
-首次启动时从各家官方渠道安装；登录态与运行产物放在命名卷中，镜像本身不含任何账号信息。
-各家都用订阅账号在 runner 里独立登录一次，之后重启、重建容器都不必再登。
+> **English** | [简体中文](deploy-docker.zh-CN.md)
 
-## 快速开始
+Two containers share a single image: `llm-iq-web` runs only the web dashboard, exposes port `3000`, and mounts only the shared data volume; `llm-iq-runner` installs the three CLIs (`claude`, `codex`, `agy`), mounts credential volumes, exposes no network ports, and handles scheduling and execution. Rounds triggered from the dashboard are handed off to `runner` via request files in the shared data volume so credentials never exist inside the port-exposed web container.
 
-以下命令都在宿主机终端里执行，看板与命令输出里给出的提示也是宿主机命令。
-`docker compose` 要在仓库目录下执行（它读仓库里的 `compose.yaml`）；容器名固定为
-`llm-iq-web` 与 `llm-iq-runner`，`docker exec` 在任何目录都能用，登录与配对都在 runner 里执行。
+## Quick Start
+
+Run the following commands on the host terminal (`docker compose` reads `compose.yaml` in the repository root):
 
 ```bash
 docker compose up -d --build
@@ -18,215 +14,66 @@ docker exec -it llm-iq-runner pnpm onboard
 docker exec -it llm-iq-runner pnpm pair
 ```
 
-1. 第一条构建镜像并在后台启动两个容器。runner 首次启动时安装三家 CLI（需联网，约一两
-   分钟）、按起步模板生成配置、同步价格目录、探测能力目录，并把各 CLI 的登录状态记下来；
-   看板在 <http://localhost:3000>。进度见 `docker logs -f llm-iq-runner`。
-2. 第二条逐家引导登录：已登录的跳过，没登录的就地启动该 CLI 自带的登录流程，终端里
-   给出链接或设备码，在任意设备的浏览器里用自己的订阅账号授权；每家登完立即复查，
-   最后打印环境汇总。只想登其中几家时带上名字，如
-   `docker exec -it llm-iq-runner pnpm onboard claude agy`。
-3. 第三条打印一个 10 分钟内有效、只能用一次的配对码；在浏览器打开看板右上角的钥匙
-   图标（`/pair`）填入，这台浏览器即成为所有者。不配对也能看结果，但配置、跑一次与
-   自动任务开关只对所有者显示。`pnpm pair --list` 列出设备，`--revoke <id>` 吊销一台，
-   `--revoke-all` 清空；配置页末尾也能逐台吊销。
-4. 回到看板点“跑一次”。可选范围是配置里的目标与当前能调用的 CLI 的交集：未登录的
-   CLI 的模型暂不列出，配置不变；页首列出这些 CLI 并给出上面的命令，登录后它们的
-   模型自动回到清单（用其他方式登录的，在页首点“重新检查”）。不打算使用的 CLI，
-   在配置页（`/config`）删除它的目标；页首提示上的“不再提示”只在当前浏览器隐藏
-   提示，不改配置，该 CLI 的目标每轮仍会记一条错误。
+1. **Build & Start**: Builds the image and starts `llm-iq-web` and `llm-iq-runner`. On first start, `runner` installs the three CLIs from official channels, initializes `pelican.config.yaml` from the starter template, syncs the pricing catalog, probes CLI capabilities, and records login readiness. Follow progress with `docker logs -f llm-iq-runner`. The dashboard is served at <http://localhost:3000>.
+2. **Interactive CLI Login (`pnpm onboard`)**: Walks through each CLI (`claude`, `codex`, `agy`), skipping already-authenticated CLIs and launching the native login flow for unauthenticated ones. To onboard specific CLIs only: `docker exec -it llm-iq-runner pnpm onboard claude agy`.
+3. **Owner Browser Pairing (`pnpm pair`)**: Prints a single-use pairing code valid for 10 minutes. Open `/pair` in your browser (key icon in the top-right toolbar) and enter the code to authorize your browser as Owner. Use `pnpm pair --list`, `--revoke <id>`, or `--revoke-all` to manage devices.
+4. **Launch a Run**: Click “Run Once” on the dashboard.
 
-`pnpm onboard` 在容器里启动的登录流程如下，无需手动执行。
-
-| CLI | 登录方式 | 登录态所在的卷 |
+| CLI | Login Flow Launched by `pnpm onboard` | Credential Volume |
 | --- | --- | --- |
-| claude | `claude auth login --claudeai`：复制链接到浏览器授权，把授权码粘贴回终端 | `claude-auth` → `~/.claude` |
-| codex | `codex login --device-auth`：浏览器打开链接，输入终端显示的设备码 | `codex-auth` → `~/.codex` |
-| agy | 不带参数运行 `agy`，按提示登录 Google 账号；出现对话输入框即已登录，`/exit` 退出 | `agy-auth` → `~/.gemini` |
+| `claude` | `claude auth login --claudeai`: open URL in browser and paste authorization code | `claude-auth` → `~/.claude` |
+| `codex` | `codex login --device-auth`: open URL and enter device code | `codex-auth` → `~/.codex` |
+| `agy` | Runs `agy` interactively to complete Google OAuth, then `/exit` | `agy-auth` → `~/.gemini` |
 
-令牌会自动刷新并写回卷里。宿主机与容器各自登录、互不共用凭据：共用同一份凭据时，
-一方刷新令牌会让另一方失效。
+## Volumes & Configuration
 
-## 数据与配置
-
-| 卷 / 路径 | 挂载点 | 内容 |
+| Volume / Bind Path | Mount Point | Contents |
 | --- | --- | --- |
-| `pelican-data` | `/app/data`（两个容器） | 运行记录、配置 `pelican.config.yaml`、价格目录、自动任务开关、设备表、审计日志、请求文件 |
-| `runner-secrets` | `/app/secrets`（仅 runner） | GitHub App 凭据与推送令牌、非默认 profile 的 API key（目录 700 / 文件 600） |
-| `cli-tools` | `/opt/clis`（仅 runner） | 三家 CLI 的程序文件；删掉后下次启动重新下载，不影响登录态 |
-| `claude-auth` / `codex-auth` / `agy-auth` | `/home/node/.claude` 等（仅 runner） | 各家登录态；删掉某个卷即退出该 CLI 的登录 |
-| `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`（bind mount） | `/data-repo`（仅 runner） | 宿主机公开数据仓工作副本，供 runner 脱敏导出与本地提交；在 `compose.yaml` 中默认配置 |
+| `pelican-data` | `/app/data` (both containers) | Run records, `pelican.config.yaml`, pricing cache, auto-run state, paired devices, audit log, request queue |
+| `runner-secrets` | `/app/secrets` (`runner` only) | GitHub App credentials & push tokens, upstream profile API keys (`0700` dir / `0600` files) |
+| `cli-tools` | `/opt/clis` (`runner` only) | Installed CLI binaries; deleting re-downloads CLIs on next start without losing auth |
+| `claude-auth` / `codex-auth` / `agy-auth` | `/home/node/.claude`, etc. (`runner` only) | Per-CLI OAuth credentials |
+| `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` | `/data-repo` (`runner` only) | Host working copy of the public data repository for sanitized export and git commits |
 
-容器首次启动时使用起步配置（三家各一个轻量模型），与本机直跑时维护的矩阵不同。
-要沿用本机的配置，把它拷进容器（留意本机矩阵的每轮成本，见其 `budget` 设置）：
+To copy your host configuration into the container:
 
 ```bash
 docker cp config/pelican.config.yaml llm-iq-runner:/app/data/pelican.config.yaml
 ```
 
-之后在看板的 `/config` 页修改即可。要直接编辑文件：
-
-```bash
-docker cp llm-iq-runner:/app/data/pelican.config.yaml ./pelican.config.yaml
-docker cp ./pelican.config.yaml llm-iq-runner:/app/data/pelican.config.yaml
-```
-
-宿主机的 3000 端口被占用时，用 `PELICAN_PORT` 换一个端口启动，其余命令不变：
+To change the host port (default `3000`):
 
 ```bash
 PELICAN_PORT=3100 docker compose up -d
 ```
 
-`docker exec` 报容器不存在或未运行时，先在仓库目录执行 `docker compose up -d`。
+### Host Ceilings
 
-### 宿主机上限
+Set in `compose.yaml` or `.env` to cap values configurable via the web UI:
 
-以下环境变量在 `compose.yaml` 或 `.env` 里设置，容器内的配置与看板只能在其下调整：
-
-| 变量 | 作用 |
+| Variable | Effect |
 | --- | --- |
-| `PELICAN_CEILING_PER_DAY_USD` | 近 24 小时花费上限（美元）；配置里的 `budget.perDayUsd` 取两者较小者 |
-| `PELICAN_CEILING_PER_ROUND_USD` | 单轮预测成本上限（美元）；同上 |
-| `PELICAN_ALLOW_EXTRA_ARGS` | 设为 `1` 才允许配置里的 `targets[].extraArgs` 生效；默认含该字段的配置校验失败 |
+| `PELICAN_CEILING_PER_DAY_USD` | Maximum rolling 24h budget cap (USD) |
+| `PELICAN_CEILING_PER_ROUND_USD` | Maximum per-round forecast cap (USD) |
+| `PELICAN_ALLOW_EXTRA_ARGS` | Must be `1` to allow `targets[].extraArgs` in configuration |
 
-三家 CLI 的调用都不给模型工具（读文件、跑命令一律拒绝）；每轮开始时读取凭据文件生成
-指纹，模型输出里出现凭据片段的调用记为 error，作品与转录不落盘。
+## Data Repository Sync & GitHub App Integration
 
-排查环境用 `docker exec -it llm-iq-runner pnpm preflight`；看板输出见 `docker logs -f llm-iq-web`，
-调度与执行输出见 `docker logs -f llm-iq-runner`。看板报"执行器未响应"时先看 runner 是否在跑
-（`docker compose ps`）。
+- **Bind Mount & Ownership**: `compose.yaml` mounts `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` at `/data-repo` inside `runner` with `safe.directory=/data-repo`.
+- **Host Manual Push or Web GitHub App Push**:
+  - Without GitHub App connected, `runner` exports sanitized runs and creates local commits (`exported` state), and the host operator pushes via `git -C ../llm-iq-data push` followed by `docker compose exec runner pnpm sync:data --confirm-published`.
+  - Or connect a repository-scoped GitHub App in `/config` under “Data Repository” (ACR-011): tokens are stored exclusively in `runner-secrets` (`/app/secrets`) and allow one-click push from the web console.
 
-### 数据仓同步
+## Upgrading
 
-容器部署通过 bind mount 将宿主机的数据仓工作副本挂载进 runner 容器：
-
-- **挂载与属主隔离**：挂载在 `compose.yaml` 中默认配置，执行 `docker compose up -d` 即可直接将 `${PELICAN_DATA_REPO_DIR:-../llm-iq-data}` 挂载至 `runner` 的 `/data-repo`（`web` 服务不挂载）；宿主机路径须加入 Docker Desktop 的 File Sharing。镜像已预装 `git`，并通过环境变量 `GIT_CONFIG_COUNT=1`、`GIT_CONFIG_KEY_0=safe.directory`、`GIT_CONFIG_VALUE_0=/data-repo` 声明安全目录，规避容器内 `node` 用户与宿主机属主不同触发的 Git dubious ownership 警告，无需写入全局配置文件。
-- **安全边界与凭据隔离**：容器内不存放 SSH Key 或 credential helper；连接 GitHub App 后，推送令牌只存放在 runner 专用卷 `runner-secrets`（`/app/secrets`），web 容器不挂该卷，详见下文「在网页连接 GitHub」。Git 提交身份直接沿用宿主机在数据仓内配置的仓库级身份（`llm-iq-data/.git/config` 中的 `user.name` 与 `user.email`）；若未配置，同步流水线将输出清晰中文错误并安全中止。
-- **自建数据仓**：以 `meomeo-dev/llm-iq-data` 为模板建仓（步骤见数据仓 README「作为模板建立自己的数据仓」），
-  在看板配置页「数据仓设置」填它的 GitHub 地址；挂到 `/data-repo` 的宿主机目录可以是空目录，runner 启动时
-  按地址 clone。首次同步生成的 `index.json` 从该仓的 `origin` 远程推导 `name` 与 `repository`；
-  GitHub App 连接与安装也以这个地址为目标仓。
-- **容器内配置**：在看板配置页「数据仓设置」填写，或直接改 `/app/data/pelican.config.yaml` 的 `dataRepo`：
-  ```yaml
-  dataRepo:
-    path: /data-repo
-    repository: https://github.com/<owner>/<repo>   # 可选；填了才会自动 clone 与核对 origin
-    autoSync: true
-    push: false
-  ```
-- **宿主机人工发布流程**：
-  1. 容器每轮评测完成生成终稿后，自动执行脱敏归档并生成本地 Git 提交，在台账（`/app/data/sync-state.json`）记录为 `exported` 状态；
-  2. 宿主机操作者使用自身 GitHub 凭据在宿主机执行安全推送发布：
-     ```bash
-     git -C ../llm-iq-data push
-     ```
-  3. **发布确认与状态回填**：推送完成后，容器在下一次评测自动同步时（`push: false`）会自动通过匿名 `git fetch` 与 `merge-base --is-ancestor` 校验上游包含情况，并将台账对应轮次标为 `published`；亦可在宿主机随时手动执行一次性发布确认：
-     ```bash
-     docker compose exec runner pnpm sync:data --confirm-published
-     ```
-- **修剪守卫关系**：过期轮次修剪（`retention.days`）严格以台账 `published` 状态为准，未确认发布的轮次由守卫安全熔断保留，防止网络异常导致成果丢失。若宿主机未挂载 `/data-repo` 或目录不是 Git 仓库，runner 仅记录一行日志并跳过自动同步，评测轮次照常完成。
-- **所有者看板「数据仓」面板动作（ACR-010 / ACR-011）**：所有者在看板 `/config` 页可直接查看数据仓状态。在分容器部署下：
-  - **可用动作**：演练（dry-run）、脱敏导出（export）、发布确认（confirm）与推送（push）；
-  - **网页推送凭据**：未连接 GitHub App 时触发 push 返回 409（提示“容器内无推送凭据，请在宿主机推送”）；在看板完成 GitHub App 网页授权后，runner 获得专用推送令牌，可在面板核对领先提交后一键完成安全推送。
-
-### 在网页连接 GitHub（ACR-011）
-
-所有者可通过看板网页一键完成 GitHub App 清单注册与授权，实现免配置令牌的容器内安全推送：
-
-1. **连接步骤**：
-   - 配对并以所有者身份登录看板，进入 `/config` 页「数据仓」区块，在 GitHub 授权卡片点击「连接 GitHub」；
-   - 浏览器自动跳转至 GitHub App 清单页面，清单已预置权限与回调，所有者点击「Create GitHub App」；
-   - 创建成功后自动回跳看板，看板无缝重定向至 GitHub App 安装页面，所有者勾选「Only select repositories」，选中配置页「数据仓设置」里填写的数据仓并确认授权；
-   - 授权完成后自动跳回看板 `/config#data-repo`，卡片显示「已连接 {login}」，推送按钮立即解锁。
-
-2. **权限范围与安全性**：
-   - **权限极小化**：应用仅申请 Contents 读写（`contents: write`）与 Metadata 只读（`metadata: read`），关闭 Webhook（`active: false`）；
-   - **仓库限定**：安装时只勾选配置的那一个数据仓，应用无法触碰账号下其他仓库；
-   - **双重作用域**：生成的 User-to-Server 访问令牌同时受限于用户自身权限与应用安装范围的交集。
-
-3. **凭据存放与隔离**：
-   - 凭据仅保存在 runner 专用命名卷 `runner-secrets`（挂载至 `/app/secrets`，目录权限 0o700，文件权限 0o600）；
-   - 卷内包含：`github-app.json`（App 标识与密钥）、`github-user.json`（用户与刷新令牌）、`github-access-token`（供 askpass 读取的临时访问令牌）；
-   - `web` 看板容器不挂载凭据卷；推送时经 `GIT_ASKPASS` 脚本交付 Git，令牌绝不进入环境变量、命令行参数或日志。
-   - 访问令牌剩余有效期不足 10 分钟时，推送前由 runner 自动刷新并持久化。
-
-4. **撤销与删除应用**：
-   - **断开连接**：在面板卡片点击「断开 GitHub」，runner 自动调用 GitHub 端点撤销授权并安全擦除本地全部凭据；
-   - **删除应用**：面板提供「在 GitHub 上管理应用」跳转链接，所有者可前往 GitHub 设置页彻底删除该 App 或卸载安装。
-
-5. **备用路径（网络限制下手建应用）**：
-   若因特定网络环境无法自动提交 Manifest，可在 GitHub 网页（`https://github.com/settings/apps/new`）手工创建应用并填写对应项：
-   - GitHub App name: `llm-iq-data-publisher-<随机后缀>`
-   - Homepage URL: 配置 `dataRepo.repository` 的数据仓地址（缺省 `https://github.com/meomeo-dev/llm-iq-data`）
-   - Callback URL: `http://localhost:3000/api/data-repo/github/callback`
-   - Setup URL (redirect on install): `http://localhost:3000/api/data-repo/github/app-created`
-   - Webhook: 取消勾选 Active
-   - Permissions -> Repository permissions -> Contents: Read and write; Metadata: Read-only
-   - Where can this GitHub App be installed: Only on this account
-   创建后生成 Client secret，并将 `{ id, slug, client_id, client_secret }` 写入 runner 凭据目录 `github-app.json`。
-
-## 升级与登录态
-
-令牌自动刷新并写回卷里，升级不需要重新登录。频繁重新登录可能触发账号风控。
-
-升级本项目（拉取更新、重建镜像、替换容器）：
+OAuth tokens refresh in place inside their named volumes—upgrading does not require re-authenticating:
 
 ```bash
 git pull
 docker compose up -d --build
 ```
 
-升级只替换镜像与容器，登录态与数据所在的卷保持不变；构建失败时正在运行的容器不受
-影响。
-
-| 操作 | 登录态 |
+| Operation | Auth & Data Volumes |
 | --- | --- |
-| `docker compose up -d --build`、`restart`、`stop` / `start`、`down`（不带 `-v`） | 保留 |
-| 重启电脑或 Docker | 保留 |
-| `docker compose down -v`、`docker volume rm llm-iq-dashboard_*-auth` | **清除，需要重新登录** |
-| 修改 `compose.yaml` 里的 `name`、卷名或挂载路径 | **找不到原来的卷，需要重新登录** |
-
-claude 与 codex 的版本钉在 `docker/Dockerfile` 的 `CLAUDE_CODE_VERSION`、`CODEX_VERSION`：
-容器启动时按这两个版本安装，已装的版本一致就跳过。需要新版（例如新模型要求更新的
-CLI）时改这两个值，再执行上面的升级命令。agy 的安装脚本只提供最新版（按官方清单的
-sha512 校验），装好后由 agy 自己在后台更新。登录态与 CLI 版本无关，只有某家改动凭据
-格式时才需要重新登录。
-
-CLI 安装失败（多为网络问题）时看板照常启动，页首提示哪家未安装；重启容器会重试，
-也可以手动安装：
-
-```bash
-docker exec -it llm-iq-runner sh docker/install-clis.sh
-```
-
-凭据文件的位置（均在对应的卷里）：claude 为 `~/.claude/.credentials.json`，codex 为
-`~/.codex/auth.json`，agy 为 `~/.gemini/antigravity-cli/antigravity-oauth-token`（容器里
-没有系统钥匙串，agy 退到文件存储）。
-
-## 设计取舍
-
-- **看板与凭据分容器**：Web 进程被攻破也拿不到登录态——它的文件系统里没有。两个容器
-  只经数据卷交换状态：看板把"跑一次"、就绪检查与能力探测写成 `data/requests/` 下的请求
-  文件，runner 认领执行并写回结果；停止与自动任务开关本来就是文件。看板看不见 runner 的
-  pid，改看 runner 每 15 秒写的心跳（`data/runner.json`）判断某轮的执行进程是否还在。
-- **调度器常驻 runner**：自动任务开关保存在数据卷里，runner 到点读取；重启容器后不必再拨。
-- **只对本机开放**：`compose.yaml` 把端口绑定在 `127.0.0.1`。公网暴露的分层方案见
-  `docs/security/public-exposure-design.md`。
-- **不提供网页上传凭据**：原因同上；登录在终端里由 CLI 自己完成。
-- **非 root 运行**：容器内以 `node` 用户运行，登录态目录与数据目录属于该用户。
-- **镜像不含 CLI**：claude 与 agy 是专有软件，条款未授予再分发权；镜像只含开源组件，
-  CLI 由每个使用者在自己的容器里从官方渠道安装。
-- **作品评审在 runner 里跑**（ACR-019 / ACR-020）：镜像装了 Debian 的 chromium 给渲染层定格动画
-  与截联系图（`PELICAN_BROWSER_PATH=/usr/bin/chromium`，容器内无用户命名空间故
-  `PELICAN_BROWSER_NO_SANDBOX=1`）；AI 层的裁判就是 runner 里已登录的 CLI。评审缺省关闭，
-  在看板 `/config` 页「作品评审」区块开启并填裁判；评审记录与联系图写在数据卷里，web 容器经
-  `/sheet` 路由读联系图。
-
-## 已知限制
-
-- codex 在容器内的登录（`codex login --device-auth`）与调用未经验证。
-- chromium 在容器内跑评审渲染层未经验证（`--no-sandbox` 与 `/dev/shm` 大小）；起不来时评审只出
-  静态分，日志里有 `渲染层跳过` 与原因。
-- codex 的只读沙箱依赖 Linux 的 Landlock 与 seccomp，在 Docker 默认安全配置下未经
-  验证；出现沙箱相关错误时查看该次调用的 `.txt` 原始输出。
-- 镜像按构建机的架构生成（amd64 或 arm64）；三家 CLI 都提供这两种架构的 Linux 版。
-- 首次启动需要能访问 npm 与 antigravity.google。
+| `docker compose up -d --build`, `restart`, `stop` / `start`, `down` (without `-v`) | Preserved |
+| `docker compose down -v` or `docker volume rm llm-iq-dashboard_*-auth` | **Wiped (requires re-login)** |

@@ -1,8 +1,10 @@
-# 鹈鹕基准与扩展题库：来源与设计理念（Provenance & Rationale）
+# Benchmark Provenance & Prompt Rationale · 鹈鹕基准与扩展题库来源考证
+
+> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all 180 built-in benchmark prompts and candidate sets registered in `src/core/prompt.ts`. Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable.
 
 本文档说明 llm_iq_dashboard 收录的全部 180 道基准测试题目（含 31 道经典与拓展基准、8 道 2026-09 专题基准、1 套城市地标微缩景观套题、2026 前沿工程与前沿视效全 14 领域共 140 道测试题，以及 14 套领域分组套题）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
-所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据。
+所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据（支持中英双语切换）。
 
 ---
 

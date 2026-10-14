@@ -1,5 +1,8 @@
+# Starter configuration for the Pelican Bicycle Benchmark (LLM IQ Dashboard).
 # 鹈鹕自行车基准的起步配置（starter）。
 #
+# When config/pelican.config.yaml does not exist, it is copied from this file on first load.
+# Edit config/pelican.config.yaml (gitignored) or use the /config web console.
 # config/pelican.config.yaml 不存在时，首次加载会把本文件复制过去；之后只改那一份，
 # 它不入库，本文件保持为起步模板。起步矩阵刻意取便宜的组合：三家各一个轻量模型、
 # low 强度、两道题，一轮 6 次调用，按 API 等价成本约 $0.5。确认调用链都通了，再按
@@ -8,6 +11,7 @@
 # 某家 CLI 没装或没登录时，每轮开始前的预检会拦下它的调用，看板上给出安装或登录
 # 命令；不打算用的 CLI 直接删掉对应的 targets 项即可。`pnpm preflight` 可随时自查。
 
+# schedule defines the cadence; execution is gated by the Auto-Run toggle on the dashboard toolbar.
 # schedule 只定节奏；到点是否执行由看板工具栏的“自动任务”开关决定。
 # cron 与 intervalMinutes 都不写即不定时。改动无需重启调度器。
 schedule:
