@@ -3,6 +3,7 @@
 import type { CapabilitySnapshot } from "@/capabilities/types";
 import { JUDGE_AI_MAX_CONCURRENCY, type JudgeConfig, type JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "@/core/types";
+import { useI18n } from "@/i18n/context";
 import { judgeLabel, judgeRoutes, moveJudge } from "./judge-panel-model";
 
 /** 作品评审（ACR-019 / ACR-020）：代码层开关、AI 层开关、裁判清单、超时与并行度 */
@@ -15,6 +16,8 @@ export function JudgePanel({
   catalog: CapabilitySnapshot;
   onChange: (next: JudgeConfig) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const patchAi = (changes: Partial<JudgeConfig["ai"]>): void =>
     onChange({ ...value, ai: { ...value.ai, ...changes } });
   const setJudge = (index: number, changes: Partial<JudgeModel>): void =>
@@ -24,15 +27,19 @@ export function JudgePanel({
     <div className="stack">
       <label className="checkbox">
         <input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} />
-        评审有评分标准的题目（代码层：静态解析 + 无头 Chromium 渲染量测，不花配额；共 30 分，只能判「降智」）
+        {isEn
+          ? 'Judge prompts that have a rubric (Code layer: static parsing + headless Chromium render metrics, zero API quota; 30 pts total, can only flag "Degraded")'
+          : "评审有评分标准的题目（代码层：静态解析 + 无头 Chromium 渲染量测，不花配额；共 30 分，只能判「降智」）"}
       </label>
       <label className="checkbox">
         <input type="checkbox" checked={value.ai.enabled} disabled={!value.enabled} onChange={(e) => patchAi({ enabled: e.target.checked })} />
-        AI 语义层：整轮结束后请裁判 CLI 看联系图给 C5–C9 打分（共 70 分，「智商在线」只能由它判定；真实消耗裁判的配额）
+        {isEn
+          ? 'AI semantic layer: after the run finishes, ask a cross-vendor judge CLI to score C5–C9 from contact sheets (70 pts total, required for "Sharp" verdict; consumes judge quota)'
+          : "AI 语义层：整轮结束后请裁判 CLI 看联系图给 C5–C9 打分（共 70 分，「智商在线」只能由它判定；真实消耗裁判的配额）"}
       </label>
       <div className="field-row">
         <label>
-          单次裁判问答超时（秒）
+          {isEn ? "Single Judge Turn Timeout (s)" : "单次裁判问答超时（秒）"}
           <input
             type="number"
             min={30}
@@ -43,7 +50,7 @@ export function JudgePanel({
           />
         </label>
         <label>
-          每个裁判同时评的件数
+          {isEn ? "Concurrency per Judge" : "每个裁判同时评的件数"}
           <input
             type="number"
             min={1}
@@ -65,9 +72,9 @@ export function JudgePanel({
         onAdd={() => patchAi({ judges: [...value.ai.judges, defaultJudge(catalog)] })}
       />
       <p className="note">
-        裁判按清单顺序取第一个厂商与作品不同的（同厂商不能自评）；前一个调用失败（未登录、超时）时换下一个，
-        都失败则作品保持「待复核」。用「上移 / 下移」决定谁优先。作品之间并行评审，每个裁判最多同时评上面设的件数，
-        不同裁判各算各的。
+        {isEn
+          ? 'Judges are picked in order as the first cross-vendor CLI (same-vendor self-judging is disallowed). If the first fails (unauthenticated or timeout), the next is tried; if all fail, the work stays "Needs Review". Use "Up / Down" to set priority. Artworks are judged in parallel up to the per-judge concurrency limit.'
+          : "裁判按清单顺序取第一个厂商与作品不同的（同厂商不能自评）；前一个调用失败（未登录、超时）时换下一个，都失败则作品保持「待复核」。用「上移 / 下移」决定谁优先。作品之间并行评审，每个裁判最多同时评上面设的件数，不同裁判各算各的。"}
       </p>
       {value.ai.judges.length > 0 && <JudgeRoutes judges={value.ai.judges} />}
     </div>
@@ -76,16 +83,31 @@ export function JudgePanel({
 
 /** 按当前顺序，每家作品依次交给谁评：首选在前，括号里是失败时的后备 */
 function JudgeRoutes({ judges }: { judges: JudgeModel[] }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <ul className="note judge-routes">
       {judgeRoutes(judges).map(({ subject, judges: route }) => (
         <li key={subject}>
-          {subject} 的作品 → {route.length === 0
-            ? <strong>没有可用裁判（只配了同厂商），保持「待复核」</strong>
-            : <>
-                <strong>{judgeLabel(route[0]!)}</strong>
-                {route.length > 1 && <>（失败时依次换 {route.slice(1).map(judgeLabel).join("、")}）</>}
-              </>}
+          {isEn ? `${subject} works → ` : `${subject} 的作品 → `}
+          {route.length === 0 ? (
+            <strong>
+              {isEn
+                ? 'No eligible judge (same vendor only); stays "Needs Review"'
+                : "没有可用裁判（只配了同厂商），保持「待复核」"}
+            </strong>
+          ) : (
+            <>
+              <strong>{judgeLabel(route[0]!, locale)}</strong>
+              {route.length > 1 && (
+                <>
+                  {isEn
+                    ? ` (fallback: ${route.slice(1).map((j) => judgeLabel(j, locale)).join(", ")})`
+                    : `（失败时依次换 ${route.slice(1).map((j) => judgeLabel(j, locale)).join("、")}）`}
+                </>
+              )}
+            </>
+          )}
         </li>
       ))}
     </ul>
@@ -114,15 +136,27 @@ function JudgeTable({
   onMove: (index: number, offset: number) => void;
   onAdd: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="table-responsive">
       <table className="matrix">
         <thead>
-          <tr><th>顺序</th><th>裁判 CLI</th><th>模型</th><th>思考强度</th><th /></tr>
+          <tr>
+            <th>{isEn ? "Order" : "顺序"}</th>
+            <th>{isEn ? "Judge CLI" : "裁判 CLI"}</th>
+            <th>{isEn ? "Model" : "模型"}</th>
+            <th>{isEn ? "Effort" : "思考强度"}</th>
+            <th />
+          </tr>
         </thead>
         <tbody>
           {judges.length === 0 && (
-            <tr><td colSpan={5} className="note">没有裁判：AI 层开着也不会评</td></tr>
+            <tr>
+              <td colSpan={5} className="note">
+                {isEn ? "No judges configured: AI layer will not run" : "没有裁判：AI 层开着也不会评"}
+              </td>
+            </tr>
           )}
           {judges.map((judge, index) => (
             <JudgeRow key={index} judge={judge} catalog={catalog} disabled={disabled}
@@ -132,7 +166,9 @@ function JudgeTable({
         </tbody>
       </table>
       <div className="field-row">
-        <button type="button" onClick={onAdd} disabled={disabled}>添加裁判</button>
+        <button type="button" onClick={onAdd} disabled={disabled}>
+          {isEn ? "Add Judge" : "添加裁判"}
+        </button>
       </div>
     </div>
   );
@@ -153,6 +189,8 @@ function JudgeRow({
   onChange: (changes: Partial<JudgeModel>) => void;
   onRemove: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const known = catalog.clis.find((c) => c.cli === judge.cli)?.models.map((m) => m.id) ?? [];
   const listId = `judge-models-${judge.cli}`;
   return (
@@ -160,9 +198,11 @@ function JudgeRow({
       <td className="judge-order">
         <span>{order.index + 1}</span>
         <button type="button" disabled={disabled || order.index === 0} onClick={() => order.onMove(-1)}
-          title="上移：优先于前一个裁判" aria-label={`上移第 ${order.index + 1} 个裁判`}>上移</button>
+          title={isEn ? "Move up: higher priority" : "上移：优先于前一个裁判"}
+          aria-label={isEn ? `Move judge ${order.index + 1} up` : `上移第 ${order.index + 1} 个裁判`}>{isEn ? "Up" : "上移"}</button>
         <button type="button" disabled={disabled || order.index === order.count - 1} onClick={() => order.onMove(1)}
-          title="下移：让后一个裁判优先" aria-label={`下移第 ${order.index + 1} 个裁判`}>下移</button>
+          title={isEn ? "Move down: lower priority" : "下移：让后一个裁判优先"}
+          aria-label={isEn ? `Move judge ${order.index + 1} down` : `下移第 ${order.index + 1} 个裁判`}>{isEn ? "Down" : "下移"}</button>
       </td>
       <td>
         <select value={judge.cli} disabled={disabled} onChange={(e) => onChange({ cli: e.target.value as CliKind })}>
@@ -170,7 +210,7 @@ function JudgeRow({
         </select>
       </td>
       <td>
-        <input type="text" list={listId} value={judge.model} disabled={disabled} placeholder="模型标识"
+        <input type="text" list={listId} value={judge.model} disabled={disabled} placeholder={isEn ? "Model ID" : "模型标识"}
           onChange={(e) => onChange({ model: e.target.value.trim() })} />
         <datalist id={listId}>
           {known.map((id) => <option key={id} value={id} />)}
@@ -182,7 +222,7 @@ function JudgeRow({
         </select>
       </td>
       <td>
-        <button type="button" className="danger" disabled={disabled} onClick={onRemove}>删除</button>
+        <button type="button" className="danger" disabled={disabled} onClick={onRemove}>{isEn ? "Remove" : "删除"}</button>
       </td>
     </tr>
   );

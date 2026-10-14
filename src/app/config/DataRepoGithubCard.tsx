@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import type { GithubConnection } from "@/core/sync/data-repo-panel-types";
+import { useI18n } from "@/i18n/context";
 
 export interface DataRepoGithubCardProps {
   github?: GithubConnection | null;
@@ -18,6 +19,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   missing_code: "GitHub 未返回授权码，请重试",
 };
 
+const ERROR_MESSAGES_EN: Record<string, string> = {
+  state_mismatch: "OAuth state mismatch; please try again",
+  app_convert_failed: "GitHub App credential conversion failed; please try again",
+  exchange_failed: "Failed to exchange GitHub access token; please try again",
+  invalid_session: "Authorization session invalid or App missing; please reconnect",
+  missing_code: "GitHub did not return an authorization code; please try again",
+};
+
 interface BodyProps {
   state: string;
   login?: string | null;
@@ -29,12 +38,18 @@ interface BodyProps {
 }
 
 function DataRepoGithubBody({ state, login, appSlug, settingsUrl, repositoryName, busy, onDisconnect }: BodyProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   if (state === "disconnected") {
     return (
       <>
-        <p className="data-repo-github-desc">未连接 GitHub App，执行器无法向远端推送。</p>
+        <p className="data-repo-github-desc">
+          {isEn
+            ? "GitHub App not connected; runner cannot push to remote."
+            : "未连接 GitHub App，执行器无法向远端推送。"}
+        </p>
         <a href="/api/data-repo/github/connect" className="data-repo-btn data-repo-btn-primary">
-          连接 GitHub
+          {isEn ? "Connect GitHub" : "连接 GitHub"}
         </a>
       </>
     );
@@ -42,9 +57,13 @@ function DataRepoGithubBody({ state, login, appSlug, settingsUrl, repositoryName
   if (state === "app-created") {
     return (
       <>
-        <p className="data-repo-github-desc">GitHub App（{appSlug}）已创建，请安装到目标仓库。</p>
+        <p className="data-repo-github-desc">
+          {isEn
+            ? `GitHub App (${appSlug}) created; please install it on the target repository.`
+            : `GitHub App（${appSlug}）已创建，请安装到目标仓库。`}
+        </p>
         <a href="/api/data-repo/github/connect" className="data-repo-btn data-repo-btn-primary">
-          继续安装到 {repositoryName}
+          {isEn ? `Continue Install to ${repositoryName}` : `继续安装到 ${repositoryName}`}
         </a>
       </>
     );
@@ -52,13 +71,22 @@ function DataRepoGithubBody({ state, login, appSlug, settingsUrl, repositoryName
   if (state === "connected") {
     return (
       <div className="data-repo-github-connected">
-        <span className="data-repo-github-login">账号: <strong>{login}</strong></span>
+        <span className="data-repo-github-login">
+          {isEn ? "Account: " : "账号: "}
+          <strong>{login}</strong>
+        </span>
         <div className="data-repo-github-actions">
           <button type="button" className="data-repo-btn" onClick={onDisconnect} disabled={busy}>
-            {busy ? "正在断开…" : "断开 GitHub"}
+            {busy
+              ? isEn
+                ? "Disconnecting…"
+                : "正在断开…"
+              : isEn
+                ? "Disconnect GitHub"
+                : "断开 GitHub"}
           </button>
           <a href={settingsUrl} target="_blank" rel="noreferrer" className="data-repo-github-link">
-            在 GitHub 上管理应用
+            {isEn ? "Manage App on GitHub" : "在 GitHub 上管理应用"}
           </a>
         </div>
       </div>
@@ -66,15 +94,21 @@ function DataRepoGithubBody({ state, login, appSlug, settingsUrl, repositoryName
   }
   return (
     <>
-      <p className="data-repo-github-desc">授权凭据已失效（原账号: {login ?? "未知"}），需重新连接。</p>
+      <p className="data-repo-github-desc">
+        {isEn
+          ? `Authorization expired (previous account: ${login ?? "unknown"}); please reconnect.`
+          : `授权凭据已失效（原账号: ${login ?? "未知"}），需重新连接。`}
+      </p>
       <a href="/api/data-repo/github/connect" className="data-repo-btn data-repo-btn-primary">
-        重新连接
+        {isEn ? "Reconnect" : "重新连接"}
       </a>
     </>
   );
 }
 
 export function DataRepoGithubCard({ github, onDisconnect, repositoryName = "llm-iq-data" }: DataRepoGithubCardProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -83,9 +117,13 @@ export function DataRepoGithubCard({ github, onDisconnect, repositoryName = "llm
     const params = new URLSearchParams(window.location.search);
     if (params.get("github") === "error") {
       const reason = params.get("reason") ?? "unknown";
-      setErrorMsg(ERROR_MESSAGES[reason] ?? `GitHub 授权失败（原因码: ${reason}）`);
+      const table = isEn ? ERROR_MESSAGES_EN : ERROR_MESSAGES;
+      const fallback = isEn
+        ? `GitHub authorization failed (code: ${reason})`
+        : `GitHub 授权失败（原因码: ${reason}）`;
+      setErrorMsg(table[reason] ?? fallback);
     }
-  }, []);
+  }, [isEn]);
 
   async function handleDisconnect() {
     setBusy(true);
@@ -112,12 +150,14 @@ export function DataRepoGithubCard({ github, onDisconnect, repositoryName = "llm
   return (
     <div className="data-repo-github-card">
       <div className="data-repo-github-header">
-        <span className="data-repo-card-title">GitHub App 推送授权</span>
+        <span className="data-repo-card-title">
+          {isEn ? "GitHub App Push Authorization" : "GitHub App 推送授权"}
+        </span>
         <span className={`data-repo-github-badge ${state}`}>
-          {state === "connected" && "已连接"}
-          {state === "app-created" && "待安装"}
-          {state === "reconnect-required" && "需重新连接"}
-          {state === "disconnected" && "未连接"}
+          {state === "connected" && (isEn ? "Connected" : "已连接")}
+          {state === "app-created" && (isEn ? "Pending Install" : "待安装")}
+          {state === "reconnect-required" && (isEn ? "Reconnect Required" : "需重新连接")}
+          {state === "disconnected" && (isEn ? "Disconnected" : "未连接")}
         </span>
       </div>
       {errorMsg && <div className="status error data-repo-github-error">{errorMsg}</div>}

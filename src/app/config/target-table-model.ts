@@ -11,6 +11,7 @@ import {
   type EffortLevel,
   type Target,
 } from "@/core/types";
+import type { Locale } from "@/i18n/types";
 
 export const SOURCE_LABEL: Record<ModelOption["sources"][number], string> = {
   probe: "已探测",
@@ -18,6 +19,20 @@ export const SOURCE_LABEL: Record<ModelOption["sources"][number], string> = {
   custom: "自定义",
   builtin: "内置",
 };
+
+const SOURCE_LABEL_EN: Record<ModelOption["sources"][number], string> = {
+  probe: "probed",
+  history: "verified",
+  custom: "custom",
+  builtin: "builtin",
+};
+
+export function sourceLabel(
+  source: ModelOption["sources"][number],
+  locale: Locale = "zh-CN",
+): string {
+  return locale === "en" ? SOURCE_LABEL_EN[source] : SOURCE_LABEL[source];
+}
 
 export function findCapability(
   catalog: CapabilitySnapshot,

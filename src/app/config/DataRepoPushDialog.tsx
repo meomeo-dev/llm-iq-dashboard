@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "@/i18n/context";
 
 interface DataRepoPushDialogProps {
   isOpen: boolean;
@@ -22,67 +23,56 @@ export function DataRepoPushDialog({
   onConfirm,
   onCancel,
 }: DataRepoPushDialogProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   if (!isOpen) return null;
 
+  const confirmText = isBusy ? (isEn ? "Pushing…" : "正在推送…") : isEn ? "Confirm Push" : "确认推送";
+
   return (
-    <div
-      className="data-repo-dialog-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="data-repo-push-title"
-    >
+    <div className="data-repo-dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="data-repo-push-title">
       <div className="data-repo-dialog">
         <header className="data-repo-dialog-header">
-          <h3 id="data-repo-push-title">确认推送到远程数据仓</h3>
+          <h3 id="data-repo-push-title">
+            {isEn ? "Confirm Push to Remote Data Repository" : "确认推送到远程数据仓"}
+          </h3>
           <p className="data-repo-dialog-desc">
-            推送将向公开仓库发布本地提交，公开以下轮次的作品与数据。操作不可撤销，请仔细核对。
+            {isEn
+              ? "Pushing will publish local commits to the public repository, releasing artworks and data for the runs below. This action cannot be undone; please review carefully."
+              : "推送将向公开仓库发布本地提交，公开以下轮次的作品与数据。操作不可撤销，请仔细核对。"}
           </p>
         </header>
 
         <div className="data-repo-dialog-meta">
           <div className="data-repo-dialog-stat">
-            <span className="label">待公开轮次数</span>
-            <span className="value">{pendingPublishCount} 轮</span>
+            <span className="label">{isEn ? "Runs to Publish" : "待公开轮次数"}</span>
+            <span className="value">{isEn ? `${pendingPublishCount} run(s)` : `${pendingPublishCount} 轮`}</span>
           </div>
           <div className="data-repo-dialog-stat">
-            <span className="label">领先提交数</span>
-            <span className="value">{aheadCommits.length} 个</span>
+            <span className="label">{isEn ? "Commits Ahead" : "领先提交数"}</span>
+            <span className="value">{isEn ? `${aheadCommits.length} commit(s)` : `${aheadCommits.length} 个`}</span>
           </div>
         </div>
 
         <div className="data-repo-commits-container">
-          <span className="data-repo-commits-title">将要推送的本地提交：</span>
+          <span className="data-repo-commits-title">
+            {isEn ? "Local commits to be pushed:" : "将要推送的本地提交："}
+          </span>
           <ul className="data-repo-commit-list">
             {aheadCommits.map((hash) => (
-              <li key={hash} className="data-repo-commit-item">
-                <code>{hash}</code>
-              </li>
+              <li key={hash} className="data-repo-commit-item"><code>{hash}</code></li>
             ))}
           </ul>
         </div>
 
-        {disabledReason && (
-          <p className="status error data-repo-dialog-disabled-reason">
-            {disabledReason}
-          </p>
-        )}
+        {disabledReason && <p className="status error data-repo-dialog-disabled-reason">{disabledReason}</p>}
 
         <footer className="data-repo-dialog-actions">
-          <button
-            type="button"
-            className="data-repo-btn-cancel"
-            onClick={onCancel}
-            disabled={isBusy}
-          >
-            取消
+          <button type="button" className="data-repo-btn-cancel" onClick={onCancel} disabled={isBusy}>
+            {isEn ? "Cancel" : "取消"}
           </button>
-          <button
-            type="button"
-            className="data-repo-btn-confirm"
-            onClick={onConfirm}
-            disabled={!canConfirm || isBusy}
-          >
-            {isBusy ? "正在推送…" : "确认推送"}
+          <button type="button" className="data-repo-btn-confirm" onClick={onConfirm} disabled={!canConfirm || isBusy}>
+            {confirmText}
           </button>
         </footer>
       </div>

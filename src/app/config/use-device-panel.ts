@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import type { SessionView } from "@/app/api/session/route";
+import { useI18n } from "@/i18n/context";
 import { actionFetch } from "../components/action-fetch";
 
 export function useDevicePanel() {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [view, setView] = useState<SessionView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,11 +19,18 @@ export function useDevicePanel() {
   }, []);
 
   const revoke = async (id: string, current: boolean): Promise<void> => {
-    if (!window.confirm(current ? "吊销当前设备将立即退出登录，继续？" : "吊销该设备？")) return;
+    const confirmMsg = current
+      ? isEn
+        ? "Revoking the current device will sign you out immediately. Continue?"
+        : "吊销当前设备将立即退出登录，继续？"
+      : isEn
+        ? "Revoke this device?"
+        : "吊销该设备？";
+    if (!window.confirm(confirmMsg)) return;
     const response = await actionFetch(`/api/devices/${encodeURIComponent(id)}`, { method: "DELETE" });
     if (!response.ok) {
       const body = (await response.json()) as { error?: string };
-      setError(body.error ?? "吊销失败");
+      setError(body.error ?? (isEn ? "Failed to revoke device" : "吊销失败"));
       return;
     }
     if (current) {

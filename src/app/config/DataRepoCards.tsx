@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "@/i18n/context";
 import type { DataRepoCountsSummary, HealthInfo } from "./data-repo-panel-model";
 
 interface DataRepoCardsProps {
@@ -8,6 +9,8 @@ interface DataRepoCardsProps {
 
 /** 数据仓健康状态标牌与统计指标卡片组 */
 export function DataRepoCards({ health, counts }: DataRepoCardsProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="data-repo-overview">
       <div className={`data-repo-health-bar ${health.level}`}>
@@ -19,11 +22,11 @@ export function DataRepoCards({ health, counts }: DataRepoCardsProps) {
 
       <div className="data-repo-cards">
         <div className="data-repo-card">
-          <span className="data-repo-card-title">本地轮次</span>
+          <span className="data-repo-card-title">{isEn ? "Local Runs" : "本地轮次"}</span>
           <span className="data-repo-card-value">{counts.localText}</span>
         </div>
         <div className="data-repo-card">
-          <span className="data-repo-card-title">同步台账</span>
+          <span className="data-repo-card-title">{isEn ? "Sync Ledger" : "同步台账"}</span>
           <span className="data-repo-card-value">{counts.ledgerText}</span>
           {counts.unpublishableText && (
             <span className="data-repo-card-value">{counts.unpublishableText}</span>
@@ -33,11 +36,11 @@ export function DataRepoCards({ health, counts }: DataRepoCardsProps) {
           )}
         </div>
         <div className="data-repo-card">
-          <span className="data-repo-card-title">公开清单</span>
+          <span className="data-repo-card-title">{isEn ? "Public Manifest" : "公开清单"}</span>
           <span className="data-repo-card-value">{counts.manifestText}</span>
         </div>
         <div className="data-repo-card">
-          <span className="data-repo-card-title">Git 仓库</span>
+          <span className="data-repo-card-title">{isEn ? "Git Repository" : "Git 仓库"}</span>
           <span className="data-repo-card-value">{counts.repoText}</span>
         </div>
       </div>

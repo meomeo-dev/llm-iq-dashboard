@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+
 export type PairFormStatus =
   | { kind: "idle" }
   | { kind: "busy" }
@@ -15,9 +17,11 @@ export function PairCodeForm({
   onChangeCode: (code: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <form className="pair-card" onSubmit={(event) => void onSubmit(event)}>
-      <label htmlFor="pair-code">配对码</label>
+      <label htmlFor="pair-code">{isEn ? "Pairing Code" : "配对码"}</label>
       <input
         id="pair-code"
         className="pair-code"
@@ -31,7 +35,7 @@ export function PairCodeForm({
       />
       <div className="actions">
         <button type="submit" disabled={status.kind === "busy"}>
-          {status.kind === "busy" ? "配对中…" : "配对"}
+          {status.kind === "busy" ? (isEn ? "Pairing…" : "配对中…") : isEn ? "Pair" : "配对"}
         </button>
         {status.kind === "error" && <span className="pair-error">{status.message}</span>}
       </div>

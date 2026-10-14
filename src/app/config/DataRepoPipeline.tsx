@@ -1,5 +1,6 @@
 import React from "react";
 import type { DataRepoStatus, SyncActionMode } from "@/core/sync/data-repo-panel-types";
+import { useI18n } from "@/i18n/context";
 import {
   derivePipeline,
   type PipelineModel,
@@ -50,6 +51,8 @@ function PipelinePrimaryArea({
   onPrimaryClick: () => void;
   onRefresh?: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   if (!primary) {
     return (
       <button
@@ -58,7 +61,7 @@ function PipelinePrimaryArea({
         disabled={inFlight !== null}
         onClick={onRefresh}
       >
-        重新检查
+        {isEn ? "Recheck" : "重新检查"}
       </button>
     );
   }
@@ -98,7 +101,8 @@ export function DataRepoPipeline({
   onOpenPushDialog,
   onRefresh,
 }: DataRepoPipelineProps) {
-  const pipeline = customPipeline ?? derivePipeline(status, inFlightMode, selectedCount);
+  const { locale } = useI18n();
+  const pipeline = customPipeline ?? derivePipeline(status, inFlightMode, selectedCount, locale);
   const { steps, description, staticNotice, primaryAction, secondaryAction } =
     pipeline;
 

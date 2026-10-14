@@ -1,4 +1,5 @@
 import { CLI_KINDS, type CliKind } from "@/core/types";
+import { useI18n } from "@/i18n";
 
 export function ManualModelInput({
   manual,
@@ -9,10 +10,14 @@ export function ManualModelInput({
   onChange: (next: { cli: CliKind; model: string }) => void;
   onAdd: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="field-row manual-model">
       <span className="note">
-        claude 没有模型列举命令，新模型可在此手填，之后会出现在下拉中：
+        {isEn
+          ? "claude does not expose a model-list command; enter new model IDs here to add them to the dropdown:"
+          : "claude 没有模型列举命令，新模型可在此手填，之后会出现在下拉中："}
       </span>
       <select
         value={manual.cli}
@@ -27,11 +32,11 @@ export function ManualModelInput({
       <input
         type="text"
         value={manual.model}
-        placeholder="模型标识"
+        placeholder={isEn ? "Model ID" : "模型标识"}
         onChange={(e) => onChange({ ...manual, model: e.target.value })}
       />
       <button type="button" onClick={onAdd}>
-        添加
+        {isEn ? "Add" : "添加"}
       </button>
     </div>
   );

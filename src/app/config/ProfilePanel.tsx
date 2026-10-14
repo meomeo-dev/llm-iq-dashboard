@@ -1,5 +1,6 @@
 import type { ProfileConfig } from "@/core/config";
 import type { Target } from "@/core/types";
+import { useI18n } from "@/i18n/context";
 import { ProfileCard } from "./ProfileCard";
 import { UpstreamTypeEditor } from "./UpstreamTypeEditor";
 import { createProfile, profileUsage, renameProfile } from "./profile-panel-model";
@@ -30,6 +31,8 @@ export function ProfilePanel({
   onUpstreamTypes,
   onProfiles,
 }: ProfilePanelProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const update = (index: number, changes: Partial<ProfileConfig>): void =>
     onProfiles(profiles.map((profile, i) => (i === index ? { ...profile, ...changes } : profile)));
 
@@ -41,7 +44,13 @@ export function ProfilePanel({
   return (
     <div className="stack">
       <UpstreamTypeEditor types={upstreamTypes} profiles={profiles} onChange={onUpstreamTypes} />
-      {profiles.length === 0 && <p className="note">还没有 profile。codex 目前只用登录态；新建一个即可接入第三方上游。</p>}
+      {profiles.length === 0 && (
+        <p className="note">
+          {isEn
+            ? "No profiles yet. Codex currently uses local login only; create a profile to connect a third-party upstream."
+            : "还没有 profile。codex 目前只用登录态；新建一个即可接入第三方上游。"}
+        </p>
+      )}
       {profiles.map((profile, index) => (
         <ProfileCard
           // 删除一张后按新长度整体重挂，卡片内保留的原始输入不会错位到相邻卡片
@@ -62,7 +71,7 @@ export function ProfilePanel({
       ))}
       <div className="field-row">
         <button type="button" onClick={() => onProfiles([...profiles, createProfile(profiles, upstreamTypes)])}>
-          + 新建 profile
+          {isEn ? "+ New Profile" : "+ 新建 profile"}
         </button>
       </div>
     </div>

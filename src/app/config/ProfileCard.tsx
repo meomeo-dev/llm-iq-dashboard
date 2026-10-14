@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ProfileConfig } from "@/core/config";
 import type { ProfileCredentialStatus } from "@/core/profile-credentials";
+import { useI18n } from "@/i18n/context";
 import { isKebabName } from "./profile-panel-model";
 import { ProfileModelsField } from "./ProfileModelsField";
 import { ProfileCredentialField } from "./ProfileCredentialField";
@@ -24,6 +25,8 @@ export interface ProfileCardProps {
 }
 
 export function ProfileCard(props: ProfileCardProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const { profile, saved, usage, onChange, onRemove } = props;
   return (
     <div className={`profile-card${profile.enabled ? "" : " profile-disabled"}`}>
@@ -32,16 +35,22 @@ export function ProfileCard(props: ProfileCardProps) {
         <span className="profile-cli">{profile.cli}</span>
         <label className="checkbox">
           <input type="checkbox" checked={profile.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />
-          启用
+          {isEn ? "Enabled" : "启用"}
         </label>
         <button
           type="button"
           className="danger"
           disabled={usage > 0}
-          title={usage > 0 ? `被 ${usage} 个目标引用，先在被测矩阵里改掉或删掉` : undefined}
+          title={
+            usage > 0
+              ? isEn
+                ? `Referenced by ${usage} target(s); update or remove them in the Target Matrix first`
+                : `被 ${usage} 个目标引用，先在被测矩阵里改掉或删掉`
+              : undefined
+          }
           onClick={onRemove}
         >
-          删除
+          {isEn ? "Remove" : "删除"}
         </button>
       </div>
       <ProfileFields {...props} />
@@ -57,10 +66,23 @@ export function ProfileCard(props: ProfileCardProps) {
 }
 
 function ProfileNameField({ name, locked, onRename }: { name: string; locked: boolean; onRename: (name: string) => void }) {
-  if (locked) return <strong className="profile-name" title="已保存的 profile 不能改名：API key 按名字存放">{name}</strong>;
+  const { locale } = useI18n();
+  const isEn = locale === "en";
+  if (locked) {
+    return (
+      <strong
+        className="profile-name"
+        title={isEn ? "Saved profile name cannot be changed: API key file is named after it" : "已保存的 profile 不能改名：API key 按名字存放"}
+      >
+        {name}
+      </strong>
+    );
+  }
   return (
     <label>
-      名字（标识用：小写字母、数字、连字符，如 kedaya-tehui-005）
+      {isEn
+        ? "Name (ID: lowercase letters, digits, hyphens, e.g. kedaya-tehui-005)"
+        : "名字（标识用：小写字母、数字、连字符，如 kedaya-tehui-005）"}
       <input
         type="text"
         value={name}
@@ -72,6 +94,8 @@ function ProfileNameField({ name, locked, onRename }: { name: string; locked: bo
 }
 
 function ProfileFields(props: ProfileCardProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const { profile, upstreamTypes, onChange } = props;
   // 倍率保留原始输入，小数点打到一半时不被解析结果回写覆盖
   const [multiplierText, setMultiplierText] = useState(String(profile.pricing.multiplier));
@@ -79,11 +103,13 @@ function ProfileFields(props: ProfileCardProps) {
   return (
     <div className="profile-fields">
       <label className="profile-wide">
-        显示名（页面上展示，可含中文，如 kedaya-我又来了特惠0.05；留空则用名字）
+        {isEn
+          ? "Display Name (shown in UI; falls back to Name if empty)"
+          : "显示名（页面上展示，可含中文，如 kedaya-我又来了特惠0.05；留空则用名字）"}
         <input type="text" value={profile.label ?? ""} onChange={(e) => onChange({ label: e.target.value || null })} />
       </label>
       <label>
-        上游类型
+        {isEn ? "Upstream Type" : "上游类型"}
         <select value={profile.upstreamType} onChange={(e) => onChange({ upstreamType: e.target.value })}>
           {[...new Set([...upstreamTypes, profile.upstreamType])].map((type) => (
             <option key={type} value={type}>{type}</option>
@@ -91,11 +117,11 @@ function ProfileFields(props: ProfileCardProps) {
         </select>
       </label>
       <label>
-        分组
+        {isEn ? "Group" : "分组"}
         <input type="text" value={profile.group ?? ""} onChange={(e) => onChange({ group: e.target.value || null })} />
       </label>
       <label>
-        官网
+        {isEn ? "Website" : "官网"}
         <input
           type="text"
           value={profile.website ?? ""}
@@ -104,7 +130,7 @@ function ProfileFields(props: ProfileCardProps) {
         />
       </label>
       <label className="profile-wide">
-        接口地址 baseUrl（不公开）
+        {isEn ? "API Endpoint baseUrl (not published)" : "接口地址 baseUrl（不公开）"}
         <input
           type="text"
           value={profile.baseUrl}
@@ -119,7 +145,7 @@ function ProfileFields(props: ProfileCardProps) {
         onSync={props.onSyncModels}
       />
       <label>
-        倍率（官价 ×）
+        {isEn ? "Price Multiplier (Official ×)" : "倍率（官价 ×）"}
         <input
           type="number"
           min={0}

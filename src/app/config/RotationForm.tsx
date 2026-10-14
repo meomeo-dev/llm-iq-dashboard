@@ -1,4 +1,5 @@
 import type { RotationConfig } from "@/core/variables";
+import { useI18n } from "@/i18n";
 import { TIME_ZONE_SUGGESTIONS } from "./rotation-constants";
 
 /** 变量轮换周期；当前周期的取值落盘，重启或中断后同一周期内沿用 */
@@ -9,10 +10,12 @@ export function RotationForm({
   value: RotationConfig;
   onChange: (next: RotationConfig) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="stack">
       <div className="field-row">
-        <span>变量轮换</span>
+        <span>{isEn ? "Variable Rotation" : "变量轮换"}</span>
         <label className="radio">
           <input
             type="radio"
@@ -20,7 +23,7 @@ export function RotationForm({
             checked={value.period === "day"}
             onChange={() => onChange({ ...value, period: "day" })}
           />
-          每天一换
+          {isEn ? "Once per day" : "每天一换"}
         </label>
         <label className="radio">
           <input
@@ -29,7 +32,7 @@ export function RotationForm({
             checked={value.period === "run"}
             onChange={() => onChange({ ...value, period: "run" })}
           />
-          每轮一换
+          {isEn ? "Every round" : "每轮一换"}
         </label>
         <TimeZoneField
           timeZone={value.timeZone}
@@ -38,8 +41,16 @@ export function RotationForm({
         />
       </div>
       <p className="note">
-        每天一换：同一天的各轮共用同一组取值，便于横向对照；顺序变量每天前进一格，随机变量每天抽一次。
-        取值记录在 <code>data/variable-state.json</code>，重启或中断后同一天内照旧沿用。
+        {isEn ? (
+          <>
+            Once per day: all rounds on the same day share the same variable bindings for horizontal comparison; sequential variables advance daily and random variables draw once per day. Bindings are persisted in <code>data/variable-state.json</code> across restarts.
+          </>
+        ) : (
+          <>
+            每天一换：同一天的各轮共用同一组取值，便于横向对照；顺序变量每天前进一格，随机变量每天抽一次。
+            取值记录在 <code>data/variable-state.json</code>，重启或中断后同一天内照旧沿用。
+          </>
+        )}
       </p>
     </div>
   );
@@ -54,9 +65,10 @@ function TimeZoneField({
   disabled: boolean;
   onChange: (timeZone: string) => void;
 }) {
+  const { locale } = useI18n();
   return (
     <label>
-      按此时区划分“一天”
+      {locale === "en" ? "Day boundary time zone" : "按此时区划分“一天”"}
       <input
         type="text"
         list="rotation-time-zones"

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { PromptSpec } from "@/core/prompt";
 import type { VariableMode, VariableSpec } from "@/core/variables";
+import { useI18n } from "@/i18n/context";
 import {
   MODES,
-  MODE_HINT,
+  getModeHint,
   updateVariableAtIndex,
   removeVariableAtIndex,
   createEmptyVariable,
@@ -19,6 +20,8 @@ export function CustomPromptEditor({
   onChange: (next: PromptSpec) => void;
   onRemove: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [open, setOpen] = useState(false);
   const variables = [...spec.variables];
 
@@ -41,7 +44,7 @@ export function CustomPromptEditor({
           {open ? "▾" : "▸"} {spec.label}
         </button>
         <button type="button" className="danger" onClick={onRemove}>
-          删除
+          {isEn ? "Remove" : "删除"}
         </button>
       </div>
 
@@ -59,7 +62,7 @@ export function CustomPromptEditor({
           ))}
 
           <button type="button" onClick={addVariable}>
-            + 增加变量
+            {isEn ? "+ Add Variable" : "+ 增加变量"}
           </button>
         </div>
       )}
@@ -74,10 +77,12 @@ function CustomPromptFields({
   spec: PromptSpec;
   onChange: (next: PromptSpec) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <>
       <label>
-        标识（id）
+        {isEn ? "ID (id)" : "标识（id）"}
         <input
           type="text"
           value={spec.id}
@@ -85,7 +90,7 @@ function CustomPromptFields({
         />
       </label>
       <label>
-        显示名
+        {isEn ? "Display Name" : "显示名"}
         <input
           type="text"
           value={spec.label}
@@ -93,7 +98,7 @@ function CustomPromptFields({
         />
       </label>
       <label>
-        模板（用 {"{{变量名}}"} 占位）
+        {isEn ? 'Template (use {{"{{varName}}"}} placeholders)' : '模板（用 {{"{{变量名}}"}} 占位）'}
         <textarea
           rows={3}
           value={spec.template}
@@ -113,12 +118,14 @@ function VariableRow({
   onChange: (next: VariableSpec) => void;
   onRemove: () => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="variable-row">
       <input
         type="text"
         value={variable.name}
-        placeholder="变量名"
+        placeholder={isEn ? "Variable name" : "变量名"}
         onChange={(e) => onChange({ ...variable, name: e.target.value })}
       />
       <select
@@ -136,7 +143,7 @@ function VariableRow({
       <input
         type="text"
         value={variable.values.join(", ")}
-        placeholder="取值，逗号分隔"
+        placeholder={isEn ? "Values, comma-separated" : "取值，逗号分隔"}
         onChange={(e) =>
           onChange({
             ...variable,
@@ -147,7 +154,7 @@ function VariableRow({
       <button type="button" className="danger" onClick={onRemove}>
         ×
       </button>
-      <span className="note">{MODE_HINT[variable.mode]}</span>
+      <span className="note">{getModeHint(variable.mode, locale)}</span>
     </div>
   );
 }

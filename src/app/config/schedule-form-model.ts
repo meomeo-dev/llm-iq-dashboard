@@ -46,6 +46,8 @@ export function resolveTimeZone(valueTz: string | null): string {
   return "Asia/Shanghai";
 }
 
+import type { Locale } from "@/i18n/types";
+
 export interface ScheduleNotice {
   kind: "warn" | "ok" | "muted";
   message: string;
@@ -57,28 +59,39 @@ export function getScheduleNotice(
   isMasterEnabled: boolean,
   state: AutoRunView | null,
   timeZone: string,
+  locale: Locale = "zh-CN",
 ): ScheduleNotice {
+  const isEn = locale === "en";
   if (scheduled && !isMasterEnabled) {
     return {
       kind: "warn",
-      message:
-        "⚠️ 状态说明：定时节奏已设置，但自动任务开关当前处于“已暂停”状态。定时点到达时将自动跳过，不消耗 API 配额。",
+      message: isEn
+        ? '⚠️ Status: Schedule is configured, but the Auto-Run Master Switch is currently "Paused". Scheduled triggers will be skipped without consuming API quota.'
+        : "⚠️ 状态说明：定时节奏已设置，但自动任务开关当前处于“已暂停”状态。定时点到达时将自动跳过，不消耗 API 配额。",
       showActivateButton: true,
     };
   }
   if (scheduled && isMasterEnabled) {
     const nextRun = state?.nextRunAt
-      ? `下次触发预计于 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
-      : "按设定间隔自动发起评测";
+      ? isEn
+        ? `Next trigger at ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
+        : `下次触发预计于 ${formatZonedClock(new Date(state.nextRunAt), timeZone)}`
+      : isEn
+        ? "Automatically triggers runs at the configured interval"
+        : "按设定间隔自动发起评测";
     return {
       kind: "ok",
-      message: `✅ 状态说明：自动任务正常运行中。${nextRun}。`,
+      message: isEn
+        ? `✅ Status: Auto-Run is active. ${nextRun}.`
+        : `✅ 状态说明：自动任务正常运行中。${nextRun}。`,
       showActivateButton: false,
     };
   }
   return {
     kind: "muted",
-    message: "○ 状态说明：下方选了“不定时”，调度器不会自动触发任何任务。",
+    message: isEn
+      ? '○ Status: "None" is selected below; the scheduler will not trigger automatic runs.'
+      : "○ 状态说明：下方选了“不定时”，调度器不会自动触发任何任务。",
     showActivateButton: false,
   };
 }

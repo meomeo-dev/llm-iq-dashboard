@@ -6,6 +6,7 @@
 
 import type { JudgeModel } from "@/core/config/types";
 import { CLI_KINDS, type CliKind } from "@/core/types";
+import type { Locale } from "@/i18n/types";
 
 /** 把第 index 个裁判移动 offset 位；越界时原样返回同一个数组 */
 export function moveJudge(judges: readonly JudgeModel[], index: number, offset: number): JudgeModel[] {
@@ -30,6 +31,7 @@ export function judgeRoutes(judges: readonly JudgeModel[]): JudgeRoute[] {
   return CLI_KINDS.map((subject) => ({ subject, judges: judges.filter((judge) => judge.cli !== subject) }));
 }
 
-export function judgeLabel(judge: JudgeModel): string {
-  return `${judge.cli} · ${judge.model || "未填模型"} · ${judge.effort}`;
+export function judgeLabel(judge: JudgeModel, locale: Locale = "zh-CN"): string {
+  const emptyLabel = locale === "en" ? "no model" : "未填模型";
+  return `${judge.cli} · ${judge.model || emptyLabel} · ${judge.effort}`;
 }

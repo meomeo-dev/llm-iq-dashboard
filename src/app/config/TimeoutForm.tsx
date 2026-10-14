@@ -1,8 +1,9 @@
 import { CLI_KINDS, type CliKind, type EffortLevel } from "@/core/types";
+import { useI18n } from "@/i18n/context";
 import {
   type RunDraft,
-  LOW_EFFORTS,
-  HIGH_EFFORTS,
+  getLowEfforts,
+  getHighEfforts,
   updateCliTimeout,
   updateEffortTimeout,
   applyRecommendedPresets,
@@ -20,6 +21,8 @@ export function TimeoutForm({
   run: RunDraft;
   onChange: (next: RunDraft) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const setCli = (cli: CliKind, seconds: number | null): void => {
     onChange(updateCliTimeout(run, cli, seconds));
   };
@@ -39,9 +42,9 @@ export function TimeoutForm({
       <TimeoutTierCard
         cardClassName="timeout-tier-card"
         badgeClassName="tier-badge low"
-        badgeText="high 及以下档位"
-        noteText="思考耗时适中，建议 600 秒（10 分钟）"
-        items={LOW_EFFORTS}
+        badgeText={isEn ? "high and below" : "high 及以下档位"}
+        noteText={isEn ? "Moderate reasoning time; 600s (10 min) recommended" : "思考耗时适中，建议 600 秒（10 分钟）"}
+        items={getLowEfforts(locale)}
         currentEfforts={currentEfforts}
         onSetEffort={setEffort}
       />
@@ -49,9 +52,13 @@ export function TimeoutForm({
       <TimeoutTierCard
         cardClassName="timeout-tier-card highlight-tier"
         badgeClassName="tier-badge high"
-        badgeText="high 以上档位 (xhigh / max / ultra)"
-        noteText="深度思考极其耗时，建议 1800 秒（30 分钟）避免被误判中断"
-        items={HIGH_EFFORTS}
+        badgeText={isEn ? "Above high (xhigh / max / ultra)" : "high 以上档位 (xhigh / max / ultra)"}
+        noteText={
+          isEn
+            ? "Deep reasoning takes longer; 1800s (30 min) recommended to avoid premature timeouts"
+            : "深度思考极其耗时，建议 1800 秒（30 分钟）避免被误判中断"
+        }
+        items={getHighEfforts(locale)}
         currentEfforts={currentEfforts}
         onSetEffort={setEffort}
       />
@@ -59,7 +66,17 @@ export function TimeoutForm({
       <TimeoutCliRow run={run} onSetCli={setCli} />
 
       <p className="note">
-        优先级：单个目标的 timeoutMs &gt; 按强度的设置（run.timeoutByEffort）&gt; 该 CLI 的设置 &gt; 全局默认。超时会终止整个进程组，不会留下继续占用配额的孤儿进程。
+        {isEn ? (
+          <>
+            Precedence: target timeoutMs &gt; per-effort timeout (run.timeoutByEffort) &gt; per-CLI
+            timeout &gt; global default. Timeouts terminate the entire process group so no orphan
+            processes keep consuming quota.
+          </>
+        ) : (
+          <>
+            优先级：单个目标的 timeoutMs &gt; 按强度的设置（run.timeoutByEffort）&gt; 该 CLI 的设置 &gt; 全局默认。超时会终止整个进程组，不会留下继续占用配额的孤儿进程。
+          </>
+        )}
       </p>
     </div>
   );
@@ -72,10 +89,18 @@ function TimeoutConcurrencyRow({
   run: RunDraft;
   onChange: (next: RunDraft) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="field-row">
-      <label title="按模型分道：不同模型并行，同一模型的各强度串行">
-        同时在跑的模型数
+      <label
+        title={
+          isEn
+            ? "Per-model lanes: different models run in parallel, effort levels within the same model run serially"
+            : "按模型分道：不同模型并行，同一模型的各强度串行"
+        }
+      >
+        {isEn ? "Concurrent Models" : "同时在跑的模型数"}
         <input
           type="number"
           min={1}
@@ -84,7 +109,7 @@ function TimeoutConcurrencyRow({
         />
       </label>
       <label>
-        全局默认超时（秒）
+        {isEn ? "Global Default Timeout (s)" : "全局默认超时（秒）"}
         <input
           type="number"
           min={1}
@@ -105,12 +130,16 @@ function TimeoutCliRow({
   run: RunDraft;
   onSetCli: (cli: CliKind, seconds: number | null) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <>
       <div className="timeout-section-head" style={{ marginTop: 8 }}>
         <div className="timeout-section-title">
-          <strong>按 CLI 覆盖超时（秒）</strong>
-          <span className="note">仅在未指定该强度超时时生效</span>
+          <strong>{isEn ? "Per-CLI Timeout Override (s)" : "按 CLI 覆盖超时（秒）"}</strong>
+          <span className="note">
+            {isEn ? "Applies only when no effort-level timeout is set" : "仅在未指定该强度超时时生效"}
+          </span>
         </div>
       </div>
 
@@ -119,12 +148,16 @@ function TimeoutCliRow({
           const override = run.timeoutByCli[cli];
           return (
             <label key={cli}>
-              {cli} 默认（秒）
+              {isEn ? `${cli} Default (s)` : `${cli} 默认（秒）`}
               <input
                 type="number"
                 min={1}
                 value={formatSeconds(override)}
-                placeholder={`默认 ${Math.round(run.defaultTimeoutMs / 1000)}`}
+                placeholder={
+                  isEn
+                    ? `Default ${Math.round(run.defaultTimeoutMs / 1000)}`
+                    : `默认 ${Math.round(run.defaultTimeoutMs / 1000)}`
+                }
                 onChange={(e) =>
                   onSetCli(
                     cli,
@@ -141,12 +174,16 @@ function TimeoutCliRow({
 }
 
 function TimeoutTierHeader({ onApplyPreset }: { onApplyPreset: () => void }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className="timeout-section-head">
       <div className="timeout-section-title">
-        <strong>按思考强度分段超时</strong>
+        <strong>{isEn ? "Timeout by Reasoning Effort" : "按思考强度分段超时"}</strong>
         <span className="note">
-          high 及以下 600 秒，high 以上 1800 秒（优先于 CLI 与默认超时）
+          {isEn
+            ? "600s for ≤high, 1800s for >high (takes precedence over per-CLI and global default)"
+            : "high 及以下 600 秒，high 以上 1800 秒（优先于 CLI 与默认超时）"}
         </span>
       </div>
       <button
@@ -154,7 +191,9 @@ function TimeoutTierHeader({ onApplyPreset }: { onApplyPreset: () => void }) {
         className="btn-preset"
         onClick={onApplyPreset}
       >
-        ⚡ 一键填充推荐分段（≤high 600s / &gt;high 1800s）
+        {isEn
+          ? "⚡ Apply Recommended Tiers (≤high 600s / >high 1800s)"
+          : "⚡ 一键填充推荐分段（≤high 600s / >high 1800s）"}
       </button>
     </div>
   );

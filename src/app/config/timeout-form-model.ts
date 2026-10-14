@@ -1,4 +1,5 @@
 import { type CliKind, type EffortLevel } from "@/core/types";
+import type { Locale } from "@/i18n/types";
 
 export interface RunDraft {
   promptIds: string[];
@@ -21,11 +22,31 @@ export const LOW_EFFORTS: EffortTierDefinition[] = [
   { level: "high", label: "high (高)", desc: "深度思考", defaultSec: 600 },
 ];
 
+export const LOW_EFFORTS_EN: EffortTierDefinition[] = [
+  { level: "low", label: "low", desc: "Light reasoning", defaultSec: 600 },
+  { level: "medium", label: "medium", desc: "Standard reasoning", defaultSec: 600 },
+  { level: "high", label: "high", desc: "Deep reasoning", defaultSec: 600 },
+];
+
 export const HIGH_EFFORTS: EffortTierDefinition[] = [
   { level: "xhigh", label: "xhigh (极高)", desc: "强化深度思考", defaultSec: 1800 },
   { level: "max", label: "max (最大)", desc: "极限思考", defaultSec: 1800 },
   { level: "ultra", label: "ultra (超级)", desc: "极限超长思考", defaultSec: 1800 },
 ];
+
+export const HIGH_EFFORTS_EN: EffortTierDefinition[] = [
+  { level: "xhigh", label: "xhigh", desc: "Intensive deep reasoning", defaultSec: 1800 },
+  { level: "max", label: "max", desc: "Maximum reasoning", defaultSec: 1800 },
+  { level: "ultra", label: "ultra", desc: "Extended ultra reasoning", defaultSec: 1800 },
+];
+
+export function getLowEfforts(locale: Locale = "zh-CN"): EffortTierDefinition[] {
+  return locale === "en" ? LOW_EFFORTS_EN : LOW_EFFORTS;
+}
+
+export function getHighEfforts(locale: Locale = "zh-CN"): EffortTierDefinition[] {
+  return locale === "en" ? HIGH_EFFORTS_EN : HIGH_EFFORTS;
+}
 
 export const RECOMMENDED_EFFORT_PRESETS: Partial<Record<EffortLevel, number>> = {
   low: 600_000,

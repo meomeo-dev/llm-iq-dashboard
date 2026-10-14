@@ -6,8 +6,10 @@ import type {
   SyncActionMode,
   SyncActionResult,
 } from "@/core/sync/data-repo-panel-types";
+import { useI18n } from "@/i18n/context";
+import type { Locale } from "@/i18n/types";
 import {
-  ACTION_LABELS,
+  getActionLabels,
   deriveActionResultSummary,
   deriveCountsSummary,
   deriveHealthStatus,
@@ -42,10 +44,16 @@ function repositoryLabel(status: DataRepoStatus | null): string {
 }
 
 function DataRepoHeader({ label }: { label: string }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <header>
-      <h2>数据仓</h2>
-      <p>公开评测数据仓（{label}）的同步与发布状态。</p>
+      <h2>{isEn ? "Data Repository" : "数据仓"}</h2>
+      <p>
+        {isEn
+          ? `Sync and publishing status for the public benchmark data repository (${label}).`
+          : `公开评测数据仓（${label}）的同步与发布状态。`}
+      </p>
     </header>
   );
 }
@@ -62,11 +70,14 @@ function DataRepoNoticeSection({ message, label }: { message: string; label: str
 
 /** 本地副本指向别的仓：同步已被执行器拒绝，告诉所有者两条出路 */
 function DataRepoMismatchBar({ status }: { status: DataRepoStatus | null }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   if (status?.repo?.remoteMismatch !== true) return null;
   return (
     <div className="status error data-repo-error-bar">
-      本地副本的 origin 与配置的数据仓地址不是同一个仓，同步已拒绝：改「数据仓设置」里的地址，
-      或换一个空目录作本地路径让执行器重新 clone。
+      {isEn
+        ? 'Local working copy origin does not match the configured repository URL; sync is rejected. Update the URL in "Data Repo Settings" or point to an empty local directory to re-clone.'
+        : "本地副本的 origin 与配置的数据仓地址不是同一个仓，同步已拒绝：改「数据仓设置」里的地址，或换一个空目录作本地路径让执行器重新 clone。"}
     </div>
   );
 }
@@ -79,6 +90,9 @@ function DataRepoSummaryBar({
   error: string | null;
   summary: ActionResultSummary | null;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
+  const actionLabels = getActionLabels(locale);
   return (
     <>
       {error && <div className="status error data-repo-error-bar">{error}</div>}
@@ -87,7 +101,9 @@ function DataRepoSummaryBar({
           className={`data-repo-action-summary ${summary.ok ? "ok" : "error"}`}
         >
           <span className="data-repo-summary-label">
-            最近操作结果（{ACTION_LABELS[summary.mode]}）：
+            {isEn
+              ? `Last action result (${actionLabels[summary.mode]}): `
+              : `最近操作结果（${actionLabels[summary.mode]}）：`}
           </span>
           <span className="data-repo-summary-text">{summary.text}</span>
         </div>
@@ -100,13 +116,21 @@ function DataRepoSummaryBar({
 function getSpecialNotice(
   status: DataRepoStatus | null,
   loading: boolean,
+  locale: Locale,
 ): string | null {
-  if (loading && status === null) return "正在读取数据仓状态…";
+  const isEn = locale === "en";
+  if (loading && status === null) {
+    return isEn ? "Loading data repository status…" : "正在读取数据仓状态…";
+  }
   if (status !== null && !status.configured) {
-    return "当前配置未启用数据仓（dataRepo）。如需同步评测数据到公开数据仓，在上方「数据仓设置」区块启用并保存。";
+    return isEn
+      ? 'Data repository (dataRepo) is not enabled in the current configuration. Enable and save it in "Data Repo Settings" above to sync benchmark results.'
+      : "当前配置未启用数据仓（dataRepo）。如需同步评测数据到公开数据仓，在上方「数据仓设置」区块启用并保存。";
   }
   if (status !== null && status.deploy.readonly) {
-    return "当前为只读部署（只读展台或远程数据源），数据仓同步功能已禁用。";
+    return isEn
+      ? "Read-only deployment (showcase or remote data source); data repository sync is disabled."
+      : "当前为只读部署（只读展台或远程数据源），数据仓同步功能已禁用。";
   }
   return null;
 }
@@ -115,13 +139,15 @@ function getSpecialNotice(
 function derivePanelData(
   status: DataRepoStatus | null,
   actionResult: SyncActionResult | null,
+  locale: Locale,
 ) {
   return {
-    health: deriveHealthStatus(status),
-    counts: deriveCountsSummary(status),
-    pushConfirm: derivePushConfirmation(status),
+    health: deriveHealthStatus(status, locale),
+    counts: deriveCountsSummary(status, locale),
+    pushConfirm: derivePushConfirmation(status, locale),
     summary: deriveActionResultSummary(
       actionResult ?? status?.lastAction ?? null,
+      locale,
     ),
     issues: extractReportIssues(
       actionResult?.report ?? status?.lastAction?.report ?? null,
@@ -166,6 +192,7 @@ export function DataRepoPanel({
   fetchFn,
   autoLoad,
 }: DataRepoPanelProps) {
+  const { locale } = useI18n();
   const {
     status,
     loading,
@@ -182,11 +209,11 @@ export function DataRepoPanel({
   const pending = usePendingSelection(status);
 
   const label = repositoryLabel(status);
-  const notice = getSpecialNotice(status, loading);
+  const notice = getSpecialNotice(status, loading, locale);
   if (notice !== null) return <DataRepoNoticeSection message={notice} label={label} />;
 
   const { health, counts, pushConfirm, summary, issues } =
-    derivePanelData(status, currentResult);
+    derivePanelData(status, currentResult, locale);
 
   return (
     <section id="data-repo" className="config-section data-repo-section">

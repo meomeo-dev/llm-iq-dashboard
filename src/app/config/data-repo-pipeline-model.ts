@@ -85,8 +85,15 @@ function checkCommonBlocker(
   return null;
 }
 
+import type { Locale } from "@/i18n/types";
+import { checkPushCapabilityReasonEn, derivePipelineEn } from "./data-repo-panel-i18n";
+
 /** 推送凭据是否可用：分容器部署下须已连接 GitHub（执行器上报 github-app 能力） */
-export function checkPushCapabilityReason(status: DataRepoStatus): string | null {
+export function checkPushCapabilityReason(
+  status: DataRepoStatus,
+  locale: Locale = "zh-CN",
+): string | null {
+  if (locale === "en") return checkPushCapabilityReasonEn(status);
   if (
     status.pushCapability === "unavailable" ||
     (!status.pushCapability && status.deploy.externalRunner)
@@ -329,7 +336,9 @@ export function derivePipeline(
   status: DataRepoStatus | null,
   inFlightMode: SyncActionMode | null = null,
   selectedCount: number | null = null,
+  locale: Locale = "zh-CN",
 ): PipelineModel {
+  if (locale === "en") return derivePipelineEn(status, inFlightMode, selectedCount);
   const commonBlocker = checkCommonBlocker(status, inFlightMode);
   const secondaryAction = buildSecondaryAction(commonBlocker, inFlightMode);
   const staticNotice = describeAutoSync(status);

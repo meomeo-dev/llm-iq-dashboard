@@ -1,5 +1,6 @@
 import React from "react";
 import type { PendingRun } from "@/core/sync/data-repo-panel-types";
+import { useI18n } from "@/i18n/context";
 import { PendingRunRow } from "./DataRepoPendingRun";
 import { runPick, type SelectionState } from "./pending-selection-model";
 
@@ -21,6 +22,8 @@ interface DataRepoPendingListProps {
  * 题目白名单在导出时另行生效，这里只列本轮记录里的题目与上游。
  */
 export function DataRepoPendingList(props: DataRepoPendingListProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const { runs, state, disabled, onSetAll, onDiscard } = props;
   if (runs.length === 0) return null;
   const picks = runs.map((run) => runPick(state, run));
@@ -37,13 +40,17 @@ export function DataRepoPendingList(props: DataRepoPendingListProps) {
             disabled={disabled}
             onChange={(event) => onSetAll(event.target.checked)}
           />
-          待导出 {runs.length} 轮，已勾选 {selectedCount} 轮{partial > 0 ? `（其中 ${partial} 轮只选了部分调用）` : ""}
+          {isEn
+            ? `${runs.length} pending export, ${selectedCount} selected${partial > 0 ? ` (${partial} partially selected)` : ""}`
+            : `待导出 ${runs.length} 轮，已勾选 ${selectedCount} 轮${partial > 0 ? `（其中 ${partial} 轮只选了部分调用）` : ""}`}
         </label>
         <span className="data-repo-pending-hint">
-          未勾选的留在本机，下次仍在清单里；不要的可以丢弃
+          {isEn
+            ? "Unselected runs stay local and remain in this list; discard unwanted runs"
+            : "未勾选的留在本机，下次仍在清单里；不要的可以丢弃"}
           {unselected.length > 0 && (
             <button type="button" className="data-repo-link-button" disabled={disabled} onClick={() => onDiscard(unselected)}>
-              丢弃未勾选的 {unselected.length} 轮
+              {isEn ? `Discard ${unselected.length} unselected run(s)` : `丢弃未勾选的 ${unselected.length} 轮`}
             </button>
           )}
         </span>

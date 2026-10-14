@@ -1,4 +1,5 @@
 import type { SessionView } from "@/app/api/session/route";
+import { useI18n } from "@/i18n/context";
 import { formatDeviceTime } from "./device-panel-model";
 
 export function DeviceTable({
@@ -8,13 +9,15 @@ export function DeviceTable({
   devices: SessionView["devices"];
   onRevoke: (id: string, current: boolean) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <table className="device-table">
       <thead>
         <tr>
-          <th>设备</th>
-          <th>签发</th>
-          <th>最近使用</th>
+          <th>{isEn ? "Device" : "设备"}</th>
+          <th>{isEn ? "Issued" : "签发"}</th>
+          <th>{isEn ? "Last Active" : "最近使用"}</th>
           <th />
         </tr>
       </thead>
@@ -23,7 +26,11 @@ export function DeviceTable({
           <tr key={device.id}>
             <td>
               {device.name}
-              {device.current && <span className="device-current">（本浏览器）</span>}
+              {device.current && (
+                <span className="device-current">
+                  {isEn ? " (this browser)" : "（本浏览器）"}
+                </span>
+              )}
             </td>
             <td>{formatDeviceTime(device.issuedAt)}</td>
             <td>{formatDeviceTime(device.lastSeenAt)}</td>
@@ -32,7 +39,13 @@ export function DeviceTable({
                 type="button"
                 onClick={() => void onRevoke(device.id, device.current)}
               >
-                {device.current ? "退出" : "吊销"}
+                {device.current
+                  ? isEn
+                    ? "Sign Out"
+                    : "退出"
+                  : isEn
+                    ? "Revoke"
+                    : "吊销"}
               </button>
             </td>
           </tr>

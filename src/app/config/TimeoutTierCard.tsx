@@ -1,4 +1,5 @@
 import type { EffortLevel } from "@/core/types";
+import { useI18n } from "@/i18n/context";
 import { formatSeconds, type EffortTierDefinition } from "./timeout-form-model";
 
 export function TimeoutTierCard({
@@ -18,6 +19,8 @@ export function TimeoutTierCard({
   currentEfforts: Partial<Record<EffortLevel, number>>;
   onSetEffort: (effort: EffortLevel, seconds: number | null) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <div className={cardClassName}>
       <div className="tier-header">
@@ -29,12 +32,12 @@ export function TimeoutTierCard({
           const override = currentEfforts[level];
           return (
             <label key={level} title={desc}>
-              {label} 超时（秒）
+              {isEn ? `${label} Timeout (s)` : `${label} 超时（秒）`}
               <input
                 type="number"
                 min={1}
                 value={formatSeconds(override)}
-                placeholder={`推荐 ${defaultSec}`}
+                placeholder={isEn ? `Rec. ${defaultSec}` : `推荐 ${defaultSec}`}
                 onChange={(e) =>
                   onSetEffort(
                     level,

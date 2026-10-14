@@ -18,11 +18,20 @@ import type { SyncReport } from "@/core/sync/sync-orchestrator";
 import type { ConfirmPublishedReport } from "@/core/sync/confirm-published";
 import type { LedgerDecisionReport } from "@/core/sync/ledger-decisions";
 
+import type { Locale } from "@/i18n/types";
+import {
+  ACTION_LABELS_EN,
+  deriveActionResultSummaryEn,
+  deriveCountsSummaryEn,
+  deriveHealthStatusEn,
+  derivePushConfirmationEn,
+} from "./data-repo-panel-i18n";
+
 export type HealthLevel = "healthy" | "warning" | "unavailable";
 
 export interface HealthInfo {
   level: HealthLevel;
-  label: "正常" | "注意" | "不可用";
+  label: "正常" | "注意" | "不可用" | "Healthy" | "Warning" | "Unavailable";
   reason: string;
 }
 
@@ -82,8 +91,16 @@ export const ACTION_LABELS: Record<SyncActionMode, string> = {
   restore: "恢复",
 };
 
+export function getActionLabels(locale: Locale = "zh-CN"): Record<SyncActionMode, string> {
+  return locale === "en" ? ACTION_LABELS_EN : ACTION_LABELS;
+}
+
 /** 推导数据仓整体健康等级及面向所有者的中文说明 */
-export function deriveHealthStatus(status: DataRepoStatus | null): HealthInfo {
+export function deriveHealthStatus(
+  status: DataRepoStatus | null,
+  locale: Locale = "zh-CN",
+): HealthInfo {
+  if (locale === "en") return deriveHealthStatusEn(status);
   if (status === null) {
     return { level: "unavailable", label: "不可用", reason: "状态未加载" };
   }
@@ -177,7 +194,9 @@ export {
 /** 推导推送二次确认对话框内容 */
 export function derivePushConfirmation(
   status: DataRepoStatus | null,
+  locale: Locale = "zh-CN",
 ): PushConfirmationModel {
+  if (locale === "en") return derivePushConfirmationEn(status);
   if (status === null || status.repo === null) {
     return {
       aheadCommits: [],
@@ -207,7 +226,9 @@ export function derivePushConfirmation(
 /** 推导动作结果摘要 */
 export function deriveActionResultSummary(
   result: SyncActionResult | null,
+  locale: Locale = "zh-CN",
 ): ActionResultSummary | null {
+  if (locale === "en") return deriveActionResultSummaryEn(result);
   if (result === null) return null;
   if (!result.ok || result.error !== null) {
     const error = result.error ?? "执行失败";
@@ -390,7 +411,9 @@ export function extractReportIssues(
 /** 推导各项指标计数的展示文案 */
 export function deriveCountsSummary(
   status: DataRepoStatus | null,
+  locale: Locale = "zh-CN",
 ): DataRepoCountsSummary {
+  if (locale === "en") return deriveCountsSummaryEn(status);
   if (status === null) {
     return {
       localText: "未加载",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "@/i18n/context";
 import { parseModelList } from "./profile-panel-model";
 import type { ModelSyncOutcome } from "./use-profile-credentials";
 
@@ -18,6 +19,8 @@ export function ProfileModelsField({
   onChange: (models: string[]) => void;
   onSync: () => Promise<ModelSyncOutcome>;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [text, setText] = useState(models.join(", "));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -32,13 +35,18 @@ export function ProfileModelsField({
     }
     setText(outcome.models.join(", "));
     onChange(outcome.models);
-    setMessage({ kind: "ok", text: `上游返回 ${outcome.models.length} 个模型，删掉不测的再保存配置` });
+    setMessage({
+      kind: "ok",
+      text: isEn
+        ? `Upstream returned ${outcome.models.length} model(s); trim unneeded ones and save config`
+        : `上游返回 ${outcome.models.length} 个模型，删掉不测的再保存配置`,
+    });
   };
 
   return (
     <div className="profile-wide profile-models">
       <label>
-        模型（逗号或空格分隔）
+        {isEn ? "Models (comma or space separated)" : "模型（逗号或空格分隔）"}
         <textarea
           rows={2}
           value={text}
@@ -53,10 +61,24 @@ export function ProfileModelsField({
         <button
           type="button"
           disabled={!canSync || busy}
-          title={canSync ? "请求上游的 /models 接口" : "先保存配置并填好 API key"}
+          title={
+            canSync
+              ? isEn
+                ? "Query upstream /models endpoint"
+                : "请求上游的 /models 接口"
+              : isEn
+                ? "Save config and set API key first"
+                : "先保存配置并填好 API key"
+          }
           onClick={sync}
         >
-          {busy ? "同步中…" : "从上游同步"}
+          {busy
+            ? isEn
+              ? "Syncing…"
+              : "同步中…"
+            : isEn
+              ? "Sync from Upstream"
+              : "从上游同步"}
         </button>
         {message !== null && <span className={`status ${message.kind}`}>{message.text}</span>}
       </div>

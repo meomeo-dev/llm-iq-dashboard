@@ -1,5 +1,6 @@
 import type { PromptSpec } from "@/core/prompt";
 import type { VariableMode, VariableSpec } from "@/core/variables";
+import type { Locale } from "@/i18n/types";
 
 export const MODES: readonly VariableMode[] = ["sequence", "shuffle", "random", "fixed"];
 
@@ -9,6 +10,17 @@ export const MODE_HINT: Record<VariableMode, string> = {
   random: "每轮随机取一个，可能连续撞上同一个值",
   fixed: "固定不变，用于钉住某个变量避免干扰对比",
 };
+
+export const MODE_HINT_EN: Record<VariableMode, string> = {
+  sequence: "Round-robin rotation with persisted cursor; covers all values in N runs",
+  shuffle: "Shuffle then step through: random order without repeats until exhausted",
+  random: "Random value per run; may repeat consecutively",
+  fixed: "Fixed value to pin a variable for controlled comparison",
+};
+
+export function getModeHint(mode: VariableMode, locale: Locale = "zh-CN"): string {
+  return locale === "en" ? MODE_HINT_EN[mode] : MODE_HINT[mode];
+}
 
 /** 生成不与现有条目冲突的 id */
 export function uniquePromptId(taken: readonly string[]): string {
@@ -27,10 +39,10 @@ export function togglePromptId(enabled: readonly string[], id: string): string[]
   return [...enabled, id];
 }
 
-export function createCustomPrompt(takenIds: readonly string[]): PromptSpec {
+export function createCustomPrompt(takenIds: readonly string[], locale: Locale = "zh-CN"): PromptSpec {
   return {
     id: uniquePromptId(takenIds),
-    label: "自定义提示词",
+    label: locale === "en" ? "Custom Prompt" : "自定义提示词",
     template: "Generate an SVG of a {{animal}} riding a bicycle",
     variables: [{ name: "animal", mode: "sequence", values: ["pelican", "capybara"] }],
     candidates: [],

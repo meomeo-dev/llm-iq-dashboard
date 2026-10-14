@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CONFIG_NAV_ITEMS, type ConfigNavItem } from "./config-nav-items";
+import { useI18n } from "@/i18n";
+import { getConfigNavItems, type ConfigNavItem } from "./config-nav-items";
 
 export interface ConfigSideNavProps {
   items?: readonly ConfigNavItem[];
@@ -66,10 +67,12 @@ function navigateToSection(item: ConfigNavItem): void {
 
 /** 配置页左侧固定导航栏（移动端折叠为横向滚动胶囊条） */
 export function ConfigSideNav({
-  items = CONFIG_NAV_ITEMS,
+  items,
   activeId: controlledId,
 }: ConfigSideNavProps): React.JSX.Element {
-  const [currentId, setActiveId] = useActiveSectionId(items, controlledId);
+  const { locale } = useI18n();
+  const resolvedItems = items ?? getConfigNavItems(locale);
+  const [currentId, setActiveId] = useActiveSectionId(resolvedItems, controlledId);
 
   const handleClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -81,9 +84,9 @@ export function ConfigSideNav({
   };
 
   return (
-    <nav className="config-side-nav" aria-label="配置页导航">
+    <nav className="config-side-nav" aria-label={locale === "en" ? "Configuration Navigation" : "配置页导航"}>
       <ul className="config-nav-list">
-        {items.map((item) => {
+        {resolvedItems.map((item) => {
           const isCurrent = item.id === currentId;
           return (
             <li key={item.id} className="config-nav-item">

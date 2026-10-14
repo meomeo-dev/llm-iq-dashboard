@@ -65,11 +65,26 @@ export function parseModelList(text: string): string[] {
   return [...seen];
 }
 
+import type { Locale } from "@/i18n/types";
+
 /** 添加上游类型：须是 kebab-case 且不重复；返回新清单或错误说明 */
-export function addUpstreamType(types: readonly string[], raw: string): { next: string[] } | { error: string } {
+export function addUpstreamType(
+  types: readonly string[],
+  raw: string,
+  locale: Locale = "zh-CN",
+): { next: string[] } | { error: string } {
+  const isEn = locale === "en";
   const value = raw.trim();
-  if (!isKebabName(value)) return { error: "上游类型须是 kebab-case（小写字母、数字、连字符）" };
-  if (types.includes(value)) return { error: `已存在：${value}` };
+  if (!isKebabName(value)) {
+    return {
+      error: isEn
+        ? "Upstream type must be kebab-case (lowercase letters, digits, hyphens)"
+        : "上游类型须是 kebab-case（小写字母、数字、连字符）",
+    };
+  }
+  if (types.includes(value)) {
+    return { error: isEn ? `Already exists: ${value}` : `已存在：${value}` };
+  }
   return { next: [...types, value] };
 }
 

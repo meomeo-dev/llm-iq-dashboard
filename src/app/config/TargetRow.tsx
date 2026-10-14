@@ -1,6 +1,7 @@
 import type { CapabilitySnapshot, ModelOption } from "@/capabilities/types";
 import type { ProfileConfig } from "@/core/config";
 import { CLI_KINDS, DEFAULT_PROFILE, type CliKind, type EffortLevel, type Target } from "@/core/types";
+import { useI18n } from "@/i18n";
 import {
   modelAfterProfileChange,
   profileChoices,
@@ -12,7 +13,7 @@ import {
   mergeModelChoices,
   effortChoices,
   firstModelId,
-  SOURCE_LABEL,
+  sourceLabel,
 } from "./target-table-model";
 
 export interface TargetRowProps {
@@ -32,6 +33,8 @@ export function TargetRow({
   onChange,
   onRemove,
 }: TargetRowProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const capability = findCapability(catalog, target.cli);
   const profile = profiles.find((item) => item.cli === target.cli && item.name === target.profile);
   // 非默认 profile 的模型来自它手填的清单；强度档仍按同名模型在登录态下的探测结果
@@ -82,13 +85,13 @@ export function TargetRow({
         <input
           type="text"
           value={target.label}
-          placeholder="留空自动生成"
+          placeholder={isEn ? "Auto-generated if empty" : "留空自动生成"}
           onChange={(e) => onChange({ label: e.target.value })}
         />
       </td>
       <td>
         <button type="button" className="danger" onClick={onRemove}>
-          删除
+          {isEn ? "Delete" : "删除"}
         </button>
       </td>
     </tr>
@@ -122,14 +125,17 @@ function TargetProfileCell({
   choices: ProfileConfig[];
   onChange: (name: string) => void;
 }) {
-  if (choices.length === 0 && value === DEFAULT_PROFILE) return <span className="note">登录态</span>;
+  const { locale } = useI18n();
+  const isEn = locale === "en";
+  const defaultLabel = isEn ? "Official Login" : "登录态";
+  if (choices.length === 0 && value === DEFAULT_PROFILE) return <span className="note">{defaultLabel}</span>;
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value={DEFAULT_PROFILE}>登录态</option>
+      <option value={DEFAULT_PROFILE}>{defaultLabel}</option>
       {choices.map((choice) => (
         <option key={choice.name} value={choice.name}>
           {choice.label ?? choice.name}
-          {choice.enabled ? "" : "（已停用）"}
+          {choice.enabled ? "" : isEn ? " (disabled)" : "（已停用）"}
         </option>
       ))}
     </select>
@@ -145,12 +151,13 @@ function TargetModelCell({
   models: ModelOption[];
   onChange: (model: string) => void;
 }) {
+  const { locale } = useI18n();
   return (
     <select value={model} onChange={(e) => onChange(e.target.value)}>
       {models.map((option) => (
         <option key={option.id} value={option.id}>
           {option.id}
-          {option.sources.length > 0 && `  · ${SOURCE_LABEL[option.sources[0]!]}`}
+          {option.sources.length > 0 && `  · ${sourceLabel(option.sources[0]!, locale)}`}
         </option>
       ))}
     </select>
@@ -166,10 +173,12 @@ function TargetEffortCell({
   efforts: EffortLevel[];
   onChange: (effort: EffortLevel) => void;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   if (efforts.length === 0) {
     return (
-      <span className="note" title="该模型不支持调节思考强度">
-        不可调
+      <span className="note" title={isEn ? "This model does not support adjusting reasoning effort" : "该模型不支持调节思考强度"}>
+        {isEn ? "Fixed" : "不可调"}
       </span>
     );
   }
@@ -196,12 +205,13 @@ function TargetEnableCell({
   label: string;
   onChange: (checked: boolean) => void;
 }) {
+  const { locale } = useI18n();
   return (
     <td>
       <input
         type="checkbox"
         checked={checked}
-        aria-label={`${label} 进入定时任务`}
+        aria-label={locale === "en" ? `Include ${label} in scheduled runs` : `${label} 进入定时任务`}
         onChange={(e) => onChange(e.target.checked)}
       />
     </td>
