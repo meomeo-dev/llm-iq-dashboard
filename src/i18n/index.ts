@@ -30,3 +30,19 @@ export {
   useI18n,
   type I18nContextValue,
 } from "./context";
+
+export {
+  localizeCandidateLabel,
+  localizePromptGroupLabel,
+  localizePromptLabel,
+  localizePromptSpec,
+  localizePromptStandard,
+  splitParenthesizedLabel,
+} from "../core/prompts/i18n";
+
+export {
+  localizeCriterion,
+  localizeDetailSubject,
+  localizeGate,
+  localizeVerdictLabel,
+} from "./judge-rubric";
