@@ -25,6 +25,13 @@
 <!-- acceptance-index:start -->
 | 工单 / Sprint | 主题 | 结论 | 日期 | commit |
 |---|---|---|---|---|
+| [M2-00](M2-00-bilingual-i18n-support.md) | 中英双语全栈国际化改造 | 通过 | 2026-10-14 | `a579bbc` |
+| [M2-01](M2-01-i18n-core-and-locale-context.md) | 双语字典核心底座与全局语言上下文 | 通过 | 2026-10-13 | `25731ea` |
+| [M2-02](M2-02-bilingual-docs-and-readme.md) | 英文主 README 与对外核心文档双语化 | 通过 | 2026-10-13 | `23627eb` |
+| [M2-03](M2-03-prompt-and-judge-metadata-i18n.md) | 题库展示元数据与评审标准双语映射 | 通过 | 2026-10-13 | `94c0d8a` |
+| [M2-04](M2-04-dashboard-viewer-and-export-i18n.md) | 主看板、作品详情页与社交分享导出图国际化 | 通过 | 2026-10-14 | `e1601d0` |
+| [M2-05](M2-05-config-and-pair-console-i18n.md) | 配置管理台与设备配对页国际化 | 通过 | 2026-10-14 | `9ddf5ed` |
+| [M2-06](M2-06-i18n-tests-and-quality-gates.md) | 双语完整性单测与全量质量门禁收口 | 通过 | 2026-10-14 | `a579bbc` |
 | [M1-01](M1-01-register-viral-prompts.md) | 核心题库注册：经典与2026-09题目录入 | 通过 | 2026-10-10 | `bc9dcdf` |
 | [M1-02](M1-02-grouping-classic-and-september.md) | 看板运行控制分类与2026-09分组 | 通过 | 2026-10-10 | `5c5cec4` |
 | [M1-03](M1-03-benchmark-provenance-and-acceptance.md) | 基准出处台账更新与全量质量门禁验收 | 通过 | 2026-10-10 | `9713d49` |
