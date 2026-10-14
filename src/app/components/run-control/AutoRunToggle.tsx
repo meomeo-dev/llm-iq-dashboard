@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { actionFetch } from "../action-fetch";
 import type { AutoRunView } from "@/core/auto-run";
+import { useI18n, type Locale } from "@/i18n";
+import { actionFetch } from "../action-fetch";
 import { publishAutoRun, useLiveAutoRun, type LiveAutoRun } from "../live-state/live-store";
 import { describeSchedule, subline } from "./auto-run-desc";
 
@@ -24,6 +25,8 @@ export function AutoRunToggle({
   timeZone: string;
   readOnly?: boolean;
 }) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const pushed = useLiveAutoRun();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<SwitchFailure | null>(null);
@@ -42,7 +45,7 @@ export function AutoRunToggle({
   const toggle = async (): Promise<void> => {
     if (readOnly || state === null) return;
     setBusy(true);
-    const result = await putSwitch(!state.enabled);
+    const result = await putSwitch(!state.enabled, locale);
     setBusy(false);
     if ("error" in result) return setFailure({ message: result.error, seen: pushed });
     setFailure(null);
@@ -51,16 +54,25 @@ export function AutoRunToggle({
 
   const enabled = state?.enabled === true;
   return (
-    <div className="toolbar-stack auto-run" title={error ?? describeSchedule(state)}>
+    <div className="toolbar-stack auto-run" title={error ?? describeSchedule(state, locale)}>
       <AutoRunControl
         readOnly={readOnly}
         enabled={enabled}
         state={state}
         busy={busy}
+        locale={locale}
         onToggle={() => void toggle()}
       />
       <span className={error !== null ? "stack-sub auto-run-error" : "stack-sub"}>
-        {error !== null ? (switchError ? "切换失败" : "读取失败") : subline(state, timeZone)}
+        {error !== null
+          ? switchError
+            ? isEn
+              ? "Toggle failed"
+              : "切换失败"
+            : isEn
+              ? "Load failed"
+              : "读取失败"
+          : subline(state, timeZone, locale)}
       </span>
     </div>
   );
@@ -71,18 +83,21 @@ interface AutoRunControlProps {
   enabled: boolean;
   state: AutoRunView | null;
   busy: boolean;
+  locale: Locale;
   onToggle: () => void;
 }
 
-function AutoRunControl({ readOnly, enabled, state, busy, onToggle }: AutoRunControlProps) {
+function AutoRunControl({ readOnly, enabled, state, busy, locale, onToggle }: AutoRunControlProps) {
+  const isEn = locale === "en";
+  const label = isEn ? "Auto-Run" : "自动任务";
   if (readOnly) {
     return (
-      <div className="auto-run-readonly-status" aria-label="自动任务状态（只读）">
+      <div className="auto-run-readonly-status" aria-label={isEn ? "Auto-Run status (read-only)" : "自动任务状态（只读）"}>
         <span
           className={`auto-run-dot ${enabled ? "dot-running" : "dot-paused"}`}
           aria-hidden="true"
         />
-        <span>自动任务</span>
+        <span>{label}</span>
       </div>
     );
   }
@@ -96,12 +111,12 @@ function AutoRunControl({ readOnly, enabled, state, busy, onToggle }: AutoRunCon
       onClick={onToggle}
     >
       <span className="auto-run-track" aria-hidden="true" />
-      自动任务
+      {label}
     </button>
   );
 }
 
-async function putSwitch(enabled: boolean): Promise<AutoRunView | { error: string }> {
+async function putSwitch(enabled: boolean, locale: Locale): Promise<AutoRunView | { error: string }> {
   try {
     const response = await actionFetch("/api/auto-run", {
       method: "PUT",
@@ -109,7 +124,7 @@ async function putSwitch(enabled: boolean): Promise<AutoRunView | { error: strin
       body: JSON.stringify({ enabled }),
     });
     const body = (await response.json()) as AutoRunView & { error?: string };
-    return response.ok ? body : { error: body.error ?? "请求失败" };
+    return response.ok ? body : { error: body.error ?? (locale === "en" ? "Request failed" : "请求失败") };
   } catch (cause) {
     return { error: cause instanceof Error ? cause.message : String(cause) };
   }

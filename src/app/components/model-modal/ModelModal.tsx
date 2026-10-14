@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { orderProfileNames } from "@/core/profile-view";
 import type { PromptStandard } from "@/core/prompt";
+import { useI18n } from "@/i18n";
 import { PelicanCard } from "../card/PelicanCard";
 import { useProfiles } from "../profile/profiles-context";
 import { folderCell, upstreamOf } from "../timeline/effort-slots";
@@ -30,6 +31,8 @@ interface ModelModalProps {
  * 窗口定高，卡片在窗内滚动。
  */
 export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }: ModelModalProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const [showStandard, setShowStandard] = useState(false);
   const closeButton = useModalBehavior(onClose);
   const { profiles } = useProfiles();
@@ -60,7 +63,9 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
         {showStandard && standard && <ModelStandardPanel standard={standard} />}
         <div className="modal-body">
           {cards.length === 0 ? (
-            <p className="modal-empty">这一格的结果已被筛选隐藏</p>
+            <p className="modal-empty">
+              {isEn ? "Results in this cell are hidden by active filters" : "这一格的结果已被筛选隐藏"}
+            </p>
           ) : upstreams.length > 1 ? (
             <ProfileMatrix cards={cards} upstreams={upstreams} efforts={efforts} timeZone={timeZone} />
           ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/i18n";
 import { CheckList, type CheckItem } from "./CheckList";
 import { countFilteredGroups } from "./filter-badge";
 import type { FilterKey, HiddenFilters } from "./filters";
@@ -27,13 +28,15 @@ interface FilterMenuProps {
  * 按钮徽章为正在筛选的维度数，未筛选时不显示。
  */
 export function FilterMenu({ groups, hidden, onHidden, open, onToggle, onClose }: FilterMenuProps) {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
   const [activeKey, setActiveKey] = useState<FilterKey>("cli");
   const active = groups.find((group) => group.key === activeKey) ?? groups[0];
   const filteredCount = countFilteredGroups(groups, hidden);
 
   return (
     <Menu
-      label="筛选"
+      label={t.toolbar.filterButton}
       badge={filteredCount > 0 ? { text: String(filteredCount), filtered: true } : undefined}
       panelClassName="filter-panel"
       open={open}
@@ -41,8 +44,13 @@ export function FilterMenu({ groups, hidden, onHidden, open, onToggle, onClose }
       onClose={onClose}
     >
       <div className="filter-panel-head-bar">
-        <span className="filter-panel-title">结果筛选</span>
-        <button type="button" className="filter-panel-close-btn" onClick={onClose} aria-label="关闭">
+        <span className="filter-panel-title">{isEn ? "Filter Results" : "结果筛选"}</span>
+        <button
+          type="button"
+          className="filter-panel-close-btn"
+          onClick={onClose}
+          aria-label={t.common.actions.close}
+        >
           ✕
         </button>
       </div>

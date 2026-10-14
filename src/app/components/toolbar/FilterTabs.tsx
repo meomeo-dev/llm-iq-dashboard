@@ -1,3 +1,4 @@
+import { useI18n } from "@/i18n";
 import type { FilterGroup } from "./FilterMenu";
 import type { FilterKey, HiddenFilters } from "./filters";
 import { calculateFilterBadge } from "./filter-badge";
@@ -10,8 +11,9 @@ interface FilterTabsProps {
 }
 
 export function FilterTabs({ groups, activeKey, hidden, onSelectKey }: FilterTabsProps) {
+  const { locale } = useI18n();
   return (
-    <div className="filter-groups" role="tablist" aria-label="筛选维度">
+    <div className="filter-groups" role="tablist" aria-label={locale === "en" ? "Filter dimensions" : "筛选维度"}>
       {groups.map((group) => {
         const groupBadge = calculateFilterBadge(group.items, hidden[group.key]);
         return (

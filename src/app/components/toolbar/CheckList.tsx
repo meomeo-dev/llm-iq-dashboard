@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import {
   invertHidden,
   isAllShown,
@@ -27,6 +28,8 @@ interface CheckListProps {
  * 批量操作只作用于清单里列出的取值，当天未出现的取值保持不变。
  */
 export function CheckList({ items, hidden, onChange }: CheckListProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const values = items.map((item) => item.value);
   const allShown = isAllShown(hidden, values);
 
@@ -38,10 +41,10 @@ export function CheckList({ items, hidden, onChange }: CheckListProps) {
     <>
       <div className="check-bulk">
         <button type="button" onClick={showAll} disabled={allShown}>
-          全选
+          {isEn ? "All" : "全选"}
         </button>
         <button type="button" onClick={invert} disabled={items.length === 0}>
-          反选
+          {isEn ? "Invert" : "反选"}
         </button>
       </div>
       {items.map((item) => (

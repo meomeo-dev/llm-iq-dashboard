@@ -2,6 +2,7 @@
 
 import { forecastRound, usd } from "@/core/budget";
 import type { RunOptionsView } from "@/app/api/run/route";
+import { useI18n } from "@/i18n";
 
 interface RunForecastProps {
   costs: RunOptionsView["costs"];
@@ -14,6 +15,8 @@ interface RunForecastProps {
  * 并与配置上限对照。超出时不禁用按钮：执行方按上限逐次放行，超出的调用不会发起。
  */
 export function RunForecast({ costs, targetIds, promptCount }: RunForecastProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const expected = new Map(Object.entries(costs.expected));
   const forecast = forecastRound(targetIds, promptCount, expected);
   if (forecast.calls === 0) return null;
@@ -22,16 +25,38 @@ export function RunForecast({ costs, targetIds, promptCount }: RunForecastProps)
   const overRound = perRoundUsd !== null && forecast.usd > perRoundUsd;
   const overDay = perDayUsd !== null && costs.spentLastDayUsd + forecast.usd > perDayUsd;
   const caps = [
-    perRoundUsd !== null ? `每轮上限 ${usd(perRoundUsd)}` : null,
-    perDayUsd !== null ? `24 小时内已用 ${usd(costs.spentLastDayUsd)} / 上限 ${usd(perDayUsd)}` : null,
+    perRoundUsd !== null ? (isEn ? `Round cap ${usd(perRoundUsd)}` : `每轮上限 ${usd(perRoundUsd)}`) : null,
+    perDayUsd !== null
+      ? isEn
+        ? `24h spent ${usd(costs.spentLastDayUsd)} / cap ${usd(perDayUsd)}`
+        : `24 小时内已用 ${usd(costs.spentLastDayUsd)} / 上限 ${usd(perDayUsd)}`
+      : null,
   ].filter((text) => text !== null);
 
   return (
     <p className={overRound || overDay ? "run-once-forecast over" : "run-once-forecast"}>
-      <span title="按各目标最近几次调用的平均 API 等价成本估算">预计 ≈ {usd(forecast.usd)}</span>
-      {forecast.unpricedCalls > 0 && <span>另有 {forecast.unpricedCalls} 次暂无价格参考</span>}
-      {caps.length > 0 ? caps.map((text) => <span key={text}>{text}</span>) : <span>未设预算上限</span>}
-      {(overRound || overDay) && <span>超出上限的调用不会发起</span>}
+      <span
+        title={
+          isEn
+            ? "Estimated from recent average API-equivalent cost per target"
+            : "按各目标最近几次调用的平均 API 等价成本估算"
+        }
+      >
+        {isEn ? `Est. ≈ ${usd(forecast.usd)}` : `预计 ≈ ${usd(forecast.usd)}`}
+      </span>
+      {forecast.unpricedCalls > 0 && (
+        <span>
+          {isEn ? `+${forecast.unpricedCalls} calls unpriced` : `另有 ${forecast.unpricedCalls} 次暂无价格参考`}
+        </span>
+      )}
+      {caps.length > 0 ? (
+        caps.map((text) => <span key={text}>{text}</span>)
+      ) : (
+        <span>{isEn ? "No budget cap set" : "未设预算上限"}</span>
+      )}
+      {(overRound || overDay) && (
+        <span>{isEn ? "Calls exceeding cap will be skipped" : "超出上限的调用不会发起"}</span>
+      )}
     </p>
   );
 }

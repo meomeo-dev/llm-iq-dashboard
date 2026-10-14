@@ -7,7 +7,8 @@
  */
 
 import type { DashboardCard } from "@/core/types";
-import { formatBytes, formatCost, formatDuration, JUDGE_TEXT, judgeCostBrief, STATUS_TEXT } from "../card/card-format";
+import type { Locale } from "@/i18n/types";
+import { formatBytes, formatCost, formatDuration, judgeCostBrief, judgeText, statusText } from "../card/card-format";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { artImageSvg, escapeXml, thumbnailKey, type ArtThumbnail, type Palette, type RenderedSvg } from "./timeline-svg";
 
@@ -33,6 +34,8 @@ export interface ResultSetExport {
   palette: Palette;
   /** `embed` 把作品嵌进图里（PNG / SVG）；`blank` 只留白底框并报告位置，帧由 GIF 录制逐帧画上 */
   artMode?: "embed" | "blank";
+  /** 导出图语言；缺省为 zh-CN 以保持既有单测兼容 */
+  locale?: Locale;
 }
 
 /** 一件作品在合成图里的内框（已扣掉图框内边距），GIF 逐帧把作品画在这里 */
@@ -143,13 +146,13 @@ function emptyCell(x: number, y: number, palette: Palette): string {
 
 /** 一张卡片：表头（时刻、徽章）、图框、页脚；与看板卡片一样不画副标题 */
 function cardSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number, artFrames: ArtFrame[]): string {
-  const { palette } = input;
+  const { palette, locale = "zh-CN" } = input;
   return (
     `<rect x="${x}" y="${y}" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" rx="10" fill="${palette.surface}" stroke="${palette.border}"/>` +
     text(x + CARD_PAD, y + 26, formatZonedDateTime(new Date(card.startedAt), input.timeZone), palette.text, 14.5, 'font-weight="600"') +
     badgeRows(cardBadges(input, card), x + CARD_PAD, y + 38, CARD_WIDTH - CARD_PAD * 2, palette) +
     frameSvg(input, card, x, y + CARD_HEAD, artFrames) +
-    footerSvg(card, x, y + CARD_HEAD + FRAME_HEIGHT, palette)
+    footerSvg(card, x, y + CARD_HEAD + FRAME_HEIGHT, palette, locale)
   );
 }
 
@@ -162,10 +165,10 @@ interface Badge {
 
 /** 与看板卡片表头同序：CLI、模型、强度、上游（登录态不出）、题目、变量取值 */
 function cardBadges(input: ResultSetExport, card: DashboardCard): Badge[] {
-  const { palette } = input;
+  const { palette, locale = "zh-CN" } = input;
   const folded = card.effortHonored && card.appliedEffort !== card.effort;
   const effort: Badge = !card.effortHonored
-    ? { label: "强度不可调", color: palette.warn }
+    ? { label: locale === "en" ? "effort fixed" : "强度不可调", color: palette.warn }
     : { label: `effort: ${folded ? `${card.effort} → ${card.appliedEffort}` : card.effort}`, color: folded ? palette.warn : palette.textDim };
   const column = input.columns.find((item) => item.name === card.profile);
   const profile: Badge[] = card.profile === undefined ? [] : [{ label: column?.label ?? card.profile, color: palette.text, dot: column?.color ?? null }];
@@ -205,7 +208,7 @@ function badgeRows(badges: readonly Badge[], x: number, y: number, maxWidth: num
 
 /** 图框：成功的作品白底等比居中；失败或已脱敏的用条纹底写原因 */
 function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: number, artFrames: ArtFrame[]): string {
-  const { palette } = input;
+  const { palette, locale = "zh-CN" } = input;
   const key = thumbnailKey(card);
   const art = input.thumbnails.get(key);
   if (art !== undefined) {
@@ -216,7 +219,7 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
     return white + artImageSvg(art, inner);
   }
   const redacted = card.status === "ok";
-  const status = redacted ? "已脱敏，未发布" : STATUS_TEXT[card.status];
+  const status = redacted ? (locale === "en" ? "Redacted, unpublished" : "已脱敏，未发布") : statusText(card.status, locale);
   const reason = card.error ?? status;
   const color = card.status === "no-svg" ? palette.warn : card.status === "ok" ? palette.textDim : palette.err;
   const lines = wrap(reason, CARD_WIDTH - 40, 12, 5);
@@ -232,32 +235,38 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
  * 页脚三行，与看板同序：第一行状态与紧跟的评审结论（按结论染色）；第二行耗时、成本、体积、触发方式；
  * 有裁判成本时第三行「裁判 $x · n 次问答 · token」
  */
-function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette): string {
+function footerSvg(card: DashboardCard, x: number, y: number, palette: Palette, locale: Locale): string {
+  const en = locale === "en";
   const redacted = card.status === "ok" && card.svgFile === null;
   const statusColor = redacted ? palette.textDim : card.status === "ok" ? palette.ok : card.status === "no-svg" ? palette.warn : palette.err;
-  const status = redacted ? "已脱敏" : STATUS_TEXT[card.status];
-  const cost = `${card.profile === undefined ? "" : "官价 "}${formatCost(card.cost)}`;
-  const second = [`耗时 ${formatDuration(card.durationMs)}`, cost, card.svgBytes === null ? null : formatBytes(card.svgBytes), card.trigger === "schedule" ? "定时" : "手动"]
+  const status = redacted ? (en ? "Redacted" : "已脱敏") : statusText(card.status, locale);
+  const cost = `${card.profile === undefined ? "" : en ? "List " : "官价 "}${formatCost(card.cost)}`;
+  const second = [
+    en ? `Time ${formatDuration(card.durationMs)}` : `耗时 ${formatDuration(card.durationMs)}`,
+    cost,
+    card.svgBytes === null ? null : formatBytes(card.svgBytes),
+    card.trigger === "schedule" ? (en ? "Scheduled" : "定时") : en ? "Manual" : "手动",
+  ]
     .filter((item): item is string => item !== null)
     .join("   ");
   const statusWidth = estimateWidth(status, 12.5);
-  const judge = judgeTag(card, palette);
+  const judge = judgeTag(card, palette, locale);
   return (
     `<line x1="${x}" y1="${y}" x2="${x + CARD_WIDTH}" y2="${y}" stroke="${palette.border}"/>` +
     text(x + CARD_PAD, y + 19, status, statusColor, 12.5, 'font-weight="600"') +
     (judge === null ? "" : text(x + CARD_PAD + statusWidth + 12, y + 19, judge.label, judge.color, 12, 'font-weight="600"')) +
     text(x + CARD_PAD, y + 38, clip(second, CARD_WIDTH - CARD_PAD * 2, 12), palette.textDim, 12) +
-    (card.judgeCost == null ? "" : text(x + CARD_PAD, y + 57, clip(judgeCostBrief(card.judgeCost), CARD_WIDTH - CARD_PAD * 2, 12), palette.textDim, 12))
+    (card.judgeCost == null ? "" : text(x + CARD_PAD, y + 57, clip(judgeCostBrief(card.judgeCost, locale), CARD_WIDTH - CARD_PAD * 2, 12), palette.textDim, 12))
   );
 }
 
 /** 评审标签：与看板页脚同文案「智商在线 94」；没有评审记录的卡片不画 */
-function judgeTag(card: DashboardCard, palette: Palette): { label: string; color: string } | null {
+function judgeTag(card: DashboardCard, palette: Palette, locale: Locale): { label: string; color: string } | null {
   const judge = card.judge;
   if (judge == null) return null;
   const { verdict, score } = judge.total;
   const color = verdict === "online" ? palette.ok : verdict === "degraded" ? palette.err : palette.textDim;
-  return { label: `${JUDGE_TEXT[verdict]} ${score}`, color };
+  return { label: `${judgeText(verdict, locale)} ${score}`, color };
 }
 
 function stripesPattern(palette: Palette): string {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import { useModalBehavior } from "../model-modal/use-modal-behavior";
 import type { ProfileChoice } from "./run-once-profiles";
 import { toggled } from "./run-once-selection-utils";
@@ -33,17 +34,25 @@ export function RunOnceProfileModal({
   onStart,
   onCancel,
 }: RunOnceProfileModalProps) {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
   const closeButton = useModalBehavior(onCancel);
   const pickedCount = choices.filter((choice) => choice.available && picked.has(choice.id)).length;
   return (
     <div className="profile-modal-backdrop" onPointerDown={(event) => event.target === event.currentTarget && onCancel()}>
       <section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="run-once-profile-title">
         <header className="profile-modal-head">
-          <h2 id="run-once-profile-title">选择 Profile</h2>
+          <h2 id="run-once-profile-title">{isEn ? "Select Profiles" : "选择 Profile"}</h2>
           <p className="profile-modal-round" title={round}>
             {round}
           </p>
-          <button type="button" className="profile-modal-close" aria-label="关闭" ref={closeButton} onClick={onCancel}>
+          <button
+            type="button"
+            className="profile-modal-close"
+            aria-label={t.common.actions.close}
+            ref={closeButton}
+            onClick={onCancel}
+          >
             ×
           </button>
         </header>
@@ -70,10 +79,16 @@ export function RunOnceProfileModal({
           {loginOnlyNote !== null && <p className="profile-modal-note">{loginOnlyNote}</p>}
           <div className="profile-modal-actions">
             <button type="button" className="profile-modal-cancel" onClick={onCancel}>
-              取消
+              {t.common.actions.cancel}
             </button>
             <button type="button" className="run-once-start" disabled={busy || pickedCount === 0} onClick={onStart}>
-              {busy ? "发起中…" : `开始（${pickedCount} 个 Profile，共 ${calls} 次调用）`}
+              {busy
+                ? isEn
+                  ? "Starting…"
+                  : "发起中…"
+                : isEn
+                  ? `Start (${pickedCount} Profiles, ${calls} calls total)`
+                  : `开始（${pickedCount} 个 Profile，共 ${calls} 次调用）`}
             </button>
           </div>
         </footer>

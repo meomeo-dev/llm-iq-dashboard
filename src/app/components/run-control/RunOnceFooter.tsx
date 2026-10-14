@@ -1,6 +1,7 @@
 "use client";
 
 import type { RunOptionsView } from "@/app/api/run/route";
+import { useI18n, type Locale } from "@/i18n";
 import { RunForecast } from "./RunForecast";
 import type { StartMode } from "./run-once-profiles";
 import { StopRunButton } from "./StopRunButton";
@@ -22,12 +23,13 @@ interface RunOnceFooterProps {
 }
 
 /** 按钮文字：直接开始时带调用数，多上游时提示先选，一个都不可用时写原因 */
-function startLabel(mode: StartMode, busy: boolean, ownRunActive: boolean): string {
-  if (busy) return "发起中…";
-  if (ownRunActive) return "本轮执行中…";
-  if (mode.kind === "choose") return "选择 Profile 后开始";
+function startLabel(mode: StartMode, busy: boolean, ownRunActive: boolean, locale: Locale): string {
+  const isEn = locale === "en";
+  if (busy) return isEn ? "Starting…" : "发起中…";
+  if (ownRunActive) return isEn ? "Round running…" : "本轮执行中…";
+  if (mode.kind === "choose") return isEn ? "Select Profiles & Start" : "选择 Profile 后开始";
   if (mode.kind === "none") return mode.reason;
-  return `开始（${mode.calls} 次调用）`;
+  return isEn ? `Start (${mode.calls} calls)` : `开始（${mode.calls} 次调用）`;
 }
 
 export function RunOnceFooter({
@@ -42,6 +44,8 @@ export function RunOnceFooter({
   mode,
   onStart,
 }: RunOnceFooterProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const nothingToRun = mode.kind === "none" || (mode.kind === "direct" && mode.calls === 0);
   return (
     <footer className="run-once-foot">
@@ -50,9 +54,12 @@ export function RunOnceFooter({
       )}
       {notice !== null && <p className={`run-once-notice ${notice.kind}`}>{notice.text}</p>}
       {activeRunId !== null && !ownRunActive && (
-        <p className="run-once-notice error">轮次 {activeRunId} 仍在执行，跑完再发起</p>
+        <p className="run-once-notice error">
+          {isEn
+            ? `Round ${activeRunId} is still running; wait for it to finish`
+            : `轮次 ${activeRunId} 仍在执行，跑完再发起`}
+        </p>
       )}
-      {/* 可在此就地停止当前轮次 */}
       {activeRunId !== null && <StopRunButton runId={activeRunId} stopping={stopping} />}
       <button
         type="button"
@@ -60,7 +67,7 @@ export function RunOnceFooter({
         disabled={busy || nothingToRun || activeRunId !== null}
         onClick={onStart}
       >
-        {startLabel(mode, busy, ownRunActive)}
+        {startLabel(mode, busy, ownRunActive, locale)}
       </button>
     </footer>
   );

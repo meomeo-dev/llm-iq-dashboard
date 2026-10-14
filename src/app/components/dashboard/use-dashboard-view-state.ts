@@ -4,12 +4,14 @@ import { NO_FILTERS, type FilterKey, type HiddenFilters } from "../toolbar/filte
 import type { OpenCell } from "../timeline/RunGrid";
 import { useStoredTimeZone } from "../timeline/use-stored-time-zone";
 import { listTimeZones } from "../timeline/zoned-time";
+import { useI18n } from "@/i18n";
 import { useDayInUrl, useNow } from "./use-dashboard-time";
 import { useDashboardMoments } from "./use-dashboard-moments";
 
 /** 汇聚看板外壳的交互状态：筛选、单元格展开、时区、时间跳转与日期切换 */
 export function useDashboardViewState(props: DashboardProps) {
   const { readonly = false, remote = false, cards, runStarts, initialDay, scheduleTimeZone } = props;
+  const { locale } = useI18n();
   const [hidden, setHidden] = useState<HiddenFilters>(NO_FILTERS);
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   const [jumpCount, setJumpCount] = useState(0);
@@ -19,7 +21,7 @@ export function useDashboardViewState(props: DashboardProps) {
   const data = useDashboardMoments({ cards, runStarts, timeZone, now: useNow(), initialDay, isShowcase, hidden });
   useDayInUrl(data.pickedDay);
 
-  const timeZones = useMemo(() => (timeZone === null ? [] : listTimeZones(scheduleTimeZone)), [timeZone, scheduleTimeZone]);
+  const timeZones = useMemo(() => (timeZone === null ? [] : listTimeZones(scheduleTimeZone, locale)), [timeZone, scheduleTimeZone, locale]);
   const dayCards = useMemo(() => data.dayMoments.flatMap((m) => m.cards), [data.dayMoments]);
 
   const onHidden = (k: FilterKey, v: ReadonlySet<string>) => setHidden((c) => ({ ...c, [k]: v }));

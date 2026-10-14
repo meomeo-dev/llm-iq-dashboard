@@ -29,14 +29,16 @@ export interface I18nContextValue {
   toggleLocale: () => void;
   t: Messages;
   format: (template: string, params?: Record<string, string | number>) => string;
+  hasProvider: boolean;
 }
 
 const I18nContext = createContext<I18nContextValue>({
-  locale: DEFAULT_LOCALE,
+  locale: "zh-CN",
   setLocale: () => {},
   toggleLocale: () => {},
-  t: getMessages(DEFAULT_LOCALE),
+  t: getMessages("zh-CN"),
   format: formatText,
+  hasProvider: false,
 });
 
 function readClientStoredLocale(): Locale | null {
@@ -105,6 +107,7 @@ export function I18nProvider({
       toggleLocale,
       t: getMessages(locale),
       format: formatText,
+      hasProvider: true,
     }),
     [locale, setLocale, toggleLocale],
   );

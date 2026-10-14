@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/i18n";
 import type { DayOption } from "../timeline/moments";
 import {
   monthCells,
@@ -25,25 +26,38 @@ export function Calendar({
   todayKey: string;
   onPick: (dayKey: string) => void;
 }) {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
   const counts = new Map(days.map((day) => [day.dayKey, day.momentCount]));
   const [month, setMonth] = useState(() => monthOf(dayKey ?? todayKey));
   const cells = monthCells(month);
+  const weekdays = isEn ? t.toolbar.calendarWeekdays : WEEKDAYS;
 
   return (
-    <div className="calendar" role="dialog" aria-label="选择日期">
+    <div className="calendar" role="dialog" aria-label={isEn ? "Pick Date" : "选择日期"}>
       <div className="calendar-head">
-        <button type="button" className="calendar-nav" aria-label="上个月" onClick={() => setMonth(shiftMonth(month, -1))}>
+        <button
+          type="button"
+          className="calendar-nav"
+          aria-label={isEn ? "Previous month" : "上个月"}
+          onClick={() => setMonth(shiftMonth(month, -1))}
+        >
           ‹
         </button>
         <span className="calendar-month">
-          {month.year} 年 {month.month} 月
+          {isEn ? `${month.year}-${String(month.month).padStart(2, "0")}` : `${month.year} 年 ${month.month} 月`}
         </span>
-        <button type="button" className="calendar-nav" aria-label="下个月" onClick={() => setMonth(shiftMonth(month, 1))}>
+        <button
+          type="button"
+          className="calendar-nav"
+          aria-label={isEn ? "Next month" : "下个月"}
+          onClick={() => setMonth(shiftMonth(month, 1))}
+        >
           ›
         </button>
       </div>
       <div className="calendar-grid">
-        {WEEKDAYS.map((name) => (
+        {weekdays.map((name) => (
           <span key={name} className="calendar-weekday">
             {name}
           </span>
@@ -58,7 +72,7 @@ export function Calendar({
               className={["calendar-day", cell === dayKey && "selected", cell === todayKey && "today"].filter(Boolean).join(" ")}
               disabled={count === 0 && cell !== todayKey}
               aria-pressed={cell === dayKey}
-              title={count === 0 ? undefined : `${count} 轮`}
+              title={count === 0 ? undefined : isEn ? `${count} runs` : `${count} 轮`}
               onClick={() => onPick(cell)}
             >
               {Number(cell.slice(8, 10))}

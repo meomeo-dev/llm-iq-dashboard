@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "@/i18n";
 import type { Moment } from "../timeline/moments";
 import type { NowMark } from "../timeline/TimelineAxis";
 import type { OpenCell } from "../timeline/RunGrid";
@@ -44,12 +45,15 @@ export function DashboardBoard({
   onOpenCell,
   onPickDay,
 }: DashboardBoardProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   return (
     <main className="board">
       <section className="board-panel">
         <div className="board-head">
           <h2 className="board-title">
-            执行时间线 <span className="board-title-sub">（24 小时）</span>
+            {isEn ? "Execution Timeline " : "执行时间线 "}
+            <span className="board-title-sub">{isEn ? "(24 Hours)" : "（24 小时）"}</span>
           </h2>
           <SlotLegend slots={planSlots(efforts)} />
           <StatusLegend />

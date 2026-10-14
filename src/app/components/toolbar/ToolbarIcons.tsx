@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "@/i18n";
 
 /** 所有者登录入口图标（钥匙） */
 export function KeyIcon() {
@@ -44,14 +45,16 @@ export function GitHubIcon() {
 
 /** 只读展台的源码入口：新标签页打开项目仓库 */
 export function RepositoryLink() {
+  const { locale } = useI18n();
+  const label = locale === "en" ? "GitHub Repository" : "GitHub 仓库";
   return (
     <a
       className="icon-link"
       href={PROJECT_REPOSITORY_URL}
       target="_blank"
       rel="noopener noreferrer"
-      title="GitHub 仓库"
-      aria-label="GitHub 仓库"
+      title={label}
+      aria-label={label}
     >
       <GitHubIcon />
     </a>
@@ -60,12 +63,13 @@ export function RepositoryLink() {
 
 /** 品牌标识与名称 */
 export function ToolbarBrand() {
+  const { t } = useI18n();
   return (
-    <div className="brand" title="鹈鹕自行车基准">
+    <div className="brand" title={t.toolbar.brandTitle}>
       <span className="brand-mark" aria-hidden="true">
         &gt;_
       </span>
-      <h1 className="brand-title">鹈鹕自行车基准</h1>
+      <h1 className="brand-title">{t.toolbar.brandTitle}</h1>
     </div>
   );
 }

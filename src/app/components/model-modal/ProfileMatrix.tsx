@@ -2,6 +2,7 @@
 
 import { Fragment, type CSSProperties } from "react";
 import { DEFAULT_PROFILE, type DashboardCard } from "@/core/types";
+import { useI18n } from "@/i18n";
 import { PelicanCard } from "../card/PelicanCard";
 import { ProfileName } from "../profile/ProfileName";
 import { upstreamOf } from "../timeline/effort-slots";
@@ -26,6 +27,8 @@ export function matrixEfforts(cards: readonly DashboardCard[], efforts: readonly
  * 列标题是上游名，点开信息卡；登录态列标题不可点。
  */
 export function ProfileMatrix({ cards, upstreams, efforts, timeZone }: ProfileMatrixProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const style = { "--upstream-count": upstreams.length } as CSSProperties;
   const columnCards = (name: string): DashboardCard[] => cards.filter((card) => upstreamOf(card) === name);
   return (
@@ -34,7 +37,7 @@ export function ProfileMatrix({ cards, upstreams, efforts, timeZone }: ProfileMa
       {upstreams.map((name) => (
         <div key={name} className="profile-matrix-col">
           {name === DEFAULT_PROFILE ? (
-            <span className="profile-matrix-login">登录态</span>
+            <span className="profile-matrix-login">{isEn ? "Official Login" : "登录态"}</span>
           ) : (
             <ProfileName name={name} cards={columnCards(name)} />
           )}
@@ -45,7 +48,17 @@ export function ProfileMatrix({ cards, upstreams, efforts, timeZone }: ProfileMa
           <div className="profile-matrix-row">{effort}</div>
           {upstreams.map((name) => {
             const card = cards.find((item) => item.effort === effort && upstreamOf(item) === name);
-            if (card === undefined) return <div key={name} className="profile-matrix-empty" title={`${effort}：未运行`}>—</div>;
+            if (card === undefined) {
+              return (
+                <div
+                  key={name}
+                  className="profile-matrix-empty"
+                  title={isEn ? `${effort}: not run` : `${effort}：未运行`}
+                >
+                  —
+                </div>
+              );
+            }
             return <PelicanCard key={name} card={card} timeZone={timeZone} />;
           })}
         </Fragment>

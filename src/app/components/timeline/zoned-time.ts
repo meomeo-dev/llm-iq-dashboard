@@ -3,6 +3,8 @@
  * 日期键为 YYYY-MM-DD 的日历日期，本身不带时区；时区换算发生在生成日期键时。
  */
 
+import type { Locale } from "@/i18n/types";
+
 export interface TimeZoneOption {
   /** IANA 时区名，如 Asia/Shanghai */
   id: string;
@@ -10,7 +12,7 @@ export interface TimeZoneOption {
 }
 
 /** 常用时区；浏览器本地与调度时区由调用方插在最前面 */
-const COMMON_TIME_ZONES: readonly TimeZoneOption[] = [
+const COMMON_TIME_ZONES_ZH: readonly TimeZoneOption[] = [
   { id: "UTC", label: "UTC" },
   { id: "Asia/Shanghai", label: "上海" },
   { id: "Asia/Tokyo", label: "东京" },
@@ -22,6 +24,18 @@ const COMMON_TIME_ZONES: readonly TimeZoneOption[] = [
   { id: "America/Sao_Paulo", label: "圣保罗" },
 ];
 
+const COMMON_TIME_ZONES_EN: readonly TimeZoneOption[] = [
+  { id: "UTC", label: "UTC" },
+  { id: "Asia/Shanghai", label: "Shanghai" },
+  { id: "Asia/Tokyo", label: "Tokyo" },
+  { id: "Asia/Singapore", label: "Singapore" },
+  { id: "Europe/London", label: "London" },
+  { id: "Europe/Berlin", label: "Berlin" },
+  { id: "America/New_York", label: "New York" },
+  { id: "America/Los_Angeles", label: "Los Angeles" },
+  { id: "America/Sao_Paulo", label: "São Paulo" },
+];
+
 const SECONDS_PER_DAY = 86_400;
 
 export function browserTimeZone(): string {
@@ -29,11 +43,13 @@ export function browserTimeZone(): string {
 }
 
 /** 本机、调度时区在前，其后是常用时区；同一 IANA 名只保留第一个 */
-export function listTimeZones(scheduleTimeZone: string | null): TimeZoneOption[] {
-  const leading: TimeZoneOption[] = [{ id: browserTimeZone(), label: "本机" }];
-  if (scheduleTimeZone !== null) leading.push({ id: scheduleTimeZone, label: "调度时区" });
+export function listTimeZones(scheduleTimeZone: string | null, locale: Locale = "zh-CN"): TimeZoneOption[] {
+  const isEn = locale === "en";
+  const leading: TimeZoneOption[] = [{ id: browserTimeZone(), label: isEn ? "Local" : "本机" }];
+  if (scheduleTimeZone !== null) leading.push({ id: scheduleTimeZone, label: isEn ? "Schedule TZ" : "调度时区" });
+  const common = isEn ? COMMON_TIME_ZONES_EN : COMMON_TIME_ZONES_ZH;
   const seen = new Set<string>();
-  return [...leading, ...COMMON_TIME_ZONES].filter((option) => {
+  return [...leading, ...common].filter((option) => {
     if (seen.has(option.id)) return false;
     seen.add(option.id);
     return true;
@@ -129,10 +145,11 @@ export function offsetLabel(date: Date, timeZone: string): string {
 }
 
 /** 日期键的显示文字，如 “09/24 周四”；按 UTC 解析与格式化，星期不受本机时区影响 */
-export function formatDayLabel(dayKey: string): string {
+export function formatDayLabel(dayKey: string, locale: Locale = "zh-CN"): string {
   const date = new Date(`${dayKey}T00:00:00Z`);
-  const monthDay = date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", timeZone: "UTC" });
-  const weekday = date.toLocaleDateString("zh-CN", { weekday: "short", timeZone: "UTC" });
+  const intlLocale = locale === "en" ? "en-US" : "zh-CN";
+  const monthDay = date.toLocaleDateString(intlLocale, { month: "2-digit", day: "2-digit", timeZone: "UTC" });
+  const weekday = date.toLocaleDateString(intlLocale, { weekday: "short", timeZone: "UTC" });
   return `${monthDay} ${weekday}`;
 }
 

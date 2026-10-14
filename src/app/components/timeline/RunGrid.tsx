@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
+import { useI18n, type Locale } from "@/i18n";
 import { profileColor } from "../profile/profile-color";
 import { useProfiles } from "../profile/profiles-context";
 import { FolderTile } from "./FolderTile";
@@ -38,12 +39,13 @@ interface RunGridProps {
  */
 export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent }: RunGridProps) {
   const { profiles } = useProfiles();
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const cards = moments.flatMap((moment) => moment.cards);
   const showPrompt = new Set(cards.map((card) => card.promptId)).size > 1;
   const rows = listRows(cards);
   const slots = planSlots(efforts);
   const { columns, width, scale } = useMemo(() => layoutColumns(moments, CELL_WIDTH), [moments]);
-  // 今天定位到现在，其他日子定位到最后一轮
   const anchorX = now !== null ? timeX(now.fraction, scale) : (columns[columns.length - 1]?.x ?? null);
   const scroller = useScrollAnchor(anchorX, scrollKey);
 
@@ -52,8 +54,8 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
       <div className="matrix-labels">
         <div className="matrix-labels-spacer" />
         <div className="lane-head">
-          模型
-          <span className="lane-head-count">{rows.length} 个</span>
+          {isEn ? "Models" : "模型"}
+          <span className="lane-head-count">{isEn ? `${rows.length}` : `${rows.length} 个`}</span>
         </div>
         {rows.map((row) => {
           const rowCards = cards.filter((card) => rowKeyOf(card) === row.key);
@@ -63,7 +65,7 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
                 {row.cli} · {row.model}
               </span>
               {showPrompt && <span className="row-label-prompt">{row.promptId}</span>}
-              <RowUpstreams cards={rowCards} />
+              <RowUpstreams cards={rowCards} locale={locale} />
               <RowPassRate promptId={row.promptId} cards={rowCards} />
             </div>
           );
@@ -85,18 +87,23 @@ export function RunGrid({ scrollKey, now, moments, efforts, onOpen, emptyContent
           ))}
         </div>
       </div>
-      {moments.length === 0 && <p className="matrix-empty">{emptyContent ?? "没有符合筛选的结果"}</p>}
+      {moments.length === 0 && (
+        <p className="matrix-empty">
+          {emptyContent ?? (isEn ? "No results match the active filters" : "没有符合筛选的结果")}
+        </p>
+      )}
     </div>
   );
 }
 
 /** 行标题下的一排色点：这一行出现过的第三方上游，悬停显示名字；只有登录态时不渲染 */
-function RowUpstreams({ cards }: { cards: readonly DashboardCard[] }) {
+function RowUpstreams({ cards, locale }: { cards: readonly DashboardCard[]; locale: Locale }) {
   const { profiles } = useProfiles();
   const names = cellUpstreams(cards, profiles);
   if (names.length === 0) return null;
+  const joined = names.map((name) => profileLabel(name, profiles)).join(locale === "en" ? ", " : "、");
   return (
-    <span className="row-label-profiles" aria-label={`上游：${names.map((name) => profileLabel(name, profiles)).join("、")}`}>
+    <span className="row-label-profiles" aria-label={locale === "en" ? `Profiles: ${joined}` : `上游：${joined}`}>
       {names.map((name) => (
         <span key={name} className="profile-dot" style={{ background: profileColor(name) }} title={profileLabel(name, profiles)} />
       ))}
@@ -104,10 +111,6 @@ function RowUpstreams({ cards }: { cards: readonly DashboardCard[] }) {
   );
 }
 
-/**
- * scrollKey 变化时把锚点滚到视野中央。只依赖 scrollKey，现在线走动或数据刷新
- * 不会打断用户的手动滚动。
- */
 function useScrollAnchor(anchorX: number | null, scrollKey: string) {
   const scroller = useRef<HTMLDivElement>(null);
   const anchor = useRef(anchorX);

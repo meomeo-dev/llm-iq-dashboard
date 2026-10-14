@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "@/i18n";
 import type { DayOption } from "../timeline/moments";
 import { formatDayLabel } from "../timeline/zoned-time";
 import { Menu } from "../menu/Menu";
@@ -32,18 +33,25 @@ export function ToolbarMenus({
   onToggleMenu,
   onCloseMenus,
 }: ToolbarMenusProps) {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
   return (
-    <nav className="menus" aria-label="日期与筛选">
+    <nav className="menus" aria-label={isEn ? "Date and filters" : "日期与筛选"}>
       <Menu
-        label={dayKey === null ? "日期" : formatDayLabel(dayKey)}
+        label={dayKey === null ? (isEn ? "Date" : "日期") : formatDayLabel(dayKey, locale)}
         panelClassName="day-panel"
         open={openMenu === "day"}
         onToggle={() => onToggleMenu("day")}
         onClose={onCloseMenus}
       >
         <div className="day-panel-head-bar">
-          <span className="day-panel-title">选择日期</span>
-          <button type="button" className="day-panel-close-btn" onClick={onCloseMenus} aria-label="关闭">
+          <span className="day-panel-title">{isEn ? "Pick Date" : "选择日期"}</span>
+          <button
+            type="button"
+            className="day-panel-close-btn"
+            onClick={onCloseMenus}
+            aria-label={t.common.actions.close}
+          >
             ✕
           </button>
         </div>

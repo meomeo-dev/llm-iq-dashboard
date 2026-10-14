@@ -1,13 +1,14 @@
 import React from "react";
 import type { DashboardCard } from "@/core/types";
+import { LanguageSwitch, useI18n } from "@/i18n";
 import {
   costTitle,
-  judgeCostLine,
   formatBytes,
   formatCost,
   formatDuration,
+  judgeCostLine,
   rawSvgHref,
-  STATUS_TEXT,
+  statusText,
 } from "../components/card/card-format";
 import { ProfileName } from "../components/profile/ProfileName";
 import { useStoredTimeZone } from "../components/timeline/use-stored-time-zone";
@@ -22,9 +23,10 @@ interface ArtViewerHeadProps {
 
 /**
  * 单件作品查看页顶部元信息与下载/原始 SVG 操作按钮。
- * 经第三方上游的作品标题写 `model · effort` 并带可点开信息卡的上游名；登录态与原来相同。
  */
 export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
+  const { locale, hasProvider } = useI18n();
+  const isEn = locale === "en";
   const [timeZone] = useStoredTimeZone();
   const raw = rawSvgHref(card);
   const effort = card.appliedEffort !== card.effort ? `${card.effort} → ${card.appliedEffort}` : card.effort;
@@ -45,11 +47,15 @@ export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
           <span suppressHydrationWarning>
             {timeZone === null ? card.startedAt : formatZonedDateTime(new Date(card.startedAt), timeZone)}
           </span>
-          <span className={`status-text status-${card.status}`}>{STATUS_TEXT[card.status]}</span>
-          <span>耗时 {formatDuration(card.durationMs)}</span>
-          <span title={costTitle(card)}>API 等价 {formatCost(card.cost)}</span>
+          <span className={`status-text status-${card.status}`}>{statusText(card.status, locale)}</span>
+          <span>{isEn ? `Time ${formatDuration(card.durationMs)}` : `耗时 ${formatDuration(card.durationMs)}`}</span>
+          <span title={costTitle(card, locale)}>
+            {isEn ? `API-Eq ${formatCost(card.cost)}` : `API 等价 ${formatCost(card.cost)}`}
+          </span>
           {card.judgeCost != null && (
-            <span title={judgeCostLine(card.judgeCost) ?? ""}>评审 {formatCost(card.judgeCost.cost)}</span>
+            <span title={judgeCostLine(card.judgeCost, locale) ?? ""}>
+              {isEn ? `Judge ${formatCost(card.judgeCost.cost)}` : `评审 ${formatCost(card.judgeCost.cost)}`}
+            </span>
           )}
           {card.svgBytes !== null && <span>{formatBytes(card.svgBytes)}</span>}
           <span>effort: {effort}</span>
@@ -64,16 +70,21 @@ export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
         </div>
       </div>
       <ArtViewerSiblings current={card} siblings={siblings} />
-      {raw !== null && (
+      {raw !== null ? (
         <nav className="viewer-actions">
+          {hasProvider && <LanguageSwitch />}
           <a href={raw} target="_blank" rel="noopener">
-            原始 SVG ↗
+            {isEn ? "Raw SVG ↗" : "原始 SVG ↗"}
           </a>
           <a href={raw} download={card.svgFile ?? undefined}>
-            下载
+            {isEn ? "Download" : "下载"}
           </a>
         </nav>
-      )}
+      ) : hasProvider ? (
+        <nav className="viewer-actions">
+          <LanguageSwitch />
+        </nav>
+      ) : null}
     </header>
   );
 }

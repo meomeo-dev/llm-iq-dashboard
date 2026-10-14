@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from "react";
 import type { RunOptionsView } from "@/app/api/run/route";
+import { PROFILE_CLIS } from "@/core/config/profiles";
+import { useI18n, type Locale } from "@/i18n";
 import { Menu } from "../menu/Menu";
 import { prefetchRunOptions } from "./run-once-api";
-import { PROFILE_CLIS } from "@/core/config/profiles";
 import { describeRound } from "./run-once-profiles";
 import { RunOnceFooter } from "./RunOnceFooter";
 import { RunOnceHeadBar } from "./RunOnceHeadBar";
@@ -27,25 +28,29 @@ interface RunOnceMenuProps {
 }
 
 /** 范围里不支持上游、只跑登录态的组合 */
-function loginOnlyNote(options: RunOptionsView, picked: ReadonlySet<string>): string | null {
+function loginOnlyNote(options: RunOptionsView, picked: ReadonlySet<string>, locale: Locale): string | null {
   const names = options.targets
     .filter((target) => picked.has(target.id) && !(PROFILE_CLIS as readonly string[]).includes(target.cli))
     .map((target) => `${target.cli} ${target.model}`);
   if (names.length === 0) return null;
-  return `${[...new Set(names)].join("、")} 只跑登录态`;
+  const uniq = [...new Set(names)];
+  return locale === "en" ? `${uniq.join(", ")} run on official login only` : `${uniq.join("、")} 只跑登录态`;
 }
 
 /**
  * “跑一次”：选范围（CLI · 模型 × 强度）与题目，发起一轮单次批任务。
- * 前端缓存（localStorage）记住用户的最后一次选择；
- * 首次进入/无缓存时默认模型全选，题目仅勾选“动态鹈鹕车”。
- * 范围里的 codex 组合有多个可用上游时，开始前先在二级模态里勾选上游。
  */
 export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
+  const { locale } = useI18n();
+  const isEn = locale === "en";
   const selection = useRunOnceSelection();
   const launcher = useRunOnceLauncher(selection.targets, selection.prompts, selection.candidateOverridesRef);
   const { applyResolved } = selection;
-  const { options } = useRunOnceOptions(open, useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]), launcher.setNotice);
+  const { options } = useRunOnceOptions(
+    open,
+    useCallback((next: RunOptionsView) => applyResolved(next), [applyResolved]),
+    launcher.setNotice,
+  );
   const [mobileTab, setMobileTab] = useState<"models" | "prompts">("models");
 
   const activeRunId = useActiveRunId(options, launcher.startedRunId);
@@ -61,37 +66,25 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
   });
 
   return (
-    <Menu label={<span className="run-once-label">▶ 跑一次</span>} align="right" panelClassName="run-once-panel" open={open} onToggle={onToggle} onClose={profiles.closePanel}>
-      {options === null && launcher.notice === null && <p className="run-empty">正在读取可选范围…</p>}
+    <Menu
+      label={<span className="run-once-label">{isEn ? "▶ Run Once" : "▶ 跑一次"}</span>}
+      align="right"
+      panelClassName="run-once-panel"
+      open={open}
+      onToggle={onToggle}
+      onClose={profiles.closePanel}
+    >
+      {options === null && launcher.notice === null && (
+        <p className="run-empty">{isEn ? "Loading available targets…" : "正在读取可选范围…"}</p>
+      )}
       {options !== null && (
-        <>
-          <RunOnceHeadBar
-            mobileTab={mobileTab}
-            onSelectTab={setMobileTab}
-            pickedTargets={selection.targets}
-            allTargetIds={options.targets.map((t) => t.id)}
-            onPickTargets={selection.updateTargets}
-            pickedPrompts={selection.prompts}
-            allPromptIds={options.prompts.map((p) => p.id)}
-            onPickPrompts={selection.updatePrompts}
-            onClose={onClose}
-          />
-          <div className="run-once-body">
-            <section className={`run-once-col run-once-col-models ${mobileTab === "models" ? "tab-visible" : ""}`}>
-              <ModelRows targets={options.targets} picked={selection.targets} onPick={selection.updateTargets} />
-              <UnavailableNote unavailable={options.unavailable} />
-            </section>
-            <section className={`run-once-col run-once-col-prompts ${mobileTab === "prompts" ? "tab-visible" : ""}`}>
-              <RunOncePrompts
-                prompts={options.prompts}
-                picked={selection.prompts}
-                candidateOverrides={selection.candidateOverrides}
-                onPick={selection.updatePrompts}
-                onOverrideCandidate={selection.updateCandidateOverride}
-              />
-            </section>
-          </div>
-        </>
+        <RunOnceOptionsBody
+          options={options}
+          mobileTab={mobileTab}
+          onSelectTab={setMobileTab}
+          selection={selection}
+          onClose={onClose}
+        />
       )}
       <RunOnceFooter
         options={options}
@@ -111,7 +104,7 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
           choices={profiles.choices}
           picked={profiles.pickedProfiles}
           calls={profiles.chosenCalls}
-          loginOnlyNote={loginOnlyNote(options, selection.targets)}
+          loginOnlyNote={loginOnlyNote(options, selection.targets, locale)}
           busy={launcher.busy}
           onPick={selection.updateProfiles}
           onStart={profiles.startChosen}
@@ -119,5 +112,50 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
         />
       )}
     </Menu>
+  );
+}
+
+function RunOnceOptionsBody({
+  options,
+  mobileTab,
+  onSelectTab,
+  selection,
+  onClose,
+}: {
+  options: RunOptionsView;
+  mobileTab: "models" | "prompts";
+  onSelectTab: (tab: "models" | "prompts") => void;
+  selection: ReturnType<typeof useRunOnceSelection>;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <RunOnceHeadBar
+        mobileTab={mobileTab}
+        onSelectTab={onSelectTab}
+        pickedTargets={selection.targets}
+        allTargetIds={options.targets.map((t) => t.id)}
+        onPickTargets={selection.updateTargets}
+        pickedPrompts={selection.prompts}
+        allPromptIds={options.prompts.map((p) => p.id)}
+        onPickPrompts={selection.updatePrompts}
+        onClose={onClose}
+      />
+      <div className="run-once-body">
+        <section className={`run-once-col run-once-col-models ${mobileTab === "models" ? "tab-visible" : ""}`}>
+          <ModelRows targets={options.targets} picked={selection.targets} onPick={selection.updateTargets} />
+          <UnavailableNote unavailable={options.unavailable} />
+        </section>
+        <section className={`run-once-col run-once-col-prompts ${mobileTab === "prompts" ? "tab-visible" : ""}`}>
+          <RunOncePrompts
+            prompts={options.prompts}
+            picked={selection.prompts}
+            candidateOverrides={selection.candidateOverrides}
+            onPick={selection.updatePrompts}
+            onOverrideCandidate={selection.updateCandidateOverride}
+          />
+        </section>
+      </div>
+    </>
   );
 }

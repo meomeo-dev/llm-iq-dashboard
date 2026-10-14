@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  localizeCandidateLabel,
+  localizePromptGroupLabel,
+  localizePromptLabel,
+  useI18n,
+  type Locale,
+} from "@/i18n";
 import { groupPrompts, type PromptGroup, type PromptOption } from "./run-once-grouping";
 import { toggled } from "./run-once-selection-utils";
 
@@ -18,6 +25,7 @@ export function RunOncePrompts({
   onPick,
   onOverrideCandidate,
 }: RunOncePromptsProps) {
+  const { locale } = useI18n();
   const groups = groupPrompts(prompts);
   return (
     <>
@@ -25,6 +33,7 @@ export function RunOncePrompts({
         <PromptGroupSection
           key={group.name}
           group={group}
+          locale={locale}
           picked={picked}
           candidateOverrides={candidateOverrides}
           onPick={onPick}
@@ -37,6 +46,7 @@ export function RunOncePrompts({
 
 interface PromptGroupSectionProps {
   group: PromptGroup;
+  locale: Locale;
   picked: ReadonlySet<string>;
   candidateOverrides: Record<string, string>;
   onPick: (next: ReadonlySet<string>) => void;
@@ -45,6 +55,7 @@ interface PromptGroupSectionProps {
 
 function PromptGroupSection({
   group,
+  locale,
   picked,
   candidateOverrides,
   onPick,
@@ -52,11 +63,12 @@ function PromptGroupSection({
 }: PromptGroupSectionProps) {
   return (
     <div className="run-once-group">
-      <div className="run-once-group-header">{group.name}</div>
+      <div className="run-once-group-header">{localizePromptGroupLabel(group.name, locale)}</div>
       {group.items.map((prompt) => (
         <PromptItemRow
           key={prompt.id}
           prompt={prompt}
+          locale={locale}
           isChecked={picked.has(prompt.id)}
           overrideCandidateId={candidateOverrides[prompt.id] ?? ""}
           onToggle={() => onPick(toggled(picked, [prompt.id]))}
@@ -69,6 +81,7 @@ function PromptGroupSection({
 
 interface PromptItemRowProps {
   prompt: PromptOption;
+  locale: Locale;
   isChecked: boolean;
   overrideCandidateId: string;
   onToggle: () => void;
@@ -77,20 +90,22 @@ interface PromptItemRowProps {
 
 function PromptItemRow({
   prompt,
+  locale,
   isChecked,
   overrideCandidateId,
   onToggle,
   onOverrideCandidate,
 }: PromptItemRowProps) {
+  const isEn = locale === "en";
   const hasCandidates = (prompt.candidates?.length ?? 0) > 0;
+  const displayLabel = localizePromptLabel(prompt.id, prompt.label, locale);
   return (
     <div className="run-once-prompt-item">
       <label className="menu-row">
         <input type="checkbox" checked={isChecked} onChange={onToggle} />
         <span className="checkbox" aria-hidden="true" />
-        {/* 名字与 id 分两行：场景轮换题的名字截断后只能靠 id 区分 */}
-        <span className="menu-row-name run-once-prompt" title={prompt.label}>
-          {prompt.label}
+        <span className="menu-row-name run-once-prompt" title={displayLabel}>
+          {displayLabel}
           <small>{prompt.id}</small>
         </span>
       </label>
@@ -101,12 +116,12 @@ function PromptItemRow({
             className="candidate-picker-select"
             value={overrideCandidateId}
             onChange={(e) => onOverrideCandidate(e.target.value)}
-            aria-label={`${prompt.label} 指定场景`}
+            aria-label={isEn ? `${displayLabel} specific scene` : `${displayLabel} 指定场景`}
           >
-            <option value="">随机 / 每日轮换（默认）</option>
+            <option value="">{isEn ? "Random / Daily Rotation (Default)" : "随机 / 每日轮换（默认）"}</option>
             {prompt.candidates!.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.label}
+                {localizeCandidateLabel(c.id, c.label, locale)}
               </option>
             ))}
           </select>

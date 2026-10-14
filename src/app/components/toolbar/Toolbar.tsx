@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { DashboardCard } from "@/core/types";
+import { useI18n } from "@/i18n";
 import type { FilterKey, HiddenFilters } from "./filters";
 import { ToolbarBrand } from "./ToolbarIcons";
 import { ToolbarCenter } from "./ToolbarCenter";
@@ -56,7 +57,11 @@ export function Toolbar(props: ToolbarProps) {
   } = props;
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { profiles } = useProfiles();
-  const filterGroups = useMemo(() => buildFilterGroups(cards, promptLabels, profiles), [cards, promptLabels, profiles]);
+  const { locale } = useI18n();
+  const filterGroups = useMemo(
+    () => buildFilterGroups(cards, promptLabels, profiles, locale),
+    [cards, promptLabels, profiles, locale],
+  );
   const toggleMenu = (id: string): void => setOpenMenu((current) => (current === id ? null : id));
   const closeMenus = (): void => setOpenMenu(null);
 

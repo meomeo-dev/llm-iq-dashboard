@@ -7,6 +7,7 @@
 
 import type { ProfileView } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
+import type { Locale } from "@/i18n/types";
 import { profileColor } from "../profile/profile-color";
 import {
   cellUpstreams,
@@ -78,6 +79,8 @@ export interface TimelineExport {
   palette: Palette;
   /** 配置里的上游，决定色点顺序与每角的代表作品；缺省为空 */
   profiles?: readonly ProfileView[];
+  /** 导出图语言；缺省为 zh-CN 以保持既有单测兼容 */
+  locale?: Locale;
 }
 
 /** 成功作品的导出图：data URI 与 viewBox 尺寸（推不出 viewBox 时为 null） */
@@ -148,7 +151,8 @@ export function renderTimelineSvg(input: TimelineExport): RenderedSvg {
   ];
   const lanesTop = matrixTop + LANE_HEAD_HEIGHT;
   if (input.moments.length === 0) {
-    body.push(text(trackLeft + 24, lanesTop + 40, "这一天还没有符合筛选的执行结果", input.palette.textDim, 14));
+    const emptyText = input.locale === "en" ? "No benchmark results match the active filters on this day" : "这一天还没有符合筛选的执行结果";
+    body.push(text(trackLeft + 24, lanesTop + 40, emptyText, input.palette.textDim, 14));
   }
 
   const svg =
@@ -188,8 +192,9 @@ function axis({ input, columns, scale, trackLeft }: TrackContext, top: number): 
   }
   if (input.now !== null && nowX !== null) {
     const lineX = x(nowX);
+    const nowLabel = input.locale === "en" ? `Now ${input.now.clock}` : `现在 ${input.now.clock}`;
     parts.push(`<line x1="${lineX}" y1="${top + 12}" x2="${lineX}" y2="${top + AXIS_HEIGHT + HEAD_HEIGHT}" stroke="${palette.accent}" stroke-width="2" stroke-dasharray="4 4"/>`);
-    parts.push(text(lineX + 6, top + 12, `现在 ${input.now.clock}`, palette.accent, 11));
+    parts.push(text(lineX + 6, top + 12, nowLabel, palette.accent, 11));
   }
   return parts.join("");
 }
@@ -197,15 +202,16 @@ function axis({ input, columns, scale, trackLeft }: TrackContext, top: number): 
 /** 矩阵表头：模型数与格内位置图例 */
 function matrixHead({ input, width, slots, trackLeft }: TrackContext, rowCount: number, top: number): string {
   const { palette } = input;
+  const en = input.locale === "en";
   const legend = slots
-    .map((slot, index) => `${SLOT_CORNERS[index] ?? ""} ${slot === OVERFLOW_SLOT ? "其余档位" : slot}`)
+    .map((slot, index) => `${SLOT_CORNERS[index] ?? ""} ${slot === OVERFLOW_SLOT ? (en ? "others" : "其余档位") : slot}`)
     .join("    ");
   return (
     `<rect x="0" y="${top}" width="${width}" height="${LANE_HEAD_HEIGHT}" fill="${palette.surface}"/>` +
     line(0, top + LANE_HEAD_HEIGHT, width, top + LANE_HEAD_HEIGHT, palette.border, 1) +
-    text(PAD, top + 23, "模型", palette.text, 13, 'font-weight="600"') +
-    text(PAD + 36, top + 23, `${rowCount} 个`, palette.textFaint, 12) +
-    (legend === "" ? "" : text(trackLeft + 12, top + 23, `格内位置    ${legend}`, palette.textDim, 12))
+    text(PAD, top + 23, en ? "Models" : "模型", palette.text, 13, 'font-weight="600"') +
+    text(PAD + (en ? 52 : 36), top + 23, en ? String(rowCount) : `${rowCount} 个`, palette.textFaint, 12) +
+    (legend === "" ? "" : text(trackLeft + 12, top + 23, `${en ? "Tile corners" : "格内位置"}    ${legend}`, palette.textDim, 12))
   );
 }
 
@@ -232,7 +238,7 @@ export interface LabelLine {
 
 /** 画行标签所需的最小上下文，横版的行与竖版的列头共用 */
 export interface LabelContext {
-  input: Pick<TimelineExport, "palette" | "profiles">;
+  input: Pick<TimelineExport, "palette" | "profiles" | "locale">;
   showPrompt: boolean;
 }
 
@@ -255,7 +261,7 @@ function rowLabelSvg(context: TrackContext, row: Row, rowCards: readonly Dashboa
 
 /** 行标签各行：名称、题目、上游色点、通过率，左对齐在 x；横版画在行左，竖版画在列头 */
 export function labelLines(context: LabelContext, row: Row, rowCards: readonly DashboardCard[], x = PAD): LabelLine[] {
-  const { palette, profiles = [] } = context.input;
+  const { palette, profiles = [], locale } = context.input;
   const lines: LabelLine[] = [{ height: 18, draw: (y) => text(x, y + 13, `${row.cli} · ${row.model}`, palette.text, 12) }];
   if (context.showPrompt) lines.push({ height: 16, draw: (y) => text(x, y + 12, row.promptId, palette.textFaint, 11) });
   // 行标题下的上游色点，与看板一致；只有登录态时不画
@@ -266,16 +272,17 @@ export function labelLines(context: LabelContext, row: Row, rowCards: readonly D
       draw: (y) => upstreams.map((name, index) => `<circle cx="${x + 4 + index * 12}" cy="${y + 9}" r="4" fill="${profileColor(name)}"/>`).join(""),
     });
   }
-  return [...lines, ...passRateLines(row.promptId, rowCards, palette, x)];
+  return [...lines, ...passRateLines(row.promptId, rowCards, palette, x, locale)];
 }
 
 /** 鹈鹕通过率：「合计 在线/总数」加按强度分列的树状行，与看板 RowPassRate 同口径；无评分标准不画 */
-function passRateLines(promptId: string, cards: readonly DashboardCard[], palette: Palette, x: number): LabelLine[] {
+function passRateLines(promptId: string, cards: readonly DashboardCard[], palette: Palette, x: number, locale?: Locale): LabelLine[] {
   const rate = rowPassRate(promptId, cards);
   if (rate === null) return [];
   const last = rate.byEffort.length - 1;
+  const totalLabel = locale === "en" ? `Total ${rate.total.online}/${rate.total.total}` : `合计 ${rate.total.online}/${rate.total.total}`;
   // 合计行含看板 .row-pass 的 4px 上边距
-  const total: LabelLine = { height: 22, draw: (y) => text(x, y + 17, `合计 ${rate.total.online}/${rate.total.total}`, palette.textDim, 12) };
+  const total: LabelLine = { height: 22, draw: (y) => text(x, y + 17, totalLabel, palette.textDim, 12) };
   const byEffort = rate.byEffort.map(
     (item, index): LabelLine => ({
       height: 18,

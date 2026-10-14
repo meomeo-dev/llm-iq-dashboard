@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/i18n";
 import { momentHealth } from "./moments";
 import {
   AXIS_HEIGHT,
@@ -34,6 +35,7 @@ interface TimelineAxisProps {
  * 指回准确时刻。与下方矩阵共用滚动容器。
  */
 export function TimelineAxis({ columns, width, now, scale = UNIFORM_SCALE }: TimelineAxisProps) {
+  const { locale } = useI18n();
   const nowX = now === null ? null : timeX(now.fraction, scale);
   const headY = AXIS_HEIGHT + HEAD_HEIGHT / 2;
   const atHour = (hour: number): number => hourX(hour, scale);
@@ -72,7 +74,7 @@ export function TimelineAxis({ columns, width, now, scale = UNIFORM_SCALE }: Tim
       ))}
       {now !== null && nowX !== null && (
         <span className="now-label" style={{ left: nowX }}>
-          现在 {now.clock}
+          {locale === "en" ? `Now ${now.clock}` : `现在 ${now.clock}`}
         </span>
       )}
     </div>
