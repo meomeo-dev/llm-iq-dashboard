@@ -42,6 +42,7 @@ const CODEX_FALLBACK: ProbedModel[] = [
 ];
 
 const AGY_FALLBACK: ProbedModel[] = [
+  { id: "gemini-4-argon", displayName: "Gemini 4 Argon", efforts: ["low", "medium", "high"], description: null },
   { id: "gemini-3.8-flash", displayName: "Gemini 3.8 Flash", efforts: ["low", "medium", "high"], description: null },
   { id: "gemini-3.7-flash", displayName: "Gemini 3.7 Flash", efforts: ["low", "medium", "high"], description: null },
   { id: "gemini-3.6-flash", displayName: "Gemini 3.6 Flash", efforts: ["low", "medium", "high"], description: null },

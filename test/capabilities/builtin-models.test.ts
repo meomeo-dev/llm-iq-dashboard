@@ -12,7 +12,9 @@ test("三家 CLI 都带当前模型", () => {
   const codex = builtinModels("codex").map((model) => model.id);
   for (const id of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-astra", "gpt-6-luna"]) assert.ok(codex.includes(id), id);
   const agy = builtinModels("agy").map((model) => model.id);
-  for (const id of ["gemini-3.8-flash", "gemini-3.1-pro", "claude-sonnet-4-6"]) assert.ok(agy.includes(id), id);
+  for (const id of ["gemini-4-argon", "gemini-3.8-flash", "gemini-3.1-pro", "claude-sonnet-4-6"]) {
+    assert.ok(agy.includes(id), id);
+  }
 });
 
 test("内置档位只用合法强度，id 在各自 CLI 内唯一", () => {
