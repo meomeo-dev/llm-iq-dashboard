@@ -5,15 +5,22 @@
 
 ## [未发布]
 
+## [0.8.0] - 2026-10-15
+
 ### 新增
 
+- 全栈中英双语国际化（`en` 缺省 / `zh-CN`）：提供零外部依赖的双语字典与 SSR + 客户端零闪烁语言协商（`pelican_locale` Cookie / `localStorage` + `Accept-Language`，不改 URL 路由）；看板、艺术品查看器、评审抽屉、配置台、设备配对页及导出的横竖版时间线/结果集（SVG / PNG / GIF）全面支持中英切换；题库标签、黄金标准与评审标准 `G1`–`G5` / `C1`–`C9` 在展示层双语映射，底层发给 CLI 的提示词模板与磁盘 `run.json` / `.judge.json` schema 保持不变；核心文档建立 `.md` 与 `.zh-CN.md` 成对互链。
+- `agy` 能力目录新增内置模型 `gemini-4-argon` 并同步价格目录锁文件。
 - 只读展台的工具栏在「只读展台」徽章旁加 GitHub 图标，新标签页打开项目源码仓库。
-
 - 题库新增十道动态题：经典基准扩展两道（`animated-armadillo-fishnet-mars-v1` 动态火星网袜犰狳、
   `animated-lemur-scooter-front-v1` 动态环尾狐猴），与 2026-09 分组八道（等轴测初代 PC、橙屏 CRT、
   十秒机架、相机爆炸图，动力学人手，鱼跃入云非模态遮挡、海岛宝箱包含拓扑、树下读者复合遮挡）。
   「跑一次」的题目清单加「2026-09」分组，经典分组收入两道扩展题；来源考证见
   `docs/benchmark-provenance.md`。
+
+### 变更
+
+- 收敛活跃题库与单次执行分组：将「2026 前沿工程评测 (FE-1 ~ FE-8)」、「2026 前沿视觉特效 (VFX)」与「微观物理与前沿探索」三个分组（共 31 道题目）移入 `ARCHIVED_PROMPTS` 归档，从 `BUILTIN_PROMPTS` 与「跑一次」面板中移除展示，活跃内置题库精简为 23 道题目（160 个候选条目）；历史运行记录的题目解析、参考标准与双语候选映射自动回退检索 `ARCHIVED_PROMPTS`，保持向下兼容。
 
 ### 修复
 
@@ -182,7 +189,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.7.0...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.8.0
 [0.7.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.7.0
 [0.6.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.2
 [0.6.1]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.1
