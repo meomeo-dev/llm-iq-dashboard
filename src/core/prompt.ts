@@ -62,7 +62,7 @@ export {
   PULSAR_JET_PROMPT,
 } from "./prompt/data-frontier-visual";
 
-export { BUILTIN_PROMPTS } from "./prompt/builtin";
+export { BUILTIN_PROMPTS, ARCHIVED_PROMPTS } from "./prompt/builtin";
 
 export {
   buildRegistry,

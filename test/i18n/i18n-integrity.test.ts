@@ -31,7 +31,7 @@ const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
   "common.languageSwitchTitle",
 ]);
 const EXPECTED_BUILTIN_PROMPTS_SHA256 =
-  "97adfdad892945b18d21a8248265bd4886fb3f8722eed819c7b391e0d9ffe22b";
+  "747a7c7f4acd29bce9d0ae733eca91022c322498b898f89c1d56be0265946401";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
@@ -142,8 +142,8 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     }
   });
 
-  it("verifies all 54 BUILTIN_PROMPTS and 300 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
-    assert.equal(BUILTIN_PROMPTS.length, 54);
+  it("verifies all 23 BUILTIN_PROMPTS and 160 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
+    assert.equal(BUILTIN_PROMPTS.length, 23);
     const classic = BUILTIN_PROMPTS.find((p) => p.id === "classic-v1");
     assert.ok(classic);
     assert.equal(classic.template, "Generate an SVG of a pelican riding a bicycle");
@@ -202,7 +202,7 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
         assert.equal(localizedEn.candidates[i]?.text, origText, "localizePromptSpec must never alter candidate text");
       }
     }
-    assert.equal(candidateTotal, 300);
+    assert.equal(candidateTotal, 160);
   });
 
   it("verifies bilingual documentation pairs exist and contain reciprocal language switch links", () => {

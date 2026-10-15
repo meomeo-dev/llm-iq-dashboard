@@ -2,10 +2,14 @@
  * 提示词注册表构建与题目解析
  */
 
-import { BUILTIN_PROMPTS } from "./builtin";
+import { BUILTIN_PROMPTS, ARCHIVED_PROMPTS } from "./builtin";
 import type { PromptCandidate, PromptSpec, PromptStandard } from "./types";
 import { FRONTIER_INDIVIDUAL_PROMPT_MAP } from "../prompts";
 import { assertValidPromptSpec } from "../prompt-schema";
+
+const ARCHIVED_PROMPT_MAP: ReadonlyMap<string, PromptSpec> = new Map(
+  ARCHIVED_PROMPTS.map((spec) => [spec.id, spec]),
+);
 
 /** 合并内置条目与自定义条目；自定义条目覆盖不可变条目时抛错 */
 export function buildRegistry(
@@ -77,11 +81,19 @@ export function resolvePrompt(
   const individual = FRONTIER_INDIVIDUAL_PROMPT_MAP.get(id);
   if (individual) return individual;
 
-  // 2. 尝试从套题候选集（candidates）中检索并派生
-  const derived = deriveFromCandidates(registry, id);
+  // 2. 尝试从归档提示词表中检索
+  const archived = ARCHIVED_PROMPT_MAP.get(id);
+  if (archived) return archived;
+
+  // 3. 尝试从套题候选集（candidates）中检索并派生
+  const derived = deriveFromCandidates(registry, id) ?? deriveFromCandidates(ARCHIVED_PROMPT_MAP, id);
   if (derived) return derived;
 
-  const known = [...registry.keys(), ...FRONTIER_INDIVIDUAL_PROMPT_MAP.keys()].join(", ");
+  const known = [
+    ...registry.keys(),
+    ...FRONTIER_INDIVIDUAL_PROMPT_MAP.keys(),
+    ...ARCHIVED_PROMPT_MAP.keys(),
+  ].join(", ");
   throw new Error(`未知的 promptId "${id}"，已登记的提示词：${known}`);
 }
 
@@ -128,7 +140,7 @@ export function resolvePromptStandard(
   const actualCustom = isCustomList ? (bindingsOrCustom as readonly PromptSpec[]) : custom;
   try {
     const registry = buildRegistry(actualCustom);
-    const spec = registry.get(id);
+    const spec = registry.get(id) ?? ARCHIVED_PROMPT_MAP.get(id);
     const candidateKey = bindings?.["回目"] || bindings?.["candidate"];
 
     const candidateStd = matchCandidateStandard(spec, candidateKey);

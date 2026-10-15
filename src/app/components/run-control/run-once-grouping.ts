@@ -14,9 +14,6 @@ export type GroupKey =
   | "经典基准"
   | "四大名著（文学与叙事构图）"
   | "世界地标（微缩景观）"
-  | "2026 前沿工程评测 (FE-1 ~ FE-8)"
-  | "2026 前沿视觉特效 (VFX)"
-  | "微观物理与前沿探索"
   | "2026-09"
   | "自定义提示词";
 
@@ -25,7 +22,27 @@ export interface PromptGroup {
   items: PromptOption[];
 }
 
-const MICROPHYSICS_PROMPT_IDS: ReadonlySet<string> = new Set([
+const CLASSIC_PROMPT_IDS: ReadonlySet<string> = new Set([
+  "classic-v1",
+  "upgraded-v2",
+  "animated-pelican-v1",
+  "animated-armadillo-fishnet-mars-v1",
+  "animated-lemur-scooter-front-v1",
+]);
+
+const SEPTEMBER_2026_PROMPT_IDS: ReadonlySet<string> = new Set([
+  "animated-iso-vintage-pc-v1",
+  "animated-iso-amber-crt-v1",
+  "animated-iso-server-rack-v1",
+  "animated-iso-camera-exploded-v1",
+  "animated-human-hand-kinetic-v1",
+  "animated-fish-cloud-amodal-v1",
+  "animated-island-chest-containment-v1",
+  "animated-tree-reader-occlusion-v1",
+]);
+
+const EXCLUDED_PROMPT_PREFIXES = ["fe-", "vfx-"];
+const EXCLUDED_PROMPT_IDS: ReadonlySet<string> = new Set([
   "clock-v1",
   "penrose-v1",
   "ice-water-v1",
@@ -53,24 +70,10 @@ const MICROPHYSICS_PROMPT_IDS: ReadonlySet<string> = new Set([
   "pulsar-jet",
 ]);
 
-const CLASSIC_PROMPT_IDS: ReadonlySet<string> = new Set([
-  "classic-v1",
-  "upgraded-v2",
-  "animated-pelican-v1",
-  "animated-armadillo-fishnet-mars-v1",
-  "animated-lemur-scooter-front-v1",
-]);
-
-const SEPTEMBER_2026_PROMPT_IDS: ReadonlySet<string> = new Set([
-  "animated-iso-vintage-pc-v1",
-  "animated-iso-amber-crt-v1",
-  "animated-iso-server-rack-v1",
-  "animated-iso-camera-exploded-v1",
-  "animated-human-hand-kinetic-v1",
-  "animated-fish-cloud-amodal-v1",
-  "animated-island-chest-containment-v1",
-  "animated-tree-reader-occlusion-v1",
-]);
+export function isPromptExcludedFromDisplay(id: string): boolean {
+  if (EXCLUDED_PROMPT_IDS.has(id)) return true;
+  return EXCLUDED_PROMPT_PREFIXES.some((prefix) => id.startsWith(prefix));
+}
 
 export function classifyPrompt(p: PromptOption): GroupKey {
   if (CLASSIC_PROMPT_IDS.has(p.id)) return "经典基准";
@@ -83,9 +86,6 @@ export function classifyPrompt(p: PromptOption): GroupKey {
     return "四大名著（文学与叙事构图）";
   }
   if (p.id.startsWith("landmarks-")) return "世界地标（微缩景观）";
-  if (p.id.startsWith("fe-")) return "2026 前沿工程评测 (FE-1 ~ FE-8)";
-  if (p.id.startsWith("vfx-")) return "2026 前沿视觉特效 (VFX)";
-  if (MICROPHYSICS_PROMPT_IDS.has(p.id)) return "微观物理与前沿探索";
   if (SEPTEMBER_2026_PROMPT_IDS.has(p.id)) return "2026-09";
   return "自定义提示词";
 }
@@ -95,14 +95,12 @@ export function groupPrompts(promptList: readonly PromptOption[]): PromptGroup[]
     "经典基准": [],
     "四大名著（文学与叙事构图）": [],
     "世界地标（微缩景观）": [],
-    "2026 前沿工程评测 (FE-1 ~ FE-8)": [],
-    "2026 前沿视觉特效 (VFX)": [],
-    "微观物理与前沿探索": [],
     "2026-09": [],
     "自定义提示词": [],
   };
 
   for (const p of promptList) {
+    if (isPromptExcludedFromDisplay(p.id)) continue;
     groups[classifyPrompt(p)].push(p);
   }
 

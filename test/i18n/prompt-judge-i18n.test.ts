@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ANIMATED_PELICAN_RUBRIC, type DetailKind } from "../../src/core/judge/schema";
-import { BUILTIN_PROMPTS, promptLifecycle } from "../../src/core/prompt";
+import { BUILTIN_PROMPTS, ARCHIVED_PROMPTS, promptLifecycle } from "../../src/core/prompt";
 import { FRONTIER_INDIVIDUAL_PROMPT_MAP } from "../../src/core/prompts";
 import {
   localizeCandidateLabel,
@@ -18,8 +18,8 @@ import {
 const CJK_RE = /[\u4e00-\u9fff]/;
 
 describe("prompt and judge metadata i18n (M2-03)", () => {
-  it("localizes all 54 builtin prompts, 300 candidates, and 140 frontier specs into English and Chinese without mutating templates", () => {
-    assert.equal(BUILTIN_PROMPTS.length, 54);
+  it("localizes all builtin prompts, candidates, and 140 frontier specs into English and Chinese without mutating templates", () => {
+    assert.equal(BUILTIN_PROMPTS.length, 23);
     let candidateCount = 0;
 
     for (const spec of BUILTIN_PROMPTS) {
@@ -67,7 +67,14 @@ describe("prompt and judge metadata i18n (M2-03)", () => {
       }
     }
 
-    assert.equal(candidateCount, 300);
+    assert.equal(candidateCount, 160);
+
+    let archivedCandidateCount = 0;
+    for (const spec of ARCHIVED_PROMPTS) {
+      archivedCandidateCount += spec.candidates?.length ?? 0;
+    }
+    assert.equal(archivedCandidateCount, 140);
+    assert.equal(candidateCount + archivedCandidateCount, 300);
 
     const frontierEntries = [...FRONTIER_INDIVIDUAL_PROMPT_MAP.entries()];
     assert.equal(frontierEntries.length, 140);

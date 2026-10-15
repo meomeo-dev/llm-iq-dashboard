@@ -45,14 +45,7 @@ describe("run-once-grouping", () => {
       assert.equal(classifyPrompt({ id: "landmarks-v1", label: "地标", defaultSelected: false }), "世界地标（微缩景观）");
     });
 
-    test("前沿工程与前沿特效分类", () => {
-      assert.equal(classifyPrompt({ id: "fe-1-cad", label: "CAD", defaultSelected: false }), "2026 前沿工程评测 (FE-1 ~ FE-8)");
-      assert.equal(classifyPrompt({ id: "vfx-particle", label: "粒子", defaultSelected: false }), "2026 前沿视觉特效 (VFX)");
-    });
-
-    test("微观物理与自定义提示词分类", () => {
-      assert.equal(classifyPrompt({ id: "quantum-double-slit-v1", label: "双缝", defaultSelected: false }), "微观物理与前沿探索");
-      assert.equal(classifyPrompt({ id: "tokamak-plasma", label: "托卡马克", defaultSelected: false }), "微观物理与前沿探索");
+    test("自定义提示词分类", () => {
       assert.equal(classifyPrompt({ id: "custom-prompt-abc", label: "自定义", defaultSelected: false }), "自定义提示词");
     });
   });
@@ -62,32 +55,44 @@ describe("run-once-grouping", () => {
       const prompts: PromptOption[] = [
         { id: "custom-abc", label: "自定义", defaultSelected: false },
         { id: "classic-v1", label: "经典", defaultSelected: false },
-        { id: "fe-1", label: "工程", defaultSelected: false },
       ];
       const groups = groupPrompts(prompts);
-      assert.equal(groups.length, 3);
+      assert.equal(groups.length, 2);
       assert.equal(groups[0]?.name, "经典基准");
-      assert.equal(groups[1]?.name, "2026 前沿工程评测 (FE-1 ~ FE-8)");
-      assert.equal(groups[2]?.name, "自定义提示词");
+      assert.equal(groups[1]?.name, "自定义提示词");
       assert.equal(groups[0]?.items[0]?.id, "classic-v1");
     });
 
-    test("全部分组顺序严格保证 2026-09 紧随微观物理之后", () => {
+    test("已移除的前沿工程、前沿视效及微观物理题目被排除在展示之外", () => {
+      const prompts: PromptOption[] = [
+        { id: "fe-ai-v1", label: "前沿AI", defaultSelected: false },
+        { id: "vfx-sim-v1", label: "前沿视效", defaultSelected: false },
+        { id: "quantum-double-slit-v1", label: "量子双缝", defaultSelected: false },
+        { id: "clock-v1", label: "时钟", defaultSelected: false },
+        { id: "classic-v1", label: "经典", defaultSelected: false },
+      ];
+      const groups = groupPrompts(prompts);
+      assert.equal(groups.length, 1);
+      assert.equal(groups[0]?.name, "经典基准");
+      assert.equal(groups[0]?.items[0]?.id, "classic-v1");
+    });
+
+    test("全部分组顺序严格保证 2026-09 紧随四大名著/世界地标之后", () => {
       const allPrompts: PromptOption[] = [
         { id: "custom-abc", label: "自定义", defaultSelected: false },
         { id: "animated-iso-vintage-pc-v1", label: "复古PC", defaultSelected: false },
-        { id: "quantum-double-slit-v1", label: "量子双缝", defaultSelected: false },
+        { id: "landmarks-v1", label: "地标", defaultSelected: false },
         { id: "classic-v1", label: "经典", defaultSelected: false },
       ];
       const groups = groupPrompts(allPrompts);
       const names = groups.map((g) => g.name);
       assert.deepEqual(names, [
         "经典基准",
-        "微观物理与前沿探索",
+        "世界地标（微缩景观）",
         "2026-09",
         "自定义提示词",
       ]);
-      assert.equal(names.indexOf("2026-09"), names.indexOf("微观物理与前沿探索") + 1);
+      assert.equal(names.indexOf("2026-09"), names.indexOf("世界地标（微缩景观）") + 1);
     });
 
     test("空输入返回空数组", () => {

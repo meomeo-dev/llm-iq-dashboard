@@ -3,7 +3,7 @@
  */
 
 import type { Locale } from "../../../i18n/types";
-import { BUILTIN_PROMPTS } from "../../prompt/builtin";
+import { BUILTIN_PROMPTS, ARCHIVED_PROMPTS } from "../../prompt/builtin";
 import type {
   PromptCandidate,
   PromptSpec,
@@ -90,7 +90,7 @@ function getCandidateLookup(): CandidateLookup {
   if (cachedLookup) return cachedLookup;
   const byId = new Map<string, CandidateLookupEntry>();
   const byLabel = new Map<string, CandidateLookupEntry>();
-  for (const spec of BUILTIN_PROMPTS) {
+  for (const spec of [...BUILTIN_PROMPTS, ...ARCHIVED_PROMPTS]) {
     for (const cand of spec.candidates) {
       const enLabel =
         computeCandidateEnLabel(cand.id, cand.label, cand.text) ?? cand.label;
