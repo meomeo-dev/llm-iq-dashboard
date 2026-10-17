@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 选型依据 | ARCH-001（accepted） |
-| 最近回填 | 2026-10-14 |
+| 最近回填 | 2026-10-17 |
 
 ### 变更记录
 
@@ -35,6 +35,7 @@
 | [ACR-021](revisions/ACR-021-judge-ai-locate.md) | 2026-10-01 | 裁判先看首帧定位四类部位的取景框，程序按框重切细节表再打分；几何推断只作兜底 | §3 §4 |
 | [ACR-023](revisions/ACR-023-data-repo-web-config.md) | 2026-10-03 | 数据仓地址 `dataRepo.repository` 在配置页可改，执行器按地址 clone 本地副本、origin 不一致拒绝同步，GitHub App 以地址为目标仓 | §4 §5 |
 | Sprint M2 | 2026-10-14 | Sprint M2（中英双语全栈国际化改造）：新增 `src/i18n/` 与 `src/core/prompts/i18n/`，对外文档切换为 `.md` 英文主版与 `.zh-CN.md` 中文互链，回填 §1、§3、§7 | §1 §3 §7 |
+| [ACR-024](revisions/ACR-024-model-fingerprint.md) | 2026-10-17 | 模型指纹核验模块：面向对象 `Probe` & `PromptCodec`、以 2 为底 JSD 与配对无重叠自检、三家 CLI 零工具隔离、`fingerprint:*` 命令与 `/fingerprint` 看板 | §1 §2 §3 §4 §5 §6 §7 |
 
 ## 0. 技术选型总览
 
@@ -75,15 +76,15 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   取源码、按地址缓存，在浏览器端净化、id 加前缀后挂进作品框的 shadow root（样式隔离），按 viewBox
   比例以容器查询单位定尺寸，viewBox 外的内容不显示。整页数据刷新只由推送的完成数变化触发，
   没有定时刷新（ACR-003）。
-- 推送的来源：看板进程用 chokidar 监听 `auto-run.json`、`scheduler.json` 与最近几轮的
-  `progress.json`，写入方是哪个进程都一样；执行进程被直接杀掉、下一次触发点到期这两种不落盘的
+- 推送的来源：看板进程用 chokidar 监听 `auto-run.json`、`scheduler.json`、最近几轮的
+  `progress.json` 以及模型指纹作业 `data/model-fingerprint/jobs/*.json`，写入方是哪个进程都一样；执行进程被直接杀掉、下一次触发点到期这两种不落盘的
   变化，由看板进程内的计时器复核后推送。
-- 执行进程与看板互不相识：执行方写 `data/runs/{runId}/progress.json`，看板按 pid 判断执行进程
-  是否存活；分容器部署时看不到对方的 pid，改按执行器心跳判断（ACR-008）。
+- 执行进程与看板互不相识：执行方写 `data/runs/{runId}/progress.json`（或指纹作业 `data/model-fingerprint/jobs/{jobId}.json`），看板按 pid 判断执行进程
+  是否存活；分容器部署时看不到对方的 pid，改按执行器心跳判断（ACR-008、ACR-024）。
 - 看板分公开与所有者两个视角（ACR-007）：没有设备 cookie 的请求只能读结果；配置、发起与停止
-  执行、自动任务开关要求配对过的设备。
-- 一次只跑一轮：看板与调度器都先查进度文件里有无存活的未结束轮次。手动发起时有轮次在跑直接拒绝；
-  定时到点时有轮次在跑则排队（`scheduler.json` 的 `pending`，看板显示「排队中」），每 15 秒看一次，
+  执行、自动任务开关与模型指纹核验（`/fingerprint`）要求配对过的设备。
+- 一次只跑一轮（含模型指纹作业双向互斥，ACR-024）：看板、调度器与指纹命令都先通过 `findActiveWork()` 检查有无存活的未结束鹈鹕轮次（含 AI 评审 `isJudging` 阶段）或活跃的模型指纹作业（`fill` / `check`）。手动发起时有活动工作直接拒绝（409）；
+  定时到点时有活动工作则排队（`scheduler.json` 的 `pending`，看板显示「排队中」），每 15 秒看一次，
   空下来立即开跑；队列只容一轮，排队期间再到点只合并。进程退出排队作废。
 - “跑一次”的范围是组合（`cli · model · effort`）× 题目 × 上游：范围里有支持上游的 CLI 且可用
   上游不止一个时，开始前在二级模态里勾选上游；服务端把组合 × 上游展开成本轮目标，矩阵没有的
@@ -109,25 +110,26 @@ run-once（tsx）──写──▶ data/        └─ 调用 ──▶ claude 
   `schedule` 只定节奏，到点是否执行只看 `auto-run.json`。
 - 变量与候选轮换的状态（`variable-state.json`）是定时序列的账本：手动轮次在“每轮一换”下只预览
   下一格、不落盘，定时序列的覆盖顺序不受插队影响。
-- 停止一轮（`POST /api/run/cancel`）同样只经文件：看板写 `data/runs/{runId}/cancel.json`，执行
-  这一轮的进程（看板或调度器）每秒检查一次，接住后不再发起排队中的调用、按超时的同一路径终止
+- 停止一轮（`POST /api/run/cancel` 或 `POST /api/fingerprint` `action: "cancel"`）同样只经文件：看板写 `data/runs/{runId}/cancel.json` 或 `data/model-fingerprint/jobs/{jobId}.cancel.json`，执行
+  进程每秒检查一次，接住后不再发起排队中的调用、按超时的同一路径终止
   执行中的调用，整轮以 `cancelledAt` 结束。
 
 ## 2. 端与进程
 
 | 端 | 形态 | 入口 | 面向谁 | 模块 |
 |---|---|---|---|---|
-| dashboard | web | `pnpm dashboard:prod`（生产，:3000）/ `pnpm dev --port 3001`（开发） | 看板读者、配置维护者 | timeline, run-status, run-control, config-editor, art-viewer, export |
+| dashboard | web | `pnpm dashboard:prod`（生产，:3000）/ `pnpm dev --port 3001`（开发） | 看板读者、配置维护者 | timeline, run-status, run-control, config-editor, art-viewer, export, model-fingerprint |
 | scheduler | worker | `pnpm scheduler`（`src/bin/scheduler.ts`） | 无人值守 | schedule, auto-run-switch, orchestration, retention |
 | run-once | cli | `pnpm run:once`（`src/bin/run-once.ts`） | 仓库所有者 | orchestration |
-| runner | worker | `pnpm runner`（`src/bin/runner.ts`），分容器部署时代替 scheduler | 无人值守 | schedule, requests, orchestration, sync, github-auth |
+| model-fingerprint | cli | `pnpm fingerprint:status\|fill\|check\|self-test\|rescore`（`src/bin/model-fingerprint.ts`） | 仓库所有者 | model-fingerprint |
+| runner | worker | `pnpm runner`（`src/bin/runner.ts`），分容器部署时代替 scheduler | 无人值守 | schedule, requests, orchestration, sync, github-auth, model-fingerprint |
 | pair | cli | `pnpm pair`（`src/bin/pair.ts`） | 仓库所有者 | auth |
 
 各端都是 TypeScript：看板为 Next.js 15 + React 19；其余为 Node 22 + tsx，与看板共用 `src/core`。
-看板分两个视角（ACR-007）：公开只读结果；配对过的浏览器是所有者，可配置、跑一次与开关自动任务。
+看板分两个视角（ACR-007）：公开只读结果；配对过的浏览器是所有者，可配置、跑一次、开关自动任务与使用 `/fingerprint` 模型指纹核验台。
 分容器部署时看板不在进程内执行调用（`PELICAN_RUNNER=external`），把请求写成 `data/requests/`
-下的文件交给 runner（ACR-008）。数据仓动作（预演 / 导出 / 确认发布 / 推送）、CLI 就绪检查与
-GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有动作互斥锁与结果（ACR-010、ACR-011）。
+下的文件交给 runner（ACR-008）。数据仓动作（预演 / 导出 / 确认发布 / 推送）、CLI 就绪检查、
+GitHub 授权的令牌交换以及模型指纹的补采 / 核验请求（`fingerprint-fill` / `fingerprint-check`）同样经请求文件交给 runner，看板只持有动作互斥锁与结果（ACR-010、ACR-011、ACR-024）。
 
 ## 3. 领域模块与硬约束
 
@@ -190,10 +192,15 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   解析后记在 `judges[]` 的 AI 那条（`usage`、`asks`），成本与作品同口径按价格目录在读取时折算
   （`DashboardCard.judgeCost`），卡片悬停、作品页标题行与评审抽屉都显示。历史作品不自动补评；
   `pnpm judge:backfill -- --ai` / `--ai-only` 仅在人工明确要求时按轮运行。
+- 模型指纹（ACR-024，缺省关闭，配置页「模型指纹」区块或 `modelFingerprint.enabled` 开启）：`src/core/model-fingerprint/`
+  将 6 个短文本探针（`uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`）封装为继承自 `Probe` 的面向对象子类，
+  内部把提示词生成与应答解析成对内聚为 `PromptCodec`（支持三级回退 `attempt.codecId ?? "default"` → `activeCodec` → `defaultCodec`），
+  不在磁盘固化静态 `accepted`/`rejected` 或提示词哈希，读取时实时解码校验并按以 2 为底的 Jensen-Shannon 散度（JSD）计算多粒度经验分布相似度；
+  通过按 `reqId` 无重叠留出折交叉验证标定各模型对阈值 $t_{C,A}$ 与自身第 5 百分位下界 $q_{0.05}$，按四态优先级状态机（`not-comparable` → `inconsistent` → `consistent` → `inconclusive`）给出核验结论。
 - CLI 调用不给模型任何工具（ACR-006）：claude `--tools ""`，codex `untrusted` 审批且适配器一律拒绝，
-  agy 仅 `--sandbox`。评审模式（ACR-020）是唯一例外：`AgentRequest.review` 声明工作目录里可读的
+  agy 仅 `--sandbox`。评审模式（ACR-020）是唯一放开读图的例外：`AgentRequest.review` 声明工作目录里可读的
   联系图文件，claude 改 `--tools Read`，codex 改 `never` 审批（只读沙箱内读取放行、写盘仍拦），
-  agy 不变；仍不给写盘与执行命令。
+  agy 不变；仍不给写盘与执行命令。模型指纹模式（`request.fingerprint: true`，ACR-024）进一步强化零工具与宿主隔离：使用固定空目录 `data/scratch/model-fingerprint`（不写考场规则、不附 `harnessGuard`），claude 在 `--tools ""` 基础上追加 `--safe-mode --no-session-persistence`，codex 为默认与非默认 profile 均构建写有 `project_doc_max_bytes = 0` 与 `persistence = "none"` 的临时 `CODEX_HOME`/`HOME`（默认 profile 以软链方式接入宿主机 `auth.json`），agy 跳过 `.mcp.json`、追加 `--disable-slash-commands` 并在捕获 `write_to_file` 时跳过读盘只记 `wroteFile: true`。
 - 宿主机上限高于配置（ACR-006）：`PELICAN_CEILING_*` 定预算上限，`extraArgs` 默认不放行。
 
 ## 4. 数据与存储
@@ -212,6 +219,11 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `cancel.json` 是停止请求，只写不删；被停下的轮次在 `run.json` 与 `progress.json` 里带
   `cancelledAt`，被取消的调用不进 `attempts`；因预算上限没有发起的调用同样不进
   `attempts`，第一次的原因记为 `budgetStop`。
+- `model-fingerprint/`（ACR-024，仅存本机，永不进入公开数据仓）：
+  - `samples/<cli>-<effort>/<model>/<probe>.json`：按逻辑思考强度分目录存放的基准样本集，经进程内路径级互斥锁 `withProbeFileLock` 与 `writeJsonPathAtomic` 原子更新；只存采样事实（`outcome`、`rawText`、`codecId?`、`valuesPerCall`、`wroteFile?`、`excluded?`），读取时实时解码展平；
+  - `archive/<cli>-<effort>/<model>/<probe>.<timestamp>.json`：执行 `--reset` 时移入的历史样本集快照，供 `rescore` 离线重算历史核验时回退查找；
+  - `checks/<yyyy-mm>/<checkId>.json`：每次核验的完整记录（含 `probeAttempts` 原始应答、四态判决 `verdict`、成对比较 `comparisons` 与离线重算历史 `rescores[]`）；
+  - `jobs/<jobId>.json`（及 `<jobId>.cancel.json`）：指纹采集/核验作业进度与取消标记，由 `live-hub.ts` 监听并推送 `fingerprint-job` SSE 事件。
 - 运行态：`auto-run.json`（自动任务开关，不存在即关闭）、`scheduler.json`（调度器 pid）、
   `variable-state.json`（候选集与变量的轮换状态）、`capabilities.json`。
 - JSON 一律写临时文件后原子替换；保留期由 `retention.days` 控制，修剪按台账分级：过期且
@@ -256,7 +268,11 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
   `judge.ai.judges[]`（`cli × model × effort`，须与被评作品厂商不同）与单次问答超时，配置页
   「作品评审」区块可改（ACR-020）。数据仓 `dataRepo`：GitHub 地址 `repository`、本地路径 `path`、
   `autoSync`、`push` 在配置页「数据仓设置」区块可改，写回按子键改值、关闭时删整段；题目白名单
-  `publishPrompts` 只在文件里改（ACR-023）。
+  `publishPrompts` 只在文件里改（ACR-023）。模型指纹 `modelFingerprint`（缺省关闭，ACR-024）：
+  `enabled`、逻辑思考强度 `effort`（缺省 `low`）、每探针基准样本数 `samplesPerProbe`（缺省 20，≥10）、
+  单次核验取值数 `valuesPerCheck`（缺省 1）、核验重试倍数 `checkAttempts`、自检目标准确率 `targetAccuracy`
+  （缺省 0.95）、补采调用上限倍数 `maxCallsFactor`、并发数 `concurrency`、默认探针列表 `probes`、基准模型列表
+  `references[]` 与按模型轻量定制提示词/单次条数的 `modelPrompts`，可在配置页「模型指纹」区块编辑并保留 YAML 注释写回。
 - `config/pricing-catalog.lock.json`：价格目录 Release 的 tag 与附件 sha256。
 - `config/smoke.config.yaml`：端到端冒烟配置。
 
@@ -267,18 +283,17 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 - 直出约束（`run.harnessGuard`，缺省关）：开启后 `run-attempt` 把一段要求直接作答的原文另起一段附在每条
   提示词之后再发给 CLI，抑制 harness 自带的联网检索、跑代码自测与截图自检；`prompts[].text` 仍是题目原文，
   附加原文整轮只记一次在 `run.json` 的 `harnessGuard`，随公开记录发布，读取方据此区分裸模型与带增强的结果。
-- 每轮以凭据文件的滑窗 HMAC 指纹比对模型输出，命中即拦截且作品与转录不落盘（ACR-006）；
-  指纹同时覆盖全部已登记 profile 的 API key，运行阶段与同步阶段同一口径（ACR-014、ACR-018）。
+- 每轮及每次模型指纹采样均以凭据文件的滑窗 HMAC 指纹比对模型输出（`buildConfigLeakGuard` 同时覆盖全部已登记 profile 的 API key），命中即拦截（指纹采样记 `outcome: "leak-blocked"` 且 `rawText` 置空串，绝不将含凭据原文写入磁盘；ACR-006、ACR-014、ACR-018、ACR-024）。
 - profile 的 API key 只存在 `PELICAN_SECRETS_DIR` 下（目录 700 / 文件 600），运行时只交给该
   profile 的子进程环境；发布到数据仓的记录只带 profile 的七字段公开视图，官网、接口地址、查询参数与
   key 状态不进任何公开面，数据仓 CI 对多余字段拒收（ACR-018）。
-- 写操作与配置类读取只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
-  `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007）。
+- 写操作、配置类读取与模型指纹页（`/fingerprint` 及 `/api/fingerprint*`）只对配对设备开放：凭据只以服务端密钥的 HMAC 落盘，写请求另需
+  `X-Pelican-Action` 头，每个写操作追加审计日志（ACR-007、ACR-024）。
 - 看板默认只监听本机；公网暴露的分层方案见 `docs/security/public-exposure-design.md`。
 - 发布前对 run.json 与 SVG 做泄漏规则与凭据指纹双重扫描，命中的作品不发布；数据仓 CI 再校验一次。
 - 代码仓自身的密钥扫描 `check:secrets`（同一套泄漏规则加赋值启发，策略 `config/secret-scan-policy.yaml`）
   由 lefthook 在 pre-commit 强制执行，推送前再跑测试；GitHub 侧只有厂商模式扫描与推送保护（ACR-022）。
-- `PELICAN_READONLY=1` 在服务端强制只读：不承认会话、写接口 403、配对 404、不拉起调度器（ACR-009）。
+- `PELICAN_READONLY=1`（或 `PELICAN_DATA_SOURCE=remote`）在服务端强制只读：不承认会话、写接口与 `/api/fingerprint*` 返回 403、配对页与 API 返回 404、访问 `/fingerprint` 重定向回 `/`、工具栏隐藏指纹入口、不拉起调度器（ACR-009、ACR-024）。
 - 数据仓推送凭据是所有者在浏览器里注册并安装的 GitHub App 用户令牌（仅授权数据仓一个仓库），
   只存在 runner 专用卷 `runner-secrets`（目录 700 / 文件 600），经 `GIT_ASKPASS` 只在推送时交给 git；
   web 容器不挂该卷、不持有任何凭据。推送前面板列出将公开的提交由所有者确认（ACR-010、ACR-011）。
@@ -290,18 +305,18 @@ GitHub 授权的令牌交换同样经请求文件交给 runner，看板只持有
 ```
 llm_iq_dashboard/
 ├── src/
-│   ├── app/            ← 看板页面与 /api 路由；components/ 按功能分目录
-│   ├── bin/            ← 命令行入口：run-once、scheduler、runner、pair、preflight、onboard、
-│   │                     pricing-sync、sync-data、validate-prompts
-│   ├── core/           ← 领域逻辑；judge/ 为作品评审；prompts/i18n/ 为题目与标准展示层双语映射
-│   ├── i18n/           ← 中英双语国际化（types.ts、context.tsx、messages/ 字典、judge-rubric.ts 与 judge-evidence-en.ts 评审标准展示层翻译）
+│   ├── app/            ← 看板页面（/、/config、/fingerprint、/view、/pair）与 /api 路由；components/ 按功能分目录
+│   ├── bin/            ← 命令行入口：run-once、scheduler、runner（含 runner-sync）、model-fingerprint、
+│   │                     pair、preflight、onboard、pricing-sync、sync-data、validate-prompts
+│   ├── core/           ← 领域逻辑；judge/ 为作品评审；model-fingerprint/ 为模型指纹核验；prompts/i18n/ 为题目与标准展示层双语映射
+│   ├── i18n/           ← 中英双语国际化（types.ts、context.tsx、messages/ 字典含 fingerprint.ts、judge-rubric.ts 与 judge-evidence-en.ts 评审标准展示层翻译）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检
 │   ├── pricing/        ← 用量解析与成本折算
 │   └── types/          ← 无官方类型的依赖的最小声明（jsdom）
 ├── config/             ← 调度策略与被测矩阵（YAML）、价格目录锁文件、长度门与密钥扫描策略
 ├── data/               ← 运行产物与运行态，不入库
-├── test/               ← node:test 单元测试，与 src/ 同构（含 test/i18n/）
+├── test/               ← node:test 单元测试，与 src/ 同构（含 test/core/model-fingerprint/、test/i18n/）
 ├── docs/               ← 出处、界面、部署、架构文档（对外文档按 .md 英文主版与 .zh-CN.md 中文版成对互链）
 ├── docker/             ← 镜像定义与构建忽略规则、容器入口、CLI 安装脚本
 ├── issues/             ← 本地 issue

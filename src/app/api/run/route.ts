@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { describeActiveWorkConflict, findActiveWork } from "@/core/active-work";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwner, requireOwnerAction } from "@/core/auth/guard";
 import { sharedRateLimiter } from "@/core/auth/rate-limit";
@@ -51,6 +52,7 @@ interface FlagHolder {
 export interface RunPromptOption {
   id: string;
   label: string;
+  subtitle?: string;
   defaultSelected: boolean;
   candidates?: { id: string; label: string }[];
 }
@@ -125,24 +127,20 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const full = loadConfig(configPath());
     selection = parseRunRequestBody(await request.text());
-    // 不带选择（配置页“立即执行”）按定时任务的范围跑整轮
     config = selection === null ? scheduledRound(full) : narrowConfig(full, selection);
   } catch (cause) {
     return NextResponse.json({ error: describe(cause) }, { status: 400 });
   }
 
-  // 先占标记再读进度文件，连续两次请求只有一次能走到 executeRun
   const holder = globalThis as FlagHolder;
   if (holder[FLAG] === true) return NextResponse.json({ error: "已有一轮正在执行" }, { status: 409 });
   holder[FLAG] = true;
-  const active = await findActiveRun();
+  const active = await findActiveWork();
   if (active !== null) {
     holder[FLAG] = false;
-    const trigger = active.trigger === "schedule" ? "定时" : "手动";
-    return NextResponse.json({ error: `已有一轮正在执行（${trigger} ${active.runId}）` }, { status: 409 });
+    return NextResponse.json({ error: describeActiveWorkConflict(active) }, { status: 409 });
   }
 
-  // 分容器部署：写请求文件交给执行器，等它开跑后拿到 runId
   if (externalRunner()) {
     try {
       return await startViaRunner(selection, { deviceId, ip });

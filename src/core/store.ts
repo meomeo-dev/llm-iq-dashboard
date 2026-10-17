@@ -7,8 +7,9 @@
  *   data/runs/<runId>/<targetId>.txt      CLI 原始事件流与 stderr，失败排查的依据
  */
 
+import { randomBytes } from "node:crypto";
 import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
 import { withCurrentRules } from "./judge/schema";
 import { runDir, runsRoot } from "./paths";
@@ -36,6 +37,15 @@ export async function writeArtifact(
 
 export async function saveRun(record: RunRecord): Promise<void> {
   await writeJsonAtomic(record.runId, RUN_FILE, record);
+}
+
+/** 对任意文件路径写临时文件再原子替换 */
+export async function writeJsonPathAtomic(filePath: string, value: unknown): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
+  const suffix = randomBytes(4).toString("hex");
+  const staging = `${filePath}.${process.pid}.${Date.now()}.${suffix}.staging`;
+  await writeFile(staging, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await rename(staging, filePath);
 }
 
 /** 写临时文件再原子替换，看板在轮次进行中读取时不会读到写了一半的文件 */

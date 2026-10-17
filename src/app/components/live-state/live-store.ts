@@ -12,12 +12,14 @@
 
 import { useSyncExternalStore } from "react";
 import type { AutoRunView } from "@/core/auto-run";
+import type { FingerprintJobView } from "@/core/model-fingerprint/job";
 import type { ProgressView } from "@/core/progress";
 
 const EVENTS_URL = "/api/events";
 /** 与 app/api/events/live-hub.ts 的事件名一致 */
 const PROGRESS_EVENT = "progress";
 const AUTO_RUN_EVENT = "auto-run";
+const FINGERPRINT_JOB_EVENT = "fingerprint-job";
 const RECONNECT_MS = 5_000;
 
 /** 自动任务状态；服务端读不出来（例如配置文件写坏）时是 error */
@@ -27,9 +29,10 @@ interface LiveState {
   /** 收到首份快照之前为 null */
   progress: ProgressView[] | null;
   autoRun: LiveAutoRun | null;
+  fingerprintJob: FingerprintJobView | null;
 }
 
-const INITIAL: LiveState = { progress: null, autoRun: null };
+const INITIAL: LiveState = { progress: null, autoRun: null, fingerprintJob: null };
 
 let state: LiveState = INITIAL;
 const listeners = new Set<() => void>();
@@ -44,6 +47,11 @@ export function useLiveProgress(): ProgressView[] | null {
 /** 自动任务状态；尚未连上时为 null */
 export function useLiveAutoRun(): LiveAutoRun | null {
   return useSyncExternalStore(subscribe, () => state.autoRun, () => INITIAL.autoRun);
+}
+
+/** 当前活跃的模型指纹作业；无活跃作业或尚未连上时为 null */
+export function useLiveFingerprintJob(): FingerprintJobView | null {
+  return useSyncExternalStore(subscribe, () => state.fingerprintJob, () => INITIAL.fingerprintJob);
 }
 
 /** 切换开关后先用 PUT 响应更新本地状态，随后到达的推送照常覆盖 */
@@ -88,6 +96,9 @@ function connect(): void {
     } else if (state.autoRun === null || "error" in state.autoRun) {
       update({ autoRun: { error: "服务端读取自动任务状态失败" } });
     }
+  });
+  next.addEventListener(FINGERPRINT_JOB_EVENT, (event) => {
+    update({ fingerprintJob: parse<FingerprintJobView | null>(event) });
   });
   next.onerror = () => {
     // CONNECTING 表示浏览器正在自动重连；只有 CLOSED 需要自己再连

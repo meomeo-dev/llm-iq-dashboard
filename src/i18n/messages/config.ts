@@ -19,6 +19,7 @@ export interface ConfigMessages {
     timeouts: string;
     harnessGuard: string;
     judge: string;
+    modelFingerprint: string;
     dataRepo: string;
     devices: string;
   };
@@ -41,6 +42,8 @@ export interface ConfigMessages {
     harnessGuardDesc: string;
     judgeTitle: string;
     judgeDesc: string;
+    modelFingerprintTitle: string;
+    modelFingerprintDesc: string;
     dataRepoTitle: string;
     dataRepoDesc: string;
     devicesTitle: string;
@@ -92,6 +95,7 @@ export const zhCNConfig: ConfigMessages = {
     timeouts: "超时与并发",
     harnessGuard: "考场直出约束",
     judge: "作品自动评审",
+    modelFingerprint: "模型统计指纹",
     dataRepo: "公开数据仓同步",
     devices: "已配对设备",
   },
@@ -114,6 +118,8 @@ export const zhCNConfig: ConfigMessages = {
     harnessGuardDesc: "开启后在每条提示词末尾附加直出约束，抑制联网检索、代码自测与截图自检",
     judgeTitle: "作品评审（代码层 30 分 + AI 语义层 70 分）",
     judgeDesc: "静态 AST 与 Chromium 定格截帧打 30 分，通过门槛后交跨厂商 AI 裁判打 70 分",
+    modelFingerprintTitle: "模型统计指纹（Model Fingerprint）",
+    modelFingerprintDesc: "用 6 类结构化生成探针与 Jensen-Shannon 散度比对，检验上游渠道返回的模型是否与声明一致",
     dataRepoTitle: "公开数据仓（Data Repository）脱敏与发布",
     dataRepoDesc: "每轮定稿后自动脱敏导出至数据仓工作副本，支持连接 GitHub App 一键推送",
     devicesTitle: "已配对的所有者设备",
@@ -165,6 +171,7 @@ export const enConfig: ConfigMessages = {
     timeouts: "Timeouts & Lanes",
     harnessGuard: "Harness Guard",
     judge: "Artwork Judging",
+    modelFingerprint: "Model Fingerprint",
     dataRepo: "Data Repository",
     devices: "Paired Devices",
   },
@@ -187,6 +194,8 @@ export const enConfig: ConfigMessages = {
     harnessGuardDesc: "Append direct-output rules to suppress web search, code execution, and self-screenshots",
     judgeTitle: "Artwork Judging (30pt Code + 70pt AI Judge)",
     judgeDesc: "Static AST + Chromium frame capture (30pt) followed by cross-vendor AI judging (70pt)",
+    modelFingerprintTitle: "Model Statistical Fingerprint",
+    modelFingerprintDesc: "Verify whether an upstream channel matches its declared model via 6 structured probes and JSD similarity",
     dataRepoTitle: "Public Data Repository Sync & Publishing",
     dataRepoDesc: "Sanitize and export completed rounds to the public data repo with optional GitHub App push",
     devicesTitle: "Paired Owner Devices",

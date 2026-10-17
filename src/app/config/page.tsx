@@ -87,6 +87,7 @@ export default async function ConfigPage() {
               customPrompts: config!.customPrompts,
               customModels: config!.customModels,
               judge: config!.judge,
+              modelFingerprint: config!.modelFingerprint,
               dataRepo: dataRepoDraftOf(config!, path),
             }}
             builtinPrompts={[...BUILTIN_PROMPTS]}

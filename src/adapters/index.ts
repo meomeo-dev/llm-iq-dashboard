@@ -1,7 +1,7 @@
 /** 适配器注册表：CLI 种类 → 实现 */
 
 import { DEFAULT_PROFILE, type CliKind } from "../core/types";
-import type { AgentAdapter, AgentSession, ProfileLaunch } from "./types";
+import type { AgentAdapter, AgentSession, ProfileLaunch, SessionOptions } from "./types";
 import { claudeAdapter } from "./claude";
 import { codexAdapter } from "./codex";
 import { agyAdapter } from "./agy";
@@ -30,15 +30,18 @@ export interface SessionPool {
  * `launches` 以 profile 名为键，只含本轮用到、已通过放行检查的非默认 profile。
  * 查不到启动参数说明编排层漏了放行检查，抛错而不回落到登录态。
  */
-export function openSessionPool(launches: ReadonlyMap<string, ProfileLaunch> = new Map()): SessionPool {
+export function openSessionPool(
+  launches: ReadonlyMap<string, ProfileLaunch> = new Map(),
+  options?: SessionOptions,
+): SessionPool {
   const sessions = new Map<string, AgentSession>();
 
   const open = (cli: CliKind, profile: string): AgentSession => {
-    if (profile === DEFAULT_PROFILE) return ADAPTERS[cli].openSession();
+    if (profile === DEFAULT_PROFILE) return ADAPTERS[cli].openSession(undefined, options);
     if (!PROFILE_CAPABLE.has(cli)) throw new Error(`${cli} 不支持 profile（${profile}）`);
     const launch = launches.get(profile);
     if (launch === undefined) throw new Error(`profile ${profile} 没有启动参数，未发起调用`);
-    return ADAPTERS[cli].openSession(launch);
+    return ADAPTERS[cli].openSession(launch, options);
   };
 
   return {
@@ -57,4 +60,4 @@ export function openSessionPool(launches: ReadonlyMap<string, ProfileLaunch> = n
   };
 }
 
-export type { AgentReply, AgentRequest, AgentSession, ProfileLaunch, WrittenFile } from "./types";
+export type { AgentReply, AgentRequest, AgentSession, ProfileLaunch, SessionOptions, WrittenFile } from "./types";

@@ -11,9 +11,10 @@ config/          起步配置模板、冒烟配置、价格目录锁文件、长
 docs/            基准来源考证、设计要点、部署、数据同步与架构记录（对外文档按 .md 英文主版与 .zh-CN.md 简体中文版成对互链）
 docker/          镜像定义、构建忽略规则与容器入口、CLI 安装脚本（编排见根目录 compose.yaml）
 scripts/         生产看板启动、长度门、密钥扫描、评审补跑、展台冒烟与本地 issue 脚本
-src/core/        领域逻辑：配置与写回、提示词与变量、编排、调度、存储、SVG 提取
+src/core/        领域逻辑：配置与写回、提示词与变量、编排、调度、存储、SVG 提取、跨作业互斥（active-work.ts）
 src/core/prompts/i18n/ 提示词与评分标准的展示层双语映射（index.ts、labels-en.ts、standards-en.ts 及分域 standards-*-en.ts），不改题面原文与存储契约
 src/core/judge/  作品评审：静态解析、渲染量测、AI 裁判与评审记录读写
+src/core/model-fingerprint/ 模型指纹（ACR-024）：面向对象探针体系（probes/）、以 2 为底 JSD 相似度、无重叠自检、四态判决、并发安全样本存储与增量采集
 src/core/sync/   数据仓同步：脱敏导出、台账、发布确认与本地副本核对
 src/core/data-repo/ 数据仓布局与记录格式的契约
 src/core/data-source/ 看板读数的数据源抽象：本地 data/ 与远程数据仓
@@ -23,13 +24,14 @@ src/adapters/    每家 CLI 一个适配器，实现统一的 AgentAdapter 契�
 src/pricing/     用量解析与按价格目录折算成本
 src/i18n/        中英双语（en / zh-CN）国际化：类型契约（types.ts）、服务端与客户端语言协商及 React Context（context.tsx）、
                  词条字典（messages/）与评审标准 G1–G5 / C1–C9 及确定性证据展示层本地化（judge-rubric.ts、judge-evidence-en.ts）
-src/bin/         命令行入口：run-once、scheduler、runner（分容器时的执行器）、pair、preflight、onboard、
+src/bin/         命令行入口：run-once、scheduler、runner（分容器时的执行器，含 runner-sync.ts）、model-fingerprint、pair、preflight、onboard、
                  pricing-sync、sync-data 与 validate-prompts
-src/app/         Next.js 看板（/）、配置界面（/config）、单件查看（/view）、配对（/pair）、
+src/app/         Next.js 看板（/）、模型指纹控制台（/fingerprint）、配置界面（/config）、单件查看（/view）、配对（/pair）、
                  原图（/art）与评审联系图（/sheet）
 src/types/       无官方类型的依赖的最小声明（jsdom）
 test/            单元测试，目录与 src/ 同构
 data/runs/       运行产物（已 gitignore）
+data/model-fingerprint/ 模型指纹样本集、归档、核验记录与作业状态（已 gitignore，绝不同步至公开数据仓）
 data/pricing/    价格目录附件缓存（已 gitignore，由 pnpm pricing:sync 下载）
 ```
 
@@ -50,6 +52,11 @@ data/runs/<runId>/<attemptKey>.judge.json     评审记录（有评分标准的�
 data/runs/<runId>/<attemptKey>.sheet.png      帧序联系表；.sheet.<kind>.png 各类细节联系表
 data/runs/<runId>/<attemptKey>.judge-ai.txt   AI 层裁判三次问答（盲描述、定位、打分）的转录
 data/scratch/<runId>/<attemptKey>/  每次调用的空工作目录，整轮结束后删除
+data/scratch/model-fingerprint/     模型指纹调用复用的固定空工作目录（保持 Prompt Cache 前缀命中，孤儿清理跳过）
+data/model-fingerprint/samples/<cli>-<effort>/<model>/<probe>.json  基准样本集（逐次追加原始回答与元数据，读取时实时提取）
+data/model-fingerprint/archive/<cli>-<effort>/<model>/<probe>.<timestamp>.json  --reset 归档的样本集快照（供 rescore 回退）
+data/model-fingerprint/checks/<yyyy-mm>/<checkId>.json  单次模型指纹核验记录与离线重算历史 rescores[]
+data/model-fingerprint/jobs/<jobId>.json、.cancel.json  运行中指纹作业的心跳进度与取消标记
 data/requests/                      分容器时看板交给执行器的请求文件
 data/auto-run.json                  自动任务开关（不存在即关闭）
 data/scheduler.json                 常驻调度器的 pid 与启动时刻；日志追加到 data/scheduler.log
@@ -78,7 +85,7 @@ data/audit.log                      写操作的审计日志
 | `GET` / `DELETE /api/session` | 是否所有者及设备列表；退出当前设备 |
 | `DELETE /api/devices/<id>` | 吊销设备，吊销自己等同退出 |
 | `GET /api/runs?limit=20` | 看板数据的只读接口 |
-| `GET /api/events` | SSE：连上先推全量快照，之后在执行进度或自动任务状态变化时推送 |
+| `GET /api/events` | SSE：连上先推全量快照，之后在执行进度、自动任务或指纹作业（`fingerprint-job`）状态变化时推送 |
 | `GET /api/progress` | 最近 3 轮的逐调用执行进度，附执行进程是否存活 |
 | `GET /view/<runId>/<svgFile>` | 单件作品的单独查看页：作品按窗口放大，附元信息与提示词 |
 | `GET /art/<runId>/<svgFile>` | 模型写出的原始 SVG，带 CSP `sandbox` 响应头：脚本不执行、外链不加载 |
@@ -86,8 +93,11 @@ data/audit.log                      写操作的审计日志
 | `GET` / `PUT /api/config` | 读取配置；按补丁写回（校验不过返回 400，文件不动） |
 | `GET` / `POST /api/capabilities` | 读取能力缓存；重新探测 CLI |
 | `GET /api/run` | 单次执行的可选范围（目标、题目及默认勾选）与正在执行的轮次 |
-| `POST /api/run` | 发起一轮，进度文件写好后返回 202；请求体 `{ targetIds, promptIds, profiles }` 可省略（省略即按配置跑整轮，`profiles` 为本轮要跑的上游）；已有一轮在跑时返回 409，每台设备每小时超限返回 429，分容器时执行器未响应返回 503 |
+| `POST /api/run` | 发起一轮，进度文件写好后返回 202；请求体 `{ targetIds, promptIds, profiles }` 可省略（省略即按配置跑整轮，`profiles` 为本轮要跑的上游）；已有一轮或指纹作业在跑时返回 409，每台设备每小时超限返回 429，分容器时执行器未响应返回 503 |
 | `POST /api/run/cancel` | 请求停止正在执行的一轮，请求体 `{ runId }`；写下停止请求即返回 202，该轮不在执行中时返回 409 |
+| `GET /api/fingerprint` | 所有者专属（`requireOwner`；只读/远程模式下 403）：模型指纹矩阵汇总、最近核验记录、自检摘要与活动作业；传 `?sampleDetail=<cli>:<model>:<probe>`（或 `?cli&model&probe`）时返回该单元单条样本详情与留一相似度；传 `?checkId=<checkId>` 时返回单条核验记录详情 |
+| `POST /api/fingerprint` | 所有者写接口（`requireOwnerAction`）：`plan`（预检预览）、`fill`（补齐/重置样本集）、`check`（发起模型核验）、`self-test`（运行交叉验证自检）、`rescore`（离线重算历史核验记录）、`cancel`（停止运行中指纹作业）；与评测轮次或另一指纹作业冲突时 409 |
+| `PATCH /api/fingerprint/samples` | 所有者写接口（`requireOwnerAction`）：按 `{ cli, model, probe, exclude?, include?, reset? }` 剔除/恢复样本 `reqId` 或归档重置单个 `(cli, model, probe)` 样本集 |
 | `GET` / `POST /api/readiness` | 读取 CLI 安装与登录状态的缓存；重新检查 |
 | `GET` / `PUT /api/auto-run` | 自动任务开关状态、调度器 pid 与下一次触发；`{ enabled }` 拨开关，打开时按需拉起调度器 |
 | `GET /api/data-repo` | 数据仓面板的聚合状态（工作副本、上游差距、待同步轮次）；不 fetch 远端 |
@@ -111,7 +121,18 @@ data/audit.log                      写操作的审计日志
 ## 测试
 
 ```bash
-pnpm test
+pnpm lint                                               # tsc --noEmit（含 test/）
+pnpm test                                               # node:test 经 tsx 运行 test/**/*.test.ts
+pnpm validate:prompts                                   # 题库与标准 schema 校验
+pnpm check:length                                       # 文件与函数长度门禁（config/code-length-policy.yaml）
+pnpm check:secrets                                      # 已跟踪文件密钥扫描（config/secret-scan-policy.yaml）
+pnpm build                                              # Next.js 生产构建检查
+pnpm showcase:smoke                                     # 只读展台端到端冒烟校验
+pnpm fingerprint:status                                 # 本地模型指纹矩阵与缺口汇总（0 次 CLI 调用）
+pnpm fingerprint:self-test                              # 离线配对交叉验证自检（0 次 CLI 调用）
+pnpm fingerprint:fill -- --dry-run                      # 预览基准样本补采调用次数与估算费用
+pnpm fingerprint:check -- --cli codex --model gpt-5.5 --dry-run
+                                                        # 预览指定 profile 模型核验计划与自检一致率
 ```
 
 用 Node 内置的 `node:test` 运行器，经已有的 `tsx` 执行 `test/**/*.test.ts`。测试不启动
@@ -120,7 +141,7 @@ pnpm test
 
 当前覆盖的约束：`classic-v1` 逐字不变、SVG 提取、强度折叠、四层超时优先级、`runId` 与
 时区分日、考场规则三份一致、过期清理、SVG 净化与挂载、用量解析与成本折算、CLI 就绪预检的
-判定、预算的预测与放行；另覆盖作品评审的静态与渲染判定、数据仓同步与台账、远程数据源、
+判定、预算的预测与放行；另覆盖作品评审的静态与渲染判定、模型指纹（`test/core/model-fingerprint/`：面向对象 `Probe` & `PromptCodec` 提取与校验、JSD 相似度、无重叠自检与四态判决、纯函数规划器、三家适配器指纹隔离模式、跨作业双向互斥、并发文件锁与归档重算、5 个 CLI 子命令与 Web API）、数据仓同步与台账、远程数据源、
 配对鉴权与 GitHub 授权、调度排队、上游 profile、直出约束、导出合成图，以及中英双语国际化
 （`test/i18n/locale.test.ts` 语言协商与持久化、`test/i18n/prompt-judge-i18n.test.ts` 提示词与评审标准展示层本地化及题面不变性、`test/i18n/i18n-integrity.test.ts` 词条完整性与双语文档链接校验）。模型画得好不好属于
 观测数据，不进 `pnpm test`；调用链是否还通，用冒烟配置手动验证：

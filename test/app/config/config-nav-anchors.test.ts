@@ -139,7 +139,7 @@ test("ConfigNav 锚点存在性与唯一性特征测试", async (t) => {
       })
     );
     const ids = extractSectionIds(html);
-    const expected = ["capability", "prompts", "harness-guard", "profiles", "matrix", "schedule", "timeout", "judge", "data-repo-settings"];
+    const expected = ["capability", "prompts", "harness-guard", "profiles", "matrix", "schedule", "timeout", "judge", "model-fingerprint", "data-repo-settings"];
     assert.deepStrictEqual(ids, expected);
     assert.strictEqual(new Set(ids).size, ids.length, "区块 id 不得重复");
   });

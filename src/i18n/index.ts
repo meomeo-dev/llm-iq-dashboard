@@ -18,6 +18,7 @@ export {
   zhCNMessages,
   type CommonMessages,
   type ConfigMessages,
+  type FingerprintMessages,
   type Messages,
   type PairMessages,
   type ToolbarMessages,

@@ -30,6 +30,32 @@ export function scratchDir(runId: string, targetId: string): string {
   return join(dataRoot(), "scratch", runId, targetId);
 }
 
+/** 模型指纹产物根目录：data/model-fingerprint/ */
+export function fingerprintRoot(): string {
+  return join(dataRoot(), "model-fingerprint");
+}
+
+export function fingerprintSamplesRoot(): string {
+  return join(fingerprintRoot(), "samples");
+}
+
+export function fingerprintArchiveRoot(): string {
+  return join(fingerprintRoot(), "archive");
+}
+
+export function fingerprintChecksRoot(): string {
+  return join(fingerprintRoot(), "checks");
+}
+
+export function fingerprintJobsRoot(): string {
+  return join(fingerprintRoot(), "jobs");
+}
+
+/** 模型指纹采样的固定空工作目录，复用以提高提示词缓存命中率 */
+export function fingerprintWorkdir(): string {
+  return join(dataRoot(), "scratch", "model-fingerprint");
+}
+
 export function configPath(): string {
   const override = process.env.PELICAN_CONFIG;
   if (override !== undefined && override.trim() !== "") return resolve(override);

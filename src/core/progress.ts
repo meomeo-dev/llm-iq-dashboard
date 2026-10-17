@@ -7,6 +7,7 @@
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fingerprintJobToProgressView, listRecentFingerprintJobs } from "./model-fingerprint/job";
 import { runDir } from "./paths";
 import { isProcessAlive, processStartMark } from "./process-identity";
 import { externalRunner, heartbeatCovers, readFreshHeartbeat, type RunnerHeartbeat } from "./runner-link";
@@ -70,6 +71,8 @@ export interface LaneProgress {
 export interface RunProgress {
   runId: string;
   trigger: RunRecord["trigger"];
+  /** 模型指纹后台作业（fill / check）复用进度面板时标注作业类型 */
+  jobKind?: "fill" | "check";
   startedAt: string;
   updatedAt: string;
   /** 整轮结束时写入；进程被杀时保持 null，需结合 pid 判断 */
@@ -254,12 +257,21 @@ export async function listRecentProgress(limit: number): Promise<RunProgress[]> 
 /** 看板展示的轮次数；手动与定时执行可能前后相接，取最近三轮 */
 export const RECENT_PROGRESS_RUNS = 3;
 
-/** 最近几轮的进度视图，附执行进程是否存活；/api/progress 与 /api/events 共用 */
+/** 最近几轮的进度视图（含评测轮次与模型指纹作业），附执行进程是否存活；/api/progress 与 /api/events 共用 */
 export async function listProgressViews(limit: number = RECENT_PROGRESS_RUNS): Promise<ProgressView[]> {
-  const runs = await listRecentProgress(limit);
-  const beat = await runnerHeartbeat();
-  // 评审阶段执行进程仍在工作，存活判断同样适用
-  return runs.map((run) => ({ ...run, alive: (run.finishedAt === null || isJudging(run)) && isRunnerAlive(run, beat) }));
+  const [runs, beat, fpJobs] = await Promise.all([
+    listRecentProgress(limit),
+    runnerHeartbeat(),
+    listRecentFingerprintJobs(limit),
+  ]);
+  const runViews: ProgressView[] = runs.map((run) => ({
+    ...run,
+    alive: (run.finishedAt === null || isJudging(run)) && isRunnerAlive(run, beat),
+  }));
+  const jobViews = fpJobs.map(fingerprintJobToProgressView);
+  return [...runViews, ...jobViews]
+    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+    .slice(0, limit);
 }
 
 /** 手动与定时执行互斥，同时在跑的轮次至多一轮，扫描最近几轮即可 */

@@ -32,6 +32,8 @@ Likewise, switching the dashboard UI language (`EN` / `中文`) never alters the
 
 Agent CLIs automatically load instruction files from the current working directory. Running inside this repository would leak project docs into the model's context. Every invocation therefore executes in an isolated empty directory `data/scratch/<runId>/<targetId>__<promptId>/` that is deleted once the round finishes; stale scratch directories left behind by interrupted rounds older than 3 hours are cleaned up before each round starts.
 
+For **Model Fingerprint** probes (`request.fingerprint === true`, ACR-024), calls reuse a fixed empty working directory `data/scratch/model-fingerprint/` (created empty before the job starts, immediately wiped and recreated if an agent ever writes a file, and exempted from orphan scratch pruning) so repeated calls for the same `(cli, profile, model)` share an identical working-directory prefix and hit upstream Prompt Cache after the first serialized warm-up call.
+
 ## Untrusted SVG Sanitization & Shadow DOM Isolation
 
 Model-generated SVGs are untrusted XML documents that may contain `<script>`, `on*` event attributes, `<foreignObject>`, or external `href` beacons.
@@ -61,3 +63,5 @@ All three CLIs are driven via structured JSON event streams with tools disabled:
 All three CLIs run without tools: drawing an SVG requires neither reading files nor running shell commands, and enabling tools would expose host credential files (see [`docs/security/public-exposure-design.md`](security/public-exposure-design.md) §4.5). If a model in `agy --sandbox` attempts to run `mkdir` or a validation command before outputting its SVG and gives up when rejected, that attempt is recorded as `no-svg` and preserved in the `.txt` event stream.
 
 In **Judge Mode** (cross-vendor AI artwork evaluation), the temporary directory contains only the rendered contact sheets and read access to those images is enabled (`claude --tools Read`, `codex` read-only sandbox with `never` approval prompt, `agy` unchanged), while file writes and command execution remain blocked.
+
+In **Fingerprint Mode** (`request.fingerprint === true`, ACR-024), no house rules (`AGENTS.md` / `CLAUDE.md` / `GEMINI.md`) are written into `data/scratch/model-fingerprint/`, and each adapter strips user-level instructions and session persistence so output distributions reflect the model alone: `claude` adds `--setting-sources "" --safe-mode --no-session-persistence`; `codex` runs even the default login session inside a minimal isolated `CODEX_HOME`/`HOME` (`project_doc_max_bytes = 0`, `history.persistence = "none"`, symlinking only `~/.codex/auth.json` without copying `AGENTS.md`/`skills/`/`memories/`/`rules/`) with `readOnly` sandbox and `approvalPolicy: "never"`; `agy` skips `.mcp.json`, adds `--disable-slash-commands`, and records `{ path, content: "" }` on any `write_to_file` event so tool-write violations are rejected as `tool_write_instead_of_inline`.

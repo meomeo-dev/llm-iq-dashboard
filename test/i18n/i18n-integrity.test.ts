@@ -113,6 +113,8 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     const zhMsg = getMessages("zh-CN");
     assert.equal(enMsg.toolbar.calendarWeekdays[0], "Mo");
     assert.equal(zhMsg.toolbar.calendarWeekdays[0], "一");
+    assert.equal(enMsg.fingerprint.pageTitle, "Model Statistical Fingerprint");
+    assert.equal(zhMsg.fingerprint.pageTitle, "模型统计指纹核验");
 
     const enLeaves = collectLeafEntries(enMsg);
     const zhLeaves = collectLeafEntries(zhMsg);

@@ -147,6 +147,7 @@ docker exec -it llm-iq-runner pnpm pair
 | `run.timeoutByEffort` | 按思考强度覆盖超时，如 `max: 2700000`（45 分钟） |
 | `run.harnessGuard` | 直出约束（缺省关）：开启后每条提示词末尾另起一段附上要求直接作答的原文（缺省英文，`text` 可改），抑制 CLI 自带的联网、跑代码自测与截图自检；题目原文不改，附加原文记进 `run.json` |
 | `judge` | 作品评审（缺省关）：`judge.enabled` 开代码层，`judge.ai.enabled` 开 AI 语义层，`judge.ai.judges` 列裁判（CLI × 模型 × 强度，厂商须与作品不同），`judge.ai.concurrency` 是每个裁判同时评的件数（缺省 5） |
+| `modelFingerprint` | 模型指纹采集与核验（缺省关，ACR-024）：`effort`、`samplesPerProbe`、`probes`、`valuesPerCheck`、`checkAttempts`、`targetAccuracy`、`maxCallsFactor`、`concurrency`、`references` 及按模型定制提示词 `modelPrompts` |
 | `dataRepo` | 公开数据仓同步配置（`path`、`repository`、`autoSync`、`push`、`publishPrompts`） |
 | `profiles` | 第三方上游（中转）：按 CLI 登记环境变量与倍率，目标可指定走哪个上游；只有登录态时不用填 |
 | `budget.perRoundUsd` | 每轮 API 等价成本上限（美元），见[成本](#成本api-等价)；不写即不限 |
@@ -218,7 +219,7 @@ docker exec -it llm-iq-runner pnpm pair
   （月历，跑过的日子与今天可以点，格子里标着当天的轮数）与“筛选”。筛选是两级菜单：
   左列是 CLI / 模型 / 强度 / 提示词四个维度及各自的计数，右侧是所选维度的复选清单，
   顶部有“全选”“反选”；有维度被筛掉时按钮徽章显示被筛维度数。右端依次是当天总计
-  （成功率 / 轮数与作品数）、执行状态胶囊、时钟与时区菜单、右上角 `EN / 中文` 双语切换器（即时切换界面、题目标签、黄金标准、评审标准与导出图表的语言）以及配置图标。
+  （成功率 / 轮数与作品数）、执行状态胶囊、时钟与时区菜单、右上角 `EN / 中文` 双语切换器（即时切换界面、题目标签、黄金标准、评审标准与导出图表的语言）、模型指纹图标（`/fingerprint`，只读展台下隐藏）以及配置图标。
   清单按当天数据列出，配置里停用的提示词的历史结果也能筛。状态点图例在时间线
   标题旁，与格内位置图例并排。
 - **导出**：时间线标题右侧的“导出”菜单把当天完整的时间轴泳道存成一张图，包括整条
@@ -296,6 +297,18 @@ docker exec -it llm-iq-runner pnpm pair
 设计记录见 [`docs/research/judge/`](docs/research/judge/)。评审记录的 `judges` 记下各层的实现版本
 （如 `static-judge@2`、`render-judge@2`）：解析或量测逻辑修正只升实现版本，评分标准的 `version`
 不变，已有记录不重评。
+
+## 模型指纹
+
+缺省关闭，配置页“模型指纹”区块配置，或从看板工具栏进入 `/fingerprint`（所有者专属，只读展台模式下隐藏，ACR-024）。以零工具直出模式采集 6 个高熵生成探针（`uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`），对字符、二元语法与分段分布计算以 2 为底的 Jensen–Shannon 散度（`1 - JSD`），在等容量公共子参照上经无重叠交叉验证自检（`fingerprint:self-test`）标定成对阈值，对声明模型与候选模型给出四态判决（`consistent` / `inconsistent` / `inconclusive` / `not-comparable`）。产物保存在本地 `data/model-fingerprint/`，绝不进入公开数据仓。详见 [`docs/research/model-fingerprint/`](docs/research/model-fingerprint/)。
+
+```bash
+pnpm fingerprint:status
+pnpm fingerprint:fill -- --dry-run
+pnpm fingerprint:self-test
+pnpm fingerprint:check -- --cli codex --declared gpt-5.5 --dry-run
+pnpm fingerprint:rescore -- <checkId>
+```
 
 ## 成本（API 等价）
 

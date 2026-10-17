@@ -69,7 +69,7 @@ export function buildTargetId(
 }
 
 /** 折叠路径不安全的字符，使 id 可以直接当文件名用 */
-function sanitizeSegment(value: string): string {
+export function sanitizeSegment(value: string): string {
   return [...value].map((ch) => (isFilenameSafe(ch) ? ch : "-")).join("");
 }
 

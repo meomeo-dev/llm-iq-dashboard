@@ -48,6 +48,9 @@ CLI 会自动加载所在目录的 agent 指令文件；在本仓库里运行会
 `data/scratch/<runId>/<targetId>__<promptId>/` 这个一次性空目录中执行，整轮结束后删除本轮的
 目录；每轮开始前清理被中断轮次留下的、超过 3 小时的残留目录。
 
+例外是**模型指纹**调用（`request.fingerprint === true`，ACR-024）：复用固定的空工作目录
+`data/scratch/model-fingerprint/`（作业启动前清空重建，一旦检测到模型写文件立即清空重建，且在孤儿目录清理中跳过），使同一 `(cli, profile, model)` 的首请求串行预热后，后续并发调用的 `cwd` 与系统前缀保持完全一致，稳定命中上游 Prompt Cache。
+
 ## SVG 净化
 
 看板展示的是**模型生成、未经审阅**的标记。SVG 是完整的 XML 文档格式：`<script>` 会执行、
@@ -107,3 +110,5 @@ codex 使用 app-server：多个 `codex exec` 并发启动时刷新模型列表�
 例外是作品评审的裁判调用（评审模式）：临时工作目录里只放联系图，只放开读取它——claude 改用
 `--tools Read`，codex 改用 `never` 审批（只读沙箱内的读取直接放行），agy 参数不变（工作目录本就
 可读）；三家都仍不能执行命令。
+
+另一个例外是模型指纹的探针调用（指纹模式，`request.fingerprint === true`，ACR-024）：不在工作目录写任何考场规则文件，且彻底剥离用户级指令与会话落盘，保证输出分布只反映模型本身——claude 追加 `--setting-sources "" --safe-mode --no-session-persistence`；codex 即使在默认登录态下也使用最小隔离 `CODEX_HOME` 与 `HOME`（写 `project_doc_max_bytes = 0` 与 `history.persistence = "none"`，只对存在的 `~/.codex/auth.json` 建软链接，绝不复制 `AGENTS.md`/`skills/`/`memories/`/`rules/`）并配 `readOnly` 沙箱与 `approvalPolicy: "never"`；agy 跳过写 `.mcp.json`、追加 `--disable-slash-commands`，并在捕获 `write_to_file` 事件时跳过读盘、记入 `{ path, content: "" }`，将该次调用按 `tool_write_instead_of_inline` 判为无效输出。

@@ -15,12 +15,14 @@ import { createChannel, type Channel } from "better-sse";
 import { watch, type FSWatcher } from "chokidar";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { describeAutoRun, type AutoRunView } from "@/core/auto-run";
-import { configPath, dataRoot, runsRoot } from "@/core/paths";
+import { findActiveFingerprintJob, type FingerprintJobView } from "@/core/model-fingerprint/job";
+import { configPath, dataRoot, fingerprintJobsRoot, fingerprintRoot, runsRoot } from "@/core/paths";
 import { listProgressViews, type ProgressView } from "@/core/progress";
 import { listRunIds } from "@/core/store";
 
 export const PROGRESS_EVENT = "progress";
 export const AUTO_RUN_EVENT = "auto-run";
+export const FINGERPRINT_JOB_EVENT = "fingerprint-job";
 
 /** 一次写入往往连着几个文件事件（临时文件 + 原子替换），合并成一次重算 */
 const DEBOUNCE_MS = 150;
@@ -35,6 +37,8 @@ export interface LiveSnapshot {
   progress: ProgressView[];
   /** 配置读不出来时为 null：看板照常显示进度，开关显示读取失败 */
   autoRun: AutoRunView | null;
+  /** 当前活跃的模型指纹作业；无活跃作业时为 null */
+  fingerprintJob: FingerprintJobView | null;
 }
 
 interface LiveHub {
@@ -92,8 +96,13 @@ async function startWatching(hub: LiveHub): Promise<void> {
   hub.watcher.on("all", () => scheduleRefresh(hub));
   hub.watcher.on("error", (cause) => console.error(`看板状态监听出错：${describe(cause)}`));
   hub.livenessTimer = setInterval(() => {
-    // alive 只在未结束或评审中的轮次为真
-    if (hub.latest?.progress.some((run) => run.alive) === true) scheduleRefresh(hub);
+    // alive 只在未结束或评审中的轮次、或进行中的指纹作业为真
+    if (
+      hub.latest?.progress.some((run) => run.alive) === true ||
+      hub.latest?.fingerprintJob?.alive === true
+    ) {
+      scheduleRefresh(hub);
+    }
   }, LIVENESS_CHECK_MS);
   hub.latest = await computeSnapshot();
   armNextRunTimer(hub);
@@ -109,13 +118,30 @@ function stopWatching(hub: LiveHub): void {
 }
 
 /**
- * 只放行影响看板状态的路径：data/ 根目录、顶层两个运行态文件、runs/ 目录、
- * 较新的轮次目录及其 progress.json、配置文件；卡片 svg / txt 等高频写入忽略。
+ * 只放行影响看板状态的路径：data/ 根目录、顶层运行态文件、runs/ 及其 progress.json、
+ * model-fingerprint/jobs/<jobId>.json、配置文件；samples/、archive/、checks/、.cancel.json、.staging 忽略。
  */
 function isIgnored(path: string, oldestWatched: string): boolean {
-  if (path === dataRoot() || path === configPath() || path === runsRoot()) return false;
+  if (
+    path === dataRoot() ||
+    path === configPath() ||
+    path === runsRoot() ||
+    path === fingerprintRoot() ||
+    path === fingerprintJobsRoot()
+  ) {
+    return false;
+  }
   const parent = dirname(path);
-  if (parent === dataRoot()) return !TOP_LEVEL_FILES.has(basename(path)) && path !== runsRoot();
+  if (parent === dataRoot()) {
+    return !TOP_LEVEL_FILES.has(basename(path)) && path !== runsRoot() && path !== fingerprintRoot();
+  }
+  if (parent === fingerprintRoot()) {
+    return path !== fingerprintJobsRoot();
+  }
+  if (parent === fingerprintJobsRoot()) {
+    const name = basename(path);
+    return !name.endsWith(".json") || name.endsWith(".cancel.json");
+  }
   const underRuns = relative(runsRoot(), path);
   if (underRuns.startsWith("..")) return true;
   const [runId, file] = underRuns.split(sep);
@@ -140,6 +166,9 @@ async function refresh(hub: LiveHub): Promise<void> {
     hub.channel.broadcast(next.autoRun, AUTO_RUN_EVENT);
     armNextRunTimer(hub);
   }
+  if (JSON.stringify(previous?.fingerprintJob) !== JSON.stringify(next.fingerprintJob)) {
+    hub.channel.broadcast(next.fingerprintJob, FINGERPRINT_JOB_EVENT);
+  }
 }
 
 /** 在下一次 cron 触发点之后重算，刷新“下次触发”时刻 */
@@ -152,12 +181,15 @@ function armNextRunTimer(hub: LiveHub): void {
 }
 
 async function computeSnapshot(): Promise<LiveSnapshot> {
-  const progress = await listProgressViews();
+  const [progress, fingerprintJob] = await Promise.all([
+    listProgressViews(),
+    findActiveFingerprintJob(),
+  ]);
   try {
-    return { progress, autoRun: await describeAutoRun() };
+    return { progress, autoRun: await describeAutoRun(), fingerprintJob };
   } catch (cause) {
     console.error(`读取自动任务状态失败：${describe(cause)}`);
-    return { progress, autoRun: null };
+    return { progress, autoRun: null, fingerprintJob };
   }
 }
 

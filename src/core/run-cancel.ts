@@ -10,7 +10,7 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { runDir } from "./paths";
-import { writeJsonAtomic } from "./store";
+import { writeJsonPathAtomic } from "./store";
 
 const CANCEL_FILE = "cancel.json";
 /** 执行进程发现停止请求的最长延迟 */
@@ -20,10 +20,17 @@ export interface CancelRequest {
   requestedAt: string;
 }
 
-export async function requestCancel(runId: string, now: Date = new Date()): Promise<CancelRequest> {
+export async function requestCancelAt(
+  cancelFilePath: string,
+  now: Date = new Date(),
+): Promise<CancelRequest> {
   const request: CancelRequest = { requestedAt: now.toISOString() };
-  await writeJsonAtomic(runId, CANCEL_FILE, request);
+  await writeJsonPathAtomic(cancelFilePath, request);
   return request;
+}
+
+export async function requestCancel(runId: string, now: Date = new Date()): Promise<CancelRequest> {
+  return requestCancelAt(join(runDir(runId), CANCEL_FILE), now);
 }
 
 export interface CancelWatch {
@@ -33,16 +40,18 @@ export interface CancelWatch {
   stop: () => void;
 }
 
-/** 执行方调用：开始定期检查这一轮有没有收到停止请求 */
-export function watchCancel(runId: string, intervalMs: number = CANCEL_CHECK_MS): CancelWatch {
+/** 定期检查给定取消文件路径有没有收到停止请求 */
+export function watchCancelAt(
+  cancelFilePath: string,
+  intervalMs: number = CANCEL_CHECK_MS,
+): CancelWatch {
   const controller = new AbortController();
-  const path = join(runDir(runId), CANCEL_FILE);
   let checking = false;
   const timer = setInterval(() => {
     // 上一次检查未返回时跳过，避免磁盘卡顿时检查堆积
     if (checking || controller.signal.aborted) return;
     checking = true;
-    void access(path)
+    void access(cancelFilePath)
       .then(() => {
         clearInterval(timer);
         controller.abort(new Error("收到停止请求"));
@@ -55,4 +64,9 @@ export function watchCancel(runId: string, intervalMs: number = CANCEL_CHECK_MS)
       });
   }, intervalMs);
   return { signal: controller.signal, stop: () => clearInterval(timer) };
+}
+
+/** 执行方调用：开始定期检查这一轮有没有收到停止请求 */
+export function watchCancel(runId: string, intervalMs: number = CANCEL_CHECK_MS): CancelWatch {
+  return watchCancelAt(join(runDir(runId), CANCEL_FILE), intervalMs);
 }

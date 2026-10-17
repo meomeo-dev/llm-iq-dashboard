@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwner, requireOwnerAction } from "@/core/auth/guard";
-import { loadConfig } from "@/core/config";
+import { loadConfig, resolveModelFingerprintConfig } from "@/core/config";
 import { applyConfigPatch, type ConfigPatch } from "@/core/config-writer";
 import { configPath } from "@/core/paths";
 import { BUILTIN_PROMPTS } from "@/core/prompt";
@@ -29,6 +29,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       customPrompts: config.customPrompts,
       customModels: config.customModels,
       judge: config.judge,
+      modelFingerprint: resolveModelFingerprintConfig(config),
       builtinPrompts: BUILTIN_PROMPTS,
     });
   } catch (cause) {

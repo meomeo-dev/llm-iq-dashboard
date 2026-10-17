@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwnerAction } from "@/core/auth/guard";
+import { findActiveFingerprintJob, requestFingerprintJobCancel } from "@/core/model-fingerprint/job";
 import { findActiveRun } from "@/core/progress";
 import { requestCancel } from "@/core/run-cancel";
 
@@ -29,14 +30,24 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const active = await findActiveRun();
-  if (active === null || active.runId !== runId) {
-    return NextResponse.json({ error: `轮次 ${runId} 不在执行中，无需停止` }, { status: 409 });
-  }
-  if (active.cancelledAt != null) {
-    return NextResponse.json({ runId, requestedAt: active.cancelledAt }, { status: 202 });
+  if (active !== null && active.runId === runId) {
+    if (active.cancelledAt != null) {
+      return NextResponse.json({ runId, requestedAt: active.cancelledAt }, { status: 202 });
+    }
+    const { requestedAt } = await requestCancel(runId);
+    await audit({ action: "cancel-run", outcome: "ok", deviceId: guard.owner.deviceId, ip: clientIp(request), detail: runId });
+    return NextResponse.json({ runId, requestedAt }, { status: 202 });
   }
 
-  const { requestedAt } = await requestCancel(runId);
-  await audit({ action: "cancel-run", outcome: "ok", deviceId: guard.owner.deviceId, ip: clientIp(request), detail: runId });
-  return NextResponse.json({ runId, requestedAt }, { status: 202 });
+  const activeFp = await findActiveFingerprintJob();
+  if (activeFp !== null && activeFp.jobId === runId) {
+    if (activeFp.cancelledAt != null) {
+      return NextResponse.json({ runId, requestedAt: activeFp.cancelledAt }, { status: 202 });
+    }
+    const { requestedAt } = await requestFingerprintJobCancel(runId);
+    await audit({ action: "cancel-run", outcome: "ok", deviceId: guard.owner.deviceId, ip: clientIp(request), detail: runId });
+    return NextResponse.json({ runId, requestedAt }, { status: 202 });
+  }
+
+  return NextResponse.json({ error: `轮次 ${runId} 不在执行中，无需停止` }, { status: 409 });
 }

@@ -36,6 +36,15 @@ export interface AgentRequest {
    * 执行命令。缺省即考生模式：空目录、不给任何工具。
    */
   review?: ReviewMode;
+  /**
+   * 模型指纹采样模式：隔离宿主机全局指令与技能（claude 加 --safe-mode --no-session-persistence，
+   * agy 加 --disable-slash-commands 且不读盘，codex 使用纯净隔离 home）。
+   */
+  fingerprint?: boolean;
+}
+
+export interface SessionOptions {
+  fingerprint?: boolean;
 }
 
 export interface ReviewMode {
@@ -92,7 +101,7 @@ export interface ProfileLaunch {
 export interface AgentAdapter {
   /**
    * 一轮开始时调用；进程在第一次 ask 时才启动。
-   * 不传 profile 即默认 profile：继承宿主机的登录态。
+   * 不传 profile 即默认 profile：继承宿主机的登录态（fingerprint 模式下使用隔离 home）。
    */
-  openSession(profile?: ProfileLaunch): AgentSession;
+  openSession(profile?: ProfileLaunch, options?: SessionOptions): AgentSession;
 }

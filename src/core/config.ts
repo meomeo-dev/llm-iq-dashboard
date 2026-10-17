@@ -13,9 +13,15 @@ export type {
   RetentionConfig,
   JudgeConfig,
   HarnessGuardConfig,
+  ModelFingerprintConfig,
   AppConfig,
 } from "./config/types";
 
 export { DEFAULT_UPSTREAM_TYPES, hasRhythm } from "./config/types";
+export {
+  DEFAULT_MODEL_FINGERPRINT_CONFIG,
+  parseModelFingerprint,
+  resolveModelFingerprintConfig,
+} from "./config/model-fingerprint";
 export { PROFILE_CLIS, profileDisplayName, profileExists } from "./config/profiles";
 export { loadConfig } from "./config/loader";

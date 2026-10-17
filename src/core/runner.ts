@@ -8,13 +8,13 @@
 
 import type { ProfileLaunch } from "../adapters/index";
 import type { AppConfig } from "./config";
-import { profileKeyPath, readProfileKey } from "./profile-credentials";
+import { readProfileKey } from "./profile-credentials";
 import { createProgressTracker, type ProgressTracker } from "./progress";
 import { createSerialWriter, type SerialWriter } from "./serial-writes";
 import { watchCancel, type CancelWatch } from "./run-cancel";
 import { saveRun } from "./store";
-import type { Attempt, RunRecord } from "./types";
-import { buildLeakGuard, credentialFiles, type LeakGuard } from "./leak-guard";
+import type { Attempt, CliKind, RunRecord } from "./types";
+import { buildConfigLeakGuard, type LeakGuard } from "./leak-guard";
 import { describeProgress, laneIdentity, type LaneItem } from "./run-plan";
 import type { RenderedPrompt } from "./variables";
 import { discardScratch } from "./scratch-cleanup";
@@ -73,10 +73,16 @@ interface ProfileGate {
 }
 
 /** 一个 profile 的放行检查：可调用时返回启动参数，否则返回拦截原因 */
-async function launchFor(config: AppConfig, name: string): Promise<ProfileLaunch | string> {
+export async function launchFor(
+  config: AppConfig,
+  cli: CliKind,
+  name: string,
+  options?: { allowDisabled?: boolean },
+): Promise<ProfileLaunch | string> {
   const profile = config.profiles.find((candidate) => candidate.name === name);
   if (profile === undefined) return `profile ${name} 未登记，未发起调用`;
-  if (!profile.enabled) return `profile ${name} 已停用，未发起调用`;
+  if (profile.cli !== cli) return `profile ${name} 属于 ${profile.cli}，不能用于 ${cli}`;
+  if (!profile.enabled && options?.allowDisabled !== true) return `profile ${name} 已停用，未发起调用`;
   const apiKey = await readProfileKey(profile.cli, name);
   if (apiKey === null) return `profile ${name} 还没有填 API key，未发起调用`;
   return { name, baseUrl: profile.baseUrl, queryParams: profile.queryParams, apiKey };
@@ -87,10 +93,11 @@ async function launchFor(config: AppConfig, name: string): Promise<ProfileLaunch
  * 环境；拦下的 profile 其调用记 error，不回落到登录态。
  */
 async function prepareProfileLaunches(config: AppConfig, lanes: readonly LaneItem[][], log: Logger): Promise<ProfileGate> {
-  const used = new Set(lanes.map((lane) => laneIdentity(lane).profile).filter((name) => name !== undefined));
   const gate: ProfileGate = { launches: new Map(), blockers: new Map() };
-  for (const name of used) {
-    const launch = await launchFor(config, name);
+  for (const lane of lanes) {
+    const { cli, profile: name } = laneIdentity(lane);
+    if (name === undefined || gate.launches.has(name) || gate.blockers.has(name)) continue;
+    const launch = await launchFor(config, cli, name);
     if (typeof launch === "string") {
       gate.blockers.set(name, launch);
       log(launch);
@@ -141,8 +148,7 @@ function buildLaneHooks(
 
 /** 指纹覆盖三家 CLI 的登录凭据与全部已登记 profile 的 key，不论本轮是否用到 */
 async function setupLeakGuard(runId: string, config: AppConfig, log: Logger): Promise<LeakGuard> {
-  const profileKeys = config.profiles.map((profile) => profileKeyPath(profile.cli, profile.name));
-  const guard = await buildLeakGuard([...credentialFiles(), ...profileKeys]);
+  const guard = await buildConfigLeakGuard(config);
   if (guard.size === 0) log(`[${runId}] 未读到任何凭据文件，本轮不做输出泄漏比对`);
   return guard;
 }

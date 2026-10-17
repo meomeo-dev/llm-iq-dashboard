@@ -12,21 +12,23 @@ import { toggled } from "./run-once-selection-utils";
 
 interface RunOncePromptsProps {
   prompts: readonly PromptOption[];
+  groups?: readonly PromptGroup[];
   picked: ReadonlySet<string>;
-  candidateOverrides: Record<string, string>;
+  candidateOverrides?: Record<string, string>;
   onPick: (next: ReadonlySet<string>) => void;
-  onOverrideCandidate: (promptId: string, candidateId: string) => void;
+  onOverrideCandidate?: (promptId: string, candidateId: string) => void;
 }
 
 export function RunOncePrompts({
   prompts,
+  groups: customGroups,
   picked,
-  candidateOverrides,
+  candidateOverrides = {},
   onPick,
-  onOverrideCandidate,
+  onOverrideCandidate = () => {},
 }: RunOncePromptsProps) {
   const { locale } = useI18n();
-  const groups = groupPrompts(prompts);
+  const groups = customGroups ?? groupPrompts(prompts);
   return (
     <>
       {groups.map((group) => (
@@ -106,7 +108,7 @@ function PromptItemRow({
         <span className="checkbox" aria-hidden="true" />
         <span className="menu-row-name run-once-prompt" title={displayLabel}>
           {displayLabel}
-          <small>{prompt.id}</small>
+          <small>{prompt.subtitle ?? prompt.id}</small>
         </span>
       </label>
       {hasCandidates && isChecked && (

@@ -8,8 +8,8 @@
  * key 只经环境变量交给子进程，不写进任何文件；目录在会话结束时删除。
  */
 
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProfileLaunch } from "./types";
 
@@ -41,11 +41,12 @@ function tomlInlineTable(entries: Record<string, string>): string {
 
 /**
  * 生成该 profile 的 config.toml：唯一的 provider 指向上游，走 Responses 接口，
- * 不要求 ChatGPT 登录；会话历史不落盘。
+ * 不要求 ChatGPT 登录；禁用项目文档自动加载，会话历史不落盘。
  */
 export function renderProfileConfig(launch: ProfileLaunch): string {
   const lines = [
     `model_provider = ${tomlString(PROFILE_PROVIDER_ID)}`,
+    "project_doc_max_bytes = 0",
     "",
     `[model_providers.${PROFILE_PROVIDER_ID}]`,
     `name = ${tomlString(launch.name)}`,
@@ -59,6 +60,11 @@ export function renderProfileConfig(launch: ProfileLaunch): string {
   }
   lines.push("", "[history]", `persistence = "none"`, "");
   return lines.join("\n");
+}
+
+/** 生成默认 profile 隔离环境下的最小 config.toml */
+export function renderCleanDefaultConfig(): string {
+  return ["project_doc_max_bytes = 0", "", "[history]", `persistence = "none"`, ""].join("\n");
 }
 
 /** 建临时目录并写入 config.toml；写入失败时先删目录再抛出 */
@@ -77,6 +83,39 @@ export async function createProfileHome(launch: ProfileLaunch): Promise<ProfileH
   return {
     dir,
     env: { CODEX_HOME: dir, HOME: dir, [PROFILE_KEY_ENV]: launch.apiKey },
+    dispose,
+  };
+}
+
+/**
+ * 为默认 profile 的模型指纹采样创建最小隔离目录（同时作 CODEX_HOME 与 HOME）：
+ * 仅写入最小 config.toml，并对已存在的宿主机 auth.json 创建符号链接，不复制凭据文件。
+ */
+export async function createDefaultCleanHome(
+  hostHome: string = homedir(),
+  hostEnv: Record<string, string | undefined> = process.env,
+): Promise<ProfileHome> {
+  const dir = await mkdtemp(join(tmpdir(), "pelican-codex-clean-"));
+  const dispose = async (): Promise<void> => {
+    await rm(dir, { recursive: true, force: true });
+  };
+  try {
+    await writeFile(join(dir, "config.toml"), renderCleanDefaultConfig(), { encoding: "utf8", mode: 0o600 });
+    const hostCodexDir = hostEnv.CODEX_HOME?.trim() || join(hostHome, ".codex");
+    const hostAuthPath = join(hostCodexDir, "auth.json");
+    const hasAuth = await access(hostAuthPath)
+      .then(() => true)
+      .catch(() => false);
+    if (hasAuth) {
+      await symlink(hostAuthPath, join(dir, "auth.json"));
+    }
+  } catch (cause) {
+    await dispose();
+    throw cause;
+  }
+  return {
+    dir,
+    env: { CODEX_HOME: dir, HOME: dir },
     dispose,
   };
 }

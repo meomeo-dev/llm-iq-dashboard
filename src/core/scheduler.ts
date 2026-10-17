@@ -15,9 +15,9 @@
  */
 
 import { Cron } from "croner";
+import { findActiveWork } from "./active-work";
 import { readAutoRunSwitch, writeSchedulerPending, type PendingScheduledRun } from "./auto-run";
 import { hasRhythm, type AppConfig, type ScheduleRhythm } from "./config";
-import { findActiveRun } from "./progress";
 import { scheduledRound } from "./run-selection";
 import { executeRun, type Logger } from "./runner";
 
@@ -28,7 +28,7 @@ export const ACTIVE_POLL_MS = 15_000;
 
 /** 调度器依赖，测试里替换；缺省接真实的进度文件、开关文件与执行器 */
 export interface SchedulerDeps {
-  /** 任一进程里正在执行的轮次 */
+  /** 任一进程里正在执行的轮次或指纹作业 */
   activeRun: () => Promise<{ runId: string } | null>;
   autoRunEnabled: () => Promise<boolean>;
   execute: (config: AppConfig, log: Logger) => Promise<unknown>;
@@ -38,7 +38,7 @@ export interface SchedulerDeps {
 }
 
 const DEFAULT_DEPS: SchedulerDeps = {
-  activeRun: findActiveRun,
+  activeRun: findActiveWork,
   autoRunEnabled: async () => (await readAutoRunSwitch()).enabled,
   execute: (config, log) => executeRun(config, { trigger: "schedule", log }),
   setPending: writeSchedulerPending,
@@ -196,15 +196,6 @@ function watchRhythm(
       lastError = message;
     }
   }, periodMs);
-}
-
-/** 开关关闭或已有轮次在执行（含看板手动发起的）时返回跳过原因 */
-async function reasonToSkip(): Promise<string | null> {
-  const { enabled } = await readAutoRunSwitch();
-  if (!enabled) return "自动任务已关闭（看板开关），跳过本次触发";
-  const active = await findActiveRun();
-  if (active !== null) return `轮次 ${active.runId} 仍在执行，跳过本次触发`;
-  return null;
 }
 
 function arm(schedule: ScheduleRhythm, tick: () => Promise<void>, log: Logger): ArmedTimer {

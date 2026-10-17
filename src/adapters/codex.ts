@@ -14,18 +14,18 @@
 
 import { CodexAppServer, EXIT_METHOD } from "./codex-app-server";
 import { asArray, asRecord, asString, recordAt, type JsonRecord } from "./json-lines";
-import type { AgentAdapter, AgentReply, AgentRequest, AgentSession, ProfileLaunch } from "./types";
+import type { AgentAdapter, AgentReply, AgentRequest, AgentSession, ProfileLaunch, SessionOptions } from "./types";
 
 /** 超时后中断 turn 的等待上限；中断失败不影响本次记为超时 */
 const INTERRUPT_TIMEOUT_MS = 10_000;
 
 export const codexAdapter: AgentAdapter = {
-  openSession(profile?: ProfileLaunch): AgentSession {
+  openSession(profile?: ProfileLaunch, options?: SessionOptions): AgentSession {
     let server: Promise<CodexAppServer> | null = null;
 
     return {
       async ask(request) {
-        server ??= CodexAppServer.start(profile);
+        server ??= CodexAppServer.start(profile, options);
         return askCodex(await server, request);
       },
       async close() {

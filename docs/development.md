@@ -14,6 +14,7 @@ scripts/                Production dashboard launcher, code-length gate, secret 
 src/core/               Domain logic: config & AST writer, prompts & variables, orchestration, scheduler, storage, SVG extraction
 src/core/prompts/i18n/  Display-layer bilingual localization for prompt labels and standards (index.ts, labels-en.ts, standards-en.ts + standards-*-en.ts)
 src/core/judge/         Artwork judging: static AST analysis, Chromium frame capture, cross-vendor AI judge, store
+src/core/model-fingerprint/ Model fingerprint verification: OOP Probe & PromptCodec hierarchy, base-2 JSD, paired hold-out self-test, 4-state verdict machine, locked store & incremental collector
 src/core/sync/          Data repo sync pipeline: sanitization, sync ledger, publish confirmation, origin verification
 src/core/data-repo/     Data repository layout and schema contract
 src/core/data-source/   Data source abstraction: local data/ filesystem vs. remote public data repo
@@ -21,12 +22,13 @@ src/core/auth/, github-auth/ Owner device pairing & session tokens; GitHub App m
 src/capabilities/       CLI capability probing, multi-source merging, installation & login readiness cache
 src/adapters/           One adapter per CLI implementing the unified AgentAdapter contract
 src/pricing/            Token usage parsing and API-equivalent cost calculation against the pricing catalog
-src/i18n/               Bilingual (en / zh-CN) dictionaries (messages/), locale negotiation & React context (types.ts, context.tsx), and judge rubric / evidence display localization (judge-rubric.ts, judge-evidence-en.ts)
-src/bin/                CLI entrypoints: run-once, scheduler, runner, pair, preflight, onboard, pricing-sync, sync-data, validate-prompts
-src/app/                Next.js dashboard (/), config console (/config), artwork viewer (/view), pairing (/pair), sandboxed SVG (/art), contact sheets (/sheet)
+src/i18n/               Bilingual (en / zh-CN) dictionaries (messages/, including fingerprint.ts), locale negotiation & React context (types.ts, context.tsx), and judge rubric / evidence display localization (judge-rubric.ts, judge-evidence-en.ts)
+src/bin/                CLI entrypoints: run-once, scheduler, runner (plus runner-sync), model-fingerprint, pair, preflight, onboard, pricing-sync, sync-data, validate-prompts
+src/app/                Next.js dashboard (/), config console (/config), model fingerprint console (/fingerprint), artwork viewer (/view), pairing (/pair), sandboxed SVG (/art), contact sheets (/sheet)
 src/types/              Minimal TypeScript ambient declarations for dependencies without bundled types (jsdom)
 test/                   Unit tests mirroring src/ directory structure
 data/runs/              Run outputs (gitignored)
+data/model-fingerprint/ Local model fingerprint samples, archives, checks, and job records (gitignored; never synced to public data repo)
 data/pricing/           Cached pricing catalog release assets (gitignored, populated by pnpm pricing:sync)
 ```
 
@@ -45,7 +47,15 @@ data/runs/<runId>/cancel.json               Cancellation marker written when sto
 data/runs/<runId>/<attemptKey>.judge.json   Artwork evaluation record (ACR-019 / ACR-020)
 data/runs/<runId>/<attemptKey>.sheet.png    8-frame sequence contact sheet; .sheet.<kind>.png part detail sheets
 data/runs/<runId>/<attemptKey>.judge-ai.txt Raw transcript of the 3-turn AI judge session
+data/model-fingerprint/samples/<cli>-<effort>/<model>/<probe>.json
+                                            Reference sample set for a (CLI, logical effort, model, probe) cell
+data/model-fingerprint/archive/<cli>-<effort>/<model>/<probe>.<timestamp>.json
+                                            Archived sample set snapshot moved on --reset (used as fallback by rescore)
+data/model-fingerprint/checks/<yyyy-mm>/<checkId>.json
+                                            Model fingerprint verification record and offline rescores[]
+data/model-fingerprint/jobs/<jobId>.json    Active/finished fingerprint job progress (plus <jobId>.cancel.json)
 data/scratch/<runId>/<attemptKey>/          Isolated empty working directory per CLI invocation (cleaned up after round)
+data/scratch/model-fingerprint/             Fixed empty working directory for model fingerprint calls (preserved across orphan cleanup)
 data/requests/                              File-based RPC queue from web container to runner container
 data/auto-run.json                          Auto-run master switch state (absent = disabled)
 data/scheduler.json                         Active scheduler pid & start timestamp; logs append to data/scheduler.log
@@ -73,15 +83,17 @@ Write endpoints require an authorized Owner browser session cookie plus header `
 | `GET` / `DELETE /api/session` | Query owner session & paired device list; sign out current device |
 | `DELETE /api/devices/<id>` | Revoke a paired device |
 | `GET /api/runs?limit=20` | Read-only benchmark run records |
-| `GET /api/events` | Server-Sent Events (SSE) stream pushing live progress and auto-run state changes |
+| `GET /api/events` | Server-Sent Events (SSE) stream pushing live progress, auto-run, and `fingerprint-job` state changes |
 | `GET /api/progress` | Detailed per-call progress for the latest 3 rounds |
 | `GET /view/<runId>/<svgFile>` | Standalone artwork viewer page with prompt and judge drawers |
 | `GET /art/<runId>/<svgFile>` | Raw model SVG served with strict `Content-Security-Policy: sandbox` |
 | `GET /sheet/<runId>/<file>` | Contact sheet PNG for judged artworks |
-| `GET` / `PUT /api/config` | Read configuration or apply validated patch to `pelican.config.yaml` |
+| `GET` / `PUT /api/config` | Read configuration or apply validated patch to `pelican.config.yaml` (including `modelFingerprint`) |
 | `GET` / `POST /api/capabilities` | Read cached CLI capabilities or trigger live re-probe |
-| `GET` / `POST /api/run` | Query selectable run options or launch a manual benchmark round (`202`) |
+| `GET` / `POST /api/run` | Query selectable run options or launch a manual benchmark round (`202`; returns `409` if a round or fingerprint job is active) |
 | `POST /api/run/cancel` | Request cancellation of the active round (`202`) |
+| `GET` / `POST /api/fingerprint` | Owner-only (`403` in read-only/remote mode): query matrix snapshot, cell sample detail (`?sampleDetail=cli:model:probe` or `?cli&model&probe`), or check detail (`?checkId=`); `POST` actions `plan`, `fill`, `check`, `self-test`, `rescore`, `cancel` |
+| `PATCH /api/fingerprint/samples` | Owner-only: exclude/include sample `reqId`s (`{ cli, model, probe, exclude?, include?, reset? }`) or reset and archive a single `(cli, model, probe)` sample set |
 | `GET` / `POST /api/readiness` | Read or re-check CLI installation & login status |
 | `GET` / `PUT /api/auto-run` | Query or toggle the scheduled auto-run switch |
 | `GET` / `POST /api/data-repo*` | Query data repository sync status, trigger dry-run / export / confirm / push, or manage GitHub App |
@@ -107,11 +119,16 @@ pnpm check:length                                       # File & function length
 pnpm check:secrets                                      # Tracked file secret scan (config/secret-scan-policy.yaml)
 pnpm build                                              # Next.js production build
 pnpm showcase:smoke                                     # End-to-end read-only showcase smoke verification
+pnpm fingerprint:status                                 # Local model fingerprint matrix & gap summary (0 CLI calls)
+pnpm fingerprint:self-test                              # Offline paired cross-validation self-test (0 CLI calls)
+pnpm fingerprint:fill -- --dry-run                      # Preview reference sample fill calls & estimated cost
+pnpm fingerprint:check -- --cli codex --model gpt-5.5 --dry-run
+                                                        # Preview profile model verification plan & self-test consistency
 PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once   # Live CLI smoke test (invokes real CLIs & consumes quota)
 pnpm issue:new -- --type feat "Title"                   # Create local issue (also pnpm issue:check, pnpm issue:worktree)
 ```
 
-`pnpm test` runs `test/**/*.test.ts` via Node's built-in `node:test` runner and `tsx`. Unit tests never start the server, invoke external CLIs, or read host `data/`; filesystem tests run in temporary directories. Coverage includes `classic-v1` verbatim invariance, SVG extraction, effort folding, 4-tier timeout precedence, `runId` & timezone day partitioning, house-rule parity, retention pruning, SVG sanitization & Shadow DOM mounting, token usage & cost calculation, CLI readiness preflight, budget forecasting, static & rendered artwork judging, data repo sync & ledger, remote data source, owner pairing & GitHub App auth, scheduler queueing, upstream profiles, harness guard, visual exports, and bilingual i18n (`test/i18n/locale.test.ts`, `test/i18n/prompt-judge-i18n.test.ts`, `test/i18n/i18n-integrity.test.ts`).
+`pnpm test` runs `test/**/*.test.ts` via Node's built-in `node:test` runner and `tsx`. Unit tests never start the server, invoke external CLIs, or read host `data/`; filesystem tests run in temporary directories. Coverage includes `classic-v1` verbatim invariance, SVG extraction, effort folding, 4-tier timeout precedence, `runId` & timezone day partitioning, house-rule parity, retention pruning, SVG sanitization & Shadow DOM mounting, token usage & cost calculation, CLI readiness preflight, budget forecasting, static & rendered artwork judging, model fingerprint probes / JSD math / paired self-test / locked storage / CLI & Web API (`test/core/model-fingerprint/*.test.ts`), data repo sync & ledger, remote data source, owner pairing & GitHub App auth, scheduler queueing, upstream profiles, harness guard, visual exports, and bilingual i18n (`test/i18n/locale.test.ts`, `test/i18n/prompt-judge-i18n.test.ts`, `test/i18n/i18n-integrity.test.ts`).
 
 Pre-commit (`check:secrets`, `lint`, `check:length`) and pre-push (`validate:prompts`, `test`) hooks are managed by `lefthook` (`lefthook.yml`, ACR-022) and installed automatically on `pnpm install`. Use `LEFTHOOK=0 git commit` only to bypass a confirmed false positive once before adding it to the policy allowlist.
 

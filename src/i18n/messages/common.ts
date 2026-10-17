@@ -6,6 +6,7 @@ export interface CommonMessages {
   siteTitle: string;
   siteDescription: string;
   configPageTitle: string;
+  fingerprintPageTitle: string;
   pairPageTitle: string;
   languageSwitchLabel: string;
   languageSwitchTitle: string;
@@ -63,6 +64,7 @@ export const zhCNCommon: CommonMessages = {
   siteDescription:
     "定时调用 agy / codex / claude 执行鹈鹕自行车 SVG 基准，并以 24 小时时间线呈现历史结果",
   configPageTitle: "配置 · 鹈鹕自行车基准",
+  fingerprintPageTitle: "模型统计指纹 · 鹈鹕自行车基准",
   pairPageTitle: "设备配对 · 鹈鹕自行车基准",
   languageSwitchLabel: "EN",
   languageSwitchTitle: "Switch language to English",
@@ -120,6 +122,7 @@ export const enCommon: CommonMessages = {
   siteDescription:
     "Scheduled SVG benchmark runner for agy / codex / claude with a 24-hour visual timeline dashboard",
   configPageTitle: "Configuration · Pelican Bicycle Benchmark",
+  fingerprintPageTitle: "Model Fingerprint · Pelican Bicycle Benchmark",
   pairPageTitle: "Device Pairing · Pelican Bicycle Benchmark",
   languageSwitchLabel: "中文",
   languageSwitchTitle: "切换为简体中文",

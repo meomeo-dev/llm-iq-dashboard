@@ -38,6 +38,8 @@ export function localizeRunApiError(error: string, locale: Locale = "zh-CN"): st
   if (activeMatch) {
     return `A round is already running (${activeMatch[1] === "定时" ? "scheduled" : "manual"} ${activeMatch[2]})`;
   }
+  const fpMatch = /^模型指纹作业正在执行（(.+)）$/.exec(error);
+  if (fpMatch) return `A model fingerprint job is running (${fpMatch[1]})`;
   const missingCfg = /^配置里没有：(.+)$/.exec(error);
   if (missingCfg) {
     const items = missingCfg[1]!.replaceAll("目标 ", "target ").replaceAll("题目 ", "prompt ").replaceAll("、", ", ");

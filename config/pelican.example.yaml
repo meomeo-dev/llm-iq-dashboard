@@ -239,3 +239,32 @@ targets:
     model: gpt-6-luna
     effort: low
     label: Codex gpt-6-luna · low
+
+# Model Fingerprint Verification (optional, off by default; configurable in /config under "Model Fingerprint"):
+# Verifies whether a third-party `profile` returns responses matching the empirical character/bigram/segment
+# distributions (Jensen-Shannon divergence) of reference samples collected via the official `default` login session.
+# 模型指纹核验（可选，默认关闭；看板 /config 页「模型指纹」区块可改）：
+# 通过 6 类约束格式探针采集各模型在官方默认登录态（default）下的基准样本，按多粒度经验频率分布的
+# Jensen-Shannon 散度（JSD）与配对无重叠交叉验证检验第三方 profile 是否与所声明的模型一致。
+# modelFingerprint:
+#   enabled: false
+#   effort: low
+#   samplesPerProbe: 20
+#   samplesByProbe:
+#     uuid: 40
+#     number: 40
+#     seed: 50
+#     palette: 60
+#     words-en: 60
+#     words-zh: 80
+#   probes: []
+#   valuesPerCheck: 1
+#   checkAttempts: 3
+#   targetAccuracy: 0.95
+#   maxCallsFactor: 3
+#   concurrency: 5
+#   references:
+#     - { cli: codex, model: gpt-5.5 }
+#     - { cli: codex, model: gpt-6-mini }
+#   modelPrompts: {}
+

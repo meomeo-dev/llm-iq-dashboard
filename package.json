@@ -30,6 +30,11 @@
     "check:length": "tsx scripts/check-code-length.ts",
     "check:secrets": "tsx scripts/check-secrets.ts",
     "judge:backfill": "tsx scripts/judge-backfill.ts",
+    "fingerprint:status": "tsx src/bin/model-fingerprint.ts status",
+    "fingerprint:fill": "tsx src/bin/model-fingerprint.ts fill",
+    "fingerprint:check": "tsx src/bin/model-fingerprint.ts check",
+    "fingerprint:self-test": "tsx src/bin/model-fingerprint.ts self-test",
+    "fingerprint:rescore": "tsx src/bin/model-fingerprint.ts rescore",
     "issue:new": "node scripts/issue-new.mjs",
     "issue:check": "node scripts/issue-check.mjs",
     "issue:worktree": "node scripts/issue-worktree.mjs"

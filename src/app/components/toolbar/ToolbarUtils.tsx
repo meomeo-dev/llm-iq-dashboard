@@ -4,7 +4,7 @@ import type { TimeZoneOption } from "../timeline/zoned-time";
 import { RunStatus } from "../run-status/RunStatus";
 import { LiveClock } from "./LiveClock";
 import { TimeZoneMenu } from "./TimeZoneMenu";
-import { KeyIcon, RepositoryLink, SettingsIcon } from "./ToolbarIcons";
+import { FingerprintIcon, KeyIcon, RepositoryLink, SettingsIcon } from "./ToolbarIcons";
 
 interface ToolbarUtilsProps {
   readonly owner: boolean;
@@ -30,7 +30,7 @@ export function ToolbarUtils({
   onToggleMenu,
   onCloseMenus,
 }: ToolbarUtilsProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const isEn = locale === "en";
   return (
     <div className="toolbar-utils">
@@ -68,14 +68,24 @@ export function ToolbarUtils({
           <RepositoryLink />
         </>
       ) : owner ? (
-        <a
-          className="icon-link"
-          href="/config"
-          title={isEn ? "Configuration" : "配置"}
-          aria-label={isEn ? "Configuration" : "配置"}
-        >
-          <SettingsIcon />
-        </a>
+        <>
+          <a
+            className="icon-link"
+            href="/fingerprint"
+            title={t.toolbar.fingerprintLinkTitle}
+            aria-label={t.toolbar.fingerprintLinkTitle}
+          >
+            <FingerprintIcon />
+          </a>
+          <a
+            className="icon-link"
+            href="/config"
+            title={isEn ? "Configuration" : "配置"}
+            aria-label={isEn ? "Configuration" : "配置"}
+          >
+            <SettingsIcon />
+          </a>
+        </>
       ) : (
         <a
           className="icon-link"

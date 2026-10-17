@@ -11,6 +11,8 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Env } from "./ceiling";
+import type { AppConfig } from "./config";
+import { profileKeyPath } from "./profile-credentials";
 
 /** 令牌样式子串：连续的 base64 / URL-safe 字符；短于窗口的不计 */
 const TOKEN_CHARS = /[A-Za-z0-9_\-.=]+/g;
@@ -38,6 +40,16 @@ export function credentialFiles(env: Env = process.env, home: string = homedir()
 export async function buildLeakGuard(files: readonly string[] = credentialFiles()): Promise<LeakGuard> {
   const contents = await Promise.all(files.map((file) => readFile(file, "utf8").catch(() => "")));
   return leakGuardFromText(contents);
+}
+
+/** 指纹覆盖三家 CLI 的登录凭据与配置中登记的全部 profile .key 文件 */
+export async function buildConfigLeakGuard(
+  config: Pick<AppConfig, "profiles">,
+  env: Env = process.env,
+  home: string = homedir(),
+): Promise<LeakGuard> {
+  const profileKeys = config.profiles.map((profile) => profileKeyPath(profile.cli, profile.name));
+  return buildLeakGuard([...credentialFiles(env, home), ...profileKeys]);
 }
 
 /** 由凭据文本直接构建，供单测与不读文件的调用方使用 */

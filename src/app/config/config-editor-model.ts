@@ -1,4 +1,4 @@
-import type { HarnessGuardConfig, JudgeConfig, ProfileConfig } from "@/core/config";
+import type { HarnessGuardConfig, JudgeConfig, ModelFingerprintConfig, ProfileConfig } from "@/core/config";
 import type { PromptSpec } from "@/core/prompt";
 import type { CliKind, EffortLevel, Target } from "@/core/types";
 import type { RotationConfig } from "@/core/variables";
@@ -22,6 +22,7 @@ export interface EditableConfig {
   customPrompts: PromptSpec[];
   customModels: Partial<Record<CliKind, string[]>>;
   judge: JudgeConfig;
+  modelFingerprint?: ModelFingerprintConfig;
   /** 数据仓设置；null 表示不启用（保存时删掉整段 dataRepo） */
   dataRepo: DataRepoDraft | null;
 }
@@ -49,7 +50,7 @@ function dataRepoPatchOf(dataRepo: DataRepoDraft | null) {
 }
 
 export function buildConfigPatchBody(draft: EditableConfig): string {
-  return JSON.stringify({
+  const payload: Record<string, unknown> = {
     schedule: draft.schedule,
     run: draft.run,
     upstreamTypes: draft.upstreamTypes,
@@ -59,5 +60,9 @@ export function buildConfigPatchBody(draft: EditableConfig): string {
     customModels: draft.customModels,
     judge: draft.judge,
     dataRepo: dataRepoPatchOf(draft.dataRepo),
-  });
+  };
+  if (draft.modelFingerprint !== undefined) {
+    payload.modelFingerprint = draft.modelFingerprint;
+  }
+  return JSON.stringify(payload);
 }

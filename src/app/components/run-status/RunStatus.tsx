@@ -139,6 +139,13 @@ function Pill({ run, now, locale }: { run: ProgressView | undefined; now: number
   );
 }
 
+function triggerLabel(run: ProgressView, isEn: boolean): string {
+  if (run.jobKind === "fill") return isEn ? "FP Fill" : "指纹补采";
+  if (run.jobKind === "check") return isEn ? "FP Check" : "指纹核验";
+  if (run.trigger === "schedule") return isEn ? "Scheduled" : "定时";
+  return isEn ? "Manual" : "手动";
+}
+
 function RunSection({
   run,
   now,
@@ -156,7 +163,7 @@ function RunSection({
   const phase = phaseOf(run, now);
   const clock: Clock = { at: runClock(run, phase, now), ticking: isTicking(phase) };
   const counts = countCalls(allCalls(run));
-  const trigger = run.trigger === "schedule" ? (isEn ? "Scheduled" : "定时") : isEn ? "Manual" : "手动";
+  const trigger = triggerLabel(run, isEn);
   return (
     <section className="run-section">
       <header className="run-head">
@@ -205,9 +212,13 @@ function RunSection({
       )}
       {run.judging != null && <JudgingSection judging={run.judging} phase={phase} clock={clock} locale={locale} />}
       <p className="run-note">
-        {isEn
-          ? `${run.lanes.length} model lanes (up to ${run.laneLimit} concurrent); efforts run sequentially from low to max per lane`
-          : `${run.lanes.length} 个模型分道，同时最多 ${run.laneLimit} 道；道内按强度从低到高串行`}
+        {run.jobKind
+          ? isEn
+            ? "Zero-tool direct sampling by model × probe (first call warms cache, then concurrent)"
+            : "按模型×探针零工具直出采样（首请求预热缓存后并发）"
+          : isEn
+            ? `${run.lanes.length} model lanes (up to ${run.laneLimit} concurrent); efforts run sequentially from low to max per lane`
+            : `${run.lanes.length} 个模型分道，同时最多 ${run.laneLimit} 道；道内按强度从低到高串行`}
       </p>
       <LaneGroups lanes={run.lanes} clock={clock} locale={locale} />
     </section>

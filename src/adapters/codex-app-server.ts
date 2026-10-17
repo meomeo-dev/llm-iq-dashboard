@@ -8,10 +8,10 @@
  * 只实现基准需要的子集：请求/响应配对、按 threadId 分发通知、拒绝全部审批。
  */
 
-import { createProfileHome, type ProfileHome } from "./codex-profile-home";
+import { createDefaultCleanHome, createProfileHome, type ProfileHome } from "./codex-profile-home";
 import { LineSplitter, spawnDetached, terminateGroup } from "./exec";
 import { asRecord, asString, parseJsonLine, recordAt, type JsonRecord } from "./json-lines";
-import type { ProfileLaunch } from "./types";
+import type { ProfileLaunch, SessionOptions } from "./types";
 
 /** 分发给订阅者的消息；进程意外退出时会收到一条合成的 EXIT_METHOD 消息 */
 export type ThreadListener = (message: JsonRecord) => void;
@@ -58,17 +58,22 @@ export class CodexAppServer {
 
   private constructor(
     private readonly child: ServerProcess,
-    /** 非默认 profile 的临时 home；默认 profile 为 null，沿用宿主机登录态 */
+    /** 非默认 profile 或指纹采样模式的临时 home；常规默认 profile 为 null，沿用宿主机登录态 */
     private readonly home: ProfileHome | null,
   ) {}
 
   /**
-   * 启动并完成握手。传 profile 时进程在该 profile 的临时 home 里运行，环境只多出
-   * 该 profile 的 key；不传则参数与环境同默认 profile 一贯的做法。
+   * 启动并完成握手。传 profile 时进程在该 profile 的临时 home 里运行；
+   * 默认 profile 开启 fingerprint 隔离时使用只含最小 config.toml 与 auth.json 符号链接的临时 home。
    * 握手失败时终止进程并删除 home，再把错误抛给调用方。
    */
-  static async start(launch?: ProfileLaunch): Promise<CodexAppServer> {
-    const home = launch === undefined ? null : await createProfileHome(launch);
+  static async start(launch?: ProfileLaunch, options?: SessionOptions): Promise<CodexAppServer> {
+    const home =
+      launch !== undefined
+        ? await createProfileHome(launch)
+        : options?.fingerprint === true
+          ? await createDefaultCleanHome()
+          : null;
     const child = spawnDetached({ binary: "codex", args: ["app-server"] }, process.cwd(), home?.env);
     const server = new CodexAppServer(child, home);
     server.wire();

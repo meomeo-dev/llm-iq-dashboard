@@ -50,6 +50,7 @@ export interface ToolbarMessages {
   stopRunButton: string;
   stopRunStopping: string;
   stopRunConfirmTitle: string;
+  fingerprintLinkTitle: string;
   configLinkTitle: string;
   pairLinkTitle: string;
   githubRepoTitle: string;
@@ -110,6 +111,7 @@ export const zhCNToolbar: ToolbarMessages = {
   stopRunButton: "停止本轮",
   stopRunStopping: "停止中…",
   stopRunConfirmTitle: "立即终止当前正在执行的评测轮次",
+  fingerprintLinkTitle: "模型统计指纹核验",
   configLinkTitle: "打开配置管理台",
   pairLinkTitle: "设备配对与所有者认证",
   githubRepoTitle: "在 GitHub 查看源码仓库",
@@ -170,6 +172,7 @@ export const enToolbar: ToolbarMessages = {
   stopRunButton: "Stop Run",
   stopRunStopping: "Stopping…",
   stopRunConfirmTitle: "Stop the currently running benchmark round",
+  fingerprintLinkTitle: "Model Statistical Fingerprint",
   configLinkTitle: "Open Configuration Console",
   pairLinkTitle: "Device Pairing & Owner Auth",
   githubRepoTitle: "View source repository on GitHub",

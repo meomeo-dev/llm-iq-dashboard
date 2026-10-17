@@ -61,6 +61,7 @@ export function buildClaudeArgs(request: AgentRequest): string[] {
     // 评审模式只放开 Read，让裁判看工作目录里的联系图
     "--tools",
     request.review ? "Read" : "",
+    ...(request.fingerprint === true ? ["--safe-mode", "--no-session-persistence"] : []),
     ...target.extraArgs,
   ];
 }

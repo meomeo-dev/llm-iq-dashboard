@@ -5,6 +5,7 @@
 import type { Locale } from "../types";
 import { enCommon, zhCNCommon, type CommonMessages } from "./common";
 import { enConfig, zhCNConfig, type ConfigMessages } from "./config";
+import { enFingerprint, zhCNFingerprint, type FingerprintMessages } from "./fingerprint";
 import { enPair, zhCNPair, type PairMessages } from "./pair";
 import { enToolbar, zhCNToolbar, type ToolbarMessages } from "./toolbar";
 import { enViewer, zhCNViewer, type ViewerMessages } from "./viewer";
@@ -14,6 +15,7 @@ export type {
   ToolbarMessages,
   ViewerMessages,
   ConfigMessages,
+  FingerprintMessages,
   PairMessages,
 };
 
@@ -22,6 +24,7 @@ export interface Messages {
   toolbar: ToolbarMessages;
   viewer: ViewerMessages;
   config: ConfigMessages;
+  fingerprint: FingerprintMessages;
   pair: PairMessages;
 }
 
@@ -30,6 +33,7 @@ export const zhCNMessages: Messages = {
   toolbar: zhCNToolbar,
   viewer: zhCNViewer,
   config: zhCNConfig,
+  fingerprint: zhCNFingerprint,
   pair: zhCNPair,
 };
 
@@ -38,6 +42,7 @@ export const enMessages: Messages = {
   toolbar: enToolbar,
   viewer: enViewer,
   config: enConfig,
+  fingerprint: enFingerprint,
   pair: enPair,
 };
 

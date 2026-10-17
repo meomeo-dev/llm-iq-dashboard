@@ -105,27 +105,39 @@ function isCatalogGlitch(reply: AgentReply, request: AgentRequest): boolean {
   return reply.error?.includes("--effort is not supported for model") === true;
 }
 
+export function buildAgyArgs(request: AgentRequest): string[] {
+  const { target, promptText } = request;
+  const effortArgs = resolveEffortArgs(target.model, request);
+  return [
+    "--print",
+    promptText,
+    "--model",
+    target.model,
+    ...effortArgs,
+    "--output-format",
+    "stream-json",
+    ...(request.fingerprint === true ? ["--disable-slash-commands"] : []),
+    ...HEADLESS_PERMISSION_ARGS.filter((arg) => !target.extraArgs.includes(arg)),
+    ...target.extraArgs,
+  ];
+}
+
 async function askAgyOnce(request: AgentRequest): Promise<AgentReply> {
-  const { target, promptText, workdir, timeoutMs, signal } = request;
+  const { target, workdir, timeoutMs, signal } = request;
   const effortArgs = resolveEffortArgs(target.model, request);
   const stream: AgyStream = { startedAt: new Date(), candidates: [], result: null, errors: [] };
 
   const outcome = await execStreaming(
     {
       binary: "agy",
-      args: [
-        "--print",
-        promptText,
-        "--model",
-        target.model,
-        ...effortArgs,
-        "--output-format",
-        "stream-json",
-        ...HEADLESS_PERMISSION_ARGS.filter((arg) => !target.extraArgs.includes(arg)),
-        ...target.extraArgs,
-      ],
+      args: buildAgyArgs(request),
     },
-    { cwd: workdir, timeoutMs, signal, onLine: (line) => absorbEvent(stream, line) },
+    {
+      cwd: workdir,
+      timeoutMs,
+      signal,
+      onLine: (line) => absorbEvent(stream, line, request.fingerprint === true),
+    },
   );
 
   return {
@@ -139,7 +151,7 @@ async function askAgyOnce(request: AgentRequest): Promise<AgentReply> {
   };
 }
 
-function absorbEvent(stream: AgyStream, line: string): void {
+export function absorbEvent(stream: AgyStream, line: string, fingerprint = false): void {
   const event = parseJsonLine(line);
   if (event === null) return;
 
@@ -157,10 +169,13 @@ function absorbEvent(stream: AgyStream, line: string): void {
   const parameters = recordAt(step, "tool_info", "parameters");
   const writtenPath = asString(parameters?.TargetFile);
   if (step.tool_name === WRITE_TOOL && writtenPath !== null) {
-    const earlyRead = readWrittenFile(writtenPath, stream.startedAt);
+    const earlyRead = fingerprint
+      ? Promise.resolve({ path: writtenPath, content: "" })
+      : readWrittenFile(writtenPath, stream.startedAt);
     stream.candidates.push({ path: writtenPath, earlyRead });
     return;
   }
+  if (fingerprint) return;
   // 脚本生成的 SVG 不经过写文件工具，只会在后续命令（渲染、校验）里被提到
   const commandLine = asString(parameters?.CommandLine);
   for (const path of findSvgPaths(commandLine ?? "")) {

@@ -11,6 +11,7 @@ import { mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/pro
 import { join } from "node:path";
 import { readCachedCatalog } from "../capabilities/catalog";
 import type { CapabilitySnapshot } from "../capabilities/types";
+import type { ProbeId } from "./model-fingerprint/types";
 import { dataRoot } from "./paths";
 import type { RunSelection } from "./run-selection";
 import type { CliKind } from "./types";
@@ -37,8 +38,28 @@ export type RequestKind =
   | "github-token-exchange"
   | "github-disconnect"
   | "profile-credential"
-  | "profile-models";
+  | "profile-models"
+  | "fingerprint-fill"
+  | "fingerprint-check";
 export type RequestState = "pending" | "claimed" | "done" | "failed";
+
+export interface FingerprintFillRequestPayload {
+  cli?: CliKind;
+  profile?: string;
+  model?: string;
+  probes?: ProbeId[];
+  count?: number;
+  exclude?: string[];
+  include?: string[];
+  reset?: boolean;
+}
+
+export interface FingerprintCheckRequestPayload {
+  cli: CliKind;
+  profile?: string;
+  model: string;
+  probes?: ProbeId[];
+}
 
 export interface RunnerRequest {
   id: string;
@@ -57,9 +78,15 @@ export interface RunnerRequest {
   profileCredential?: ProfileCredentialAction | null;
   /** kind 为 profile-models 时要拉模型清单的 profile；只读，不含 key */
   profileTarget?: { cli: CliKind; name: string } | null;
+  /** kind 为 fingerprint-fill 时的参数 */
+  fingerprintFill?: FingerprintFillRequestPayload | null;
+  /** kind 为 fingerprint-check 时的参数 */
+  fingerprintCheck?: FingerprintCheckRequestPayload | null;
   /** done：发起一轮时为 runId 与调用数；sync-data 为 syncResult；data-repo-status 为 statusResult；github 为 githubConnection */
   result: {
     runId?: string;
+    jobId?: string;
+    checkId?: string;
     calls?: number;
     error?: string;
     syncResult?: SyncActionResult;
@@ -187,6 +214,41 @@ export interface EnqueuePayload {
   githubAction?: { code: string | null } | null;
   profileCredential?: ProfileCredentialAction | null;
   profileTarget?: { cli: CliKind; name: string } | null;
+  fingerprintFill?: FingerprintFillRequestPayload | null;
+  fingerprintCheck?: FingerprintCheckRequestPayload | null;
+}
+
+function normalizePayload(payload: RunSelection | EnqueuePayload | null): Required<EnqueuePayload> {
+  if (payload === null) {
+    return {
+      selection: null, syncAction: null, githubAction: null,
+      profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null,
+    };
+  }
+  if (
+    "syncAction" in payload ||
+    "githubAction" in payload ||
+    "profileCredential" in payload ||
+    "profileTarget" in payload ||
+    "fingerprintFill" in payload ||
+    "fingerprintCheck" in payload ||
+    ("selection" in payload && payload.selection !== undefined)
+  ) {
+    const p = payload as EnqueuePayload;
+    return {
+      selection: p.selection ?? null,
+      syncAction: p.syncAction ?? null,
+      githubAction: p.githubAction ?? null,
+      profileCredential: p.profileCredential ?? null,
+      profileTarget: p.profileTarget ?? null,
+      fingerprintFill: p.fingerprintFill ?? null,
+      fingerprintCheck: p.fingerprintCheck ?? null,
+    };
+  }
+  return {
+    selection: payload as RunSelection, syncAction: null, githubAction: null,
+    profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null,
+  };
 }
 
 export async function enqueueRequest(
@@ -194,31 +256,7 @@ export async function enqueueRequest(
   payload: RunSelection | EnqueuePayload | null = null,
   now: Date = new Date(),
 ): Promise<RunnerRequest> {
-  let selection: RunSelection | null = null;
-  let syncAction: SyncActionRequest | null = null;
-  let githubAction: { code: string | null } | null = null;
-  let profileCredential: ProfileCredentialAction | null = null;
-  let profileTarget: { cli: CliKind; name: string } | null = null;
-
-  if (payload !== null) {
-    if (
-      "syncAction" in payload ||
-      "githubAction" in payload ||
-      "profileCredential" in payload ||
-      "profileTarget" in payload ||
-      ("selection" in payload && payload.selection !== undefined)
-    ) {
-      const p = payload as EnqueuePayload;
-      selection = p.selection ?? null;
-      syncAction = p.syncAction ?? null;
-      githubAction = p.githubAction ?? null;
-      profileCredential = p.profileCredential ?? null;
-      profileTarget = p.profileTarget ?? null;
-    } else {
-      selection = payload as RunSelection;
-    }
-  }
-
+  const norm = normalizePayload(payload);
   const request: RunnerRequest = {
     id: `${now.toISOString().replace(/[-:.]/g, "")}-${randomBytes(4).toString("hex")}`,
     kind,
@@ -226,11 +264,13 @@ export async function enqueueRequest(
     requestedAt: now.toISOString(),
     claimedAt: null,
     finishedAt: null,
-    selection,
-    ...(syncAction !== null ? { syncAction } : {}),
-    ...(githubAction !== null ? { githubAction } : {}),
-    ...(profileCredential !== null ? { profileCredential } : {}),
-    ...(profileTarget !== null ? { profileTarget } : {}),
+    selection: norm.selection,
+    ...(norm.syncAction !== null ? { syncAction: norm.syncAction } : {}),
+    ...(norm.githubAction !== null ? { githubAction: norm.githubAction } : {}),
+    ...(norm.profileCredential !== null ? { profileCredential: norm.profileCredential } : {}),
+    ...(norm.profileTarget !== null ? { profileTarget: norm.profileTarget } : {}),
+    ...(norm.fingerprintFill !== null ? { fingerprintFill: norm.fingerprintFill } : {}),
+    ...(norm.fingerprintCheck !== null ? { fingerprintCheck: norm.fingerprintCheck } : {}),
     result: null,
   };
   await mkdir(requestsDir(), { recursive: true });

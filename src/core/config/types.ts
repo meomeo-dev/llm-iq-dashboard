@@ -6,6 +6,11 @@ import type { CliKind, EffortLevel, Target } from "../types";
 import type { PromptSpec } from "../prompt";
 import type { RotationConfig } from "../variables";
 import type { BudgetConfig } from "../budget";
+import type {
+  FingerprintReferenceTarget,
+  ModelPromptOverrides,
+  ProbeId,
+} from "../model-fingerprint/types";
 
 /** 数据仓同步配置 */
 export interface DataRepoConfig {
@@ -177,6 +182,33 @@ export interface JudgeConfig {
   ai: JudgeAiConfig;
 }
 
+export interface ModelFingerprintConfig {
+  /** 是否开启模型指纹功能；缺省关闭 */
+  enabled: boolean;
+  /** 指纹调用统一的基准思考强度（缺省 low），按能力目录折叠后记录实际强度 */
+  effort: EffortLevel;
+  /** 每个探针基准样本集的基础目标合格值条数 N（N >= 10） */
+  samplesPerProbe: number;
+  /** 按探针自由度差异化配置的目标合格值条数（N_p >= 10；缺省为 uuid:40, number:40, seed:50, palette:60, words-en:60, words-zh:80） */
+  samplesByProbe?: Partial<Record<ProbeId, number>>;
+  /** 核验不指定探针时的缺省列表；空数组表示全部 6 个探针 */
+  probes: ProbeId[];
+  /** 核验时每个探针需采满的合格值个数 m（1 <= m <= floor(samplesPerProbe / 2)） */
+  valuesPerCheck: number;
+  /** 核验时每个探针最多尝试调用的倍数 */
+  checkAttempts: number;
+  /** 自检中判对方向的目标条件准确率（(0.5, 1]） */
+  targetAccuracy: number;
+  /** 单次补齐作业中一个样本集最多尝试调用的倍数 */
+  maxCallsFactor: number;
+  /** 指纹作业最大并发调用数（1–20） */
+  concurrency: number;
+  /** 批量采集基准样本的默认模型列表 */
+  references: FingerprintReferenceTarget[];
+  /** 按 "<cli>:<model>" 或 "<model>" -> "<probe>" 的轻量提示词与单次条数覆盖 */
+  modelPrompts: ModelPromptOverrides;
+}
+
 export interface AppConfig {
   schedule: ScheduleConfig;
   run: RunConfig;
@@ -196,4 +228,6 @@ export interface AppConfig {
   customModels: Partial<Record<CliKind, string[]>>;
   /** 数据仓同步配置；未配置时为 null */
   dataRepo?: DataRepoConfig | null;
+  /** 模型指纹配置；未显式传入时按缺省关闭配置处理 */
+  modelFingerprint?: ModelFingerprintConfig;
 }

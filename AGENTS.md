@@ -13,12 +13,13 @@ pnpm exec tsx --test test/core/budget.test.ts   # 单个测试文件
 pnpm dev --port 3001                        # 开发看板；3000 留给生产看板
 pnpm dashboard:prod                         # 生产看板 :3000，只构建已提交的 HEAD
 PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once   # 冒烟，会真实调用 CLI、消耗配额
+pnpm fingerprint:status                     # 模型指纹本地样本状态；另有 fingerprint:fill / check / self-test / rescore
 pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:check / issue:worktree
 ```
 
 - `pnpm test` 不调用 CLI、不读本机 `data/`、不读宿主机配置；涉及文件系统的用例用临时目录。
   SVG 净化测试依赖 jsdom（`test/support/dom.ts`）。
-- `pnpm run:once` 与 `pnpm scheduler` 会调用真实 CLI，执行前先征得同意。
+- `pnpm run:once`、`pnpm scheduler`、不带 `--dry-run` 的 `pnpm fingerprint:fill` 与 `pnpm fingerprint:check` 会调用真实 CLI，执行前先征得同意。
 - `PELICAN_CONFIG` 覆盖配置路径，`PELICAN_DATA_DIR` 覆盖产物目录。本机配置
   `config/pelican.config.yaml` 不入库，首次加载时由 `pelican.example.yaml` 生成。
 
@@ -28,15 +29,15 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 立 ACR 变更单）；设计取舍见 `docs/design-notes.md`（中文 `docs/design-notes.zh-CN.md`），目录、产物与接口见 `docs/development.md`（中文 `docs/development.zh-CN.md`）。对外说明文档统一采用 `.md`（英文主版）与 `.zh-CN.md`（简体中文版）成对互链。
 
 - **进程只经文件协作**：看板（Next.js 15 + React 19）、调度器（`src/bin/scheduler.ts`，croner）、
-  `run:once`、分容器时的 `runner` 互不直接通信，只读写 `data/`（`PELICAN_DATA_DIR`）。
-  执行方写 `data/runs/<runId>/progress.json`，看板用 chokidar 监听后经 SSE（`/api/events`）
-  推送，前端不轮询。停止一轮写 `cancel.json`；分容器时看板把请求写进 `data/requests/` 交给 runner。
+  `run:once`、`model-fingerprint`、分容器时的 `runner` 互不直接通信，只读写 `data/`（`PELICAN_DATA_DIR`）。
+  执行方写 `data/runs/<runId>/progress.json` 或 `data/model-fingerprint/jobs/<jobId>.json`，看板用 chokidar 监听后经 SSE（`/api/events`）
+  推送，前端不轮询。停止一轮写 `cancel.json`（指纹作业写 `<jobId>.cancel.json`）；分容器时看板把请求写进 `data/requests/` 交给 runner。
 - **分层依赖**：`src/app` → `src/core` + `src/i18n`（+ `src/capabilities` 的类型与缓存）；`src/app` 不引用
   `src/adapters`，调用 CLI 只经 `src/core`；`src/core` 不依赖 `src/app`。
 - **中英双语国际化**（Sprint M2）：`src/i18n/` 提供 `en`（默认）与 `zh-CN` 双语词条字典、SSR + 客户端零闪烁语言协商（`pelican_locale` Cookie / `localStorage` + `Accept-Language`，不改 URL 路由）以及 SVG/PNG/GIF 导出图本地化。`src/core/prompts/i18n/` 与 `src/i18n/judge-rubric.ts` 在展示层本地化题目标签、黄金标准与评审标准 `G1`–`G5` / `C1`–`C9` 文案；发给 CLI 的提示词 `template`、`candidates[].text`、考场规则、AI 裁判提示词以及 `run.json` / `.judge.json` 的磁盘 schema 原封不动。
 - **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 low 到 max 串行；
   超时优先级 `targets[].timeoutMs` > `timeoutByEffort` > `timeoutByCli` > `defaultTimeoutMs`；
-  预算按历史成本预估逐次放行。一次只跑一轮：手动发起时有轮次在跑直接拒绝；定时到点时有轮次在跑则排队
+  预算按历史成本预估逐次放行。一次只跑一轮（`findActiveWork` 跨评测轮次、AI 评审与模型指纹作业双向互斥）：手动发起时有轮次或指纹作业在跑直接拒绝；定时到点时有作业在跑则排队
   （只容一轮，合并后续触发），等它结束立即开跑。
 - **适配器**：`src/adapters/` 每家 CLI 一个，实现 `AgentAdapter`（codex 用长驻 `codex app-server`）。
   新增一家需同时改 `src/adapters/index.ts`、`src/core/types.ts` 的 `CLI_KINDS` 与
@@ -63,6 +64,7 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   历史作品不补评、不主动提议补评；`pnpm judge:backfill -- --ai-only` 只在用户明确要求时按轮运行。评审记录去掉联系图与转录后随公开
   `run.json` 的调用发布（`PublicAttempt.judge`），数据仓 validator 同步认这个字段；容器镜像装了
   chromium（`PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX`）给渲染层用。
+- **模型指纹**（ACR-024，缺省关闭，配置页「模型指纹」区块或 `/fingerprint` 控制台）：`src/core/model-fingerprint/` 以面向对象 `Probe` & `PromptCodec` 体系（6 个生成式探针 `uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`，无独立外部 `extract.ts`）驱动零工具直出采样（`request.fingerprint === true`：复用固定空目录 `data/scratch/model-fingerprint` 保持 Prompt Cache 前缀命中，剥离用户级指令与会话落盘），样本集按 `<cli>-<effort>/<model>/<probe>.json` 经文件锁与原子写落盘、读取时实时提取且不锁死哈希或版本号；以 base-2 JSD 相似度（`1 - JSD`）、等容量公共子参照与按 `reqId` 无重叠留出自检标定成对阈值并输出四态判决（`consistent` / `inconsistent` / `inconclusive` / `not-comparable`）；接口与页面仅对配对所有者开放，只读展台模式下隐藏。
 - **模型产物不可信**：SVG 在浏览器端净化（`src/app/components/card/`），`/art` 路由以 CSP
   sandbox 返回原图。净化后的作品各自挂进 shadow root（`svg-shadow.ts`），内联样式不外溢；
   按 viewBox 比例定尺寸，画布外的内容不显示。导出缩略图以嵌套 `<svg viewBox>` 按画布裁切
@@ -73,7 +75,7 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 
 ## 代码与数据分离
 
-- 评测运行产物（`data/`，含 `data/runs/`）不进入本仓库。
+- 评测运行产物（`data/`，含 `data/runs/` 与 `data/model-fingerprint/`）不进入本仓库，且 `data/model-fingerprint/` 绝不同步至公开数据仓。
 - 运行结果只经 `pnpm sync:data` 脱敏后写入公开数据仓
   [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data)，
   本地工作副本位于同级目录 `../llm-iq-data`。

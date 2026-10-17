@@ -133,9 +133,11 @@ export function formatElapsed(ms: number): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`;
 }
 
-/** 提示词的短名：classic-v1 → classic，xiyou-v1 → xiyou */
+/** 提示词的短名：classic-v1 → classic，xiyou-v1 → xiyou，words-zh#1 → words-zh #1 */
 export function promptTag(promptId: string): string {
-  return promptId.split("-")[0] ?? promptId;
+  const [head, rest] = promptId.split("#");
+  const base = head?.startsWith("words-") ? head : ((head ?? promptId).split("-")[0] ?? promptId);
+  return rest ? `${base} #${rest}` : base;
 }
 
 /** 按语言转换预算中止原因（来自 src/core/budget.ts） */

@@ -27,6 +27,7 @@ import {
   type ScheduleConfig,
 } from "./types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
+import { parseModelFingerprint } from "./model-fingerprint";
 import { parseProfiles, parseUpstreamTypes } from "./profiles";
 import { parseTargets } from "./targets";
 
@@ -59,6 +60,7 @@ interface RawConfig {
   prompts?: unknown;
   customModels?: unknown;
   dataRepo?: unknown;
+  modelFingerprint?: unknown;
 }
 
 function readRawConfig(path: string): RawConfig {
@@ -408,6 +410,7 @@ export function loadConfig(path: string): AppConfig {
   const customPrompts = parsePrompts(raw.prompts, errors);
   const customModels = parseCustomModels(raw.customModels, errors);
   const dataRepo = parseDataRepo(raw.dataRepo, errors);
+  const modelFingerprint = parseModelFingerprint(raw.modelFingerprint, errors);
 
   if (errors.length > 0) {
     throw new Error(`配置文件 ${path} 校验失败：\n  - ${errors.join("\n  - ")}`);
@@ -420,7 +423,7 @@ export function loadConfig(path: string): AppConfig {
   return applyCeiling(
     {
       schedule, run, retention, judge, budget, upstreamTypes, profiles, targets,
-      customPrompts, customModels, dataRepo,
+      customPrompts, customModels, dataRepo, modelFingerprint,
     },
     readCeiling(),
   );

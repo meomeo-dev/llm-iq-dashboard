@@ -33,6 +33,7 @@ export async function pruneOrphanScratch(log: Logger): Promise<void> {
 
   const cutoff = Date.now() - ORPHAN_SCRATCH_AGE_MS;
   for (const name of entries) {
+    if (name === "model-fingerprint") continue;
     const path = join(root, name);
     try {
       if ((await stat(path)).mtimeMs < cutoff) {

@@ -31,6 +31,27 @@ export function SettingsIcon() {
   );
 }
 
+/** 模型统计指纹入口图标（同心弧纹） */
+export function FingerprintIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M4.5 5.5a4.5 4.5 0 0 1 7 0" />
+      <path d="M3 8a5 5 0 0 1 10 0c0 2.5-1 4.5-2.2 5.8" />
+      <path d="M5.5 8a2.5 2.5 0 0 1 5 0c0 2-.8 3.8-1.8 5" />
+      <path d="M8 8v3.5" />
+    </svg>
+  );
+}
+
 /** 项目源码仓库；与 package.json 的 repository 一致（见 repository-link 测试） */
 export const PROJECT_REPOSITORY_URL = "https://github.com/meomeo-dev/llm-iq-dashboard";
 

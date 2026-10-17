@@ -5,7 +5,7 @@
 
 import { readFile, rename, writeFile, unlink } from "node:fs/promises";
 import { parseDocument } from "yaml";
-import { loadConfig, type AppConfig, type HarnessGuardConfig, type JudgeConfig, type ProfileConfig } from "./config";
+import { loadConfig, type AppConfig, type HarnessGuardConfig, type JudgeConfig, type ModelFingerprintConfig, type ProfileConfig } from "./config";
 import { deleteKeyKeepingComment, reconcileSequence } from "./yaml-nodes";
 import type { PromptSpec } from "./prompt";
 import { DEFAULT_PROFILE, type CliKind, type EffortLevel, type Target } from "./types";
@@ -40,6 +40,8 @@ export interface ConfigPatch {
   judge?: JudgeConfig;
   /** 数据仓（ACR-023）：按子键写，null 删整段；publishPrompts 只在 YAML 里改，不经这里 */
   dataRepo?: DataRepoPatch | null;
+  /** 模型指纹配置全表 */
+  modelFingerprint?: ModelFingerprintConfig;
 }
 
 /** 配置页可改的数据仓字段；path 按用户填的原文写，不展开成绝对路径 */
@@ -89,8 +91,42 @@ export async function applyConfigPatch(
   if (patch.customModels !== undefined) doc.setIn(["customModels"], patch.customModels);
   if (patch.judge !== undefined) applyJudge(doc, patch.judge);
   applyDataRepo(doc, patch.dataRepo);
+  applyModelFingerprint(doc, patch.modelFingerprint);
 
   return commit(path, doc.toString());
+}
+
+/** 逐个子键写模型指纹配置以保留段落注释 */
+function applyModelFingerprint(doc: YamlDoc, mf: ModelFingerprintConfig | undefined): void {
+  if (mf === undefined) return;
+  doc.setIn(["modelFingerprint", "enabled"], mf.enabled);
+  doc.setIn(["modelFingerprint", "effort"], mf.effort);
+  doc.setIn(["modelFingerprint", "samplesPerProbe"], mf.samplesPerProbe);
+  if (mf.samplesByProbe && Object.keys(mf.samplesByProbe).length > 0) {
+    doc.setIn(["modelFingerprint", "samplesByProbe"], { ...mf.samplesByProbe });
+  } else {
+    deleteKeyKeepingComment(doc, ["modelFingerprint"], "samplesByProbe");
+  }
+  if (Array.isArray(mf.probes)) {
+    doc.setIn(["modelFingerprint", "probes"], [...mf.probes]);
+  }
+  doc.setIn(["modelFingerprint", "valuesPerCheck"], mf.valuesPerCheck);
+  doc.setIn(["modelFingerprint", "checkAttempts"], mf.checkAttempts);
+  doc.setIn(["modelFingerprint", "targetAccuracy"], mf.targetAccuracy);
+  doc.setIn(["modelFingerprint", "maxCallsFactor"], mf.maxCallsFactor);
+  doc.setIn(["modelFingerprint", "concurrency"], mf.concurrency);
+  if (Array.isArray(mf.references)) {
+    doc.setIn(
+      ["modelFingerprint", "references"],
+      mf.references.map((r) => ({ cli: r.cli, model: r.model })),
+    );
+  }
+  const prompts = mf.modelPrompts ?? {};
+  if (Object.keys(prompts).length > 0) {
+    doc.setIn(["modelFingerprint", "modelPrompts"], prompts);
+  } else {
+    deleteKeyKeepingComment(doc, ["modelFingerprint"], "modelPrompts");
+  }
 }
 
 /** 逐个子键写以保留段落注释；删整段时把段上方的说明注释移交给下一个键 */

@@ -8,7 +8,7 @@
 
 import { createResponse } from "better-sse";
 import { isRemoteDataSource } from "@/core/deploy-mode";
-import { AUTO_RUN_EVENT, liveHub, PROGRESS_EVENT, readyHub } from "./live-hub";
+import { AUTO_RUN_EVENT, FINGERPRINT_JOB_EVENT, liveHub, PROGRESS_EVENT, readyHub } from "./live-hub";
 
 export const dynamic = "force-dynamic";
 /** 长连接与文件监听都依赖 Node 运行时 */
@@ -19,6 +19,7 @@ export async function GET(request: Request): Promise<Response> {
     return createResponse(request, (session) => {
       session.push([], PROGRESS_EVENT);
       session.push(null, AUTO_RUN_EVENT);
+      session.push(null, FINGERPRINT_JOB_EVENT);
     });
   }
   const hub = liveHub();
@@ -30,5 +31,6 @@ export async function GET(request: Request): Promise<Response> {
     if (snapshot === null) return;
     session.push(snapshot.progress, PROGRESS_EVENT);
     session.push(snapshot.autoRun, AUTO_RUN_EVENT);
+    session.push(snapshot.fingerprintJob, FINGERPRINT_JOB_EVENT);
   });
 }

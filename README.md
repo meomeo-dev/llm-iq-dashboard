@@ -108,6 +108,7 @@ Both methods edit the same file (`config/pelican.config.yaml`):
 | `run.timeoutByEffort` | Per-effort timeout overrides, e.g. `max: 2700000` (45m) |
 | `run.harnessGuard` | Direct-output guard (off by default): appends instructions requiring direct SVG output without web search, code execution, or self-screenshots; recorded in `run.json` |
 | `judge` | Automated & AI artwork judging (off by default): `judge.enabled` enables 30pt code layer, `judge.ai.enabled` enables 70pt cross-vendor AI judge layer |
+| `modelFingerprint` | Model fingerprint sampling & verification (off by default, ACR-024): `effort`, `samplesPerProbe`, `probes`, `valuesPerCheck`, `checkAttempts`, `targetAccuracy`, `maxCallsFactor`, `concurrency`, `references`, and optional `modelPrompts` overrides |
 | `dataRepo` | Public data repository sync settings (`path`, `repository`, `autoSync`, `push`, `publishPrompts`) |
 | `profiles` | Third-party upstream endpoints and cost multipliers per CLI |
 | `budget.perRoundUsd` | Per-round API-equivalent USD cap |
@@ -154,6 +155,18 @@ Candidate-set prompts shuffle and draw one candidate per rotation period (`day` 
 Disabled by default; enable in `/config` under “Artwork Judging”. For prompts with an automated rubric (`animated-pelican-v1`):
 1. **Code Layer (30 pts)**: Static AST analysis via `jsdom` + 8-frame browser capture via `playwright-core` / Chromium measuring wheel rotation, crank linkage, loop continuity, and pedal tracking.
 2. **AI Semantic Layer (70 pts)**: Artworks passing hard gates are evaluated after round completion by the first configured cross-vendor judge CLI (`judge.ai.judges`) in an isolated read-only workspace containing only contact sheets (blind description → part bounding-box location → C5–C9 scoring). Scores ≥ 78 pass (`online`).
+
+## Model Fingerprint
+
+Disabled by default; configure in `/config` under “Model Fingerprint” or open `/fingerprint` (owner-only; hidden in read-only / remote showcase mode). Samples 6 high-entropy generative probes (`uuid`, `number`, `seed`, `palette`, `words-en`, `words-zh`) in zero-tool direct-output mode, compares base-2 Jensen–Shannon divergence (`1 - JSD`) over character, bigram, and segment distributions against equal-capacity reference pools, calibrates pairwise thresholds via non-overlapping cross-validation (`fingerprint:self-test`), and issues a 4-state verdict (`consistent` / `inconsistent` / `inconclusive` / `not-comparable`). Local artifacts live in `data/model-fingerprint/` and are never exported to the public data repository.
+
+```bash
+pnpm fingerprint:status
+pnpm fingerprint:fill -- --dry-run
+pnpm fingerprint:self-test
+pnpm fingerprint:check -- --cli codex --declared gpt-5.5 --dry-run
+pnpm fingerprint:rescore -- <checkId>
+```
 
 ## Cost (API-Equivalent)
 
