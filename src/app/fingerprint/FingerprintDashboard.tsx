@@ -14,6 +14,7 @@ import type { DecodedAttemptSummary, ProbeId } from "@/core/model-fingerprint/ty
 import type { CliKind } from "@/core/types";
 import { LanguageSwitch, useI18n } from "@/i18n";
 import { FingerprintCheckPanel, type CheckFormDraft } from "./FingerprintCheckPanel";
+import { CheckHistorySection } from "./FingerprintCheckSections";
 import { FingerprintMatrix } from "./FingerprintMatrix";
 import { FingerprintSampleDrawer } from "./FingerprintSampleDrawer";
 import {
@@ -23,6 +24,7 @@ import {
   fetchFingerprintSnapshot,
   patchSampleJson,
   postFingerprintJson,
+  sortCheckRecordsDescending,
   toProfileViews,
   type FingerprintApiSnapshot,
   type ProbeCellDetailResponse,
@@ -47,6 +49,8 @@ interface FillTargetState {
   plan: FillPlan;
 }
 
+type HeaderMenuKind = "runOnce" | "status" | null;
+
 function useFingerprintController(initialSnapshot: FingerprintApiSnapshot) {
   const [snapshot, setSnapshot] = useState<FingerprintApiSnapshot>(initialSnapshot);
   const [busy, setBusy] = useState(false);
@@ -55,8 +59,14 @@ function useFingerprintController(initialSnapshot: FingerprintApiSnapshot) {
   const [checkPlan, setCheckPlan] = useState<VerificationCheckPlan | null>(null);
   const [rescoringId, setRescoringId] = useState<string | null>(null);
   const [drawerState, setDrawerState] = useState<DrawerState | null>(null);
-  const [statusOpen, setStatusOpen] = useState<boolean>(initialSnapshot.activeJob !== null);
+  const [openMenu, setOpenMenu] = useState<HeaderMenuKind>(
+    initialSnapshot.activeJob !== null ? "status" : null,
+  );
   const liveJob = useLiveFingerprintJob();
+
+  const toggleMenu = useCallback((kind: Exclude<HeaderMenuKind, null>) => {
+    setOpenMenu((prev) => (prev === kind ? null : kind));
+  }, []);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -77,7 +87,7 @@ function useFingerprintController(initialSnapshot: FingerprintApiSnapshot) {
   const activeJobId = liveJob?.jobId ?? null;
   const completedCalls = liveJob?.completedCalls ?? 0;
   useEffect(() => {
-    if (activeJobId !== null) setStatusOpen(true);
+    if (activeJobId !== null) setOpenMenu("status");
     void refreshAll();
   }, [activeJobId, completedCalls, refreshAll]);
 
@@ -106,15 +116,19 @@ function useFingerprintController(initialSnapshot: FingerprintApiSnapshot) {
     setRescoringId,
     drawerState,
     setDrawerState,
-    statusOpen,
-    setStatusOpen,
+    openMenu,
+    setOpenMenu,
+    toggleMenu,
     refreshAll,
     loadDrawerCell,
     runAction,
   };
 }
 
-function useDashboardHandlers(ctrl: ReturnType<typeof useFingerprintController>) {
+function useDashboardHandlers(
+  ctrl: ReturnType<typeof useFingerprintController>,
+  onCheckStarted: () => void,
+) {
   const requestFillPlan = (opts: { cli?: CliKind; model?: string; probes?: ProbeId[] }) =>
     ctrl.runAction(async () => {
       const data = await postFingerprintJson<{ fillPlan: FillPlan }>(
@@ -126,7 +140,7 @@ function useDashboardHandlers(ctrl: ReturnType<typeof useFingerprintController>)
   const confirmFill = () =>
     ctrl.runAction(async () => {
       if (!ctrl.fillTarget) return;
-      ctrl.setStatusOpen(true);
+      ctrl.setOpenMenu("status");
       await postFingerprintJson(buildFillRequestBody({ action: "fill", ...ctrl.fillTarget }));
       ctrl.setFillTarget(null);
       await ctrl.refreshAll();
@@ -142,7 +156,8 @@ function useDashboardHandlers(ctrl: ReturnType<typeof useFingerprintController>)
         ctrl.setCheckPlan(data.checkPlan);
       } else {
         ctrl.setCheckPlan(null);
-        ctrl.setStatusOpen(true);
+        ctrl.setOpenMenu("status");
+        onCheckStarted();
         await postFingerprintJson(body);
         await ctrl.refreshAll();
       }
@@ -183,28 +198,34 @@ export function FingerprintDashboard({ initialSnapshot }: FingerprintDashboardPr
   const [storedTz] = useStoredTimeZone();
   const timeZone = storedTz ?? "Asia/Shanghai";
   const ctrl = useFingerprintController(initialSnapshot);
-  const actions = useDashboardHandlers(ctrl);
+  const actions = useDashboardHandlers(ctrl, () => setTab("check"));
   const isJobRunning = ctrl.liveJob !== null || ctrl.busy;
   const profileValue = useMemo(() => ({ profiles: toProfileViews(ctrl.snapshot.profiles), owner: true }), [ctrl.snapshot.profiles]);
   const snap = ctrl.snapshot;
+  const sortedChecks = useMemo(() => sortCheckRecordsDescending(snap.checks), [snap.checks]);
+  const [selectedCheckId, setSelectedCheckId] = useState<string | null>(sortedChecks[0]?.checkId ?? null);
+  const selectedRecord = sortedChecks.find((c) => c.checkId === selectedCheckId) ?? sortedChecks[0] ?? null;
 
   return (
     <ProfilesProvider value={profileValue}>
       <main className="fp-page">
         <FingerprintHeader
-          timeZone={timeZone}
-          statusOpen={ctrl.statusOpen}
-          onToggleStatus={() => ctrl.setStatusOpen((o) => !o)}
-          onCloseStatus={() => ctrl.setStatusOpen(false)}
-          errorMsg={ctrl.errorMsg}
+          timeZone={timeZone} openMenu={ctrl.openMenu} onToggleMenu={ctrl.toggleMenu}
+          onCloseMenu={() => ctrl.setOpenMenu(null)} errorMsg={ctrl.errorMsg}
+          runOnceModal={
+            <FingerprintCheckPanel
+              config={snap.modelFingerprint} matrix={snap.matrix} selfTest={snap.selfTest} selfTestByCli={snap.selfTestByCli}
+              profiles={snap.profiles} activeJob={ctrl.liveJob} busy={isJobRunning} pendingPlan={ctrl.checkPlan}
+              open={ctrl.openMenu === "runOnce"} onToggle={() => ctrl.toggleMenu("runOnce")} onClose={() => ctrl.setOpenMenu(null)}
+              onPreviewPlan={(drafts) => void actions.handleCheck("plan", drafts)}
+              onStartCheck={(drafts) => void actions.handleCheck("check", drafts)}
+              onCancelJob={() => void actions.cancelJob()}
+            />
+          }
         />
         <div className="fp-tabs">
-          <button type="button" className={`fp-tab ${tab === "matrix" ? "active" : ""}`} onClick={() => setTab("matrix")}>
-            {fp.tabs.matrix}
-          </button>
-          <button type="button" className={`fp-tab ${tab === "check" ? "active" : ""}`} onClick={() => setTab("check")}>
-            {fp.tabs.check} ({snap.checks.length})
-          </button>
+          <button type="button" className={`fp-tab ${tab === "matrix" ? "active" : ""}`} onClick={() => setTab("matrix")}>{fp.tabs.matrix}</button>
+          <button type="button" className={`fp-tab ${tab === "check" ? "active" : ""}`} onClick={() => setTab("check")}>{fp.tabs.check} ({snap.checks.length})</button>
         </div>
         {tab === "matrix" ? (
           <FingerprintMatrix
@@ -216,14 +237,10 @@ export function FingerprintDashboard({ initialSnapshot }: FingerprintDashboardPr
             onCancelPlan={() => ctrl.setFillTarget(null)}
           />
         ) : (
-          <FingerprintCheckPanel
-            config={snap.modelFingerprint} matrix={snap.matrix} selfTest={snap.selfTest} selfTestByCli={snap.selfTestByCli}
-            profiles={snap.profiles} checks={snap.checks} activeJob={ctrl.liveJob} busy={isJobRunning}
-            rescoringId={ctrl.rescoringId} pendingPlan={ctrl.checkPlan}
-            onPreviewPlan={(drafts) => void actions.handleCheck("plan", drafts)}
-            onStartCheck={(drafts) => void actions.handleCheck("check", drafts)}
-            onCancelJob={() => void actions.cancelJob()}
-            onRescore={(checkId) => void actions.rescoreCheck(checkId)}
+          <CheckHistorySection
+            sortedChecks={sortedChecks} selectedRecord={selectedRecord} rescoringId={ctrl.rescoringId}
+            onSelectCheck={setSelectedCheckId} onRescore={(checkId) => void actions.rescoreCheck(checkId)}
+            onOpenRunOnce={() => ctrl.setOpenMenu("runOnce")}
           />
         )}
         {ctrl.drawerState && (
@@ -247,10 +264,11 @@ export function FingerprintDashboard({ initialSnapshot }: FingerprintDashboardPr
 
 function FingerprintHeader(props: {
   timeZone: string;
-  statusOpen: boolean;
-  onToggleStatus: () => void;
-  onCloseStatus: () => void;
+  openMenu: HeaderMenuKind;
+  onToggleMenu: (kind: Exclude<HeaderMenuKind, null>) => void;
+  onCloseMenu: () => void;
   errorMsg: string | null;
+  runOnceModal: React.ReactNode;
 }) {
   const { t } = useI18n();
   const fp = t.fingerprint;
@@ -262,12 +280,10 @@ function FingerprintHeader(props: {
           <p>{fp.pageSubtitle}</p>
         </div>
         <div className="fp-header-actions">
+          {props.runOnceModal}
           <RunStatus
-            timeZone={props.timeZone}
-            owner={true}
-            open={props.statusOpen}
-            onToggle={props.onToggleStatus}
-            onClose={props.onCloseStatus}
+            timeZone={props.timeZone} owner={true} open={props.openMenu === "status"}
+            onToggle={() => props.onToggleMenu("status")} onClose={props.onCloseMenu}
           />
           <LanguageSwitch />
           <a href="/config#model-fingerprint" className="fp-nav-link">{fp.configLink}</a>

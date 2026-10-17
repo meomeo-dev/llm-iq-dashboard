@@ -107,24 +107,34 @@ export function CheckHistorySection({
   rescoringId,
   onSelectCheck,
   onRescore,
+  onOpenRunOnce,
 }: {
   sortedChecks: readonly FingerprintCheckRecord[];
   selectedRecord: FingerprintCheckRecord | null;
   rescoringId: string | null;
   onSelectCheck: (checkId: string) => void;
   onRescore: (checkId: string) => void;
+  onOpenRunOnce?: () => void;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const fp = t.fingerprint;
+  const isEn = locale === "en";
   if (sortedChecks.length === 0) {
     return (
       <section className="fp-card">
-        <p style={{ color: "var(--text-dim)", margin: 0 }}>{fp.check.noChecksYet}</p>
+        <div className="fp-card-head">
+          <p style={{ color: "var(--text-dim)", margin: 0 }}>{fp.check.noChecksYet}</p>
+          {onOpenRunOnce && (
+            <button type="button" className="primary" onClick={onOpenRunOnce}>
+              {isEn ? "▶ Run Once" : "▶ 跑一次"}
+            </button>
+          )}
+        </div>
       </section>
     );
   }
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
       <div className="fp-btn-row">
         {sortedChecks.map((item) => (
           <button
@@ -144,6 +154,6 @@ export function CheckHistorySection({
           onRescore={onRescore}
         />
       )}
-    </>
+    </div>
   );
 }

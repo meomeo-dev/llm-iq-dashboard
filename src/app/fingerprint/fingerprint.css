@@ -1,5 +1,4 @@
-/* 模型统计指纹核验页样式（复用看板全局控件与 RunStatus 面板样式） */
-@import "../config/config-base.css";
+/* 模型统计指纹核验页样式（复用看板全局控件与 RunOnce / RunStatus 面板样式） */
 @import "../components/toolbar/toolbar-elements.css";
 @import "../components/menu/menu.css";
 @import "../components/run-status/run-status.css";
@@ -247,21 +246,10 @@
   word-break: break-all;
 }
 
-.fp-check-launcher {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.fp-check-launcher .run-once-head-bar {
-  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-}
-
-.fp-check-launcher .run-once-body {
-  max-height: 360px;
+.fp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
 }
 
 .fp-btn-row {
@@ -269,4 +257,37 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.fp-card button:not(.fp-cell-btn):not(.fp-tab),
+.fp-drawer button,
+.fp-job-banner button {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fp-card button:hover:not(:disabled),
+.fp-drawer button:hover:not(:disabled),
+.fp-job-banner button:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.fp-card button:disabled,
+.fp-drawer button:disabled,
+.fp-job-banner button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fp-card button.primary,
+.fp-drawer button.primary,
+.fp-job-banner button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
 }

@@ -416,7 +416,10 @@ describe("fingerprint UI view-model & SSR bilingual components", () => {
         }),
       }),
     );
+    assert.ok(panelHtml.includes("▶ 跑一次"));
+    assert.ok(panelHtml.includes("run-once-panel"));
     assert.ok(panelHtml.includes("run-once-head-bar"));
+    assert.ok(panelHtml.includes("run-once-close"));
     assert.ok(panelHtml.includes("run-once-models"));
     assert.ok(panelHtml.includes("cli-mark cli-codex"));
     assert.ok(panelHtml.includes("选择 Profile 后开始"));
