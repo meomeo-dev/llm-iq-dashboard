@@ -12,15 +12,27 @@ import {
   SANGUO_CH013_024_LABELS_EN,
   SANGUO_CH013_024_STANDARDS_EN,
 } from "./classics-sanguo/ch013-024-en";
+import {
+  SANGUO_CH025_036_LABELS_EN,
+  SANGUO_CH025_036_STANDARDS_EN,
+} from "./classics-sanguo/ch025-036-en";
+import {
+  SANGUO_CH037_048_LABELS_EN,
+  SANGUO_CH037_048_STANDARDS_EN,
+} from "./classics-sanguo/ch037-048-en";
 
 /** 静态候选 id → 英文标签；动态候选由 localizeCandidateLabel 追加 “(Animated)” */
 export const SANGUO_LABELS_EN: Readonly<Record<string, string>> = {
   ...SANGUO_CH001_012_LABELS_EN,
   ...SANGUO_CH013_024_LABELS_EN,
+  ...SANGUO_CH025_036_LABELS_EN,
+  ...SANGUO_CH037_048_LABELS_EN,
 };
 
 /** 静态与动态候选 id → 英文评判标准 */
 export const SANGUO_STANDARDS_EN: Readonly<Record<string, LocalizedStandardEntry>> = {
   ...SANGUO_CH001_012_STANDARDS_EN,
   ...SANGUO_CH013_024_STANDARDS_EN,
+  ...SANGUO_CH025_036_STANDARDS_EN,
+  ...SANGUO_CH037_048_STANDARDS_EN,
 };
