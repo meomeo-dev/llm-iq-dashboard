@@ -54,8 +54,6 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   "shuihu-056": "Ch. 56 · Shi Qian Steals the Golden Armor",
   "shuihu-071": "Ch. 71 · The Stone Tablet from Heaven at Liangshan",
   ...XIYOU_LABELS_EN,
-  "xiyou-024": "Ch. 24 · Stealing the Ginseng Fruit",
-  "xiyou-027": "Ch. 27 · Three Battles with the White Bone Demon",
   "xiyou-054": "Ch. 54 · The Kingdom of Women of Western Liang",
   "xiyou-058": "Ch. 58 · The True and False Monkey Kings",
   "xiyou-061": "Ch. 61 · Quenching the Flaming Mountains with the Plantain Fan",

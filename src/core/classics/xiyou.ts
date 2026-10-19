@@ -14,6 +14,8 @@
 import type { PromptSpec } from "../prompt";
 import { XIYOU_ANIM_CH001_010, XIYOU_CH001_010 } from "./xiyou/ch001-010";
 import { XIYOU_ANIM_CH011_020, XIYOU_CH011_020 } from "./xiyou/ch011-020";
+import { XIYOU_ANIM_CH021_030, XIYOU_CH021_030 } from "./xiyou/ch021-030";
+import { XIYOU_ANIM_CH031_040, XIYOU_CH031_040 } from "./xiyou/ch031-040";
 
 export const XIYOU_PROMPT: PromptSpec = {
   id: "xiyou-v1",
@@ -23,23 +25,8 @@ export const XIYOU_PROMPT: PromptSpec = {
   candidates: [
     ...XIYOU_CH001_010,
     ...XIYOU_CH011_020,
-    {
-      id: "xiyou-024",
-      label: "第24回 偷人参果",
-      text:
-        "生成一幅 SVG 插画，描绘《西游记》第二十四回偷人参果的场面：五庄观后园里，" +
-        "一棵高耸入云的古树，叶片宽大如芭蕉，枝头挂着形似婴孩、四肢五官俱全的果子。" +
-        "头戴金箍、腰围虎皮裙的孙悟空爬在树上，一手拿着金色的小锤敲果，一手撩起衣襟去兜；" +
-        "树下长嘴大耳的猪八戒探头探脑地张望。",
-    },
-    {
-      id: "xiyou-027",
-      label: "第27回 三打白骨精",
-      text:
-        "生成一幅 SVG 插画，描绘《西游记》第二十七回“三打白骨精”的场面：白虎岭山高路险、荒凉阴森。" +
-        "一位容貌秀美的年轻女子提着青砂罐和绿瓷瓶迎面走来；头戴金箍的孙悟空举起铁棒扑向她，" +
-        "身披袈裟的唐僧张开双手惊慌阻拦，猪八戒在一旁撇嘴看热闹。女子脚下的影子隐约显出一副骷髅的轮廓。",
-    },
+    ...XIYOU_CH021_030,
+    ...XIYOU_CH031_040,
     {
       id: "xiyou-054",
       label: "第54回 西梁女国",
@@ -88,20 +75,8 @@ export const XIYOU_ANIM_PROMPT: PromptSpec = {
   candidates: [
     ...XIYOU_ANIM_CH001_010,
     ...XIYOU_ANIM_CH011_020,
-    {
-      id: "xiyou-anim-024",
-      label: "第24回 偷人参果（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《西游记》第二十四回偷人参果的动态场面：五庄观后园古树参天，枝头挂着婴儿模样果子。戴金箍围虎皮裙的悟空爬在树上，一手拿金锤敲果一手兜衣襟，树下长嘴大耳的八戒探头探脑张望。" +
-        "动效要求：1. 孙悟空手中金锤上下轻轻敲击果蒂，人参果随之左右摇荡下坠；2. 树下猪八戒张口流涎探头左右张望动效；3. 仙树宽大如芭蕉的绿叶微风拂动。严格遵守合法 XML 规范。",
-    },
-    {
-      id: "xiyou-anim-027",
-      label: "第27回 三打白骨精（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《西游记》第二十七回“三打白骨精”的动态场面：阴森险峻的白虎岭上，美貌女子提罐迎面走来，戴金箍的悟空举棒当头劈打，唐僧张开双臂慌忙拦阻，八戒撇嘴看戏，女子影子露出狰狞白骨骷髅。" +
-        "动效要求：1. 孙悟空腾空跃起金箍棒凌空当头劈下的破空动效；2. 白骨精假身周遭升腾起一缕旋转遁逃的幽暗白烟；3. 唐僧宽大袈裟衣袖挥舞拦阻。严格遵守合法 XML 规范。",
-    },
+    ...XIYOU_ANIM_CH021_030,
+    ...XIYOU_ANIM_CH031_040,
     {
       id: "xiyou-anim-054",
       label: "第54回 西梁女国（动态）",
