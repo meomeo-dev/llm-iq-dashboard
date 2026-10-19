@@ -48,9 +48,10 @@ export function ProfileModelsField({
 
   return (
     <div className="profile-wide profile-models">
-      <label>
+      <label className="ui-field">
         {isEn ? "Models (comma or space separated)" : "模型（逗号或空格分隔）"}
         <textarea
+          className="ui-textarea"
           rows={2}
           value={text}
           placeholder="gpt-5.5, gpt-6-mini"
@@ -61,7 +62,7 @@ export function ProfileModelsField({
         />
       </label>
       <div className="field-row">
-        <button type="button" disabled={!canSync || busy} title={syncButtonTitle(canSync, isEn)} onClick={sync}>
+        <button type="button" className="ui-btn ui-btn-default" disabled={!canSync || busy} title={syncButtonTitle(canSync, isEn)} onClick={sync}>
           {busy ? (isEn ? "Syncing…" : "同步中…") : isEn ? "Sync from Upstream" : "从上游同步"}
         </button>
         {message !== null && <span className={`status ${message.kind}`}>{message.text}</span>}

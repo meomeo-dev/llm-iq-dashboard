@@ -80,6 +80,14 @@ export const DEFAULT_SAMPLES_BY_PROBE: Readonly<Record<ProbeId, number>> = {
 export const MIN_SAMPLES_PER_PROBE = 10;
 export const DEFAULT_VALUES_PER_CALL = 5;
 export const DEFAULT_VALUES_PER_CHECK = 1;
+export const DEFAULT_VALUES_PER_CHECK_BY_PROBE: Readonly<Record<ProbeId, number>> = {
+  uuid: 5,
+  number: 5,
+  seed: 10,
+  palette: 10,
+  "words-en": 5,
+  "words-zh": 15,
+};
 export const DEFAULT_CHECK_ATTEMPTS = 3;
 export const DEFAULT_TARGET_ACCURACY = 0.95;
 export const DEFAULT_MAX_CALLS_FACTOR = 3;
@@ -107,6 +115,27 @@ export function resolveProbeTargetSamples(
     return options.samplesPerProbe;
   }
   return DEFAULT_SAMPLES_BY_PROBE[probe];
+}
+
+export function resolveProbeValuesPerCheck(
+  probe: ProbeId,
+  options?: {
+    valuesPerCheck?: number;
+    valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  },
+): number {
+  const byProbe = options?.valuesPerCheckByProbe?.[probe];
+  if (typeof byProbe === "number" && Number.isInteger(byProbe) && byProbe >= 1) {
+    return byProbe;
+  }
+  if (
+    typeof options?.valuesPerCheck === "number" &&
+    Number.isInteger(options.valuesPerCheck) &&
+    options.valuesPerCheck >= 1
+  ) {
+    return options.valuesPerCheck;
+  }
+  return DEFAULT_VALUES_PER_CHECK;
 }
 
 export interface CodecTarget {
@@ -295,9 +324,11 @@ export interface FingerprintJobRecord {
   completedCalls: number;
   totalEstimatedCalls: number;
   failedCalls?: number;
+  spentCostUsd?: number;
   currentTarget?: string | null;
   currentProbe?: ProbeId | null;
   checkId?: string | null;
+  checkIds?: string[];
   error?: string | null;
   laneLimit?: number;
   lanes?: import("../progress").LaneProgress[];

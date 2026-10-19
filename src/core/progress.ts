@@ -30,6 +30,7 @@ export interface CallProgress {
   timeoutMs: number;
   status: AttemptStatus | null;
   durationMs: number | null;
+  costUsd?: number | null;
 }
 
 /** AI 层评审队列里一件作品的状态；failed 为裁判都失败、作品保持待复核 */
@@ -84,6 +85,10 @@ export interface RunProgress {
   cancelledAt?: string | null;
   /** 首次因预算上限未发起调用的原因；旧进度文件可能缺失 */
   budgetStop?: string | null;
+  /** 模型指纹后台作业异常退出的错误原因 */
+  jobError?: string | null;
+  /** 已完成调用累计产生的费用（USD） */
+  spentCostUsd?: number;
   /** 执行进程的 pid，看板据此判断进程是否存活 */
   pid: number;
   /** 执行进程的启动标记，与 pid 一起认定进程（见 process-identity.ts）；旧记录可能缺失 */

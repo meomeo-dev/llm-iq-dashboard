@@ -35,7 +35,7 @@ export function ReferenceSourceDisplay({
   if (segments.length === 1) return renderSegment(onlySegment, className, locale);
 
   return (
-    <span className="source-segments" style={{ wordBreak: "break-word" }}>
+    <span className="source-segments">
       {segments.map((segment, index) => (
         <React.Fragment key={index}>
           {index > 0 && <span className="source-sep">{REFERENCE_SEGMENT_SEPARATOR}</span>}
@@ -58,14 +58,13 @@ function renderSegment(segment: ReferenceSourceKind, className: string, locale: 
   if (segment.kind === "citation_with_link") {
     const isEn = locale === "en";
     return (
-      <span className="source-citation-wrap" style={{ wordBreak: "break-word" }}>
+      <span className="source-citation-wrap">
         <span className="source-citation-text">{segment.text}</span>
         <a
           href={segment.url}
           target="_blank"
           rel="noopener noreferrer"
           className={`${className} source-ext-link`}
-          style={{ marginLeft: "8px", display: "inline-flex", alignItems: "center", gap: "2px", fontWeight: "600" }}
           title={isEn ? `Open authoritative source in new tab: ${segment.url}` : `在新标签页打开权威出处：${segment.url}`}
         >
           {isEn ? "[Reference ↗]" : "[权威文献 ↗]"}

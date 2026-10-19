@@ -52,7 +52,7 @@ export function DataRepoForm({
 
   return (
     <div className="stack">
-      <label className="checkbox">
+      <label className="checkbox ui-check-row">
         <input
           type="checkbox"
           checked={enabled}
@@ -62,10 +62,11 @@ export function DataRepoForm({
           ? "Enable data repository sync (unchecking and saving removes the entire dataRepo block, including publishPrompts)"
           : "启用数据仓同步（关闭并保存会删掉配置里的整段 dataRepo，含题目白名单 publishPrompts）"}
       </label>
-      <label className="data-repo-field">
+      <label className="data-repo-field ui-field">
         {isEn ? "Repository URL" : "数据仓地址"}
         <input
           type="url"
+          className="ui-input"
           value={draft.repository}
           disabled={!enabled}
           placeholder="https://github.com/<owner>/llm-iq-data"
@@ -77,10 +78,11 @@ export function DataRepoForm({
             : "GitHub https 地址。执行器启动与同步前，本地路径不存在或为空目录时按它 clone；本地副本的 origin 与它不是同一个仓时报警并拒绝同步。留空则仓库由本地副本的 origin 决定。"}
         </span>
       </label>
-      <label className="data-repo-field">
+      <label className="data-repo-field ui-field">
         {isEn ? "Local Path" : "本地路径"}
         <input
           type="text"
+          className="ui-input"
           value={draft.path}
           disabled={!enabled}
           placeholder={isEn ? "../llm-iq-data (use /data-repo in Docker)" : "../llm-iq-data（容器部署填 /data-repo）"}
@@ -92,13 +94,13 @@ export function DataRepoForm({
             : "相对路径按执行进程的工作目录解析；分容器部署时是 runner 容器里的路径。"}
         </span>
       </label>
-      <label className="checkbox">
+      <label className="checkbox ui-check-row">
         <input type="checkbox" checked={draft.autoSync} disabled={!enabled} onChange={(e) => set("autoSync", e.target.checked)} />
         {isEn
           ? "Automatically sanitize, export, and commit locally after each run"
           : "每轮评测结束后自动脱敏导出并本地提交"}
       </label>
-      <label className="checkbox">
+      <label className="checkbox ui-check-row">
         <input type="checkbox" checked={draft.push} disabled={!enabled} onChange={(e) => set("push", e.target.checked)} />
         {isEn
           ? "Automatically push to remote after export commit (pushing publishes publicly; in Docker deployments, consider leaving this off and confirming in the panel below)"

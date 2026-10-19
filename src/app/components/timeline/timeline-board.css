@@ -10,7 +10,7 @@
 .board-panel {
   padding: 16px 18px 18px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
 }
 
@@ -24,7 +24,7 @@
 
 .board-title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--text-xl);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -83,13 +83,13 @@
   align-items: flex-end;
   gap: 8px;
   padding: 0 4px 4px;
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
 .lane-head-count {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 400;
 }
 
@@ -101,7 +101,7 @@
   padding: 0 8px 0 4px;
   border-bottom: 1px solid var(--border);
   color: var(--text-dim);
-  font-size: 12.5px;
+  font-size: var(--text-base);
   overflow: hidden;
 }
 
@@ -114,7 +114,7 @@
 
 .row-label-prompt {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 
 /* 行标签里的鹈鹕通过率：字号与颜色跟 CLI · 模型 一致；强度分列最多露出四行，更多的在区域内滚动 */
@@ -149,4 +149,33 @@
   display: inline-block;
   width: 1em;
   color: var(--text-faint);
+}
+
+@media (max-width: 900px) {
+  .board-panel {
+    padding: 12px 10px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .board-title {
+    font-size: var(--text-lg);
+  }
+
+  .row-label {
+    font-size: var(--text-xs);
+    padding: 0 4px;
+  }
+
+  .row-label-name {
+    font-size: var(--text-xs);
+  }
+
+  .row-label-prompt {
+    font-size: var(--text-2xs);
+  }
+
+  .lane-head {
+    font-size: var(--text-md);
+    padding: 0 4px 2px;
+  }
 }

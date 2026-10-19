@@ -4,9 +4,9 @@ import React from "react";
 import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
 import { localizePromptStandard, useI18n } from "@/i18n";
-import { ReferenceSourceDisplay } from "../components/ReferenceSourceDisplay";
 import { useLiveProgress } from "../components/live-state/live-store";
 import { pendingJudgeState } from "../components/run-status/run-phase";
+import { StandardCriteriaPanel } from "../components/standard/StandardCriteriaPanel";
 import { JudgeDrawer } from "./JudgeDrawer";
 
 interface ArtViewerFootProps {
@@ -71,29 +71,8 @@ function StandardDrawer({ standard, isEn }: { standard: PromptStandard; isEn: bo
         </span>
         <span className="drawer-core-pill">{standard.coreKey}</span>
       </summary>
-      <div className="viewer-drawer-body standard-body">
-        <div className="standard-grid">
-          <div className="standard-col">
-            <div className="standard-heading">
-              <span className="standard-tag gt">Ground Truth</span>
-              <h4>{isEn ? "Objective Ground Truth" : "客观黄金标准"}</h4>
-            </div>
-            <p className="standard-desc">{standard.groundTruth}</p>
-          </div>
-          <div className="standard-col">
-            <div className="standard-heading">
-              <span className="standard-tag eval">Evaluation</span>
-              <h4>{isEn ? "Evaluation Criteria" : "判断与鉴别标准"}</h4>
-            </div>
-            <p className="standard-desc">{standard.evaluationCriteria}</p>
-          </div>
-        </div>
-        {standard.referenceSource && (
-          <div className="standard-source-row">
-            <span className="source-label">{isEn ? "Reference: " : "出处参考："}</span>
-            <ReferenceSourceDisplay source={standard.referenceSource} className="source-link" />
-          </div>
-        )}
+      <div className="viewer-drawer-body">
+        <StandardCriteriaPanel standard={standard} />
       </div>
     </details>
   );

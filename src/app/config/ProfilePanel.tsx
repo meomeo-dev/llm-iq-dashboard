@@ -70,7 +70,7 @@ export function ProfilePanel({
         />
       ))}
       <div className="field-row">
-        <button type="button" onClick={() => onProfiles([...profiles, createProfile(profiles, upstreamTypes)])}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={() => onProfiles([...profiles, createProfile(profiles, upstreamTypes)])}>
           {isEn ? "+ New Profile" : "+ 新建 profile"}
         </button>
       </div>

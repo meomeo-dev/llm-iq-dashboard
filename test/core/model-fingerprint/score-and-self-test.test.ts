@@ -302,4 +302,31 @@ describe("model-fingerprint 4-state verdict machine & closestCandidate ordering"
     assert.ok(conv.intraProbeSim !== null && conv.intraProbeSim > 0.9);
     assert.ok(conv.intraProbeLowerBound !== null && conv.intraProbeLowerBound <= conv.intraProbeSim);
   });
+
+  it("reports Stage 1 self-bound pass rate as expectedConsistency for single-reference models and supports valuesPerCheckByProbe", () => {
+    const seedVals = Array.from({ length: 50 }, (_, i) => makeSeedValue("0123456789abcdef", i));
+    const singleModelMap = new Map([
+      ["only-model", { seed: makeSampleSet("only-model", "seed", seedVals, 5) }],
+    ]);
+    const selfTest = buildSelfTestReport({
+      sampleSetsByModel: singleModelMap,
+      probes: ["seed"],
+      samplesByProbe: { seed: 50 },
+      valuesPerCheckByProbe: { seed: 10 },
+    });
+    assert.ok((selfTest.modelSelfBounds["only-model"]?.expectedConsistency ?? 0) >= 0.9);
+    assert.deepEqual(selfTest.modelSelfBounds["only-model"]?.usableProbes, ["seed"]);
+
+    const scored = scoreVerificationQuery({
+      declaredModel: "only-model",
+      queryValuesByProbe: { seed: seedVals.slice(0, 10) },
+      sampleSetsByModel: singleModelMap,
+      selectedProbes: ["seed"],
+      samplesByProbe: { seed: 50 },
+      valuesPerCheckByProbe: { seed: 10 },
+    });
+    assert.equal(scored.verdict, "inconclusive");
+    assert.equal(scored.inconclusiveReason, "single-reference-only");
+    assert.ok((scored.expectedConsistency ?? 0) >= 0.9);
+  });
 });

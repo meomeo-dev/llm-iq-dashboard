@@ -21,23 +21,24 @@ export function JudgePanel({
 
   return (
     <div className="stack">
-      <label className="checkbox">
+      <label className="checkbox ui-check-row">
         <input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} />
         {isEn
           ? 'Judge prompts that have a rubric (Code layer: static parsing + headless Chromium render metrics, zero API quota; 30 pts total, can only flag "Degraded")'
           : "评审有评分标准的题目（代码层：静态解析 + 无头 Chromium 渲染量测，不花配额；共 30 分，只能判「降智」）"}
       </label>
-      <label className="checkbox">
+      <label className="checkbox ui-check-row">
         <input type="checkbox" checked={value.ai.enabled} disabled={!value.enabled} onChange={(e) => patchAi({ enabled: e.target.checked })} />
         {isEn
           ? 'AI semantic layer: after the run finishes, ask a cross-vendor judge CLI to score C5–C9 from contact sheets (70 pts total, required for "Sharp" verdict; consumes judge quota)'
           : "AI 语义层：整轮结束后请裁判 CLI 看联系图给 C5–C9 打分（共 70 分，「智商在线」只能由它判定；真实消耗裁判的配额）"}
       </label>
       <div className="field-row">
-        <label>
+        <label className="ui-field">
           {isEn ? "Single Judge Turn Timeout (s)" : "单次裁判问答超时（秒）"}
           <input
             type="number"
+            className="ui-input"
             min={30}
             step={30}
             value={Math.round(value.ai.timeoutMs / 1000)}
@@ -45,10 +46,11 @@ export function JudgePanel({
             onChange={(e) => patchAi({ timeoutMs: Math.max(1, Number(e.target.value) || 1) * 1000 })}
           />
         </label>
-        <label>
+        <label className="ui-field">
           {isEn ? "Concurrency per Judge" : "每个裁判同时评的件数"}
           <input
             type="number"
+            className="ui-input"
             min={1}
             max={JUDGE_AI_MAX_CONCURRENCY}
             step={1}
@@ -136,7 +138,7 @@ function JudgeTable({
   const isEn = locale === "en";
   return (
     <div className="table-responsive">
-      <table className="matrix">
+      <table className="config-target-table">
         <thead>
           <tr>
             <th>{isEn ? "Order" : "顺序"}</th>
@@ -162,7 +164,7 @@ function JudgeTable({
         </tbody>
       </table>
       <div className="field-row">
-        <button type="button" onClick={onAdd} disabled={disabled}>
+        <button type="button" className="ui-btn ui-btn-default ui-btn-md" onClick={onAdd} disabled={disabled}>
           {isEn ? "Add Judge" : "添加裁判"}
         </button>
       </div>
@@ -193,32 +195,32 @@ function JudgeRow({
     <tr>
       <td className="judge-order">
         <span>{order.index + 1}</span>
-        <button type="button" disabled={disabled || order.index === 0} onClick={() => order.onMove(-1)}
+        <button type="button" className="ui-btn ui-btn-default ui-btn-sm" disabled={disabled || order.index === 0} onClick={() => order.onMove(-1)}
           title={isEn ? "Move up: higher priority" : "上移：优先于前一个裁判"}
           aria-label={isEn ? `Move judge ${order.index + 1} up` : `上移第 ${order.index + 1} 个裁判`}>{isEn ? "Up" : "上移"}</button>
-        <button type="button" disabled={disabled || order.index === order.count - 1} onClick={() => order.onMove(1)}
+        <button type="button" className="ui-btn ui-btn-default ui-btn-sm" disabled={disabled || order.index === order.count - 1} onClick={() => order.onMove(1)}
           title={isEn ? "Move down: lower priority" : "下移：让后一个裁判优先"}
           aria-label={isEn ? `Move judge ${order.index + 1} down` : `下移第 ${order.index + 1} 个裁判`}>{isEn ? "Down" : "下移"}</button>
       </td>
       <td>
-        <select value={judge.cli} disabled={disabled} onChange={(e) => onChange({ cli: e.target.value as CliKind })}>
+        <select className="ui-select" value={judge.cli} disabled={disabled} onChange={(e) => onChange({ cli: e.target.value as CliKind })}>
           {CLI_KINDS.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
         </select>
       </td>
       <td>
-        <input type="text" list={listId} value={judge.model} disabled={disabled} placeholder={isEn ? "Model ID" : "模型标识"}
+        <input type="text" className="ui-input" list={listId} value={judge.model} disabled={disabled} placeholder={isEn ? "Model ID" : "模型标识"}
           onChange={(e) => onChange({ model: e.target.value.trim() })} />
         <datalist id={listId}>
           {known.map((id) => <option key={id} value={id} />)}
         </datalist>
       </td>
       <td>
-        <select value={judge.effort} disabled={disabled} onChange={(e) => onChange({ effort: e.target.value as EffortLevel })}>
+        <select className="ui-select" value={judge.effort} disabled={disabled} onChange={(e) => onChange({ effort: e.target.value as EffortLevel })}>
           {EFFORT_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
         </select>
       </td>
       <td>
-        <button type="button" className="danger" disabled={disabled} onClick={onRemove}>{isEn ? "Remove" : "删除"}</button>
+        <button type="button" className="ui-btn ui-btn-danger ui-btn-sm danger" disabled={disabled} onClick={onRemove}>{isEn ? "Remove" : "删除"}</button>
       </td>
     </tr>
   );

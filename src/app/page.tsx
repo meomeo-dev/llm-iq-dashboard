@@ -51,13 +51,13 @@ export default async function Page({ searchParams }: PageProps) {
   const remoteNotice = getRemoteNotice();
   const { prompts, scheduleTimeZone, profiles } = readDashboardSettings();
   const promptLabels = Object.fromEntries(prompts.map((spec) => [spec.id, spec.label]));
-  const promptStandards = buildPromptStandards(prompts);
+  const promptStandards = buildPromptStandards(prompts, cards);
 
   return (
     <div className="page">
       {/* 远程数据源提示或降级信息 */}
       {remoteNotice && (
-        <aside className="cli-banner" role="status" style={{ borderLeftColor: "var(--warn)" }}>
+        <aside className="cli-banner" role="status">
           <p>
             <b>{isEn ? "Data Notice: " : "数据提示："}</b>
             {localizeRemoteNotice(remoteNotice, locale)}

@@ -1,3 +1,4 @@
+import { Button, ButtonLink } from "@/app/components/ui/Button";
 import { useI18n } from "@/i18n";
 
 export function PairSignedInCard({
@@ -24,13 +25,13 @@ export function PairSignedInCard({
           </>
         )}
       </p>
-      <div className="actions">
-        <a className="button" href={returnTo}>
+      <div className="pair-actions">
+        <ButtonLink variant="primary" href={returnTo}>
           {isEn ? "Continue" : "继续"}
-        </a>
-        <button type="button" onClick={() => void onSignOut()}>
+        </ButtonLink>
+        <Button onClick={() => void onSignOut()}>
           {isEn ? "Sign Out This Device" : "退出本设备"}
-        </button>
+        </Button>
       </div>
     </section>
   );

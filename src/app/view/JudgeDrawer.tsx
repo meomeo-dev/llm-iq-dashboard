@@ -8,8 +8,9 @@ import {
   useI18n,
   type Locale,
 } from "@/i18n";
-import { formatCost, judgeCostLine, judgeText, pendingJudgeText } from "../components/card/card-format";
+import { formatCost, judgeCostLine } from "../components/card/card-format";
 import type { PendingJudgeState } from "../components/run-status/run-phase";
+import { JudgeStatusBadge } from "../components/standard/JudgeStatusBadge";
 
 interface JudgeDrawerProps {
   judge: Judgement;
@@ -23,22 +24,19 @@ export function JudgeDrawer({ judge, judgeCost = null, liveState = null }: Judge
   const { locale } = useI18n();
   const isEn = locale === "en";
   const floors = criterionFloors(judge.rubric);
-  const { total, rubric } = judge;
-  const pendingInfo = liveState !== null ? pendingJudgeText(liveState, locale) : null;
+  const { rubric } = judge;
   return (
     <details className="viewer-drawer viewer-judge">
       <summary>
         <span className="drawer-icon" aria-hidden="true">🧠</span>
         <span className="drawer-title">{isEn ? "Judge Report" : "评审"}</span>
-        {pendingInfo !== null ? (
-          <span className={`judge-pill judge-${liveState === "interrupted" ? "interrupted" : "judging"}`} title={pendingInfo.title}>
-            {pendingInfo.label}
-          </span>
-        ) : (
-          <span className={`judge-pill judge-${total.verdict}`}>
-            {judgeText(total.verdict, locale)} {total.score}/{total.maxScore}
-          </span>
-        )}
+        <JudgeStatusBadge
+          judge={judge}
+          liveState={liveState}
+          locale={locale}
+          showMaxScore
+          className="judge-pill"
+        />
         <span className="judge-meta">
           {isEn ? `Pass threshold ${rubric.passThreshold}` : `及格线 ${rubric.passThreshold}`} · {rubric.id} v
           {rubric.version} · {judge.judges.map((j) => j.id).join(" + ")}

@@ -1,0 +1,119 @@
+/*
+ * 全站唯一权威的设计系统标尺（Design Tokens）。
+ * 响应式断点标准（CSS @media 仅允许以下 3 档）：
+ *   - Mobile:  @media (max-width: 640px) / (min-width: 641px)
+ *   - Tablet:  @media (max-width: 900px) / (min-width: 901px)
+ *   - Desktop: @media (max-width: 1200px) / (min-width: 1201px)
+ */
+
+:root {
+  /* ==========================================================================
+   * 1. 色彩系统（Color & Semantic Surface Tokens）
+   * 设计准则：90% 深色中性灰面板 + 5% 主题蓝强调 + 5% 单点状态色
+   * 注意：--bg / --surface / --surface-hi / --border / --text / --text-dim /
+   * --text-faint / --accent / --ok / --warn / --err 与 export-image.ts 的
+   * readPalette() 保持严格一致。
+   * ========================================================================== */
+  --bg: #0b0f17;
+  --surface: #10161f;
+  --surface-hi: #182030;
+  --surface-hover: #1f2940;
+  --surface-subtle: rgba(148, 163, 184, 0.06);
+  --surface-bar: rgba(148, 163, 184, 0.10);
+  --surface-bar-hi: rgba(148, 163, 184, 0.18);
+  --canvas-bg: #ffffff;
+  --backdrop-bg: rgba(3, 6, 12, 0.72);
+
+  /* 边框层级 */
+  --border: #232d3d;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-tick: rgba(230, 232, 238, 0.42);
+  --border-focus: #6b7385;
+
+  /* 文本层级 */
+  --text: #e6e8ee;
+  --text-dim: #9aa2b1;
+  --text-faint: #6b7385;
+  --text-on-solid: #ffffff;
+
+  /* 语义色三元组（主色 + 半透明浅底 -tint + 半透明描边 -border） */
+  --accent: #4f8df7;
+  --accent-hover: #3b7ce6;
+  --accent-tint: rgba(79, 141, 247, 0.14);
+  --accent-border: rgba(79, 141, 247, 0.45);
+
+  --ok: #4ade80;
+  --ok-tint: rgba(74, 222, 128, 0.12);
+  --ok-border: rgba(74, 222, 128, 0.40);
+
+  --warn: #fbbf24;
+  --warn-tint: rgba(251, 191, 36, 0.12);
+  --warn-border: rgba(251, 191, 36, 0.40);
+
+  --err: #f87171;
+  --err-tint: rgba(248, 113, 113, 0.12);
+  --err-border: rgba(248, 113, 113, 0.45);
+
+  /* ==========================================================================
+   * 2. 排版与字号阶梯（Typography Scale）
+   * ========================================================================== */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+
+  /* ==========================================================================
+   * 3. 间距阶梯（Spacing Scale）
+   * ========================================================================== */
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --gap: var(--space-4);
+
+  /* ==========================================================================
+   * 4. 圆角与控件尺寸阶梯（Radius & Control Size Scale）
+   * ========================================================================== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  --control-height-sm: 28px;
+  --control-height: 32px;
+  --control-height-lg: 36px;
+
+  /* ==========================================================================
+   * 5. 层级与海拔阴影阶梯（Z-Index & Elevation Scale）
+   * ========================================================================== */
+  --z-sticky-cell: 2;
+  --z-sticky-head: 3;
+  --z-sticky-bar: 10;
+  --z-dropdown: 80;
+  --z-modal: 200;
+  --z-drawer: 220;
+  --z-modal-nested: 250;
+  --z-popover: 300;
+  --z-toast: 400;
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.48);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.65);
+  --shadow-sticky-col: 2px 0 6px rgba(0, 0, 0, 0.25);
+  --shadow-sticky-bottom: 0 -6px 16px rgba(0, 0, 0, 0.35);
+}

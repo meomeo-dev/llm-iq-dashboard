@@ -1,171 +1,79 @@
-/** 模型指纹并发采集与核验编排器（collect.ts）：预占计数、首请求串行缓存预热、目录隔离清理、凭据拦截与费用统计。 */
-import { randomUUID } from "node:crypto";
-import { mkdir, readdir, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { openSessionPool, type AgentReply, type ProfileLaunch, type SessionPool } from "../../adapters/index";
-import { effortAdjustable as isEffortAdjustable, effortsFor, readCachedCatalog } from "../../capabilities/catalog";
-import { runProbeCommand } from "../../capabilities/probe-command";
+/** 模型指纹并发采集与批量核验编排器（collect.ts）：支持多目标单作业编排、按模型分道并发与道内跨探针并发。 */
 import type { CapabilitySnapshot } from "../../capabilities/types";
-import { estimateCost, type PriceCatalog } from "../../pricing/catalog";
-import { loadPriceCatalog } from "../../pricing/catalog-files";
-import { usageFromTranscript } from "../../pricing/usage";
 import { describeActiveWorkConflict, findActiveWork } from "../active-work";
 import { resolveModelFingerprintConfig, type AppConfig, type ModelFingerprintConfig } from "../config";
-import { buildConfigLeakGuard, type LeakGuard } from "../leak-guard";
-import { fingerprintWorkdir } from "../paths";
-import { launchFor, type Logger } from "../runner";
-import { DEFAULT_PROFILE, foldEffort, type AttemptStatus, type CliKind, type EffortLevel, type Target } from "../types";
-import { buildPlannedJobLanes, createFingerprintJobTracker, watchFingerprintJobCancel, type FingerprintJobTracker, type PlannedProbeLaneItem } from "./job";
-import { planReferenceFill, planVerificationCheck, resolveFillTargets, resolveSelectedProbes, type ProbeGapSummary } from "./plan";
+import type { Logger } from "../runner";
+import { DEFAULT_PROFILE, type CliKind } from "../types";
+import {
+  clearFingerprintWorkdir, createSessionConcurrencyGate, DEFAULT_DEPS, executeWarmablePool,
+  invokeSingleProbeCall, openTrackedJobEnv, resolveFillTargetProfile, resolveFingerprintTarget, runWithConcurrencyLimit,
+  type CallExecutionEnv, type CollectDeps, type ResolvedFingerprintTarget, type SessionConcurrencyGate,
+} from "./collect-core";
+import type { PlannedProbeLaneItem } from "./job";
+import {
+  planReferenceFill, planVerificationCheck, resolveFillTargets, resolveSelectedProbes,
+  type ProbeGapSummary, type VerificationCheckPlan,
+} from "./plan";
 import { getProbe } from "./probes/index";
 import { scoreVerificationQuery } from "./score";
 import {
   appendSampleAttempt, buildSampleSetsByKeyMap, buildSampleSetsByModelMap, extractValidCanonicalValues,
   formatCheckId, formatEnvironmentId, listAllSampleSets, mutateSampleSetFlags,
-  resetSampleSetToArchive, rescoreCheckRecord, saveCheckRecord,
+  readCheckRecord, resetSampleSetToArchive, rescoreCheckRecord, saveCheckRecord,
 } from "./store";
-import type { FailedProbeInfo, FingerprintCheckRecord, ModelPromptOverrides, ProbeAttempt, ProbeId, ProbeOutcome, ProbeSampleSet, RejectionReason } from "./types";
+import {
+  resolveProbeValuesPerCheck, type FailedProbeInfo, type FingerprintCheckRecord,
+  type ProbeAttempt, type ProbeId, type ProbeOutcome, type ProbeSampleSet, type RejectionReason,
+} from "./types";
 
-export { rescoreCheckRecord };
-
-export interface CollectDeps {
-  openSessionPool: (launches: ReadonlyMap<string, ProfileLaunch>, options?: { fingerprint?: boolean }) => SessionPool;
-  resolveCliVersion: (cli: CliKind) => Promise<string>;
-  buildLeakGuard: (config: AppConfig) => Promise<LeakGuard>;
-  loadPriceCatalog: () => PriceCatalog | null;
-  loadCapabilityCatalog: () => Promise<CapabilitySnapshot | null>;
-  launchProfile: (config: AppConfig, cli: CliKind, name: string, options?: { allowDisabled?: boolean }) => Promise<ProfileLaunch | string>;
-  generateReqId: () => string;
-}
-
-const DEFAULT_DEPS: CollectDeps = {
-  openSessionPool, resolveCliVersion: defaultResolveCliVersion, buildLeakGuard: buildConfigLeakGuard,
-  loadPriceCatalog, loadCapabilityCatalog: readCachedCatalog, launchProfile: launchFor, generateReqId: () => randomUUID().slice(0, 8),
-};
-
-async function defaultResolveCliVersion(cli: CliKind): Promise<string> {
-  const output = await runProbeCommand(cli, ["--version"]);
-  const first = output.stdout.split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0);
-  return first ? `${cli} ${first.replace(new RegExp(`^${cli}\\s+`, "i"), "")}` : `${cli} unknown`;
-}
-
-export async function clearFingerprintWorkdir(workdir: string = fingerprintWorkdir()): Promise<void> {
-  await mkdir(workdir, { recursive: true });
-  const entries = await readdir(workdir).catch(() => [] as string[]);
-  await Promise.all(entries.map((entry) => rm(join(workdir, entry), { recursive: true, force: true })));
-}
-
-export interface ResolvedFingerprintTarget {
-  target: Target; requestedEffort: EffortLevel; appliedEffort: EffortLevel; effortAdjustable: boolean; effortHonored: boolean;
-}
-
-export function resolveFingerprintTarget(
-  config: AppConfig, catalog: CapabilitySnapshot | null, cli: CliKind, model: string, profile: string = DEFAULT_PROFILE,
-): ResolvedFingerprintTarget {
-  const requestedEffort = resolveModelFingerprintConfig(config).effort;
-  const appliedEffort = foldEffort(requestedEffort, effortsFor(catalog, cli, model));
-  const matched = config.targets.find((t) => t.cli === cli && t.model === model && (t.effort === appliedEffort || t.effort === requestedEffort));
-  const timeoutMs = matched?.timeoutMs ?? config.run.timeoutByEffort[appliedEffort] ?? config.run.timeoutByCli[cli] ?? config.run.defaultTimeoutMs;
-  return {
-    target: {
-      id: `fingerprint-${cli}-${model}-${appliedEffort}`, label: `${cli}/${model}`, cli, model, effort: appliedEffort,
-      ...(profile !== DEFAULT_PROFILE ? { profile } : {}), timeoutMs, enabled: true, extraArgs: matched?.extraArgs ?? [],
-    },
-    requestedEffort, appliedEffort, effortAdjustable: isEffortAdjustable(catalog, cli, model), effortHonored: appliedEffort === requestedEffort,
-  };
-}
-
-function isLeakHit(reply: AgentReply, guard: LeakGuard): boolean {
-  if (guard.size === 0) return false;
-  return guard.hits(reply.text) || reply.writtenFiles.some((f) => guard.hits(f.content)) || guard.hits(reply.transcript);
-}
-
-function classifyReplyOutcome(reply: AgentReply, leaked: boolean): ProbeOutcome {
-  if (leaked) return "leak-blocked";
-  if (reply.timedOut) return "timeout";
-  if (reply.error !== null) return /content.?filter|safety|moderation|policy|blocked/i.test(reply.error) ? "content-filter" : "error";
-  return "ok";
-}
-
-interface CallExecutionEnv {
-  sessions: SessionPool; leakGuard: LeakGuard; priceCatalog: PriceCatalog | null;
-  cliVersions: Map<CliKind, string>; workdir: string; signal: AbortSignal; deps: CollectDeps;
-  tracker: FingerprintJobTracker;
-}
-
-function buildProbeAttemptRecord(
-  env: CallExecutionEnv, targetInfo: ResolvedFingerprintTarget, profile: string, reqId: string,
-  codecId: string, valuesPerCall: number, startedIso: string, durationMs: number, reply: AgentReply,
-): ProbeAttempt {
-  const { cli, model } = targetInfo.target;
-  const leaked = isLeakHit(reply, env.leakGuard);
-  const usage = usageFromTranscript(cli, reply.transcript);
-  const estimatedCostUsd = estimateCost(env.priceCatalog, { cli, model, startedAt: startedIso }, usage).usd;
-  return {
-    at: startedIso, profile, reqId, ...(codecId !== "default" ? { codecId } : {}), valuesPerCall,
-    outcome: classifyReplyOutcome(reply, leaked), ...(reply.writtenFiles.length > 0 ? { wroteFile: true } : {}),
-    rawText: leaked ? "" : reply.text, durationMs, usage, estimatedCostUsd,
-    cliVersion: env.cliVersions.get(cli) ?? `${cli} unknown`,
-  };
-}
-
-async function invokeSingleProbeCall(
-  env: CallExecutionEnv, targetInfo: ResolvedFingerprintTarget, profile: string,
-  probeId: ProbeId, modelPrompts: ModelPromptOverrides, callIndex: number = 0,
-): Promise<{ attempt: ProbeAttempt; acceptedValues: string[]; rejectionReason: RejectionReason | null }> {
-  const { cli, model, timeoutMs } = targetInfo.target;
-  const probe = getProbe(probeId);
-  const activeCodec = probe.resolveCodec({ cli, model }, modelPrompts);
-  const reqId = env.deps.generateReqId();
-  const slot = await env.tracker.startProbeCall({
-    cli, profile, model, effort: targetInfo.appliedEffort, probe: probeId, callIndex, timeoutMs,
-  });
-  const startedMs = Date.now();
-  const startedIso = new Date(startedMs).toISOString();
-
-  await mkdir(env.workdir, { recursive: true });
-  const reply = await env.sessions.sessionFor(cli, profile === DEFAULT_PROFILE ? undefined : profile).ask({
-    target: targetInfo.target, promptText: activeCodec.buildPrompt(reqId), workdir: env.workdir,
-    appliedEffort: targetInfo.appliedEffort, effortAdjustable: targetInfo.effortAdjustable,
-    timeoutMs, signal: env.signal, fingerprint: true,
-  });
-
-  if (reply.writtenFiles.length > 0) await clearFingerprintWorkdir(env.workdir);
-  const attempt = buildProbeAttemptRecord(
-    env, targetInfo, profile, reqId, activeCodec.id, activeCodec.valuesPerCall,
-    startedIso, Math.max(0, Date.now() - startedMs), reply,
-  );
-  const extraction = attempt.outcome === "ok"
-    ? probe.extractAttempt(attempt, activeCodec)
-    : { values: [] as string[], rejectionReason: null };
-  if (!(env.signal.aborted && attempt.outcome !== "ok")) {
-    const status: AttemptStatus =
-      attempt.outcome === "ok" && extraction.values.length > 0 ? "ok" : attempt.outcome === "timeout" ? "timeout" : "error";
-    await env.tracker.finishProbeCall(slot, {
-      status, durationMs: attempt.durationMs, probe: probeId, currentTarget: `${cli}/${model}`,
-    });
-  }
-  return { attempt, acceptedValues: extraction.values, rejectionReason: extraction.rejectionReason };
-}
+export { clearFingerprintWorkdir, resolveFillTargetProfile, resolveFingerprintTarget, rescoreCheckRecord };
+export type { CollectDeps, ResolvedFingerprintTarget };
 
 export interface ExecuteFillOptions {
-  cli?: CliKind; profile?: string; model?: string; probes?: readonly string[]; count?: number;
-  exclude?: readonly string[]; include?: readonly string[]; reset?: boolean;
-  jobId?: string; onStarted?: (jobId: string) => void; log?: Logger;
+  cli?: CliKind;
+  profile?: string;
+  profilesByCli?: Readonly<Partial<Record<CliKind, string>>>;
+  model?: string;
+  probes?: readonly string[];
+  count?: number;
+  exclude?: readonly string[];
+  include?: readonly string[];
+  reset?: boolean;
+  jobId?: string;
+  onStarted?: (jobId: string) => void;
+  log?: Logger;
 }
 
 export interface ExecuteFillProbeSummary {
-  cli: CliKind; model: string; probe: ProbeId; collectedNewValues: number;
-  effectiveValues: number; attemptsUsed: number; rejectionCounts: Record<string, number>;
+  cli: CliKind;
+  model: string;
+  probe: ProbeId;
+  collectedNewValues: number;
+  effectiveValues: number;
+  attemptsUsed: number;
+  rejectionCounts: Record<string, number>;
 }
 
 export interface ExecuteFillResult {
-  jobId: string | null; callsExecuted: number; failedCalls: number; cancelled: boolean; items: ExecuteFillProbeSummary[];
+  jobId: string | null;
+  callsExecuted: number;
+  failedCalls: number;
+  cancelled: boolean;
+  items: ExecuteFillProbeSummary[];
 }
 
-export interface ExecuteCheckOptions {
-  cli: CliKind; profile?: string; model: string; probes?: readonly string[];
-  jobId?: string; onStarted?: (jobId: string) => void; log?: Logger;
+export interface ExecuteCheckTarget {
+  cli: CliKind;
+  profile?: string;
+  model: string;
+  probes?: readonly string[];
+}
+
+export interface ExecuteCheckOptions extends ExecuteCheckTarget {
+  targets?: readonly ExecuteCheckTarget[];
+  jobId?: string;
+  onStarted?: (jobId: string) => void;
+  log?: Logger;
 }
 
 async function applyDiskMutationsForFill(
@@ -189,40 +97,9 @@ async function applyDiskMutationsForFill(
   }
 }
 
-async function executeWarmablePool(params: {
-  concurrency: number; maxAttempts: number; valuesPerCall: number; signal: AbortSignal;
-  warmedSessions: Set<string>; sessionKey: string; isComplete: () => boolean;
-  canPreReserve: (inFlightValues: number) => boolean; onStep: (callIndex: number) => Promise<void>;
-}): Promise<number> {
-  let launched = 0;
-  let inFlight = 0;
-  const canLaunch = (): boolean =>
-    !params.signal.aborted && launched < params.maxAttempts && !params.isComplete() && params.canPreReserve(inFlight * params.valuesPerCall);
-  const stepOne = async (): Promise<void> => {
-    const callIndex = launched;
-    launched += 1;
-    inFlight += 1;
-    try { await params.onStep(callIndex); } finally { inFlight -= 1; }
-  };
-  if (!params.warmedSessions.has(params.sessionKey) && canLaunch()) {
-    params.warmedSessions.add(params.sessionKey);
-    await stepOne();
-  }
-  await Promise.all(
-    Array.from({ length: Math.max(1, params.concurrency) }, async () => {
-      while (!params.signal.aborted && !params.isComplete() && launched < params.maxAttempts) {
-        if (canLaunch()) await stepOne();
-        else if (inFlight > 0) await new Promise((resolve) => setTimeout(resolve, 10));
-        else break;
-      }
-    }),
-  );
-  return launched;
-}
-
 async function collectSingleFillItem(
   fpCfg: ModelFingerprintConfig, env: CallExecutionEnv, targetInfo: ResolvedFingerprintTarget,
-  profile: string, item: ProbeGapSummary, warmedSessions: Set<string>,
+  profile: string, item: ProbeGapSummary, gate: SessionConcurrencyGate,
 ): Promise<ExecuteFillProbeSummary> {
   const { cli, model } = targetInfo.target;
   const activeCodec = getProbe(item.probe).resolveCodec({ cli, model }, fpCfg.modelPrompts);
@@ -235,22 +112,23 @@ async function collectSingleFillItem(
   const attemptsUsed = await executeWarmablePool({
     concurrency: fpCfg.concurrency,
     maxAttempts: Math.ceil(targetNew / activeCodec.valuesPerCall) * fpCfg.maxCallsFactor,
-    valuesPerCall: activeCodec.valuesPerCall, signal: env.signal,
-    warmedSessions, sessionKey: `${cli}:${profile}:${model}`,
+    valuesPerCall: activeCodec.valuesPerCall,
+    signal: env.signal,
+    gate,
     isComplete: () => collectedNewValues >= targetNew || effectiveValues >= targetTotal,
     canPreReserve: (inFlightValues) => collectedNewValues + inFlightValues < targetNew && effectiveValues + inFlightValues < targetTotal,
     onStep: async (callIndex) => {
-      const res = await invokeSingleProbeCall(env, targetInfo, profile, item.probe, fpCfg.modelPrompts, callIndex);
-      if (env.signal.aborted && res.attempt.outcome !== "ok") return;
-      const updated = await appendSampleAttempt(
-        { probe: item.probe, cli, model, requestedEffort: targetInfo.requestedEffort, appliedEffort: targetInfo.appliedEffort, effortHonored: targetInfo.effortHonored },
-        res.attempt,
-      );
-      const valid = extractValidCanonicalValues(updated, item.targetValues, fpCfg.valuesPerCheck, fpCfg.modelPrompts);
-      const rejectKey = res.attempt.outcome !== "ok" ? res.attempt.outcome : res.rejectionReason;
-      if (rejectKey !== null) rejectionCounts[rejectKey] = (rejectionCounts[rejectKey] ?? 0) + 1;
-      effectiveValues = valid.length;
-      collectedNewValues = Math.max(0, valid.length - item.validValues);
+      await invokeSingleProbeCall(env, targetInfo, profile, item.probe, fpCfg.modelPrompts, callIndex, async (res) => {
+        const updated = await appendSampleAttempt(
+          { probe: item.probe, cli, model, requestedEffort: targetInfo.requestedEffort, appliedEffort: targetInfo.appliedEffort, effortHonored: targetInfo.effortHonored },
+          res.attempt,
+        );
+        const valid = extractValidCanonicalValues(updated, item.targetValues, resolveProbeValuesPerCheck(item.probe, fpCfg), fpCfg.modelPrompts);
+        const rejectKey = res.attempt.outcome !== "ok" ? res.attempt.outcome : res.rejectionReason;
+        if (rejectKey !== null) rejectionCounts[rejectKey] = (rejectionCounts[rejectKey] ?? 0) + 1;
+        effectiveValues = valid.length;
+        collectedNewValues = Math.max(0, valid.length - item.validValues);
+      });
     },
   });
   if (!env.signal.aborted) await env.tracker.trimProbeQueue(cli, profile, model, item.probe);
@@ -269,10 +147,12 @@ export async function executeFingerprintFill(
   await applyDiskMutationsForFill(config, fpCfg, catalog, options);
 
   const plan = planReferenceFill({
-    configuredReferences: fpCfg.references, sampleSets: buildSampleSetsByKeyMap(await listAllSampleSets({ appliedEffort: fpCfg.effort })),
-    cliFilter: options.cli, modelFilter: options.model, requestedProbes: options.probes,
-    configuredProbes: fpCfg.probes, samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck, maxCallsFactor: fpCfg.maxCallsFactor, countLimit: options.count, overrides: fpCfg.modelPrompts,
+    configuredReferences: fpCfg.references,
+    sampleSets: buildSampleSetsByKeyMap(await listAllSampleSets({ appliedEffort: fpCfg.effort })),
+    cliFilter: options.cli, modelFilter: options.model, requestedProbes: options.probes, configuredProbes: fpCfg.probes,
+    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+    maxCallsFactor: fpCfg.maxCallsFactor, countLimit: options.count, overrides: fpCfg.modelPrompts,
   });
 
   if (options.count === 0 || plan.pendingItems.length === 0) {
@@ -281,59 +161,38 @@ export async function executeFingerprintFill(
   return runFillJobExecution(config, fpCfg, catalog, deps, options, plan.pendingItems, plan.totalEstimatedCalls);
 }
 
-async function openTrackedJobEnv(params: {
-  config: AppConfig; deps: CollectDeps; clis: readonly CliKind[]; profile: string;
-  allowDisabled: boolean; jobId?: string; kind: "fill" | "check"; totalEstimatedCalls: number;
-  plannedItems: readonly PlannedProbeLaneItem[]; onStarted?: (jobId: string) => void;
-}) {
-  const launches = new Map<string, ProfileLaunch>();
-  if (params.profile !== DEFAULT_PROFILE) {
-    for (const cli of new Set(params.clis)) {
-      const launch = await params.deps.launchProfile(params.config, cli, params.profile, { allowDisabled: params.allowDisabled });
-      if (typeof launch === "string") throw new Error(launch);
-      launches.set(params.profile, launch);
-    }
-  }
-  const workdir = fingerprintWorkdir();
-  await clearFingerprintWorkdir(workdir);
-  const [leakGuard, priceCatalog] = await Promise.all([params.deps.buildLeakGuard(params.config), Promise.resolve(params.deps.loadPriceCatalog())]);
-  const cliVersions = new Map<CliKind, string>();
-  for (const cli of new Set(params.clis)) cliVersions.set(cli, await params.deps.resolveCliVersion(cli));
-  const sessions = params.deps.openSessionPool(launches, { fingerprint: true });
-
-  const lanes = buildPlannedJobLanes(params.plannedItems);
-  const tracker = await createFingerprintJobTracker({
-    jobId: params.jobId, kind: params.kind, totalEstimatedCalls: params.totalEstimatedCalls, lanes,
-  });
-  params.onStarted?.(tracker.jobId);
-  const cancelWatch = watchFingerprintJobCancel(tracker.jobId);
-  cancelWatch.signal.addEventListener("abort", () => void tracker.markCancelling(), { once: true });
-  const env: CallExecutionEnv = { sessions, leakGuard, priceCatalog, cliVersions, workdir, signal: cancelWatch.signal, deps: params.deps, tracker };
-  return { tracker, cancelWatch, env };
-}
-
 async function runFillJobExecution(
-  config: AppConfig, fpCfg: ModelFingerprintConfig, catalog: CapabilitySnapshot | null,
-  deps: CollectDeps, options: ExecuteFillOptions, pendingItems: readonly ProbeGapSummary[], totalEstimatedCalls: number,
+  config: AppConfig, fpCfg: ModelFingerprintConfig, catalog: CapabilitySnapshot | null, deps: CollectDeps,
+  options: ExecuteFillOptions, pendingItems: readonly ProbeGapSummary[], totalEstimatedCalls: number,
 ): Promise<ExecuteFillResult> {
-  const profile = options.profile ?? DEFAULT_PROFILE;
   const plannedItems: PlannedProbeLaneItem[] = pendingItems.map((item) => {
-    const t = resolveFingerprintTarget(config, catalog, item.cli, item.model, profile);
-    return { cli: item.cli, profile, model: item.model, effort: t.appliedEffort, probe: item.probe, estimatedCalls: item.estimatedCalls, timeoutMs: t.target.timeoutMs };
+    const itemProfile = resolveFillTargetProfile(config, item.cli, options);
+    const t = resolveFingerprintTarget(config, catalog, item.cli, item.model, itemProfile);
+    return { cli: item.cli, profile: itemProfile, model: item.model, effort: t.appliedEffort, probe: item.probe, estimatedCalls: item.estimatedCalls, timeoutMs: t.target.timeoutMs };
   });
+  const laneGroups = new Map<string, ProbeGapSummary[]>();
+  for (const item of pendingItems) {
+    const key = `${item.cli}:${item.model}`;
+    const group = laneGroups.get(key) ?? [];
+    group.push(item);
+    laneGroups.set(key, group);
+  }
+  const laneLimit = Math.min(Math.max(1, config.run.concurrency), Math.max(1, laneGroups.size));
   const { tracker, cancelWatch, env } = await openTrackedJobEnv({
-    config, deps, clis: pendingItems.map((i) => i.cli), profile,
-    allowDisabled: false, jobId: options.jobId, kind: "fill", totalEstimatedCalls, plannedItems, onStarted: options.onStarted,
+    config, deps, targets: pendingItems.map((i) => ({ cli: i.cli, profile: resolveFillTargetProfile(config, i.cli, options) })),
+    allowDisabled: true, jobId: options.jobId, kind: "fill", totalEstimatedCalls, laneLimit, plannedItems, onStarted: options.onStarted,
   });
-  const summaries: ExecuteFillProbeSummary[] = [];
-  const warmedSessions = new Set<string>();
 
   try {
-    for (const item of pendingItems) {
-      if (cancelWatch.signal.aborted) break;
-      const targetInfo = resolveFingerprintTarget(config, catalog, item.cli, item.model, profile);
-      summaries.push(await collectSingleFillItem(fpCfg, env, targetInfo, profile, item, warmedSessions));
-    }
+    const groupResults = await runWithConcurrencyLimit([...laneGroups.values()], laneLimit, async (itemsForModel) => {
+      if (cancelWatch.signal.aborted) return [] as ExecuteFillProbeSummary[];
+      const first = itemsForModel[0]!;
+      const itemProfile = resolveFillTargetProfile(config, first.cli, options);
+      const targetInfo = resolveFingerprintTarget(config, catalog, first.cli, first.model, itemProfile);
+      const gate = createSessionConcurrencyGate(fpCfg.concurrency);
+      return Promise.all(itemsForModel.map((item) => collectSingleFillItem(fpCfg, env, targetInfo, itemProfile, item, gate)));
+    });
+    const summaries = groupResults.flat();
     const finalJob = await tracker.finish();
     return {
       jobId: tracker.jobId, callsExecuted: finalJob.completedCalls, failedCalls: finalJob.failedCalls ?? 0,
@@ -350,19 +209,20 @@ async function runFillJobExecution(
 
 async function collectSingleCheckProbe(
   fpCfg: ModelFingerprintConfig, env: CallExecutionEnv, targetInfo: ResolvedFingerprintTarget,
-  profile: string, probeId: ProbeId, warmedSessions: Set<string>,
+  profile: string, probeId: ProbeId, gate: SessionConcurrencyGate,
 ): Promise<{ attempts: ProbeAttempt[]; collected: string[]; lastReason: RejectionReason | ProbeOutcome }> {
   const { cli, model } = targetInfo.target;
   const activeCodec = getProbe(probeId).resolveCodec({ cli, model }, fpCfg.modelPrompts);
-  const needed = fpCfg.valuesPerCheck;
+  const needed = resolveProbeValuesPerCheck(probeId, fpCfg);
   const resultsByIndex: Array<{ attempt: ProbeAttempt; acceptedValues: string[]; reason: RejectionReason | ProbeOutcome | null } | undefined> = [];
   let collectedCount = 0;
 
   await executeWarmablePool({
     concurrency: fpCfg.concurrency,
     maxAttempts: Math.ceil(needed / activeCodec.valuesPerCall) * fpCfg.checkAttempts,
-    valuesPerCall: activeCodec.valuesPerCall, signal: env.signal,
-    warmedSessions, sessionKey: `${cli}:${profile}:${model}`,
+    valuesPerCall: activeCodec.valuesPerCall,
+    signal: env.signal,
+    gate,
     isComplete: () => collectedCount >= needed,
     canPreReserve: (inFlightValues) => collectedCount + inFlightValues < needed,
     onStep: async (callIndex) => {
@@ -390,15 +250,22 @@ async function collectCheckProbes(
   const queryValuesByProbe: Partial<Record<ProbeId, string[]>> = {};
   const validProbes: ProbeId[] = [];
   const failedProbes: FailedProbeInfo[] = [];
-  const warmedSessions = new Set<string>();
+  const gate = createSessionConcurrencyGate(fpCfg.concurrency);
 
-  for (const probeId of probesToRun) {
-    if (env.signal.aborted) break;
-    const { attempts, collected, lastReason } = await collectSingleCheckProbe(
-      fpCfg, env, targetInfo, profile, probeId, warmedSessions,
-    );
+  const probeResults = await Promise.all(
+    probesToRun.map(async (probeId) => {
+      if (env.signal.aborted) {
+        return { probeId, attempts: [] as ProbeAttempt[], collected: [] as string[], lastReason: "no_candidate" as const };
+      }
+      const res = await collectSingleCheckProbe(fpCfg, env, targetInfo, profile, probeId, gate);
+      return { probeId, ...res };
+    }),
+  );
+
+  for (const { probeId, attempts, collected, lastReason } of probeResults) {
+    if (env.signal.aborted && attempts.length === 0) continue;
     probeAttempts[probeId] = attempts;
-    if (collected.length >= fpCfg.valuesPerCheck) {
+    if (collected.length >= resolveProbeValuesPerCheck(probeId, fpCfg)) {
       validProbes.push(probeId);
       queryValuesByProbe[probeId] = collected;
     } else {
@@ -408,52 +275,89 @@ async function collectCheckProbes(
   return { probeAttempts, queryValuesByProbe, validProbes, failedProbes };
 }
 
-export async function executeFingerprintCheck(
-  config: AppConfig, options: ExecuteCheckOptions, customDeps?: Partial<CollectDeps>,
-): Promise<FingerprintCheckRecord> {
-  const deps: CollectDeps = { ...DEFAULT_DEPS, ...customDeps };
-  const active = await findActiveWork();
-  if (active !== null) throw new Error(describeActiveWorkConflict(active));
+interface PreparedCheckTarget {
+  input: ExecuteCheckTarget;
+  profile: string;
+  targetInfo: ResolvedFingerprintTarget;
+  sampleSetsByModel: ReadonlyMap<string, Partial<Record<ProbeId, ProbeSampleSet>>>;
+  plan: VerificationCheckPlan;
+}
 
-  const fpCfg = resolveModelFingerprintConfig(config);
-  const profile = options.profile ?? DEFAULT_PROFILE;
-  const catalog = await deps.loadCapabilityCatalog();
-  const targetInfo = resolveFingerprintTarget(config, catalog, options.cli, options.model, profile);
-  const referenceSampleSets = await listAllSampleSets({ cli: options.cli, appliedEffort: fpCfg.effort });
-  const sampleSetsByModel = buildSampleSetsByModelMap(referenceSampleSets);
-
-  const plan = planVerificationCheck({
-    cli: options.cli, declaredModel: options.model, sampleSetsByModel,
-    requestedProbes: options.probes, configuredProbes: fpCfg.probes,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe, valuesPerCheck: fpCfg.valuesPerCheck,
-    checkAttempts: fpCfg.checkAttempts, targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
-  });
-  if (plan.executableProbes.length === 0) {
-    throw new Error(`声明模型 ${options.cli}/${options.model} 在所选探针上没有任何满额基准样本集，无法发起核验。请先运行 pnpm fingerprint:fill 补齐基准样本。`);
+function normalizeCheckTargets(options: ExecuteCheckOptions): ExecuteCheckTarget[] {
+  const list = options.targets && options.targets.length > 0 ? options.targets : [options];
+  const seen = new Set<string>();
+  const deduped: ExecuteCheckTarget[] = [];
+  for (const t of list) {
+    const profile = t.profile?.trim() ? t.profile.trim() : DEFAULT_PROFILE;
+    const key = `${t.cli}:${profile}:${t.model}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push({ cli: t.cli, profile, model: t.model, probes: t.probes });
   }
-  return runCheckJobExecution(config, fpCfg, deps, options, profile, targetInfo, sampleSetsByModel, plan);
+  return deduped;
+}
+
+async function prepareCheckBatch(
+  config: AppConfig, fpCfg: ModelFingerprintConfig, catalog: CapabilitySnapshot | null, targets: readonly ExecuteCheckTarget[],
+): Promise<PreparedCheckTarget[]> {
+  const allSets = await listAllSampleSets({ appliedEffort: fpCfg.effort });
+  const prepared: PreparedCheckTarget[] = [];
+  for (const input of targets) {
+    const profile = input.profile?.trim() ? input.profile.trim() : DEFAULT_PROFILE;
+    const targetInfo = resolveFingerprintTarget(config, catalog, input.cli, input.model, profile);
+    const cliSets = allSets.filter((s) => s.cli === input.cli);
+    const sampleSetsByModel = buildSampleSetsByModelMap(cliSets);
+    const plan = planVerificationCheck({
+      cli: input.cli, declaredModel: input.model, sampleSetsByModel,
+      requestedProbes: input.probes, configuredProbes: fpCfg.probes,
+      samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+      valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+      checkAttempts: fpCfg.checkAttempts, targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
+    });
+    if (plan.executableProbes.length === 0) {
+      throw new Error(`声明模型 ${input.cli}/${input.model} 在所选探针上没有任何满额基准样本集，无法发起核验。请先运行 pnpm fingerprint:fill 补齐基准样本。`);
+    }
+    prepared.push({ input, profile, targetInfo, sampleSetsByModel, plan });
+  }
+  return prepared;
+}
+
+async function resolveUniqueCheckId(cli: CliKind, profile: string, now: Date, model: string, includeModel: boolean): Promise<string> {
+  const initial = formatCheckId(cli, profile, now, includeModel ? model : undefined);
+  if ((await readCheckRecord(initial)) === null) return initial;
+  const withModel = formatCheckId(cli, profile, now, model);
+  if ((await readCheckRecord(withModel)) === null) return withModel;
+  for (let seq = 2; seq <= 99; seq += 1) {
+    const candidate = `${withModel}-${seq}`;
+    if ((await readCheckRecord(candidate)) === null) return candidate;
+  }
+  return `${withModel}-${Date.now() % 1000}`;
 }
 
 async function finalizeAndSaveCheckRecord(params: {
-  options: ExecuteCheckOptions; profile: string; targetInfo: ResolvedFingerprintTarget;
-  env: CallExecutionEnv; fpCfg: ModelFingerprintConfig;
-  sampleSetsByModel: ReadonlyMap<string, Partial<Record<ProbeId, ProbeSampleSet>>>;
-  plan: ReturnType<typeof planVerificationCheck>; collected: Awaited<ReturnType<typeof collectCheckProbes>>;
+  prepared: PreparedCheckTarget;
+  env: CallExecutionEnv;
+  fpCfg: ModelFingerprintConfig;
+  collected: Awaited<ReturnType<typeof collectCheckProbes>>;
+  includeModelInId: boolean;
+  now?: Date;
 }): Promise<FingerprintCheckRecord> {
-  const { options, profile, targetInfo, env, fpCfg, sampleSetsByModel, plan, collected } = params;
+  const { prepared, env, fpCfg, collected, includeModelInId } = params;
+  const { input, profile, targetInfo, sampleSetsByModel, plan } = prepared;
   const scoreOut = scoreVerificationQuery({
-    declaredModel: options.model, selectedProbes: plan.selectedProbes,
-    queryValuesByProbe: collected.queryValuesByProbe, sampleSetsByModel,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe, valuesPerCheck: fpCfg.valuesPerCheck,
+    declaredModel: input.model, selectedProbes: plan.selectedProbes, queryValuesByProbe: collected.queryValuesByProbe,
+    sampleSetsByModel, samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
     targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
   });
-  const now = new Date();
+  const now = params.now ?? new Date();
+  const checkId = await resolveUniqueCheckId(input.cli, profile, now, targetInfo.target.model, includeModelInId);
   const record: FingerprintCheckRecord = {
-    checkId: formatCheckId(options.cli, profile, now), createdAt: now.toISOString(),
-    cli: options.cli, profile, environment: formatEnvironmentId(options.cli, targetInfo.requestedEffort),
+    checkId, createdAt: now.toISOString(), cli: input.cli, profile,
+    environment: formatEnvironmentId(input.cli, targetInfo.requestedEffort),
     declaredModel: targetInfo.target.model, requestedEffort: targetInfo.requestedEffort,
     appliedEffort: targetInfo.appliedEffort, effortHonored: targetInfo.effortHonored,
-    cliVersion: env.cliVersions.get(options.cli) ?? `${options.cli} unknown`,
+    cliVersion: env.cliVersions.get(input.cli) ?? `${input.cli} unknown`,
     selectedProbes: plan.selectedProbes, skippedProbes: plan.skippedProbes,
     failedProbes: collected.failedProbes, probeAttempts: collected.probeAttempts,
     ...scoreOut, rescores: [],
@@ -462,26 +366,53 @@ async function finalizeAndSaveCheckRecord(params: {
   return record;
 }
 
-async function runCheckJobExecution(
-  config: AppConfig, fpCfg: ModelFingerprintConfig, deps: CollectDeps, options: ExecuteCheckOptions,
-  profile: string, targetInfo: ResolvedFingerprintTarget,
-  sampleSetsByModel: ReadonlyMap<string, Partial<Record<ProbeId, ProbeSampleSet>>>,
-  plan: ReturnType<typeof planVerificationCheck>,
-): Promise<FingerprintCheckRecord> {
-  const plannedItems: PlannedProbeLaneItem[] = plan.executableProbes.map((p) => ({
-    cli: options.cli, profile, model: options.model, effort: targetInfo.appliedEffort,
-    probe: p.probe, estimatedCalls: p.estimatedCalls, timeoutMs: targetInfo.target.timeoutMs,
-  }));
+function buildCheckPlannedItems(preparedList: readonly PreparedCheckTarget[]): PlannedProbeLaneItem[] {
+  return preparedList.flatMap((item) =>
+    item.plan.executableProbes.map((p) => ({
+      cli: item.input.cli, profile: item.profile, model: item.input.model,
+      effort: item.targetInfo.appliedEffort, probe: p.probe,
+      estimatedCalls: p.estimatedCalls, timeoutMs: item.targetInfo.target.timeoutMs,
+    })),
+  );
+}
+
+export async function executeFingerprintCheckBatch(
+  config: AppConfig, options: ExecuteCheckOptions, customDeps?: Partial<CollectDeps>,
+): Promise<FingerprintCheckRecord[]> {
+  const deps: CollectDeps = { ...DEFAULT_DEPS, ...customDeps };
+  const active = await findActiveWork();
+  if (active !== null) throw new Error(describeActiveWorkConflict(active));
+
+  const fpCfg = resolveModelFingerprintConfig(config);
+  const catalog = await deps.loadCapabilityCatalog();
+  const preparedList = await prepareCheckBatch(config, fpCfg, catalog, normalizeCheckTargets(options));
+  const plannedItems = buildCheckPlannedItems(preparedList);
+  const totalEstimatedCalls = preparedList.reduce((sum, item) => sum + item.plan.totalEstimatedCalls, 0);
+  const laneLimit = Math.min(Math.max(1, config.run.concurrency), Math.max(1, preparedList.length));
+  const batchNow = new Date();
+
   const { tracker, cancelWatch, env } = await openTrackedJobEnv({
-    config, deps, clis: [options.cli], profile, allowDisabled: true,
-    jobId: options.jobId, kind: "check", totalEstimatedCalls: plan.totalEstimatedCalls, plannedItems, onStarted: options.onStarted,
+    config, deps, targets: preparedList.map((item) => ({ cli: item.input.cli, profile: item.profile })),
+    allowDisabled: true, jobId: options.jobId, kind: "check",
+    totalEstimatedCalls, laneLimit, plannedItems, onStarted: options.onStarted,
   });
 
   try {
-    const collected = await collectCheckProbes(fpCfg, env, targetInfo, profile, plan.executableProbes.map((p) => p.probe));
-    const record = await finalizeAndSaveCheckRecord({ options, profile, targetInfo, env, fpCfg, sampleSetsByModel, plan, collected });
-    await tracker.finish({ checkId: record.checkId });
-    return record;
+    const maybeRecords = await runWithConcurrencyLimit(preparedList, laneLimit, async (prepared) => {
+      if (cancelWatch.signal.aborted) return null;
+      const probesToRun = prepared.plan.executableProbes.map((p) => p.probe);
+      const collected = await collectCheckProbes(fpCfg, env, prepared.targetInfo, prepared.profile, probesToRun);
+      if (cancelWatch.signal.aborted && collected.validProbes.length < probesToRun.length) return null;
+      const record = await finalizeAndSaveCheckRecord({
+        prepared, env, fpCfg, collected, includeModelInId: preparedList.length > 1, now: batchNow,
+      });
+      await tracker.recordCheckResult(record.checkId);
+      return record;
+    });
+    const records = maybeRecords.filter((r): r is FingerprintCheckRecord => r !== null);
+    const checkIds = records.map((r) => r.checkId);
+    await tracker.finish({ checkId: checkIds[checkIds.length - 1] ?? null, checkIds });
+    return records;
   } catch (cause) {
     await tracker.finish({ error: cause instanceof Error ? cause.message : String(cause) });
     throw cause;
@@ -489,4 +420,25 @@ async function runCheckJobExecution(
     cancelWatch.stop();
     await env.sessions.closeAll();
   }
+}
+
+export async function executeFingerprintCheck(
+  config: AppConfig, options: ExecuteCheckOptions, customDeps?: Partial<CollectDeps>,
+): Promise<FingerprintCheckRecord> {
+  const records = await executeFingerprintCheckBatch(config, options, customDeps);
+  if (records.length > 0) return records[0]!;
+  const fpCfg = resolveModelFingerprintConfig(config);
+  const profile = options.profile?.trim() ? options.profile.trim() : DEFAULT_PROFILE;
+  const now = new Date();
+  return {
+    checkId: formatCheckId(options.cli, profile, now), createdAt: now.toISOString(),
+    cli: options.cli, profile, environment: formatEnvironmentId(options.cli, fpCfg.effort),
+    declaredModel: options.model, requestedEffort: fpCfg.effort, appliedEffort: fpCfg.effort,
+    effortHonored: true, cliVersion: `${options.cli} cancelled`,
+    selectedProbes: [], skippedProbes: [], failedProbes: [], probeAttempts: {},
+    validProbes: [], probeScores: {}, selfSim: null, selfLowerBound: null,
+    verdict: "not-comparable", inconclusiveReason: null, closestCandidate: null,
+    comparisons: [], uncomparedModels: [], ranking: [],
+    expectedConsistency: null, expectedFalseInconsistentRate: null, rescores: [],
+  };
 }

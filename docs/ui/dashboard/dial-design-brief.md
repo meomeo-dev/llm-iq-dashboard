@@ -1,9 +1,11 @@
 # 看板 24 小时表盘设计 Brief
 
+> **Status: Superseded** — 本表盘草案未采用，首页已正式采用 24 小时横向时间轴矩阵布局，全站最新 Token 与组件原语规范以 [`design-system.md`](design-system.md) 与 [`../UX_STATE_MAP.md`](../UX_STATE_MAP.md) 为准。
+
 - **所属端**：Web 看板（桌面浏览器，深色主题，表盘栏宽 380–680px，正方形）
 - **页面**：首页 `/` 左栏。表盘方案未采用，首页现为时间线布局，见文末“视觉参考”
 - **版本**：v3 草案（分组堆叠玫瑰图）
-- **依据**：`src/app/globals.css` 的 token；`README.md`「看板」一节的功能约束
+- **依据**：[`design-system.md`](design-system.md)（`src/app/tokens.css` + `src/app/globals.css`）；`README.md`「看板」一节的功能约束
 
 ## 1. 背景与现状问题
 

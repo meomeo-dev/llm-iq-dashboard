@@ -4,7 +4,7 @@
   width: 18px;
   height: 18px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background-color: var(--surface-hi);
 }
 
@@ -36,13 +36,13 @@
 
 .stack-main {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-md);
   line-height: 17px;
 }
 
 .stack-sub {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 15px;
 }
 
@@ -63,7 +63,7 @@
 .clock-now {
   padding: 0 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -77,24 +77,24 @@
 /* 行高与 .stack-main 相同，使相邻堆叠块的行齐平 */
 .clock-time {
   display: block;
-  font-size: 14px;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 17px;
   letter-spacing: 0.02em;
 }
 
 /* 双类选择器：menu.css 在本文件之后载入，同级选择器会被覆盖 */
-.menu-button.menu-button-small {
+.menu-button-small.menu-button {
   gap: 4px;
   padding: 0 6px;
   border-width: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 15px;
 }
 
-.menu-button.menu-button-small .caret {
+.menu-button-small.menu-button .caret {
   width: 5px;
   height: 5px;
 }
@@ -106,7 +106,7 @@
   width: 32px;
   height: 32px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-dim);
 }
 
@@ -120,11 +120,77 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-dim);
   background: var(--surface-hi);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   user-select: none;
 }
+
+/* 页面组切换导航（鹈鹕基准 ⇄ 模型指纹） */
+.page-group-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.page-group-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.page-group-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.page-group-link:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.page-group-link.is-active {
+  border-color: var(--border);
+  background: var(--surface-hi);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.page-group-link.is-active svg {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .toolbar-stack.clock,
+  .toolbar-stack.stats {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-group-link {
+    padding: 0 8px;
+    gap: 4px;
+  }
+}
+

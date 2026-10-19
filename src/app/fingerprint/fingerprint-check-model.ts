@@ -2,24 +2,24 @@
  * 模型指纹「发起渠道核验」面板的数据状态与视图模型（复用“跑一次”的选择器与 Profile 模态契约）。
  */
 
-import type { RunProfileOption, RunTargetOption } from "@/app/api/run/run-options";
-import type { RunOptionsView, RunPromptOption } from "@/app/api/run/route";
+import type { RunTargetOption } from "@/app/api/run/run-options";
+import type { RunPromptOption } from "@/app/api/run/route";
 import type { PromptGroup } from "@/app/components/run-control/run-once-grouping";
 import {
-  profileChoices,
   resolvePickedProfiles,
+  shorten,
+  supportsProfiles,
   type ProfileChoice,
   type StartMode,
 } from "@/app/components/run-control/run-once-profiles";
 import type { ModelFingerprintConfig } from "@/core/config/types";
-import { PROFILE_CLIS } from "@/core/config/profiles";
 import type { ModelStatusEntry, ProbeGapSummary } from "@/core/model-fingerprint/plan";
 import { getProbe } from "@/core/model-fingerprint/probes";
 import type { SelfTestReport } from "@/core/model-fingerprint/self-test";
 import {
-  isProbeId,
   PROBE_IDS,
   resolveProbeTargetSamples,
+  resolveProbeValuesPerCheck,
   type ProbeId,
 } from "@/core/model-fingerprint/types";
 import { buildTargetId, DEFAULT_PROFILE, type CliKind } from "@/core/types";
@@ -30,9 +30,12 @@ export interface CheckTargetItem extends RunTargetOption {
   cli: CliKind;
   usableProbes: ProbeId[];
   missingProbes: ProbeId[];
+  totalProbes: number;
   estimatedCallsByProbe: Partial<Record<ProbeId, number>>;
   missingCallsByProbe: Partial<Record<ProbeId, number>>;
+  unitCostByProbe: Partial<Record<ProbeId, number | null>>;
   expectedConsistency: number | null;
+  matchedProfiles: string[];
 }
 
 export interface UnreadyCheckModel {
@@ -45,6 +48,7 @@ export interface UnreadyCheckModel {
 export interface CheckForecastSummary {
   totalEstimatedCalls: number;
   totalMaxCalls: number;
+  estimatedCostUsd: number | null;
   executableProbes: ProbeId[];
   skippedProbes: { probe: ProbeId; estimatedCalls: number }[];
   expectedConsistency: number | null;
@@ -53,6 +57,7 @@ export interface CheckForecastSummary {
 export interface CheckSelectionState {
   mode: StartMode;
   choices: ProfileChoice[];
+  panelChoices: ProfileChoice[];
   pickedProfiles: ReadonlySet<string>;
   chosenCalls: number;
   roundDescription: string;
@@ -67,9 +72,7 @@ export interface CheckTargetDraft {
   probes: ProbeId[];
 }
 
-function supportsProfiles(cli: string): boolean {
-  return (PROFILE_CLIS as readonly string[]).includes(cli);
-}
+export const supportsCheckProfiles = supportsProfiles;
 
 function lookupExpectedConsistency(
   cli: CliKind,
@@ -82,32 +85,53 @@ function lookupExpectedConsistency(
   return matched ? matched.expectedConsistency : null;
 }
 
+export function isProfileApplicableToTarget(
+  profileName: string,
+  target: { cli: CliKind; model: string },
+  availableProfiles?: readonly FingerprintProfileSummary[],
+): boolean {
+  if (profileName === DEFAULT_PROFILE || profileName === "") return true;
+  if (!supportsCheckProfiles(target.cli)) return false;
+  if (!availableProfiles || availableProfiles.length === 0) return true;
+  const meta = availableProfiles.find((p) => p.name === profileName);
+  if (!meta) return true;
+  if (meta.cli && meta.cli !== target.cli) return false;
+  if (meta.models && meta.models.length > 0 && !meta.models.includes(target.model)) return false;
+  return true;
+}
+
 function buildTargetItemFromRow(
   row: ModelStatusEntry,
   activeProbes: readonly ProbeId[],
   config: ModelFingerprintConfig,
+  profiles: readonly FingerprintProfileSummary[],
   selfTest?: SelfTestReport | null,
   selfTestByCli?: Partial<Record<CliKind, SelfTestReport>>,
-): CheckTargetItem | null {
+): CheckTargetItem {
   const gapEntries = Object.values(row.probes).filter((g): g is ProbeGapSummary => g !== undefined);
-  const effort = gapEntries.find((g) => g.appliedEffort !== null)?.appliedEffort ?? config.effort;
+  const effort = gapEntries.find((g) => g.appliedEffort != null)?.appliedEffort ?? config.effort;
   const usableProbes: ProbeId[] = [];
   const missingProbes: ProbeId[] = [];
   const estimatedCallsByProbe: Partial<Record<ProbeId, number>> = {};
   const missingCallsByProbe: Partial<Record<ProbeId, number>> = {};
+  const unitCostByProbe: Partial<Record<ProbeId, number | null>> = {};
 
   for (const probeId of activeProbes) {
     const gap = row.probes[probeId];
+    const codec = getProbe(probeId).resolveCodec({ cli: row.cli, model: row.model }, config.modelPrompts);
+    const checkValues = resolveProbeValuesPerCheck(probeId, config);
+    estimatedCallsByProbe[probeId] = Math.ceil(checkValues / codec.valuesPerCall);
+    unitCostByProbe[probeId] = gap?.unitCostUsd ?? null;
     if (gap?.usable) {
       usableProbes.push(probeId);
-      const codec = getProbe(probeId).resolveCodec({ cli: row.cli, model: row.model }, config.modelPrompts);
-      estimatedCallsByProbe[probeId] = Math.ceil(config.valuesPerCheck / codec.valuesPerCall);
     } else {
       missingProbes.push(probeId);
       missingCallsByProbe[probeId] = gap?.estimatedCalls ?? 0;
     }
   }
-  if (usableProbes.length === 0) return null;
+  const matchedProfiles = supportsCheckProfiles(row.cli)
+    ? profiles.filter((p) => isProfileApplicableToTarget(p.name, row, profiles)).map((p) => p.label || p.name)
+    : [];
 
   return {
     id: buildTargetId(row.cli, row.model, effort),
@@ -115,31 +139,34 @@ function buildTargetItemFromRow(
     cli: row.cli,
     model: row.model,
     effort,
-    defaultSelected: true,
+    defaultSelected: usableProbes.length > 0,
     usableProbes,
     missingProbes,
+    totalProbes: activeProbes.length,
     estimatedCallsByProbe,
     missingCallsByProbe,
+    unitCostByProbe,
     expectedConsistency: lookupExpectedConsistency(row.cli, row.model, selfTest, selfTestByCli),
+    matchedProfiles,
   };
 }
 
 export function buildCheckTargetsView(params: {
   config: ModelFingerprintConfig;
   matrix: readonly ModelStatusEntry[];
+  profiles?: readonly FingerprintProfileSummary[];
   selfTest?: SelfTestReport | null;
   selfTestByCli?: Partial<Record<CliKind, SelfTestReport>>;
 }): { targets: CheckTargetItem[]; unreadyModels: UnreadyCheckModel[] } {
-  const { config, matrix, selfTest, selfTestByCli } = params;
+  const { config, matrix, profiles = [], selfTest, selfTestByCli } = params;
   const activeProbes = resolveActiveProbes(config.probes);
   const targets: CheckTargetItem[] = [];
   const unreadyModels: UnreadyCheckModel[] = [];
 
   for (const row of matrix) {
-    const item = buildTargetItemFromRow(row, activeProbes, config, selfTest, selfTestByCli);
-    if (item) {
-      targets.push(item);
-    } else {
+    const item = buildTargetItemFromRow(row, activeProbes, config, profiles, selfTest, selfTestByCli);
+    targets.push(item);
+    if (item.usableProbes.length === 0) {
       unreadyModels.push({
         cli: row.cli,
         model: row.model,
@@ -159,10 +186,13 @@ export function buildCheckProbeOptions(
   const items: RunPromptOption[] = PROBE_IDS.map((probeId) => {
     const meta = fpMessages.probes[probeId];
     const targetValues = resolveProbeTargetSamples(probeId, config);
+    const checkValues = resolveProbeValuesPerCheck(probeId, config);
+    const defaultPerCall = getProbe(probeId).defaultCodec.valuesPerCall;
+    const checkCalls = Math.ceil(checkValues / defaultPerCall);
     return {
       id: probeId,
       label: meta.label,
-      subtitle: `${probeId} · ${meta.desc} · ≥${targetValues}`,
+      subtitle: `${probeId} · ${meta.desc} · ≥${targetValues} (check: ${checkCalls}×${defaultPerCall}=${checkValues})`,
       defaultSelected: activeSet.has(probeId),
     };
   });
@@ -174,62 +204,104 @@ export function buildCheckProbeOptions(
   };
 }
 
-export function reconcileCheckTargets(
-  targets: readonly CheckTargetItem[],
-  current: ReadonlySet<string>,
-  initialized: boolean,
-): ReadonlySet<string> {
-  const validIds = new Set(targets.map((t) => t.id));
-  if (!initialized) {
-    return new Set(targets.filter((t) => t.defaultSelected).map((t) => t.id));
-  }
-  const kept = [...current].filter((id) => validIds.has(id));
-  if (kept.length === 0 && current.size > 0 && targets.length > 0) {
-    return new Set(targets.filter((t) => t.defaultSelected).map((t) => t.id));
-  }
-  return new Set(kept);
-}
+export {
+  CHECK_PROFILE_STORAGE_KEY,
+  CHECK_SELECTION_STORAGE_KEY,
+  readStoredCheckProfiles,
+  readStoredCheckSelection,
+  reconcileCheckTargets,
+  resolveCheckProbes,
+  writeStoredCheckProfiles,
+  writeStoredCheckSelection,
+} from "./fingerprint-check-store";
 
-function toCheckProfileOptions(
+function buildUnionProfileChoices(
+  combos: readonly CheckTargetItem[],
   profiles: readonly FingerprintProfileSummary[],
   locale: Locale,
-): RunProfileOption[] {
+): ProfileChoice[] {
+  if (combos.length === 0) return [];
   const isEn = locale === "en";
-  return profiles.map((p) => {
-    const baseLabel = p.label && p.label !== p.name ? `${p.name} (${p.label})` : p.name;
-    const disabledSuffix = p.enabled === false ? (isEn ? " (Disabled)" : "（已停用）") : "";
-    return {
-      name: p.name,
-      label: `${baseLabel}${disabledSuffix}`,
-      cli: p.cli ?? "codex",
-      // 渠道核验支持对未加入定时任务的 profile 发起检测（collect.ts allowDisabled: true），只校验 hasKey 与 models
-      enabled: true,
-      hasKey: p.hasKey ?? true,
-      models: p.models ? [...p.models] : [],
-    };
-  });
+  const clis = new Set(combos.map((c) => c.cli));
+  const login: ProfileChoice = {
+    id: DEFAULT_PROFILE,
+    label: isEn ? "Official Login" : "登录态",
+    available: true,
+    reason: null,
+  };
+  const upstreams = profiles
+    .filter((p) => clis.has(p.cli ?? "codex"))
+    .map((p): ProfileChoice => {
+      const cli = p.cli ?? "codex";
+      const cliCombos = combos.filter((c) => c.cli === cli);
+      const matched = cliCombos.filter((c) => isProfileApplicableToTarget(p.name, c, profiles));
+      const hasKey = p.hasKey ?? true;
+      const baseLabel = p.label && p.label.trim() !== "" ? p.label : p.name;
+      const disabledSuffix = p.enabled === false ? (isEn ? " (Disabled)" : "（已停用）") : "";
+      const available = hasKey && matched.length > 0;
+      const reason = !hasKey
+        ? isEn ? "Missing API key" : "未填 key"
+        : matched.length === 0
+          ? isEn ? "No matching selected model" : "不含所选模型"
+          : matched.length < cliCombos.length
+            ? isEn ? `${matched.length}/${cliCombos.length} models` : `适用 ${matched.length}/${cliCombos.length} 个模型`
+            : null;
+      return { id: p.name, label: `${baseLabel}${disabledSuffix}`, available, reason };
+    });
+  return [login, ...upstreams];
 }
 
 function computeTargetCallsForProbes(
   target: CheckTargetItem,
   selectedProbes: readonly ProbeId[],
 ): number {
-  return selectedProbes.reduce(
-    (sum, p) => sum + (target.usableProbes.includes(p) ? (target.estimatedCallsByProbe[p] ?? 0) : 0),
-    0,
-  );
+  const effective = target.usableProbes.length > 0
+    ? selectedProbes.filter((p) => target.usableProbes.includes(p))
+    : selectedProbes;
+  return effective.reduce((sum, p) => sum + (target.estimatedCallsByProbe[p] ?? 0), 0);
 }
 
 function computeTotalCheckCalls(
   selectedTargets: readonly CheckTargetItem[],
   selectedProbes: readonly ProbeId[],
   profiles: readonly string[],
+  availableProfiles?: readonly FingerprintProfileSummary[],
 ): number {
-  const profileMult = Math.max(1, profiles.length);
   return selectedTargets.reduce((sum, t) => {
     const perRun = computeTargetCallsForProbes(t, selectedProbes);
-    return sum + perRun * (supportsProfiles(t.cli) ? profileMult : 1);
+    if (!supportsCheckProfiles(t.cli)) return sum + perRun;
+    const applicableCount = profiles.filter((prof) => isProfileApplicableToTarget(prof, t, availableProfiles)).length;
+    return sum + perRun * applicableCount;
   }, 0);
+}
+
+function computeTotalCheckCost(
+  selectedTargets: readonly CheckTargetItem[],
+  selectedProbes: readonly ProbeId[],
+  profiles: readonly string[],
+  availableProfiles?: readonly FingerprintProfileSummary[],
+): number | null {
+  let total = 0;
+  let hasCost = false;
+  for (const t of selectedTargets) {
+    const effective = t.usableProbes.length > 0 ? selectedProbes.filter((p) => t.usableProbes.includes(p)) : selectedProbes;
+    let perRunCost = 0;
+    let targetHasCost = false;
+    for (const p of effective) {
+      const unit = t.unitCostByProbe[p] ?? null;
+      if (unit !== null) {
+        perRunCost += (t.estimatedCallsByProbe[p] ?? 0) * unit;
+        targetHasCost = true;
+      }
+    }
+    if (!targetHasCost) continue;
+    const count = !supportsCheckProfiles(t.cli) ? 1 : profiles.filter((prof) => isProfileApplicableToTarget(prof, t, availableProfiles)).length;
+    if (count > 0) {
+      total += perRunCost * count;
+      hasCost = true;
+    }
+  }
+  return hasCost ? Math.round(total * 1_000_000) / 1_000_000 : null;
 }
 
 function computeCheckForecast(
@@ -237,6 +309,7 @@ function computeCheckForecast(
   selectedTargets: readonly CheckTargetItem[],
   selectedProbes: readonly ProbeId[],
   multiplierProfiles: readonly string[],
+  availableProfiles?: readonly FingerprintProfileSummary[],
 ): CheckForecastSummary {
   const execSet = new Set<ProbeId>();
   const skippedMap = new Map<ProbeId, number>();
@@ -250,13 +323,25 @@ function computeCheckForecast(
       }
     }
   }
-  const totalEstimatedCalls = computeTotalCheckCalls(selectedTargets, selectedProbes, multiplierProfiles);
+  const totalEstimatedCalls = computeTotalCheckCalls(
+    selectedTargets,
+    selectedProbes,
+    multiplierProfiles,
+    availableProfiles,
+  );
+  const estimatedCostUsd = computeTotalCheckCost(
+    selectedTargets,
+    selectedProbes,
+    multiplierProfiles,
+    availableProfiles,
+  );
   const rates = selectedTargets
     .map((t) => t.expectedConsistency)
     .filter((r): r is number => r !== null);
   return {
     totalEstimatedCalls,
     totalMaxCalls: totalEstimatedCalls * config.checkAttempts,
+    estimatedCostUsd,
     executableProbes: PROBE_IDS.filter((p) => execSet.has(p)),
     skippedProbes: PROBE_IDS.filter((p) => skippedMap.has(p) && !execSet.has(p)).map((p) => ({
       probe: p,
@@ -266,38 +351,31 @@ function computeCheckForecast(
   };
 }
 
-function shortenItems(items: readonly string[], locale: Locale): string {
-  const sep = locale === "en" ? ", " : "、";
-  if (items.length <= 3) return items.join(sep);
-  return locale === "en"
-    ? `${items.slice(0, 3).join(sep)}... (${items.length} total)`
-    : `${items.slice(0, 3).join(sep)} 等 ${items.length} 个`;
-}
-
 function resolveCheckStartMode(
   selectedTargets: readonly CheckTargetItem[],
   selectedProbes: readonly ProbeId[],
   choices: readonly ProfileChoice[],
   baseCalls: number,
+  availableProfiles: readonly FingerprintProfileSummary[],
   locale: Locale,
 ): StartMode {
   const isEn = locale === "en";
   if (selectedTargets.length === 0 || selectedProbes.length === 0) {
     return { kind: "direct", profiles: undefined, calls: 0 };
   }
-  if (baseCalls === 0) {
-    return {
-      kind: "none",
-      reason: isEn ? "Selected probes have no full baseline" : "所选探针尚无满额基准样本",
-    };
-  }
-  if (choices.length > 1) {
+  if (choices.length > 0) {
     const available = choices.filter((c) => c.available);
-    return available.length === 0
-      ? { kind: "none", reason: isEn ? "No available profiles" : "没有可用的上游" }
-      : { kind: "choose" };
+    if (available.length === 0) {
+      return { kind: "none", reason: isEn ? "No available profiles" : "没有可用的上游" };
+    }
+    if (available.length === 1) {
+      const only = available[0]!;
+      const calls = computeTotalCheckCalls(selectedTargets, selectedProbes, [only.id], availableProfiles);
+      return { kind: "direct", profiles: [only.id], calls };
+    }
+    return { kind: "choose" };
   }
-  return { kind: "direct", profiles: choices.length === 1 ? [choices[0]!.id] : undefined, calls: baseCalls };
+  return { kind: "direct", profiles: undefined, calls: baseCalls };
 }
 
 function buildCheckRoundMeta(
@@ -309,9 +387,9 @@ function buildCheckRoundMeta(
   const isEn = locale === "en";
   const combos = selectedTargets.map((t) => `${t.model} · ${t.effort}`);
   const probeTitles = probeOptions.filter((p) => pickedProbes.has(p.id)).map((p) => p.label);
-  const roundDescription = `${shortenItems(combos, locale)} × ${shortenItems(probeTitles, locale)}`;
+  const roundDescription = `${shorten(combos, locale)} × ${shorten(probeTitles, locale)}`;
   const loginOnlyNames = selectedTargets
-    .filter((t) => !supportsProfiles(t.cli))
+    .filter((t) => !supportsCheckProfiles(t.cli))
     .map((t) => `${t.cli} ${t.model}`);
   const loginOnlyNote =
     loginOnlyNames.length > 0
@@ -335,28 +413,28 @@ export function computeCheckSelectionState(params: {
   const { config, targets, probeOptions, profiles, pickedTargets, pickedProbes, storedProfiles, locale } = params;
   const selectedTargets = targets.filter((t) => pickedTargets.has(t.id));
   const selectedProbes = PROBE_IDS.filter((p) => pickedProbes.has(p));
-  const mockOptions: RunOptionsView = {
-    targets: [...targets],
-    unavailable: [],
-    profiles: toCheckProfileOptions(profiles, locale),
-    loginUnavailable: [],
-    prompts: [...probeOptions],
-    activeRunId: null,
-    costs: { expected: {}, spentLastDayUsd: 0, budget: { perRoundUsd: null, perDayUsd: null } },
-  };
+  const pickedProfileCombos = selectedTargets.filter((t) => supportsCheckProfiles(t.cli));
+  const allProfileCombos = targets.filter((t) => supportsCheckProfiles(t.cli));
 
-  const choices = profileChoices(mockOptions, pickedTargets, locale);
+  const choices = buildUnionProfileChoices(pickedProfileCombos, profiles, locale);
+  const panelChoices = buildUnionProfileChoices(
+    pickedProfileCombos.length > 0 ? pickedProfileCombos : allProfileCombos,
+    profiles,
+    locale,
+  );
   const pickedProfileList = resolvePickedProfiles(choices, storedProfiles);
-  const baseCalls = computeTotalCheckCalls(selectedTargets, selectedProbes, [DEFAULT_PROFILE]);
-  const chosenCalls = computeTotalCheckCalls(selectedTargets, selectedProbes, pickedProfileList);
-  const mode = resolveCheckStartMode(selectedTargets, selectedProbes, choices, baseCalls, locale);
+  const baseCalls = computeTotalCheckCalls(selectedTargets, selectedProbes, [DEFAULT_PROFILE], profiles);
+  const chosenCalls = computeTotalCheckCalls(selectedTargets, selectedProbes, pickedProfileList, profiles);
+  const mode = resolveCheckStartMode(selectedTargets, selectedProbes, choices, baseCalls, profiles, locale);
   const { roundDescription, loginOnlyNote } = buildCheckRoundMeta(selectedTargets, probeOptions, pickedProbes, locale);
-  const activeMultiplier = mode.kind === "choose" ? pickedProfileList : [DEFAULT_PROFILE];
-  const forecast = computeCheckForecast(config, selectedTargets, selectedProbes, activeMultiplier);
+  const activeMultiplier =
+    mode.kind === "direct" && mode.profiles ? mode.profiles : [DEFAULT_PROFILE];
+  const forecast = computeCheckForecast(config, selectedTargets, selectedProbes, activeMultiplier, profiles);
 
   return {
     mode,
     choices,
+    panelChoices,
     pickedProfiles: new Set(pickedProfileList),
     chosenCalls,
     roundDescription,
@@ -370,8 +448,9 @@ export function buildCheckBatchDrafts(params: {
   pickedTargets: ReadonlySet<string>;
   pickedProbes: ReadonlySet<string>;
   profiles?: readonly string[];
+  availableProfiles?: readonly FingerprintProfileSummary[];
 }): CheckTargetDraft[] {
-  const { targets, pickedTargets, pickedProbes, profiles } = params;
+  const { targets, pickedTargets, pickedProbes, profiles, availableProfiles } = params;
   const selectedProbes = PROBE_IDS.filter((p) => pickedProbes.has(p));
   const drafts: CheckTargetDraft[] = [];
 
@@ -379,8 +458,9 @@ export function buildCheckBatchDrafts(params: {
     if (!pickedTargets.has(target.id)) continue;
     const executableProbes = selectedProbes.filter((p) => target.usableProbes.includes(p));
     if (executableProbes.length === 0) continue;
-    if (supportsProfiles(target.cli) && profiles && profiles.length > 0) {
+    if (supportsCheckProfiles(target.cli) && profiles && profiles.length > 0) {
       for (const prof of profiles) {
+        if (!isProfileApplicableToTarget(prof, target, availableProfiles)) continue;
         drafts.push({
           cli: target.cli,
           profile: prof === DEFAULT_PROFILE ? "" : prof,
@@ -398,4 +478,18 @@ export function buildCheckBatchDrafts(params: {
     }
   }
   return drafts;
+}
+
+export function checkStartLabel(
+  mode: StartMode,
+  busy: boolean,
+  jobActive: boolean,
+  locale: Locale,
+): string {
+  const isEn = locale === "en";
+  if (busy && !jobActive) return isEn ? "Starting…" : "发起中…";
+  if (jobActive) return isEn ? "Verification running…" : "核验执行中…";
+  if (mode.kind === "choose") return isEn ? "Select Profiles & Start" : "选择 Profile 后开始";
+  if (mode.kind === "none") return mode.reason;
+  return isEn ? `Start (${mode.calls} calls)` : `开始（${mode.calls} 次调用）`;
 }

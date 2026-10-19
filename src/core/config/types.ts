@@ -193,8 +193,10 @@ export interface ModelFingerprintConfig {
   samplesByProbe?: Partial<Record<ProbeId, number>>;
   /** 核验不指定探针时的缺省列表；空数组表示全部 6 个探针 */
   probes: ProbeId[];
-  /** 核验时每个探针需采满的合格值个数 m（1 <= m <= floor(samplesPerProbe / 2)） */
+  /** 核验时每个探针需采满的基础合格值个数 m（1 <= m <= floor(samplesPerProbe / 2)） */
   valuesPerCheck: number;
+  /** 按探针差异化配置的核验合格值个数 m_p（缺省为 uuid:5, number:5, seed:10, palette:10, words-en:5, words-zh:15） */
+  valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
   /** 核验时每个探针最多尝试调用的倍数 */
   checkAttempts: number;
   /** 自检中判对方向的目标条件准确率（(0.5, 1]） */

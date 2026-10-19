@@ -1,3 +1,4 @@
+import { Button } from "@/app/components/ui/Button";
 import { useI18n } from "@/i18n";
 
 export type PairFormStatus =
@@ -21,10 +22,12 @@ export function PairCodeForm({
   const isEn = locale === "en";
   return (
     <form className="pair-card" onSubmit={(event) => void onSubmit(event)}>
-      <label htmlFor="pair-code">{isEn ? "Pairing Code" : "配对码"}</label>
+      <label htmlFor="pair-code" className="ui-label">
+        {isEn ? "Pairing Code" : "配对码"}
+      </label>
       <input
         id="pair-code"
-        className="pair-code"
+        className="ui-input pair-code"
         value={code}
         onChange={(event) => onChangeCode(event.target.value)}
         placeholder="0000-0000-0000-0000-0000-0000-0000-0000"
@@ -33,10 +36,10 @@ export function PairCodeForm({
         spellCheck={false}
         required
       />
-      <div className="actions">
-        <button type="submit" disabled={status.kind === "busy"}>
+      <div className="pair-actions">
+        <Button type="submit" variant="primary" disabled={status.kind === "busy"}>
           {status.kind === "busy" ? (isEn ? "Pairing…" : "配对中…") : isEn ? "Pair" : "配对"}
-        </button>
+        </Button>
         {status.kind === "error" && <span className="pair-error">{status.message}</span>}
       </div>
     </form>

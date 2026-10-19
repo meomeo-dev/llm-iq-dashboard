@@ -1,23 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import React from "react";
 (globalThis as unknown as { React: typeof React }).React = React;
 import ReactDOMServer from "react-dom/server";
 import { DataRepoPanel } from "@/app/config/DataRepoPanel";
 import type { DataRepoStatus } from "@/core/sync/data-repo-panel-types";
+import { expectFixture } from "../../support/fixtures";
 
 const FIXTURES_DIR = path.resolve(__dirname, "../../fixtures/markup/wp-l");
 
-/** UPDATE_MARKUP_FIXTURES=1 时把当前标记写回夹具，否则与夹具逐字比对 */
 function assertFixture(html: string, filename: string): void {
-  const filePath = path.join(FIXTURES_DIR, filename);
-  if (process.env.UPDATE_MARKUP_FIXTURES === "1") {
-    fs.writeFileSync(filePath, html, "utf-8");
-    return;
-  }
-  assert.strictEqual(html, fs.readFileSync(filePath, "utf-8"));
+  expectFixture(html, path.join(FIXTURES_DIR, filename));
 }
 
 function createBaseStatus(): DataRepoStatus {

@@ -20,7 +20,7 @@ import {
   type FingerprintCheckRecord,
   type ProbeId,
 } from "@/core/model-fingerprint/types";
-import type { ProfileView } from "@/core/profile-view";
+import { orderProfileNames, type ProfileView } from "@/core/profile-view";
 import type { CliKind } from "@/core/types";
 
 export interface MatrixCellViewModel {
@@ -34,6 +34,10 @@ export interface MatrixCellViewModel {
   progressText: string;
   intraProbeSim?: number | null;
   intraProbeLowerBound?: number | null;
+  spentCostUsd?: number | null;
+  estimatedCostUsd?: number | null;
+  totalTokens?: number | null;
+  totalDurationMs?: number;
 }
 
 export interface MatrixRowViewModel {
@@ -43,6 +47,10 @@ export interface MatrixRowViewModel {
   totalProbes: number;
   totalMissingValues: number;
   totalEstimatedCalls: number;
+  totalSpentCostUsd: number | null;
+  totalEstimatedCostUsd: number | null;
+  totalTokens: number | null;
+  canExport: boolean;
   appliedEffort?: string | null;
   effortHonored?: boolean | null;
   cliVersions?: string[];
@@ -56,13 +64,18 @@ export interface FingerprintProfileSummary {
   enabled?: boolean;
   hasKey?: boolean;
   models?: string[];
+  upstreamType?: string;
+  group?: string | null;
+  website?: string | null;
+  multiplier?: number;
 }
 
 export interface FingerprintApiSnapshot {
   modelFingerprint: ModelFingerprintConfig;
+  defaultTimeZone?: string | null;
   profiles: FingerprintProfileSummary[];
   matrix: ModelStatusEntry[];
-  fillPlan: FillPlan;
+  fillPlan?: FillPlan;
   selfTest?: SelfTestReport | null;
   selfTestByCli?: Partial<Record<CliKind, SelfTestReport>>;
   activeJob: FingerprintJobView | null;
@@ -118,7 +131,42 @@ function toCellViewModel(gap: ProbeGapSummary, fallbackTargetValues: number): Ma
     progressText: formatCellProgress(gap.validValues, targetValues),
     intraProbeSim: gap.intraProbeSim ?? null,
     intraProbeLowerBound: gap.intraProbeLowerBound ?? null,
+    spentCostUsd: gap.spentCostUsd ?? null,
+    estimatedCostUsd: gap.estimatedCostUsd ?? null,
+    totalTokens: gap.totalTokens ?? null,
+    totalDurationMs: gap.totalDurationMs ?? 0,
   };
+}
+
+function emptyCellViewModel(probeId: ProbeId, targetValues: number): MatrixCellViewModel {
+  return {
+    probeId,
+    validValues: 0,
+    targetValues,
+    missingValues: targetValues,
+    estimatedCalls: 0,
+    usable: false,
+    statusClass: "empty",
+    progressText: `0/${targetValues}`,
+    intraProbeSim: null,
+    intraProbeLowerBound: null,
+    spentCostUsd: null,
+    estimatedCostUsd: null,
+    totalTokens: null,
+    totalDurationMs: 0,
+  };
+}
+
+function sumNullableMetrics(values: readonly (number | null | undefined)[]): number | null {
+  let sum = 0;
+  let has = false;
+  for (const v of values) {
+    if (typeof v === "number" && Number.isFinite(v)) {
+      sum += v;
+      has = true;
+    }
+  }
+  return has ? Math.round(sum * 1_000_000) / 1_000_000 : null;
 }
 
 export function buildMatrixViewModel(
@@ -131,30 +179,25 @@ export function buildMatrixViewModel(
   return matrix.map((row) => {
     const gapEntries = Object.values(row.probes).filter((g): g is ProbeGapSummary => g !== undefined);
     const firstWithEffort = gapEntries.find((g) => g.appliedEffort !== null);
-    const cliVersions = Array.from(new Set(gapEntries.flatMap((g) => g.cliVersions)));
+    const cliVersions = Array.from(
+      new Set(
+        gapEntries
+          .flatMap((g) => g.cliVersions)
+          .map((v) => v.replace(new RegExp(`^${row.cli}\\s+${row.cli}(?:-cli)?\\s+`, "i"), `${row.cli} `)),
+      ),
+    );
     const cells: MatrixCellViewModel[] = activeProbes.map((probeId) => {
-      const probeTarget = resolveProbeTargetSamples(probeId, {
-        samplesPerProbe,
-        samplesByProbe,
-      });
+      const probeTarget = resolveProbeTargetSamples(probeId, { samplesPerProbe, samplesByProbe });
       const gap = row.probes[probeId];
-      if (gap) return toCellViewModel(gap, probeTarget);
-      return {
-        probeId,
-        validValues: 0,
-        targetValues: probeTarget,
-        missingValues: probeTarget,
-        estimatedCalls: 0,
-        usable: false,
-        statusClass: "empty",
-        progressText: `0/${probeTarget}`,
-        intraProbeSim: null,
-        intraProbeLowerBound: null,
-      };
+      return gap ? toCellViewModel(gap, probeTarget) : emptyCellViewModel(probeId, probeTarget);
     });
     const usableProbes = cells.filter((c) => c.usable).length;
     const totalMissingValues = cells.reduce((sum, c) => sum + c.missingValues, 0);
     const totalEstimatedCalls = cells.reduce((sum, c) => sum + c.estimatedCalls, 0);
+    const totalSpentCostUsd = sumNullableMetrics(cells.map((c) => c.spentCostUsd));
+    const totalEstimatedCostUsd = sumNullableMetrics(cells.map((c) => c.estimatedCostUsd));
+    const totalTokens = sumNullableMetrics(cells.map((c) => c.totalTokens));
+    const canExport = cells.some((c) => c.validValues > 0);
     return {
       cli: row.cli,
       model: row.model,
@@ -162,6 +205,10 @@ export function buildMatrixViewModel(
       totalProbes: activeProbes.length,
       totalMissingValues,
       totalEstimatedCalls,
+      totalSpentCostUsd,
+      totalEstimatedCostUsd,
+      totalTokens,
+      canExport,
       appliedEffort: firstWithEffort?.appliedEffort ?? null,
       effortHonored: firstWithEffort?.effortHonored ?? null,
       cliVersions,
@@ -190,17 +237,58 @@ export function sortCheckRecordsDescending(
   return [...checks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function buildFillRequestBody(options: {
-  action?: "fill" | "plan";
+export interface FillRequestOptions {
   cli?: CliKind;
+  profile?: string;
+  profilesByCli?: Partial<Record<CliKind, string>>;
   model?: string;
   probes?: ProbeId[];
   count?: number;
-}): string {
+}
+
+export function listFillableCliProfiles(
+  cli: CliKind,
+  profiles: readonly FingerprintProfileSummary[],
+): FingerprintProfileSummary[] {
+  return profiles.filter((p) => (p.cli ?? "codex") === cli && p.hasKey !== false);
+}
+
+export function defaultFillProfilesByCli(
+  profiles: readonly FingerprintProfileSummary[],
+  matrix: readonly { cli: CliKind; model: string }[] = [],
+): Partial<Record<CliKind, string>> {
+  const clis = new Set<CliKind>(profiles.map((p) => p.cli ?? "codex"));
+  const out: Partial<Record<CliKind, string>> = {};
+  for (const cli of clis) {
+    const usable = listFillableCliProfiles(cli, profiles);
+    if (usable.length === 0) continue;
+    const cliModels = matrix.filter((m) => m.cli === cli).map((m) => m.model);
+    const pool = usable.some((p) => p.enabled !== false)
+      ? usable.filter((p) => p.enabled !== false)
+      : usable;
+    let best: FingerprintProfileSummary | undefined = pool[0];
+    let bestCover = -1;
+    for (const candidate of pool) {
+      const models = candidate.models ?? [];
+      const cover = models.length === 0 ? cliModels.length : cliModels.filter((m) => models.includes(m)).length;
+      if (cover > bestCover) {
+        bestCover = cover;
+        best = candidate;
+      }
+    }
+    out[cli] = best?.name ?? "default";
+  }
+  return out;
+}
+
+export function buildFillRequestBody(options: FillRequestOptions & { action?: "fill" | "plan" }): string {
+  const profile = options.profile && options.profile.trim() !== "" ? options.profile.trim() : undefined;
   return JSON.stringify({
     action: options.action ?? "fill",
     mode: "fill",
     cli: options.cli,
+    profile,
+    profilesByCli: options.profilesByCli,
     model: options.model,
     probes: options.probes,
     count: options.count,
@@ -289,6 +377,45 @@ export async function patchSampleJson<T>(bodyJson: string): Promise<T> {
   return data as T;
 }
 
+export {
+  downloadFingerprintBundle,
+  uploadFingerprintBundle,
+  type BundleImportResponse,
+} from "./use-fingerprint-bundle";
+
+export function normalizeCheckProfile(profile: string | undefined): string {
+  const trimmed = (profile ?? "").trim();
+  return trimmed.length === 0 ? "default" : trimmed;
+}
+
+export function resolveActiveCheckView(record: FingerprintCheckRecord): FingerprintCheckRecord {
+  const latest = record.rescores[record.rescores.length - 1];
+  return latest ? { ...record, ...latest } : record;
+}
+
+export function isRecordCheckPassed(record: FingerprintCheckRecord): boolean {
+  const active = resolveActiveCheckView(record);
+  if (active.verdict === "consistent") return true;
+  return (
+    active.verdict === "inconclusive" &&
+    active.inconclusiveReason === "single-reference-only" &&
+    active.selfSim !== null &&
+    active.selfLowerBound !== null &&
+    active.selfSim >= active.selfLowerBound
+  );
+}
+
+export function orderCheckRecordsByProfile(
+  records: readonly FingerprintCheckRecord[],
+  profiles: readonly ProfileView[] = [],
+): FingerprintCheckRecord[] {
+  const orderedNames = orderProfileNames(records.map((r) => normalizeCheckProfile(r.profile)), profiles);
+  const rankOf = new Map(orderedNames.map((n, idx) => [n, idx]));
+  return [...records].sort(
+    (a, b) => (rankOf.get(normalizeCheckProfile(a.profile)) ?? 999) - (rankOf.get(normalizeCheckProfile(b.profile)) ?? 999),
+  );
+}
+
 export function toProfileViews(
   profiles: readonly FingerprintProfileSummary[],
 ): ProfileView[] {
@@ -296,12 +423,13 @@ export function toProfileViews(
     name: p.name,
     label: p.label ?? p.name,
     cli: p.cli ?? "codex",
-    upstreamType: "compatible",
-    group: null,
-    website: null,
-    multiplier: 1,
+    upstreamType: p.upstreamType ?? "compatible",
+    group: p.group ?? null,
+    website: p.website ?? null,
+    multiplier: p.multiplier ?? 1,
     enabled: p.enabled ?? true,
   }));
 }
 
 export type { FillPlan, VerificationCheckPlan };
+

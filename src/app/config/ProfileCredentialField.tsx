@@ -69,11 +69,12 @@ export function ProfileCredentialField({
 
   return (
     <div className="profile-key">
-      <label>
+      <label className="ui-field">
         API key
         <span className="profile-key-state">{stateText}</span>
         <input
           type="password"
+          className="ui-input"
           autoComplete="off"
           value={draft}
           placeholder={placeholderText}
@@ -81,11 +82,11 @@ export function ProfileCredentialField({
         />
       </label>
       <div className="field-row">
-        <button type="button" disabled={busy || draft.trim() === ""} onClick={() => run(saveKey, isEn ? "Saved" : "已保存")}>
+        <button type="button" className="ui-btn ui-btn-default" disabled={busy || draft.trim() === ""} onClick={() => run(saveKey, isEn ? "Saved" : "已保存")}>
           {saveLabel}
         </button>
         {status !== undefined && (
-          <button type="button" className="danger" disabled={busy} onClick={() => run(onDelete, isEn ? "Deleted" : "已删除")}>
+          <button type="button" className="ui-btn ui-btn-danger ui-btn-sm" disabled={busy} onClick={() => run(onDelete, isEn ? "Deleted" : "已删除")}>
             {isEn ? "Delete Key" : "删除 key"}
           </button>
         )}

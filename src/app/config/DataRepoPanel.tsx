@@ -84,16 +84,34 @@ function DataRepoMismatchBar({ status }: { status: DataRepoStatus | null }) {
 function DataRepoSummaryBar({
   error,
   summary,
+  onDismissError,
+  onDismissResult,
 }: {
   error: string | null;
   summary: ActionResultSummary | null;
+  onDismissError?: () => void;
+  onDismissResult?: () => void;
 }) {
   const { locale } = useI18n();
   const isEn = locale === "en";
   const actionLabels = getActionLabels(locale);
   return (
     <>
-      {error && <div className="status error data-repo-error-bar">{error}</div>}
+      {error && (
+        <div className="status error data-repo-error-bar">
+          <span>{error}</span>
+          {onDismissError && (
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost ui-btn-sm"
+              aria-label={isEn ? "Dismiss error" : "关闭错误提示"}
+              onClick={onDismissError}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
       {summary && (
         <div className={`data-repo-action-summary ${summary.ok ? "ok" : "error"}`}>
           <span className="data-repo-summary-label">
@@ -102,6 +120,16 @@ function DataRepoSummaryBar({
               : `最近操作结果（${actionLabels[summary.mode]}）：`}
           </span>
           <span className="data-repo-summary-text">{summary.text}</span>
+          {onDismissResult && (
+            <button
+              type="button"
+              className="ui-btn ui-btn-ghost ui-btn-sm"
+              aria-label={isEn ? "Dismiss result" : "关闭操作结果"}
+              onClick={onDismissResult}
+            >
+              ×
+            </button>
+          )}
         </div>
       )}
     </>
@@ -188,7 +216,7 @@ export function DataRepoPanel({
 }: DataRepoPanelProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
-  const { status, loading, inFlightMode, actionResult, error, refresh, executeAction } =
+  const { status, loading, inFlightMode, actionResult, error, refresh, executeAction, dismissResult, dismissError } =
     useDataRepoActions({ fetchFn, initialStatus, autoLoad });
 
   const [showPushDialog, setShowPushDialog] = useState(initialShowPushDialog);
@@ -201,9 +229,7 @@ export function DataRepoPanel({
   if (notice !== null) return <DataRepoNoticeSection message={notice} label={label} />;
 
   const { health, counts, pushConfirm, summary, issues } = derivePanelData(status, currentResult, locale);
-  const statusNotice = status?.notice
-    ? isEn ? localizeStatusNoticeEn(status.notice) : status.notice
-    : null;
+  const statusNotice = status?.notice ? (isEn ? localizeStatusNoticeEn(status.notice) : status.notice) : null;
 
   return (
     <section id="data-repo" className="config-section data-repo-section">
@@ -213,37 +239,25 @@ export function DataRepoPanel({
       {status?.github && <DataRepoGithubCard github={status.github} repositoryName={label} />}
       {statusNotice && <div className="status notice data-repo-notice-bar">{statusNotice}</div>}
 
-      <DataRepoPipeline
-        status={status}
-        inFlightMode={currentInFlight}
-        selectedCount={pending.selectedCount}
+      <DataRepoPipeline status={status} inFlightMode={currentInFlight} selectedCount={pending.selectedCount}
         onTriggerAction={(mode) => void executeAction(mode, undefined, pending.scope)}
-        onOpenPushDialog={() => setShowPushDialog(true)}
-        onRefresh={() => void refresh()}
-      />
-      <DataRepoSelectionSection
-        pending={pending}
-        discarded={status?.local.discarded ?? []}
-        disabled={currentInFlight !== null}
-        onLedgerAction={(mode, runIds) => void executeAction(mode, undefined, { runIds })}
-      />
+        onOpenPushDialog={() => setShowPushDialog(true)} onRefresh={() => void refresh()} />
+      <DataRepoSelectionSection pending={pending} discarded={status?.local.discarded ?? []}
+        disabled={currentInFlight !== null} onLedgerAction={(mode, runIds) => void executeAction(mode, undefined, { runIds })} />
 
-      <DataRepoSummaryBar error={error} summary={summary} />
+      <DataRepoSummaryBar error={error} summary={summary}
+        onDismissError={error !== null ? dismissError : undefined}
+        onDismissResult={actionResult !== null ? dismissResult : undefined} />
       <DataRepoIssuesList rejected={issues.rejected} skipped={issues.skipped} />
 
-      <DataRepoPushDialog
-        isOpen={showPushDialog}
-        aheadCommits={pushConfirm.aheadCommits}
-        pendingPublishCount={pushConfirm.pendingPublishCount}
-        canConfirm={pushConfirm.canConfirm}
-        disabledReason={pushConfirm.disabledReason}
-        isBusy={currentInFlight === "push"}
+      <DataRepoPushDialog isOpen={showPushDialog} aheadCommits={pushConfirm.aheadCommits}
+        pendingPublishCount={pushConfirm.pendingPublishCount} canConfirm={pushConfirm.canConfirm}
+        disabledReason={pushConfirm.disabledReason} isBusy={currentInFlight === "push"}
         onConfirm={() => {
           setShowPushDialog(false);
           void executeAction("push", { aheadCommits: pushConfirm.aheadCommits }, pending.scope);
         }}
-        onCancel={() => setShowPushDialog(false)}
-      />
+        onCancel={() => setShowPushDialog(false)} />
     </section>
   );
 }

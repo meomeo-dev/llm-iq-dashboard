@@ -70,6 +70,21 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
       open={open}
       onToggle={onToggle}
       onClose={profiles.closePanel}
+      afterPanel={
+        profiles.choosing && options !== null ? (
+          <RunOnceProfileModal
+            round={describeRound(options, selection.targets, selection.prompts, locale)}
+            choices={profiles.choices}
+            picked={profiles.pickedProfiles}
+            calls={profiles.chosenCalls}
+            loginOnlyNote={loginOnlyNote(options, selection.targets, locale)}
+            busy={launcher.busy}
+            onPick={selection.updateProfiles}
+            onStart={profiles.startChosen}
+            onCancel={profiles.closeModal}
+          />
+        ) : null
+      }
     >
       {options === null && launcher.notice === null && (
         <p className="run-empty">{isEn ? "Loading available targets…" : "正在读取可选范围…"}</p>
@@ -95,19 +110,6 @@ export function RunOnceMenu({ open, onToggle, onClose }: RunOnceMenuProps) {
         mode={profiles.mode}
         onStart={profiles.onStart}
       />
-      {profiles.choosing && options !== null && (
-        <RunOnceProfileModal
-          round={describeRound(options, selection.targets, selection.prompts, locale)}
-          choices={profiles.choices}
-          picked={profiles.pickedProfiles}
-          calls={profiles.chosenCalls}
-          loginOnlyNote={loginOnlyNote(options, selection.targets, locale)}
-          busy={launcher.busy}
-          onPick={selection.updateProfiles}
-          onStart={profiles.startChosen}
-          onCancel={profiles.closeModal}
-        />
-      )}
     </Menu>
   );
 }

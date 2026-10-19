@@ -17,6 +17,7 @@ export interface Moment {
   clock: string;
   cards: DashboardCard[];
   okCount: number;
+  totalCount?: number;
 }
 
 export interface DayOption {
@@ -74,7 +75,8 @@ export function filterMoment(moment: Moment, keep: (card: DashboardCard) => bool
 
 /** 成功比例决定时间线标记的语义色 */
 export function momentHealth(moment: Moment): "ok" | "partial" | "failed" {
-  if (moment.okCount === moment.cards.length) return "ok";
+  const total = moment.totalCount ?? moment.cards.length;
+  if (moment.okCount === total) return "ok";
   return moment.okCount === 0 ? "failed" : "partial";
 }
 

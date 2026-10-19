@@ -15,11 +15,11 @@
   gap: 6px;
   padding: 6px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--text-md);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -33,16 +33,16 @@
 
 .menu-badge {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
 /* 有筛选时徽章用强调色 */
 .menu-badge.filtered {
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-solid);
 }
 
 .caret {
@@ -57,13 +57,13 @@
 .menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
-  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-dropdown);
+  background: var(--backdrop-bg);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
 
-@media (min-width: 769px) {
+@media (min-width: 641px) {
   .menu-backdrop {
     background: transparent;
     backdrop-filter: none;
@@ -75,11 +75,17 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 85;
+  z-index: var(--z-dropdown);
   min-width: 220px;
   padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
 }
+
+.menu-panel.align-right {
+  right: 0;
+  left: auto;
+}
+

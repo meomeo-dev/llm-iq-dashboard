@@ -1,4 +1,5 @@
 import type { SessionView } from "@/app/api/session/route";
+import { ConfirmButton } from "@/app/components/ui/Button";
 import { useI18n } from "@/i18n";
 import { formatDeviceTime } from "./device-panel-model";
 
@@ -35,9 +36,18 @@ export function DeviceTable({
             <td>{formatDeviceTime(device.issuedAt)}</td>
             <td>{formatDeviceTime(device.lastSeenAt)}</td>
             <td>
-              <button
-                type="button"
-                onClick={() => void onRevoke(device.id, device.current)}
+              <ConfirmButton
+                size="sm"
+                confirmLabel={
+                  device.current
+                    ? isEn
+                      ? "Confirm Sign Out"
+                      : "确认退出"
+                    : isEn
+                      ? "Confirm Revoke"
+                      : "确认吊销"
+                }
+                onConfirm={() => onRevoke(device.id, device.current)}
               >
                 {device.current
                   ? isEn
@@ -46,7 +56,7 @@ export function DeviceTable({
                   : isEn
                     ? "Revoke"
                     : "吊销"}
-              </button>
+              </ConfirmButton>
             </td>
           </tr>
         ))}

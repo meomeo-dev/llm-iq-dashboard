@@ -54,7 +54,7 @@ export function ScheduleForm({
 
       {scheduled ? (
         <div className="field-row">
-          <label className="checkbox">
+          <label className="checkbox ui-check-row">
             <input
               type="checkbox"
               checked={value.runOnStart}
@@ -91,7 +91,7 @@ function ScheduleModeSelector({
   const isEn = locale === "en";
   return (
     <div className="field-row">
-      <label className="radio">
+      <label className="radio ui-check-row">
         <input
           type="radio"
           name="schedule-mode"
@@ -100,7 +100,7 @@ function ScheduleModeSelector({
         />
         {isEn ? "None" : "不定时"}
       </label>
-      <label className="radio">
+      <label className="radio ui-check-row">
         <input
           type="radio"
           name="schedule-mode"
@@ -109,7 +109,7 @@ function ScheduleModeSelector({
         />
         {isEn ? "Cron Expression" : "cron 表达式"}
       </label>
-      <label className="radio">
+      <label className="radio ui-check-row">
         <input
           type="radio"
           name="schedule-mode"
@@ -136,19 +136,21 @@ function ScheduleInputs({
   if (mode === "cron") {
     return (
       <div className="field-row">
-        <label>
+        <label className="ui-field">
           cron
           <input
             type="text"
+            className="ui-input"
             value={value.cron ?? ""}
             placeholder={isEn ? "min hour day month dow" : "分 时 日 月 周"}
             onChange={(e) => onChange({ ...value, cron: e.target.value })}
           />
         </label>
-        <label>
+        <label className="ui-field">
           {isEn ? "Timezone" : "时区"}
           <input
             type="text"
+            className="ui-input"
             value={value.timezone ?? ""}
             placeholder={isEn ? "Leave empty for system local" : "留空跟随本机"}
             onChange={(e) =>
@@ -165,10 +167,11 @@ function ScheduleInputs({
   if (mode === "interval") {
     return (
       <div className="field-row">
-        <label>
+        <label className="ui-field">
           {isEn ? "Interval (minutes)" : "间隔（分钟）"}
           <input
             type="number"
+            className="ui-input"
             min={1}
             value={value.intervalMinutes ?? 360}
             onChange={(e) =>

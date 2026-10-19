@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import type { DashboardCard } from "@/core/types";
 import { LanguageSwitch, useI18n } from "@/i18n";
 import {
@@ -35,15 +36,20 @@ export function ArtViewerHead({ card, siblings = [] }: ArtViewerHeadProps) {
   return (
     <header className="viewer-head">
       <div className="viewer-heading">
-        <h1 className="viewer-title">
-          {card.profile === undefined ? (
-            card.label
-          ) : (
-            <>
-              {card.model} · {effort} · <ProfileName name={card.profile} cards={[card]} />
-            </>
-          )}
-        </h1>
+        <div className="viewer-title-row">
+          <h1 className="viewer-title">
+            {card.profile === undefined ? (
+              card.label
+            ) : (
+              <>
+                {card.model} · {effort} · <ProfileName name={card.profile} cards={[card]} />
+              </>
+            )}
+          </h1>
+          <Link className="nav-link" href="/">
+            {isEn ? "← Dashboard" : "← 看板"}
+          </Link>
+        </div>
         <p className="viewer-meta">
           <span suppressHydrationWarning>
             {timeZone === null ? card.startedAt : formatZonedDateTime(new Date(card.startedAt), timeZone)}

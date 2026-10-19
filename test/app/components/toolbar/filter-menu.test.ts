@@ -1,16 +1,14 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FilterMenu } from "@/app/components/toolbar/FilterMenu";
+import { expectFixture } from "../../../support/fixtures";
 
 (globalThis as unknown as { React: unknown }).React = React;
 
-const fixture = (name: string): string => {
-  const filePath = path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`);
-  return fs.readFileSync(filePath, "utf-8");
+const assertFixture = (actual: string, name: string): void => {
+  expectFixture(actual, path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`));
 };
 
 describe("FilterMenu 特征测试", () => {
@@ -37,7 +35,7 @@ describe("FilterMenu 特征测试", () => {
         onHidden: () => {},
       })
     );
-    assert.equal(html, fixture("filter-menu-closed"));
+    assertFixture(html, "filter-menu-closed");
   });
 
   test("展开状态：显示多维度标签及激活维度的 CheckList", () => {
@@ -71,6 +69,6 @@ describe("FilterMenu 特征测试", () => {
         onHidden: () => {},
       })
     );
-    assert.equal(html, fixture("filter-menu-open-filtered"));
+    assertFixture(html, "filter-menu-open-filtered");
   });
 });

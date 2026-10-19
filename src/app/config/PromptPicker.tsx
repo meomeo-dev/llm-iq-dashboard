@@ -58,7 +58,7 @@ export function PromptPicker({
       ))}
 
       <div className="field-row">
-        <button type="button" onClick={addCustom}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={addCustom}>
           {isEn ? "+ Add Custom Prompt" : "+ 新建自定义提示词"}
         </button>
       </div>
@@ -70,25 +70,25 @@ function PromptItemBadges({ spec, isEn }: { spec: PromptSpec; isEn: boolean }) {
   return (
     <>
       {spec.immutable && (
-        <span className="badge lock">
+        <span className="prompt-badge lock">
           {spec.candidates.length > 0
             ? isEn ? "Built-in · Read-only" : "内置·不可编辑"
             : isEn ? "Anchor · Read-only" : "锚点·不可编辑"}
         </span>
       )}
       {spec.variables.length > 0 && (
-        <span className="badge">
+        <span className="prompt-badge">
           {isEn ? `${spec.variables.length} variables` : `${spec.variables.length} 个变量`}
         </span>
       )}
       {spec.candidates.length > 0 && (
-        <span className="badge">
+        <span className="prompt-badge">
           {isEn ? `${spec.candidates.length} candidates` : `${spec.candidates.length} 条候选`}
         </span>
       )}
       {spec.originDate && (
         <span
-          className="badge"
+          className="prompt-badge"
           title={isEn ? `First appeared: ${spec.originDate}` : `首次出现时间：${spec.originDate}`}
         >
           {isEn ? `Origin: ${spec.originDate}` : `首发: ${spec.originDate}`}
@@ -96,7 +96,7 @@ function PromptItemBadges({ spec, isEn }: { spec: PromptSpec; isEn: boolean }) {
       )}
       {spec.registeredAt && (
         <span
-          className="badge"
+          className="prompt-badge"
           title={isEn ? `Registered date: ${spec.registeredAt}` : `收录日期：${spec.registeredAt}`}
         >
           {isEn ? `Added: ${spec.registeredAt}` : `收录: ${spec.registeredAt}`}

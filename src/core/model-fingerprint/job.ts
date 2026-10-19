@@ -54,11 +54,13 @@ export interface FingerprintJobTracker {
   }): Promise<{ laneIndex: number; slotIndex: number }>;
   finishProbeCall(
     slot: { laneIndex: number; slotIndex: number },
-    result: { status: AttemptStatus; durationMs: number; probe: ProbeId; currentTarget: string },
+    result: { status: AttemptStatus; durationMs: number; probe: ProbeId; currentTarget: string; costUsd?: number | null },
   ): Promise<void>;
+  cancelProbeCall(slot: { laneIndex: number; slotIndex: number }, durationMs: number): Promise<void>;
+  recordCheckResult(checkId: string): Promise<void>;
   trimProbeQueue(cli: CliKind, profile: string, model: string, probe: ProbeId): Promise<void>;
   markCancelling(at?: string): Promise<void>;
-  finish(outcome?: { checkId?: string | null; error?: string | null }): Promise<FingerprintJobRecord>;
+  finish(outcome?: { checkId?: string | null; checkIds?: readonly string[]; error?: string | null }): Promise<FingerprintJobRecord>;
 }
 
 export function buildPlannedJobLanes(items: readonly PlannedProbeLaneItem[]): LaneProgress[] {
@@ -115,23 +117,32 @@ export async function readFingerprintJob(jobId: string): Promise<FingerprintJobR
   }
 }
 
+async function resolveUniqueJobId(explicitId: string | undefined, startedAt: string): Promise<string> {
+  if (explicitId) return explicitId;
+  const base = formatFingerprintJobId(new Date(startedAt));
+  if ((await readFingerprintJob(base)) === null) return base;
+  for (let seq = 2; seq <= 99; seq += 1) {
+    const candidate = `${base}-${seq}`;
+    if ((await readFingerprintJob(candidate)) === null) return candidate;
+  }
+  return `${base}-${Date.now() % 1000}`;
+}
+
 function buildInitialJobRecord(initial: {
-  jobId?: string;
+  jobId: string;
   kind: FingerprintJobKind;
-  startedAt?: string;
+  startedAt: string;
   totalEstimatedCalls: number;
   laneLimit?: number;
   lanes?: LaneProgress[];
 }): FingerprintJobRecord {
-  const startedAt = initial.startedAt ?? new Date().toISOString();
-  const jobId = initial.jobId ?? formatFingerprintJobId(new Date(startedAt));
   return {
-    jobId,
+    jobId: initial.jobId,
     kind: initial.kind,
     pid: process.pid,
     pidStart: processStartMark(process.pid),
-    startedAt,
-    updatedAt: startedAt,
+    startedAt: initial.startedAt,
+    updatedAt: initial.startedAt,
     finishedAt: null,
     cancelledAt: null,
     completedCalls: 0,
@@ -140,6 +151,7 @@ function buildInitialJobRecord(initial: {
     currentTarget: null,
     currentProbe: null,
     checkId: null,
+    checkIds: [],
     error: null,
     laneLimit: initial.laneLimit ?? Math.max(1, initial.lanes?.length ?? 1),
     lanes: initial.lanes ? structuredClone(initial.lanes) : [],
@@ -178,8 +190,7 @@ function allocateCallSlotInRecord(
   }
   const nowIso = new Date().toISOString();
   if (slotIndex === -1) {
-    slotIndex = lane.calls.length;
-    lane.calls.push({
+    const newCall: CallProgress = {
       targetId: `${params.cli}__${params.profile}__${params.model}__${params.effort}`,
       promptId: exactTag,
       effort: params.effort,
@@ -188,7 +199,19 @@ function allocateCallSlotInRecord(
       timeoutMs: params.timeoutMs,
       status: null,
       durationMs: null,
-    });
+    };
+    let lastSameProbe = -1;
+    for (let i = 0; i < lane.calls.length; i += 1) {
+      const pid = lane.calls[i]!.promptId;
+      if (pid === params.probe || pid.startsWith(`${params.probe}#`)) lastSameProbe = i;
+    }
+    if (lastSameProbe >= 0) {
+      slotIndex = lastSameProbe + 1;
+      lane.calls.splice(slotIndex, 0, newCall);
+    } else {
+      slotIndex = lane.calls.length;
+      lane.calls.push(newCall);
+    }
     record.totalEstimatedCalls = Math.max(record.totalEstimatedCalls, record.lanes.reduce((s, l) => s + l.calls.length, 0));
   } else {
     lane.calls[slotIndex]!.state = "running";
@@ -197,21 +220,52 @@ function allocateCallSlotInRecord(
   return { laneIndex, slotIndex };
 }
 
+function refreshRunningCursor(record: FingerprintJobRecord): void {
+  for (const lane of record.lanes ?? []) {
+    for (const call of lane.calls) {
+      if (call.state === "running") {
+        record.currentTarget = `${lane.cli}/${lane.model}`;
+        const rawProbe = call.promptId.split("#")[0] as ProbeId;
+        record.currentProbe = rawProbe;
+        return;
+      }
+    }
+  }
+  record.currentTarget = null;
+  record.currentProbe = null;
+}
+
 function applyFinishCallToRecord(
   record: FingerprintJobRecord,
   slot: { laneIndex: number; slotIndex: number },
-  result: { status: AttemptStatus; durationMs: number; currentTarget: string; probe: ProbeId },
+  result: { status: AttemptStatus; durationMs: number; currentTarget: string; probe: ProbeId; costUsd?: number | null },
 ): void {
   const call = record.lanes?.[slot.laneIndex]?.calls[slot.slotIndex];
   if (call) {
     call.state = "done";
     call.status = result.status;
     call.durationMs = result.durationMs;
+    if (result.costUsd !== undefined) call.costUsd = result.costUsd;
   }
   record.completedCalls += 1;
   if (result.status !== "ok") record.failedCalls = (record.failedCalls ?? 0) + 1;
-  record.currentTarget = result.currentTarget;
-  record.currentProbe = result.probe;
+  if (typeof result.costUsd === "number" && Number.isFinite(result.costUsd) && result.costUsd > 0) {
+    record.spentCostUsd = Number(((record.spentCostUsd ?? 0) + result.costUsd).toFixed(6));
+  }
+  refreshRunningCursor(record);
+}
+
+function applyCancelCallToRecord(
+  record: FingerprintJobRecord,
+  slot: { laneIndex: number; slotIndex: number },
+  durationMs: number,
+): void {
+  const call = record.lanes?.[slot.laneIndex]?.calls[slot.slotIndex];
+  if (call && (call.state === "running" || call.state === "queued")) {
+    call.state = "cancelled";
+    call.durationMs = durationMs;
+  }
+  refreshRunningCursor(record);
 }
 
 function applyTrimProbeQueueToRecord(
@@ -229,15 +283,24 @@ function applyTrimProbeQueueToRecord(
   return true;
 }
 
+function applyJobOutcomeToRecord(
+  record: FingerprintJobRecord,
+  outcome?: { checkId?: string | null; checkIds?: readonly string[]; error?: string | null },
+): void {
+  if (outcome?.checkId !== undefined) record.checkId = outcome.checkId;
+  if (outcome?.checkIds !== undefined) record.checkIds = [...outcome.checkIds];
+  if (outcome?.error !== undefined) record.error = outcome.error;
+  if (record.cancelledAt != null) cancelRemainingCallsInLanes(record.lanes);
+  Object.assign(record, { currentTarget: null, currentProbe: null, finishedAt: new Date().toISOString() });
+}
+
 export async function createFingerprintJobTracker(initial: {
-  jobId?: string;
-  kind: FingerprintJobKind;
-  startedAt?: string;
-  totalEstimatedCalls: number;
-  laneLimit?: number;
-  lanes?: LaneProgress[];
+  jobId?: string; kind: FingerprintJobKind; startedAt?: string;
+  totalEstimatedCalls: number; laneLimit?: number; lanes?: LaneProgress[];
 }): Promise<FingerprintJobTracker> {
-  const record = buildInitialJobRecord(initial);
+  const startedAt = initial.startedAt ?? new Date().toISOString();
+  const jobId = await resolveUniqueJobId(initial.jobId, startedAt);
+  const record = buildInitialJobRecord({ ...initial, jobId, startedAt });
   await saveFingerprintJob(record);
 
   let writeChain = Promise.resolve();
@@ -255,21 +318,23 @@ export async function createFingerprintJobTracker(initial: {
     markProgress: async (u) => { Object.assign(record, u); await persist(); },
     startProbeCall: async (params) => {
       const slot = allocateCallSlotInRecord(record, params);
-      record.currentTarget = `${params.cli}/${params.model}`;
-      record.currentProbe = params.probe;
+      Object.assign(record, { currentTarget: `${params.cli}/${params.model}`, currentProbe: params.probe });
       await persist();
       return slot;
     },
     finishProbeCall: async (slot, result) => { applyFinishCallToRecord(record, slot, result); await persist(); },
+    cancelProbeCall: async (slot, durationMs) => { applyCancelCallToRecord(record, slot, durationMs); await persist(); },
+    recordCheckResult: async (checkId) => {
+      record.checkId = checkId;
+      record.checkIds = [...new Set([...(record.checkIds ?? []), checkId])];
+      await persist();
+    },
     trimProbeQueue: async (cli, profile, model, probe) => {
       if (applyTrimProbeQueueToRecord(record, cli, profile, model, probe)) await persist();
     },
     markCancelling: async (at = new Date().toISOString()) => { record.cancelledAt = at; await persist(); },
     finish: async (outcome) => {
-      if (outcome?.checkId !== undefined) record.checkId = outcome.checkId;
-      if (outcome?.error !== undefined) record.error = outcome.error;
-      if (record.cancelledAt != null) cancelRemainingCallsInLanes(record.lanes);
-      Object.assign(record, { currentTarget: null, currentProbe: null, finishedAt: new Date().toISOString() });
+      applyJobOutcomeToRecord(record, outcome);
       await persist();
       return structuredClone(record);
     },
@@ -322,7 +387,9 @@ export function fingerprintJobToProgressView(job: FingerprintJobView): ProgressV
     updatedAt: job.updatedAt,
     finishedAt: job.finishedAt,
     cancelledAt: job.cancelledAt ?? null,
-    budgetStop: job.error ?? null,
+    budgetStop: null,
+    jobError: job.error ?? null,
+    spentCostUsd: job.spentCostUsd,
     pid: job.pid,
     pidStart: job.pidStart ?? null,
     laneLimit: job.laneLimit ?? 1,

@@ -16,11 +16,13 @@ export interface MenuProps {
   onToggle: () => void;
   onClose: () => void;
   children: React.ReactNode;
+  /** 挂载在 .menu 根容器下但位于 .menu-panel 之外的二级浮层（避免被 .menu-panel 的 transform 限制 fixed 包含块） */
+  afterPanel?: React.ReactNode;
 }
 
 /** 折叠菜单：按钮 + 下拉面板；点面板外或按 Esc 关闭 */
 export function Menu(props: MenuProps) {
-  const { label, align = "left", badge, panelClassName, buttonClassName, open, onToggle, onClose, children } = props;
+  const { label, align = "left", badge, panelClassName, buttonClassName, open, onToggle, onClose, children, afterPanel } = props;
   const root = useRef<HTMLDivElement>(null);
   useMenuDismiss(open, root, onClose);
 
@@ -43,6 +45,7 @@ export function Menu(props: MenuProps) {
           <div className={["menu-panel", align === "right" && "align-right", panelClassName].filter(Boolean).join(" ")} role="menu">
             {children}
           </div>
+          {afterPanel}
         </>
       )}
     </div>

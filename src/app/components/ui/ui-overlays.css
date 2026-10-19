@@ -1,0 +1,272 @@
+/*
+ * Tier 1 通用浮层、抽屉与折叠原语样式（ui-overlays.css）
+ * 覆盖组件：Modal, Drawer, Collapsible
+ * 命名空间：严格以 .ui- 开头，零业务耦合
+ */
+
+/* ==========================================================================
+ * 1. Modal (.ui-modal*)
+ * ========================================================================== */
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: var(--backdrop-bg);
+  backdrop-filter: blur(3px);
+}
+
+.ui-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.ui-modal-sm {
+  max-width: 480px;
+}
+
+.ui-modal-md {
+  max-width: 680px;
+}
+
+.ui-modal-lg {
+  max-width: 960px;
+}
+
+.ui-modal-columns {
+  width: fit-content;
+  max-width: min(
+    calc(100vw - 32px),
+    calc(var(--col-count, 1) * 356px + 48px)
+  );
+}
+
+.ui-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.ui-modal-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ui-modal-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ui-modal-subtitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+
+.ui-modal-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.ui-overlay-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.ui-overlay-close:hover {
+  background: var(--surface-hi);
+  border-color: var(--border-focus);
+  color: var(--text);
+}
+
+.ui-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-5);
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.ui-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2-5);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+ * 2. Drawer (.ui-drawer*)
+ * ========================================================================== */
+.ui-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-drawer);
+  display: flex;
+  justify-content: flex-end;
+  background: var(--backdrop-bg);
+  backdrop-filter: blur(2px);
+}
+
+.ui-drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 94vw);
+  height: 100vh;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.ui-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ui-drawer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.ui-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+}
+
+/* ==========================================================================
+ * 3. Collapsible (<details class="ui-collapsible">)
+ * ========================================================================== */
+.ui-collapsible {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.ui-collapsible-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-3);
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ui-collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-collapsible-summary:hover {
+  color: var(--text);
+  background: var(--surface-subtle);
+}
+
+.ui-collapsible-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.ui-collapsible-arrow {
+  display: inline-block;
+  font-size: var(--text-xs);
+  transition: transform 0.15s ease;
+}
+
+.ui-collapsible[open] > .ui-collapsible-summary .ui-collapsible-arrow {
+  transform: rotate(90deg);
+}
+
+.ui-collapsible-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}
+
+.ui-collapsible-body {
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .ui-modal-backdrop {
+    padding: var(--space-2-5);
+  }
+
+  .ui-modal-head,
+  .ui-modal-body,
+  .ui-drawer-head,
+  .ui-drawer-toolbar,
+  .ui-drawer-body {
+    padding: var(--space-3);
+  }
+
+  .ui-drawer {
+    width: 100vw;
+  }
+}

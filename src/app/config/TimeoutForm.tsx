@@ -94,6 +94,7 @@ function TimeoutConcurrencyRow({
   return (
     <div className="field-row">
       <label
+        className="ui-field"
         title={
           isEn
             ? "Per-model lanes: different models run in parallel, effort levels within the same model run serially"
@@ -103,15 +104,17 @@ function TimeoutConcurrencyRow({
         {isEn ? "Concurrent Models" : "同时在跑的模型数"}
         <input
           type="number"
+          className="ui-input"
           min={1}
           value={run.concurrency}
           onChange={(e) => onChange({ ...run, concurrency: Number(e.target.value) })}
         />
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? "Global Default Timeout (s)" : "全局默认超时（秒）"}
         <input
           type="number"
+          className="ui-input"
           min={1}
           value={formatSeconds(run.defaultTimeoutMs)}
           onChange={(e) =>
@@ -134,7 +137,7 @@ function TimeoutCliRow({
   const isEn = locale === "en";
   return (
     <>
-      <div className="timeout-section-head" style={{ marginTop: 8 }}>
+      <div className="timeout-section-head">
         <div className="timeout-section-title">
           <strong>{isEn ? "Per-CLI Timeout Override (s)" : "按 CLI 覆盖超时（秒）"}</strong>
           <span className="note">
@@ -147,10 +150,11 @@ function TimeoutCliRow({
         {CLI_KINDS.map((cli) => {
           const override = run.timeoutByCli[cli];
           return (
-            <label key={cli}>
+            <label key={cli} className="ui-field">
               {isEn ? `${cli} Default (s)` : `${cli} 默认（秒）`}
               <input
                 type="number"
+                className="ui-input"
                 min={1}
                 value={formatSeconds(override)}
                 placeholder={

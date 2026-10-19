@@ -9,11 +9,17 @@ import { loadConfig, type AppConfig } from "../../../src/core/config";
 import type { LeakGuard } from "../../../src/core/leak-guard";
 import {
   executeFingerprintCheck,
+  executeFingerprintCheckBatch,
   executeFingerprintFill,
   type CollectDeps,
 } from "../../../src/core/model-fingerprint/collect";
 import {
+  readFingerprintJob,
+  requestFingerprintJobCancel,
+} from "../../../src/core/model-fingerprint/job";
+import {
   extractValidCanonicalValues,
+  listCheckRecords,
   readSampleSet,
 } from "../../../src/core/model-fingerprint/store";
 import { fingerprintWorkdir } from "../../../src/core/paths";
@@ -290,6 +296,9 @@ describe("model-fingerprint collect.ts and src/bin/model-fingerprint.ts", () => 
           writtenFiles: [{ path: join(workdir, "rogue.txt"), content: "" }],
         };
       }
+      if (idx === 1) {
+        return { text: "", notes: ["agy 触发被禁工具：run_command"] };
+      }
       return { text: makeBatchNumbersAnswer(idx, 5) };
     });
     const collectDeps = buildFakeCollectDeps(fake.pool, canaryVal);
@@ -309,6 +318,7 @@ describe("model-fingerprint collect.ts and src/bin/model-fingerprint.ts", () => 
     assert.equal(leakedAttempt.outcome, "leak-blocked");
     assert.equal(leakedAttempt.rawText, "");
     assert.equal(leakedAttempt.wroteFile, true);
+    assert.equal(sampleSet.attempts[1]?.wroteFile, true);
   });
 
   it("enforces --reset triple requirement and executes status, self-test, check, and rescore with 0 unintended CLI calls", async () => {
@@ -362,18 +372,19 @@ describe("model-fingerprint collect.ts and src/bin/model-fingerprint.ts", () => 
       { loadConfig: async () => config, collectDeps, writeLine: () => {} },
     );
     await runModelFingerprintCli(
-      ["check", "--cli", "codex", "--model", "ref-model-1", "--dry-run"],
+      ["check", "--cli", "codex", "--model", "ref-model-1", "--effort", "low", "--probe", "uuid", "--dry-run"],
       { loadConfig: async () => config, collectDeps, writeLine: () => {} },
     );
     assert.equal(fake.calls.length, callsAfterFill);
 
     const statusLines: string[] = [];
-    await runModelFingerprintCli(["status"], {
+    await runModelFingerprintCli(["status", "--cli", "agy", "--model", "gemini-3.8-flash", "--effort", "low"], {
       loadConfig: async () => config,
       collectDeps,
       writeLine: (l) => statusLines.push(l),
     });
-    assert.ok(statusLines.some((l) => l.includes("ref-model-1")));
+    assert.ok(statusLines.some((l) => l.includes("目标 10 条/探针，强度=low")));
+    assert.ok(statusLines.some((l) => l.includes("gemini-3.8-flash")));
     await runModelFingerprintCli(["self-test"], {
       loadConfig: async () => config,
       collectDeps,
@@ -390,13 +401,88 @@ describe("model-fingerprint collect.ts and src/bin/model-fingerprint.ts", () => 
     assert.deepEqual(checkRecord.validProbes, ["number", "uuid"]);
 
     const callsBeforeRescore = fake.calls.length;
-    const rescoreLines: string[] = [];
-    await runModelFingerprintCli(["rescore", checkRecord.checkId], {
-      loadConfig: async () => config,
-      collectDeps,
-      writeLine: (l) => rescoreLines.push(l),
-    });
+    await assert.rejects(
+      () =>
+        runModelFingerprintCli(["rescore", checkRecord.checkId], {
+          loadConfig: async () => config,
+          collectDeps,
+          writeLine: () => {},
+        }),
+      /模型指纹历史核验重算回填命令（rescore）已停用/,
+    );
     assert.equal(fake.calls.length, callsBeforeRescore);
-    assert.ok(rescoreLines.some((l) => l.includes("重算完成")));
+  });
+
+  it("executes multi-target check batch in a single job with combined lanes and totalEstimatedCalls, and handles cancellation", async () => {
+    const config = buildTestAppConfig();
+    const fake = createCountingFakePool(async (req, idx) => {
+      await new Promise((r) => setTimeout(r, 10));
+      return {
+        text: req.promptText.includes("UUID") ? makeBatchUuidsAnswer(idx, 5) : makeBatchNumbersAnswer(idx, 5),
+      };
+    });
+    const collectDeps = buildFakeCollectDeps(fake.pool);
+
+    await executeFingerprintFill(config, {}, collectDeps);
+
+    let startedJobId = "";
+    const batchRecords = await executeFingerprintCheckBatch(
+      config,
+      {
+        cli: "codex",
+        model: "ref-model-1",
+        targets: [
+          { cli: "codex", model: "ref-model-1" },
+          { cli: "codex", model: "ref-model-2" },
+        ],
+        onStarted: (jobId) => {
+          startedJobId = jobId;
+        },
+      },
+      collectDeps,
+    );
+
+    assert.equal(batchRecords.length, 2);
+    assert.notEqual(batchRecords[0]!.checkId, batchRecords[1]!.checkId);
+    assert.equal(batchRecords[0]!.createdAt, batchRecords[1]!.createdAt, "batch checks share identical createdAt for swimlane column alignment");
+    const completedJob = await readFingerprintJob(startedJobId);
+    assert.ok(completedJob);
+    assert.equal(completedJob.totalEstimatedCalls, 4);
+    assert.equal(completedJob.completedCalls, 4);
+    assert.equal(completedJob.lanes?.length, 2);
+    assert.deepEqual(completedJob.checkIds, batchRecords.map((r) => r.checkId));
+
+    // Mid-flight cancellation skips saving incomplete check records and marks remaining calls cancelled
+    let cancelJobId = "";
+    const slowFake = createCountingFakePool(async (req, idx) => {
+      if (idx === 0 && cancelJobId) {
+        await requestFingerprintJobCancel(cancelJobId);
+      }
+      await new Promise((r) => setTimeout(r, 35));
+      return {
+        text: req.promptText.includes("UUID") ? makeBatchUuidsAnswer(idx, 5) : makeBatchNumbersAnswer(idx, 5),
+      };
+    });
+    const checksBeforeCancel = (await listCheckRecords(20)).length;
+    const cancelledRecords = await executeFingerprintCheckBatch(
+      config,
+      {
+        cli: "codex",
+        model: "ref-model-1",
+        targets: [
+          { cli: "codex", model: "ref-model-1" },
+          { cli: "codex", model: "ref-model-2" },
+        ],
+        onStarted: (id) => {
+          cancelJobId = id;
+        },
+      },
+      buildFakeCollectDeps(slowFake.pool),
+    );
+    assert.equal(cancelledRecords.length, 0);
+    assert.equal((await listCheckRecords(20)).length, checksBeforeCancel);
+    const cancelledJob = await readFingerprintJob(cancelJobId);
+    assert.ok(cancelledJob);
+    assert.ok(cancelledJob.cancelledAt !== null);
   });
 });

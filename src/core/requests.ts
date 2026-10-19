@@ -46,6 +46,7 @@ export type RequestState = "pending" | "claimed" | "done" | "failed";
 export interface FingerprintFillRequestPayload {
   cli?: CliKind;
   profile?: string;
+  profilesByCli?: Partial<Record<CliKind, string>>;
   model?: string;
   probes?: ProbeId[];
   count?: number;
@@ -54,11 +55,15 @@ export interface FingerprintFillRequestPayload {
   reset?: boolean;
 }
 
-export interface FingerprintCheckRequestPayload {
+export interface FingerprintCheckTargetPayload {
   cli: CliKind;
   profile?: string;
   model: string;
   probes?: ProbeId[];
+}
+
+export interface FingerprintCheckRequestPayload extends FingerprintCheckTargetPayload {
+  targets?: FingerprintCheckTargetPayload[];
 }
 
 export interface RunnerRequest {
@@ -87,6 +92,7 @@ export interface RunnerRequest {
     runId?: string;
     jobId?: string;
     checkId?: string;
+    checkIds?: string[];
     calls?: number;
     error?: string;
     syncResult?: SyncActionResult;

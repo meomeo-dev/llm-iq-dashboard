@@ -20,12 +20,21 @@ export interface CancelRequest {
   requestedAt: string;
 }
 
+const activeWatches = new Map<string, Set<AbortController>>();
+
 export async function requestCancelAt(
   cancelFilePath: string,
   now: Date = new Date(),
 ): Promise<CancelRequest> {
   const request: CancelRequest = { requestedAt: now.toISOString() };
   await writeJsonPathAtomic(cancelFilePath, request);
+  const controllers = activeWatches.get(cancelFilePath);
+  if (controllers) {
+    for (const ctrl of controllers) {
+      if (!ctrl.signal.aborted) ctrl.abort(new Error("收到停止请求"));
+    }
+    activeWatches.delete(cancelFilePath);
+  }
   return request;
 }
 
@@ -46,6 +55,20 @@ export function watchCancelAt(
   intervalMs: number = CANCEL_CHECK_MS,
 ): CancelWatch {
   const controller = new AbortController();
+  let set = activeWatches.get(cancelFilePath);
+  if (!set) {
+    set = new Set();
+    activeWatches.set(cancelFilePath, set);
+  }
+  set.add(controller);
+  const cleanup = () => {
+    clearInterval(timer);
+    const cur = activeWatches.get(cancelFilePath);
+    if (cur) {
+      cur.delete(controller);
+      if (cur.size === 0) activeWatches.delete(cancelFilePath);
+    }
+  };
   let checking = false;
   const timer = setInterval(() => {
     // 上一次检查未返回时跳过，避免磁盘卡顿时检查堆积
@@ -53,8 +76,8 @@ export function watchCancelAt(
     checking = true;
     void access(cancelFilePath)
       .then(() => {
-        clearInterval(timer);
-        controller.abort(new Error("收到停止请求"));
+        cleanup();
+        if (!controller.signal.aborted) controller.abort(new Error("收到停止请求"));
       })
       .catch(() => {
         // 文件不存在即没有停止请求
@@ -63,7 +86,7 @@ export function watchCancelAt(
         checking = false;
       });
   }, intervalMs);
-  return { signal: controller.signal, stop: () => clearInterval(timer) };
+  return { signal: controller.signal, stop: cleanup };
 }
 
 /** 执行方调用：开始定期检查这一轮有没有收到停止请求 */

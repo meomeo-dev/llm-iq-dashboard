@@ -5,6 +5,7 @@
  */
 
 import type { CliKind, EffortLevel } from "../types";
+import { computeTargetFallbackCost, estimateCallUnitCost, summarizeAttemptMetrics } from "./cost";
 import { getProbe } from "./probes";
 import {
   buildFoldIndexSets,
@@ -25,10 +26,12 @@ import {
   DEFAULT_MAX_CALLS_FACTOR,
   DEFAULT_SAMPLES_PER_PROBE,
   DEFAULT_TARGET_ACCURACY,
+  DEFAULT_VALUES_PER_CALL,
   DEFAULT_VALUES_PER_CHECK,
   PROBE_IDS,
   isProbeId,
   resolveProbeTargetSamples,
+  resolveProbeValuesPerCheck,
   type FingerprintReferenceTarget,
   type ModelPromptOverrides,
   type ProbeId,
@@ -57,6 +60,10 @@ export interface ProbeGapSummary {
   readonly estimatedCalls: number;
   readonly maxCalls: number;
   readonly estimatedCostUsd: number | null;
+  readonly unitCostUsd?: number | null;
+  readonly spentCostUsd?: number | null;
+  readonly totalTokens?: number | null;
+  readonly totalDurationMs?: number;
   readonly usable: boolean;
   readonly intraProbeSim: number | null;
   readonly intraProbeLowerBound: number | null;
@@ -162,34 +169,6 @@ export function simulateSampleSetMutation(
   };
 }
 
-function estimateCallUnitCost(sampleSet: ProbeSampleSet | undefined): number | null {
-  if (!sampleSet || sampleSet.attempts.length === 0) return null;
-  const costs = sampleSet.attempts
-    .map((a) => a.estimatedCostUsd ?? a.usage?.reportedCostUsd)
-    .filter((c): c is number => typeof c === "number" && Number.isFinite(c) && c >= 0);
-  return costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : null;
-}
-
-function computeTargetFallbackCost(
-  sets: Iterable<ProbeSampleSet>,
-  cli: CliKind,
-  model: string,
-): number | null {
-  let sum = 0;
-  let count = 0;
-  for (const s of sets) {
-    if (s.cli !== cli || s.model !== model) continue;
-    for (const a of s.attempts) {
-      const c = a.estimatedCostUsd ?? a.usage?.reportedCostUsd;
-      if (typeof c === "number" && Number.isFinite(c) && c >= 0) {
-        sum += c;
-        count += 1;
-      }
-    }
-  }
-  return count > 0 ? sum / count : null;
-}
-
 function collectCliVersions(sampleSet: ProbeSampleSet | undefined): string[] {
   if (!sampleSet) return [];
   const versions = new Set<string>();
@@ -200,24 +179,18 @@ function collectCliVersions(sampleSet: ProbeSampleSet | undefined): string[] {
 }
 
 export function computeProbeSampleGap(params: {
-  cli: CliKind;
-  model: string;
-  probe: ProbeId;
-  sampleSet?: ProbeSampleSet;
-  samplesPerProbe?: number;
-  samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number;
-  maxCallsFactor?: number;
-  countLimit?: number;
-  overrides?: ModelPromptOverrides;
-  mutation?: SampleMutationOptions;
-  fallbackUnitCostUsd?: number | null;
+  cli: CliKind; model: string; probe: ProbeId; sampleSet?: ProbeSampleSet;
+  samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  maxCallsFactor?: number; countLimit?: number; overrides?: ModelPromptOverrides;
+  mutation?: SampleMutationOptions; fallbackUnitCostUsd?: number | null;
 }): ProbeGapSummary {
   const targetValues = resolveProbeTargetSamples(params.probe, {
-    samplesPerProbe: params.samplesPerProbe,
-    samplesByProbe: params.samplesByProbe,
+    samplesPerProbe: params.samplesPerProbe, samplesByProbe: params.samplesByProbe,
   });
-  const valuesPerCheck = params.valuesPerCheck ?? DEFAULT_VALUES_PER_CHECK;
+  const valuesPerCheck = resolveProbeValuesPerCheck(params.probe, {
+    valuesPerCheck: params.valuesPerCheck, valuesPerCheckByProbe: params.valuesPerCheckByProbe,
+  });
   const maxCallsFactor = params.maxCallsFactor ?? DEFAULT_MAX_CALLS_FACTOR;
   const probeObj = getProbe(params.probe);
   const codec = probeObj.resolveCodec({ cli: params.cli, model: params.model }, params.overrides);
@@ -228,7 +201,8 @@ export function computeProbeSampleGap(params: {
   const plannedValues =
     params.countLimit !== undefined ? Math.min(missingValues, Math.max(0, params.countLimit)) : missingValues;
   const estimatedCalls = plannedValues > 0 ? Math.ceil(plannedValues / codec.valuesPerCall) : 0;
-  const unitCost = estimateCallUnitCost(params.sampleSet) ?? params.fallbackUnitCostUsd ?? null;
+  const rawMetrics = summarizeAttemptMetrics(params.sampleSet?.attempts ?? []);
+  const unitCost = rawMetrics.unitCostUsd ?? params.fallbackUnitCostUsd ?? null;
   const { intraProbeSim, intraProbeLowerBound } = computeIntraProbeConvergence(
     params.probe, rawValues, targetValues, valuesPerCheck, probeObj,
   );
@@ -238,6 +212,8 @@ export function computeProbeSampleGap(params: {
     valuesPerCall: codec.valuesPerCall, targetValues, validValues, rawValidValues: rawValues.length,
     missingValues, plannedValues, estimatedCalls, maxCalls: estimatedCalls * maxCallsFactor,
     estimatedCostUsd: unitCost !== null ? estimatedCalls * unitCost : null,
+    unitCostUsd: unitCost, spentCostUsd: rawMetrics.totalCostUsd,
+    totalTokens: rawMetrics.totalTokens, totalDurationMs: rawMetrics.totalDurationMs,
     usable: validValues >= targetValues, intraProbeSim, intraProbeLowerBound,
     totalAttempts: effectiveSet?.attempts.length ?? 0,
     excludedAttempts: effectiveSet?.attempts.filter((a) => a.excluded === true).length ?? 0,
@@ -274,7 +250,8 @@ export function planReferenceFill(options: {
   configuredReferences: readonly FingerprintReferenceTarget[]; sampleSets: ReadonlyMap<string, ProbeSampleSet>;
   cliFilter?: CliKind; modelFilter?: string; requestedProbes?: readonly string[]; configuredProbes?: readonly ProbeId[];
   samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number; maxCallsFactor?: number; countLimit?: number;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  maxCallsFactor?: number; countLimit?: number;
   overrides?: ModelPromptOverrides; mutation?: SampleMutationOptions;
 }): FillPlan {
   const probes = resolveSelectedProbes(options.requestedProbes, options.configuredProbes);
@@ -286,9 +263,9 @@ export function planReferenceFill(options: {
         cli: target.cli, model: target.model, probe,
         sampleSet: options.sampleSets.get(`${target.cli}:${target.model}:${probe}`),
         samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
-        valuesPerCheck: options.valuesPerCheck, maxCallsFactor: options.maxCallsFactor,
-        countLimit: options.countLimit, overrides: options.overrides,
-        mutation: options.mutation, fallbackUnitCostUsd: fallbackCost,
+        valuesPerCheck: options.valuesPerCheck, valuesPerCheckByProbe: options.valuesPerCheckByProbe,
+        maxCallsFactor: options.maxCallsFactor, countLimit: options.countLimit,
+        overrides: options.overrides, mutation: options.mutation, fallbackUnitCostUsd: fallbackCost,
       }),
     );
   });
@@ -304,34 +281,34 @@ export function planReferenceFill(options: {
   };
 }
 
+function collectStatusTargets(
+  configuredReferences: readonly FingerprintReferenceTarget[], onDiskSampleSets: readonly ProbeSampleSet[],
+  cliFilter?: CliKind, modelFilter?: string,
+): Map<string, FingerprintReferenceTarget> {
+  const allTargets = new Map(configuredReferences.map((r) => [`${r.cli}:${r.model}`, r] as const));
+  for (const s of onDiskSampleSets) allTargets.set(`${s.cli}:${s.model}`, { cli: s.cli, model: s.model });
+  const trimmed = modelFilter?.trim() ?? "";
+  if (cliFilter !== undefined && trimmed !== "") allTargets.set(`${cliFilter}:${trimmed}`, { cli: cliFilter, model: trimmed });
+  return allTargets;
+}
+
 export function planFingerprintStatus(options: {
-  configuredReferences: readonly FingerprintReferenceTarget[];
-  onDiskSampleSets: readonly ProbeSampleSet[];
-  cliFilter?: CliKind;
-  modelFilter?: string;
-  requestedProbes?: readonly string[];
-  configuredProbes?: readonly ProbeId[];
-  samplesPerProbe?: number;
-  samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number;
-  maxCallsFactor?: number;
-  overrides?: ModelPromptOverrides;
+  configuredReferences: readonly FingerprintReferenceTarget[]; onDiskSampleSets: readonly ProbeSampleSet[];
+  cliFilter?: CliKind; modelFilter?: string; requestedProbes?: readonly string[]; configuredProbes?: readonly ProbeId[];
+  samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  maxCallsFactor?: number; overrides?: ModelPromptOverrides;
 }): ModelStatusEntry[] {
   const probes = resolveSelectedProbes(options.requestedProbes, options.configuredProbes);
   const configuredKeys = new Set(options.configuredReferences.map((r) => `${r.cli}:${r.model}`));
   const diskKeys = new Set(options.onDiskSampleSets.map((s) => `${s.cli}:${s.model}`));
-  const allTargets = new Map<string, FingerprintReferenceTarget>(
-    options.configuredReferences.map((r) => [`${r.cli}:${r.model}`, r]),
+  const allTargets = collectStatusTargets(
+    options.configuredReferences, options.onDiskSampleSets, options.cliFilter, options.modelFilter,
   );
-  for (const s of options.onDiskSampleSets) allTargets.set(`${s.cli}:${s.model}`, { cli: s.cli, model: s.model });
   const sampleMap = new Map(options.onDiskSampleSets.map((s) => [`${s.cli}:${s.model}:${s.probe}`, s]));
 
   return [...allTargets.entries()]
-    .filter(
-      ([, t]) =>
-        (!options.cliFilter || t.cli === options.cliFilter) &&
-        (!options.modelFilter || t.model === options.modelFilter.trim()),
-    )
+    .filter(([, t]) => (!options.cliFilter || t.cli === options.cliFilter) && (!options.modelFilter || t.model === options.modelFilter.trim()))
     .map(([key, target]) => {
       const fallbackCost = computeTargetFallbackCost(options.onDiskSampleSets, target.cli, target.model);
       const perProbe = {} as Record<ProbeId, ProbeGapSummary>;
@@ -340,8 +317,8 @@ export function planFingerprintStatus(options: {
           cli: target.cli, model: target.model, probe,
           sampleSet: sampleMap.get(`${target.cli}:${target.model}:${probe}`),
           samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
-          valuesPerCheck: options.valuesPerCheck, maxCallsFactor: options.maxCallsFactor,
-          overrides: options.overrides, fallbackUnitCostUsd: fallbackCost,
+          valuesPerCheck: options.valuesPerCheck, valuesPerCheckByProbe: options.valuesPerCheckByProbe,
+          maxCallsFactor: options.maxCallsFactor, overrides: options.overrides, fallbackUnitCostUsd: fallbackCost,
         });
       }
       return {
@@ -353,35 +330,34 @@ export function planFingerprintStatus(options: {
 }
 
 function partitionCheckProbes(params: {
-  cli: CliKind;
-  declaredModel: string;
-  selectedProbes: readonly ProbeId[];
+  cli: CliKind; declaredModel: string; selectedProbes: readonly ProbeId[];
   declaredSets: Readonly<Partial<Record<ProbeId, ProbeSampleSet>>>;
-  samplesPerProbe?: number;
-  samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck: number;
-  checkAttempts: number;
-  overrides?: ModelPromptOverrides;
+  samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
+  valuesPerCheck: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  checkAttempts: number; overrides?: ModelPromptOverrides;
 }) {
   const declaredList = Object.values(params.declaredSets).filter((s): s is ProbeSampleSet => s !== undefined);
   const fallbackCost = computeTargetFallbackCost(declaredList, params.cli, params.declaredModel);
   const executableProbes: CheckProbeExecutionPlan[] = [];
   const skippedProbes: SkippedProbeInfo[] = [];
   for (const probe of params.selectedProbes) {
+    const checkValues = resolveProbeValuesPerCheck(probe, {
+      valuesPerCheck: params.valuesPerCheck, valuesPerCheckByProbe: params.valuesPerCheckByProbe,
+    });
     const gap = computeProbeSampleGap({
       cli: params.cli, model: params.declaredModel, probe,
       sampleSet: params.declaredSets[probe],
       samplesPerProbe: params.samplesPerProbe, samplesByProbe: params.samplesByProbe,
-      valuesPerCheck: params.valuesPerCheck, overrides: params.overrides, fallbackUnitCostUsd: fallbackCost,
+      valuesPerCheck: checkValues, overrides: params.overrides, fallbackUnitCostUsd: fallbackCost,
     });
     if (!gap.usable) {
       skippedProbes.push({ probe, missingValues: gap.missingValues, estimatedCalls: gap.estimatedCalls });
       continue;
     }
-    const estCalls = Math.ceil(params.valuesPerCheck / gap.valuesPerCall);
+    const estCalls = Math.ceil(checkValues / gap.valuesPerCall);
     const unitCost = estimateCallUnitCost(params.declaredSets[probe]) ?? fallbackCost;
     executableProbes.push({
-      probe, codecId: gap.codecId, valuesPerCall: gap.valuesPerCall, targetValues: params.valuesPerCheck,
+      probe, codecId: gap.codecId, valuesPerCall: gap.valuesPerCall, targetValues: checkValues,
       estimatedCalls: estCalls, maxCalls: estCalls * params.checkAttempts,
       estimatedCostUsd: unitCost !== null ? estCalls * unitCost : null,
     });
@@ -390,12 +366,9 @@ function partitionCheckProbes(params: {
 }
 
 function inspectCheckCandidates(params: {
-  declaredModel: string;
-  otherModels: readonly string[];
-  execIds: readonly ProbeId[];
+  declaredModel: string; otherModels: readonly string[]; execIds: readonly ProbeId[];
   preparedByModel: ReadonlyMap<string, Partial<Record<ProbeId, PreparedProbeFolds>>>;
-  foldCount: number;
-  targetAccuracy: number;
+  foldCount: number; targetAccuracy: number;
 }) {
   const candidateModels: string[] = [];
   const indistinguishableCandidates: string[] = [];
@@ -425,7 +398,8 @@ export function planVerificationCheck(options: {
   sampleSetsByModel: ReadonlyMap<string, Readonly<Partial<Record<ProbeId, ProbeSampleSet>>>>;
   requestedProbes?: readonly string[]; configuredProbes?: readonly ProbeId[];
   samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number; checkAttempts?: number; targetAccuracy?: number; overrides?: ModelPromptOverrides;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  checkAttempts?: number; targetAccuracy?: number; overrides?: ModelPromptOverrides;
 }): VerificationCheckPlan {
   const valuesPerCheck = options.valuesPerCheck ?? DEFAULT_VALUES_PER_CHECK;
   const checkAttempts = options.checkAttempts ?? DEFAULT_CHECK_ATTEMPTS;
@@ -435,16 +409,19 @@ export function planVerificationCheck(options: {
     cli: options.cli, declaredModel: options.declaredModel, selectedProbes,
     declaredSets: options.sampleSetsByModel.get(options.declaredModel) ?? {},
     samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
-    valuesPerCheck, checkAttempts, overrides: options.overrides,
+    valuesPerCheck, valuesPerCheckByProbe: options.valuesPerCheckByProbe,
+    checkAttempts, overrides: options.overrides,
   });
   const execIds = executableProbes.map((e) => e.probe);
-  const minTarget = resolveMinProbeTargetSamples(execIds.length > 0 ? execIds : selectedProbes, {
+  const activeProbes = execIds.length > 0 ? execIds : selectedProbes;
+  const minTarget = resolveMinProbeTargetSamples(activeProbes, {
     samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
   });
-  const foldIndices = buildFoldIndexSets(minTarget, valuesPerCheck);
+  const hasBatchChecks = activeProbes.some((p) => resolveProbeValuesPerCheck(p, options) >= DEFAULT_VALUES_PER_CALL);
+  const foldIndices = buildFoldIndexSets(minTarget, hasBatchChecks ? 2 : valuesPerCheck);
   const preparedByModel = prepareAllModelsFolds(
     options.sampleSetsByModel, execIds, options.samplesPerProbe ?? DEFAULT_SAMPLES_PER_PROBE,
-    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe,
+    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe, options.valuesPerCheckByProbe,
   );
   const otherModels = [...options.sampleSetsByModel.keys()].filter((m) => m !== options.declaredModel).sort();
   const { prepC, candidateModels, indistinguishableCandidates, uncomparedModels, calibrations } =
@@ -465,3 +442,38 @@ export function planVerificationCheck(options: {
     totalEstimatedCostUsd: knownCosts.length > 0 ? knownCosts.reduce((a, b) => a + b, 0) : null,
   };
 }
+
+export function aggregateVerificationCheckPlans(plans: readonly VerificationCheckPlan[]): VerificationCheckPlan {
+  if (plans.length === 1) return plans[0]!;
+  const first = plans[0]!;
+  const execByProbe = new Map<ProbeId, CheckProbeExecutionPlan>();
+  const skippedByProbe = new Map<ProbeId, SkippedProbeInfo>();
+  for (const plan of plans) {
+    for (const ep of plan.executableProbes) {
+      const prev = execByProbe.get(ep.probe);
+      execByProbe.set(ep.probe, prev ? {
+        ...prev,
+        estimatedCalls: prev.estimatedCalls + ep.estimatedCalls,
+        maxCalls: prev.maxCalls + ep.maxCalls,
+        estimatedCostUsd: prev.estimatedCostUsd !== null || ep.estimatedCostUsd !== null ? (prev.estimatedCostUsd ?? 0) + (ep.estimatedCostUsd ?? 0) : null,
+      } : { ...ep });
+    }
+    for (const sp of plan.skippedProbes) {
+      if (!skippedByProbe.has(sp.probe)) skippedByProbe.set(sp.probe, sp);
+    }
+  }
+  const consistencies = plans.map((p) => p.expectedConsistency).filter((c): c is number => c !== null);
+  const falseRates = plans.map((p) => p.expectedFalseInconsistentRate).filter((c): c is number => c !== null);
+  const costs = plans.map((p) => p.totalEstimatedCostUsd).filter((c): c is number => c !== null);
+  return {
+    ...first,
+    executableProbes: [...execByProbe.values()],
+    skippedProbes: [...skippedByProbe.values()],
+    expectedConsistency: consistencies.length > 0 ? Math.min(...consistencies) : null,
+    expectedFalseInconsistentRate: falseRates.length > 0 ? Math.max(...falseRates) : null,
+    totalEstimatedCalls: plans.reduce((acc, p) => acc + p.totalEstimatedCalls, 0),
+    totalMaxCalls: plans.reduce((acc, p) => acc + p.totalMaxCalls, 0),
+    totalEstimatedCostUsd: costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null,
+  };
+}
+

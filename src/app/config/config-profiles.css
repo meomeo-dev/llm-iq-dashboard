@@ -21,17 +21,18 @@
   gap: 4px;
   padding: 2px 4px 2px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-hi);
-  font-size: 12.5px;
+  font-size: var(--text-base);
 }
 
-.upstream-type-chip button {
+.upstream-type-chip-remove {
   padding: 0 6px;
   border: none;
   background: transparent;
   color: var(--text-dim);
   line-height: 1.4;
+  cursor: pointer;
 }
 
 .profile-card {
@@ -48,27 +49,27 @@
   opacity: 0.6;
 }
 
-.profile-card-head {
+.config-profile-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 12px;
 }
 
-.profile-card-head .danger {
+.config-profile-head .danger {
   margin-left: auto;
 }
 
-.profile-name {
-  font-size: 14px;
+.config-profile-name {
+  font-size: var(--text-base);
 }
 
 .profile-cli {
   padding: 1px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .profile-fields {
@@ -89,15 +90,8 @@
   border-top: 1px dashed var(--border);
 }
 
-.profile-key input[type="password"] {
+.profile-key .ui-input {
   max-width: 420px;
-  padding: 6px 9px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
 }
 
 .profile-key-state {
@@ -108,7 +102,7 @@
   margin: 0;
 }
 
-.profile-card input.invalid {
+.profile-card .invalid {
   border-color: var(--err);
 }
 

@@ -20,6 +20,7 @@ export function ManualModelInput({
           : "claude 没有模型列举命令，新模型可在此手填，之后会出现在下拉中："}
       </span>
       <select
+        className="ui-select"
         value={manual.cli}
         onChange={(e) => onChange({ ...manual, cli: e.target.value as CliKind })}
       >
@@ -31,11 +32,12 @@ export function ManualModelInput({
       </select>
       <input
         type="text"
+        className="ui-input"
         value={manual.model}
         placeholder={isEn ? "Model ID" : "模型标识"}
         onChange={(e) => onChange({ ...manual, model: e.target.value })}
       />
-      <button type="button" onClick={onAdd}>
+      <button type="button" className="ui-btn ui-btn-default" onClick={onAdd}>
         {isEn ? "Add" : "添加"}
       </button>
     </div>

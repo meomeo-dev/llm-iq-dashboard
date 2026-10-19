@@ -38,6 +38,7 @@ export function UpstreamTypeEditor({
               {type}
               <button
                 type="button"
+                className="upstream-type-chip-remove"
                 aria-label={isEn ? `Remove upstream type ${type}` : `删除上游类型 ${type}`}
                 disabled={inUse || types.length === 1}
                 title={inUse ? (isEn ? "In use by a profile" : "有 profile 正在使用") : undefined}
@@ -52,6 +53,7 @@ export function UpstreamTypeEditor({
       <div className="field-row">
         <input
           type="text"
+          className="ui-input"
           value={draft}
           placeholder={isEn ? "New type, e.g. chatgpt-pro-10x" : "新类型，如 chatgpt-pro-10x"}
           onChange={(e) => setDraft(e.target.value)}
@@ -59,7 +61,7 @@ export function UpstreamTypeEditor({
             if (e.key === "Enter") add();
           }}
         />
-        <button type="button" onClick={add} disabled={draft.trim() === ""}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={add} disabled={draft.trim() === ""}>
           {isEn ? "Add" : "添加"}
         </button>
         {error !== null && <span className="status error">{error}</span>}

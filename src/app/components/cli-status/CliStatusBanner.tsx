@@ -8,13 +8,15 @@ import { actionFetch } from "../action-fetch";
 import { useDismissedClis } from "./use-dismissed-clis";
 import "./cli-status.css";
 
+let cachedReadinessView: ReadinessView | null = null;
+
 /**
  * 页首的 CLI 状态提示：配置用到的 CLI 未安装或未登录时出现并给出登录命令，否则不渲染。
  */
 export function CliStatusBanner() {
   const { locale } = useI18n();
   const isEn = locale === "en";
-  const [view, setView] = useState<ReadinessView | null>(null);
+  const [view, setView] = useState<ReadinessView | null>(cachedReadinessView);
   const [checking, setChecking] = useState(false);
   const [dismissed, dismiss] = useDismissedClis();
 
@@ -22,12 +24,17 @@ export function CliStatusBanner() {
     setChecking(true);
     const next = await requestView("POST");
     setChecking(false);
-    if (next !== null) setView(next);
+    if (next !== null) {
+      cachedReadinessView = next;
+      setView(next);
+    }
   }, []);
 
   useEffect(() => {
+    if (cachedReadinessView !== null) return;
     void requestView("GET").then((cached) => {
       if (cached === null) return;
+      cachedReadinessView = cached;
       setView(cached);
       if (cached.used.some((cli) => cached.clis[cli] === undefined)) void recheck();
     });
@@ -55,7 +62,7 @@ export function CliStatusBanner() {
           <DismissButton onClick={() => dismiss([record.cli])} locale={locale} />
         </p>
       ))}
-      <button type="button" onClick={() => void recheck()} disabled={checking}>
+      <button type="button" className="cli-banner-btn cli-banner-recheck" onClick={() => void recheck()} disabled={checking}>
         {checking ? (isEn ? "Checking…" : "检查中…") : isEn ? "Re-check" : "重新检查"}
       </button>
     </aside>
@@ -74,7 +81,7 @@ export function localizeReadinessDetail(detail: string | null, locale: Locale): 
 
 function DismissButton({ onClick, locale }: { onClick: () => void; locale: Locale }) {
   return (
-    <button type="button" className="cli-banner-dismiss" onClick={onClick}>
+    <button type="button" className="cli-banner-btn cli-banner-dismiss" onClick={onClick}>
       {locale === "en" ? "Dismiss" : "不再提示"}
     </button>
   );
@@ -91,7 +98,7 @@ function CopyableCommand({ command, locale }: { command: string; locale: Locale 
   return (
     <>
       <code>{command}</code>
-      <button type="button" className="cli-banner-copy" onClick={() => void copy()}>
+      <button type="button" className="cli-banner-btn cli-banner-copy" onClick={() => void copy()}>
         {copied ? (isEn ? "Copied" : "已复制") : isEn ? "Copy" : "复制"}
       </button>
     </>

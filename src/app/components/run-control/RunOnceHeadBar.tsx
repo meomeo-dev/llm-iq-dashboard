@@ -20,17 +20,18 @@ export function PickerHead({ title, picked, all, onPick }: PickerHeadProps) {
         {pickedCount}/{all.length}
       </span>
       <div className="check-bulk">
-        <button type="button" onClick={() => onPick(new Set(all))} disabled={pickedCount === all.length}>
+        <button type="button" className="check-bulk-btn" onClick={() => onPick(new Set(all))} disabled={pickedCount === all.length}>
           {isEn ? "All" : "全选"}
         </button>
         <button
           type="button"
+          className="check-bulk-btn"
           onClick={() => onPick(new Set(all.filter((id) => !picked.has(id))))}
           disabled={all.length === 0}
         >
           {isEn ? "Invert" : "反选"}
         </button>
-        <button type="button" onClick={() => onPick(new Set())} disabled={pickedCount === 0}>
+        <button type="button" className="check-bulk-btn" onClick={() => onPick(new Set())} disabled={pickedCount === 0}>
           {isEn ? "Clear" : "清空"}
         </button>
       </div>
@@ -47,6 +48,7 @@ interface RunOnceHeadBarProps {
   pickedPrompts: ReadonlySet<string>;
   allPromptIds: string[];
   onPickPrompts: (next: ReadonlySet<string>) => void;
+  secondColumnTitle?: string;
   onClose: () => void;
 }
 
@@ -59,6 +61,7 @@ export function RunOnceHeadBar({
   pickedPrompts,
   allPromptIds,
   onPickPrompts,
+  secondColumnTitle,
   onClose,
 }: RunOnceHeadBarProps) {
   const { locale, t } = useI18n();
@@ -81,7 +84,7 @@ export function RunOnceHeadBar({
         onClick={() => onSelectTab("prompts")}
       >
         <PickerHead
-          title={isEn ? "Prompts" : "题目"}
+          title={secondColumnTitle ?? (isEn ? "Prompts" : "题目")}
           picked={pickedPrompts}
           all={allPromptIds}
           onPick={onPickPrompts}

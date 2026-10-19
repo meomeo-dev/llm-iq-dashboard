@@ -8,25 +8,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "scrollWidth=393, clientWidth=393",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_01_idle_mobile_iphone16.png"
+          "screenshot": "ux_01_idle_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "scrollWidth=344, clientWidth=344",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_01_idle_mobile_fold_outer.png"
+          "screenshot": "ux_01_idle_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "scrollWidth=834, clientWidth=834",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_01_idle_tablet_ipad_pro11.png"
+          "screenshot": "ux_01_idle_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "scrollWidth=1512, clientWidth=1512",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_01_idle_desktop_macbook14.png"
+          "screenshot": "ux_01_idle_desktop_macbook14.png"
         }
       ]
     },
@@ -37,25 +37,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=36.5, width=320",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_02_day_calendar_mobile_iphone16.png"
+          "screenshot": "ux_02_day_calendar_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=12, width=320",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_02_day_calendar_mobile_fold_outer.png"
+          "screenshot": "ux_02_day_calendar_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=77, width=266",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_02_day_calendar_tablet_ipad_pro11.png"
+          "screenshot": "ux_02_day_calendar_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=202.375, width=266",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_02_day_calendar_desktop_macbook14.png"
+          "screenshot": "ux_02_day_calendar_desktop_macbook14.png"
         }
       ]
     },
@@ -66,25 +66,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=10, width=373",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_03_filter_panel_mobile_iphone16.png"
+          "screenshot": "ux_03_filter_panel_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=10, width=324",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_03_filter_panel_mobile_fold_outer.png"
+          "screenshot": "ux_03_filter_panel_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=185.625, width=440",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_03_filter_panel_tablet_ipad_pro11.png"
+          "screenshot": "ux_03_filter_panel_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=311, width=440",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_03_filter_panel_desktop_macbook14.png"
+          "screenshot": "ux_03_filter_panel_desktop_macbook14.png"
         }
       ]
     },
@@ -95,25 +95,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=10, width=373",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_04_run_status_mobile_iphone16.png"
+          "screenshot": "ux_04_run_status_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=10, width=324",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_04_run_status_mobile_fold_outer.png"
+          "screenshot": "ux_04_run_status_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=157, width=600",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_04_run_status_tablet_ipad_pro11.png"
+          "screenshot": "ux_04_run_status_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=735.53125, width=600",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_04_run_status_desktop_macbook14.png"
+          "screenshot": "ux_04_run_status_desktop_macbook14.png"
         }
       ]
     },
@@ -124,25 +124,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=8, width=377",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_05_run_once_mobile_iphone16.png"
+          "screenshot": "ux_05_run_once_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=8, width=328",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_05_run_once_mobile_fold_outer.png"
+          "screenshot": "ux_05_run_once_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=25.0234375, width=783.953125",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_05_run_once_tablet_ipad_pro11.png"
+          "screenshot": "ux_05_run_once_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=331, width=850",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_05_run_once_desktop_macbook14.png"
+          "screenshot": "ux_05_run_once_desktop_macbook14.png"
         }
       ]
     },
@@ -182,25 +182,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=136, width=240",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_07_export_menu_mobile_iphone16.png"
+          "screenshot": "ux_07_export_menu_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=87, width=240",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_07_export_menu_mobile_fold_outer.png"
+          "screenshot": "ux_07_export_menu_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=555, width=240",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_07_export_menu_tablet_ipad_pro11.png"
+          "screenshot": "ux_07_export_menu_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=1233, width=240",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_07_export_menu_desktop_macbook14.png"
+          "screenshot": "ux_07_export_menu_desktop_macbook14.png"
         }
       ]
     },
@@ -211,25 +211,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "visible=True, x=8, width=377",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_08_model_modal_mobile_iphone16.png"
+          "screenshot": "ux_08_model_modal_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "visible=True, x=8, width=328",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_08_model_modal_mobile_fold_outer.png"
+          "screenshot": "ux_08_model_modal_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "visible=True, x=24, width=786",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_08_model_modal_tablet_ipad_pro11.png"
+          "screenshot": "ux_08_model_modal_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "visible=True, x=136, width=1240",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_08_model_modal_desktop_macbook14.png"
+          "screenshot": "ux_08_model_modal_desktop_macbook14.png"
         }
       ]
     },
@@ -240,25 +240,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "overflow=False, tier_badge_low=True, quick_fill=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_09_config_page_mobile_iphone16.png"
+          "screenshot": "ux_09_config_page_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "overflow=False, tier_badge_low=True, quick_fill=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_09_config_page_mobile_fold_outer.png"
+          "screenshot": "ux_09_config_page_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "overflow=False, tier_badge_low=True, quick_fill=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_09_config_page_tablet_ipad_pro11.png"
+          "screenshot": "ux_09_config_page_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "overflow=False, tier_badge_low=True, quick_fill=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_09_config_page_desktop_macbook14.png"
+          "screenshot": "ux_09_config_page_desktop_macbook14.png"
         }
       ]
     },
@@ -269,25 +269,25 @@
           "viewport": "mobile_iphone16",
           "status": "FAIL",
           "details": "pair_form_visible=True, error_feedback_visible=False",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_10_pair_page_mobile_iphone16.png"
+          "screenshot": "ux_10_pair_page_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "pair_form_visible=True, error_feedback_visible=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_10_pair_page_mobile_fold_outer.png"
+          "screenshot": "ux_10_pair_page_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "pair_form_visible=True, error_feedback_visible=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_10_pair_page_tablet_ipad_pro11.png"
+          "screenshot": "ux_10_pair_page_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "pair_form_visible=True, error_feedback_visible=True",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_10_pair_page_desktop_macbook14.png"
+          "screenshot": "ux_10_pair_page_desktop_macbook14.png"
         }
       ]
     },
@@ -298,25 +298,25 @@
           "viewport": "mobile_iphone16",
           "status": "PASS",
           "details": "scrollWidth=393, clientWidth=393",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_11_art_viewer_mobile_iphone16.png"
+          "screenshot": "ux_11_art_viewer_mobile_iphone16.png"
         },
         {
           "viewport": "mobile_fold_outer",
           "status": "PASS",
           "details": "scrollWidth=344, clientWidth=344",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_11_art_viewer_mobile_fold_outer.png"
+          "screenshot": "ux_11_art_viewer_mobile_fold_outer.png"
         },
         {
           "viewport": "tablet_ipad_pro11",
           "status": "PASS",
           "details": "scrollWidth=834, clientWidth=834",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_11_art_viewer_tablet_ipad_pro11.png"
+          "screenshot": "ux_11_art_viewer_tablet_ipad_pro11.png"
         },
         {
           "viewport": "desktop_macbook14",
           "status": "PASS",
           "details": "scrollWidth=1512, clientWidth=1512",
-          "screenshot": "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee/ux_11_art_viewer_desktop_macbook14.png"
+          "screenshot": "ux_11_art_viewer_desktop_macbook14.png"
         }
       ]
     }

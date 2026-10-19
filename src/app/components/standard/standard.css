@@ -1,0 +1,90 @@
+/* 共享黄金标准与判定依据双栏面板（StandardCriteriaPanel.tsx） */
+
+.standard-criteria-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.standard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.standard-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.standard-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.standard-heading h4 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.standard-tag {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.standard-desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.standard-source-row {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  line-height: 1.5;
+}
+
+.standard-source-row .source-citation-text {
+  color: var(--text-dim);
+}
+
+.standard-source-row .source-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.standard-source-row .source-link:hover {
+  text-decoration: underline;
+}
+
+.source-segments,
+.source-citation-wrap {
+  word-break: break-word;
+}
+
+.source-ext-link {
+  margin-left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .standard-grid {
+    grid-template-columns: 1fr;
+  }
+}

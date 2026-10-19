@@ -7,6 +7,13 @@
  *    - 题目选择（prompts）：配置里 run.promptIds 的条目
  */
 
+import {
+  readStoredStringList,
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+  writeStoredStringList,
+} from "../profile/profile-selection-store";
+
 export const SELECTION_STORAGE_KEY = "pelican.runOnce.selection.v3";
 /** 上游勾选单独存：范围与题目的缓存格式不变 */
 export const PROFILE_STORAGE_KEY = "pelican.runOnce.profiles.v1";
@@ -32,10 +39,8 @@ export interface AvailableOptions {
 
 /** 从存储中读取已保存的选择；若未存或格式非法则返回 null */
 export function readStoredSelection(storage?: Storage): StoredRunSelection | null {
-  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  if (!s) return null;
   try {
-    const raw = s.getItem(SELECTION_STORAGE_KEY);
+    const raw = safeLocalStorageGet(SELECTION_STORAGE_KEY, storage);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
@@ -75,15 +80,13 @@ export function writeStoredSelection(
 ): void {
   const candidateOverrides = isStorage(candidateOverridesOrStorage) ? undefined : candidateOverridesOrStorage;
   const storage = isStorage(candidateOverridesOrStorage) ? candidateOverridesOrStorage : maybeStorage;
-  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  if (!s) return;
   try {
     const data: StoredRunSelection = {
       targets: [...targets],
       prompts: [...prompts],
       ...(candidateOverrides ? { candidateOverrides } : {}),
     };
-    s.setItem(SELECTION_STORAGE_KEY, JSON.stringify(data));
+    safeLocalStorageSet(SELECTION_STORAGE_KEY, JSON.stringify(data), storage);
   } catch {
     // 写入失败（如隐私模式或存储超额）静默忽略
   }
@@ -193,25 +196,9 @@ export function resolveRunSelection(
 
 /** 上次勾选的上游；没存过（首次打开）返回 null，由调用方默认勾全部可用项 */
 export function readStoredProfiles(storage?: Storage): string[] | null {
-  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  if (!s) return null;
-  try {
-    const raw = s.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter((item): item is string => typeof item === "string");
-  } catch {
-    return null;
-  }
+  return readStoredStringList(PROFILE_STORAGE_KEY, storage);
 }
 
 export function writeStoredProfiles(profiles: Iterable<string>, storage?: Storage): void {
-  const s = storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  if (!s) return;
-  try {
-    s.setItem(PROFILE_STORAGE_KEY, JSON.stringify([...profiles]));
-  } catch {
-    // 写入失败（如隐私模式或存储超额）静默忽略
-  }
+  writeStoredStringList(PROFILE_STORAGE_KEY, profiles, storage);
 }

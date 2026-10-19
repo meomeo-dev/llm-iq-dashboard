@@ -105,12 +105,25 @@ function isCatalogGlitch(reply: AgentReply, request: AgentRequest): boolean {
   return reply.error?.includes("--effort is not supported for model") === true;
 }
 
+const FINGERPRINT_INLINE_RULE =
+  "Do not call any tools, run any commands, or write any files; reply inline with the <answer> block only.";
+
+function formatFingerprintPrompt(promptText: string): string {
+  const reqTagMatch = /\n\[req:[^\]]+\]\s*$/.exec(promptText);
+  if (reqTagMatch && reqTagMatch.index !== undefined) {
+    return `${promptText.slice(0, reqTagMatch.index)}\n${FINGERPRINT_INLINE_RULE}${promptText.slice(reqTagMatch.index)}`;
+  }
+  return `${promptText}\n${FINGERPRINT_INLINE_RULE}`;
+}
+
 export function buildAgyArgs(request: AgentRequest): string[] {
   const { target, promptText } = request;
   const effortArgs = resolveEffortArgs(target.model, request);
+  const effectivePrompt =
+    request.fingerprint === true ? formatFingerprintPrompt(promptText) : promptText;
   return [
     "--print",
-    promptText,
+    effectivePrompt,
     "--model",
     target.model,
     ...effortArgs,

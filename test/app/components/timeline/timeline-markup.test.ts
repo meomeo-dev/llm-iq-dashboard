@@ -1,5 +1,3 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import React from "react";
@@ -13,11 +11,12 @@ import { Thumb } from "@/app/components/timeline/Thumb";
 import { TimelineAxis } from "@/app/components/timeline/TimelineAxis";
 import type { Column } from "@/app/components/timeline/track-layout";
 import type { DashboardCard } from "@/core/types";
+import { expectFixture } from "../../../support/fixtures";
 
 const FIXTURES_DIR = path.resolve("test/fixtures/markup/wp-f");
 
-function loadFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
+function assertFixture(actual: string, name: string): void {
+  expectFixture(actual, path.join(FIXTURES_DIR, name));
 }
 
 const noop = () => {};
@@ -114,7 +113,7 @@ describe("Timeline Components Markup Characterization", () => {
           onOpen: noop,
         }),
       );
-      assert.equal(actual, loadFixture("FolderTile-normal.html"));
+      assertFixture(actual, "FolderTile-normal.html");
     });
 
     test("overflow 场景逐字节一致", () => {
@@ -127,7 +126,7 @@ describe("Timeline Components Markup Characterization", () => {
           onOpen: noop,
         }),
       );
-      assert.equal(actual, loadFixture("FolderTile-overflow.html"));
+      assertFixture(actual, "FolderTile-overflow.html");
     });
   });
 
@@ -136,14 +135,14 @@ describe("Timeline Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(Thumb, { card: mockCardOk }),
       );
-      assert.equal(actual, loadFixture("Thumb-ok.html"));
+      assertFixture(actual, "Thumb-ok.html");
     });
 
     test("failed 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(Thumb, { card: mockCardFailed }),
       );
-      assert.equal(actual, loadFixture("Thumb-failed.html"));
+      assertFixture(actual, "Thumb-failed.html");
     });
   });
 
@@ -152,7 +151,7 @@ describe("Timeline Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(TimelineAxis, { columns: mockColumns, width: 7920, now: null }),
       );
-      assert.equal(actual, loadFixture("TimelineAxis-normal.html"));
+      assertFixture(actual, "TimelineAxis-normal.html");
     });
 
     test("with-now 场景逐字节一致", () => {
@@ -163,7 +162,7 @@ describe("Timeline Components Markup Characterization", () => {
           now: { fraction: 0.5, clock: "12:00" },
         }),
       );
-      assert.equal(actual, loadFixture("TimelineAxis-with-now.html"));
+      assertFixture(actual, "TimelineAxis-with-now.html");
     });
   });
 });

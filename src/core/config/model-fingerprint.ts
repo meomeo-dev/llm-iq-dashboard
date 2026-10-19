@@ -11,14 +11,17 @@ import {
   DEFAULT_SAMPLES_PER_PROBE,
   DEFAULT_TARGET_ACCURACY,
   DEFAULT_VALUES_PER_CHECK,
+  DEFAULT_VALUES_PER_CHECK_BY_PROBE,
   MAX_FINGERPRINT_CONCURRENCY,
   MIN_SAMPLES_PER_PROBE,
   isProbeId,
+  resolveProbeTargetSamples,
   type FingerprintReferenceTarget,
   type ModelPromptOverride,
   type ModelPromptOverrides,
   type ProbeId,
 } from "../model-fingerprint/types";
+import type { Target } from "../types";
 import { asRecord, isCliKind, isEffortLevel, optionalNumber, optionalString } from "./parsers-common";
 import type { ModelFingerprintConfig } from "./types";
 
@@ -29,6 +32,7 @@ export const DEFAULT_MODEL_FINGERPRINT_CONFIG: ModelFingerprintConfig = {
   samplesByProbe: { ...DEFAULT_SAMPLES_BY_PROBE },
   probes: [],
   valuesPerCheck: DEFAULT_VALUES_PER_CHECK,
+  valuesPerCheckByProbe: { ...DEFAULT_VALUES_PER_CHECK_BY_PROBE },
   checkAttempts: DEFAULT_CHECK_ATTEMPTS,
   targetAccuracy: DEFAULT_TARGET_ACCURACY,
   maxCallsFactor: DEFAULT_MAX_CALLS_FACTOR,
@@ -37,10 +41,33 @@ export const DEFAULT_MODEL_FINGERPRINT_CONFIG: ModelFingerprintConfig = {
   modelPrompts: {},
 };
 
+export function deriveReferencesFromTargets(
+  targets?: readonly Pick<Target, "cli" | "model">[],
+): FingerprintReferenceTarget[] {
+  if (!targets || targets.length === 0) return [];
+  const seen = new Set<string>();
+  const result: FingerprintReferenceTarget[] = [];
+  for (const t of targets) {
+    const key = `${t.cli}:${t.model}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push({ cli: t.cli, model: t.model });
+    }
+  }
+  return result;
+}
+
 export function resolveModelFingerprintConfig(
-  config?: { modelFingerprint?: ModelFingerprintConfig },
+  config?: {
+    modelFingerprint?: ModelFingerprintConfig;
+    targets?: readonly Pick<Target, "cli" | "model">[];
+  },
 ): ModelFingerprintConfig {
-  return config?.modelFingerprint ?? DEFAULT_MODEL_FINGERPRINT_CONFIG;
+  const base = config?.modelFingerprint ?? DEFAULT_MODEL_FINGERPRINT_CONFIG;
+  if (base.references.length > 0) return base;
+  const derived = deriveReferencesFromTargets(config?.targets);
+  if (derived.length === 0) return base;
+  return { ...base, references: derived };
 }
 
 function parsePositiveInt(
@@ -210,6 +237,40 @@ function parseSamplesByProbe(
   return base;
 }
 
+function parseValuesPerCheckByProbe(
+  raw: unknown,
+  hasExplicitUniformCheck: boolean,
+  samplesPerProbe: number,
+  samplesByProbe: Partial<Record<ProbeId, number>>,
+  errors: string[],
+): Partial<Record<ProbeId, number>> {
+  const base: Partial<Record<ProbeId, number>> = hasExplicitUniformCheck
+    ? {}
+    : { ...DEFAULT_VALUES_PER_CHECK_BY_PROBE };
+  if (raw === undefined || raw === null) return base;
+  const node = asRecord(raw);
+  if (node === null) {
+    errors.push("modelFingerprint.valuesPerCheckByProbe 必须是映射");
+    return base;
+  }
+  for (const [probeKey, countRaw] of Object.entries(node)) {
+    if (!isProbeId(probeKey)) {
+      errors.push(`modelFingerprint.valuesPerCheckByProbe 含有未知探针：${probeKey}`);
+      continue;
+    }
+    const targetForProbe = resolveProbeTargetSamples(probeKey, { samplesPerProbe, samplesByProbe });
+    base[probeKey] = parsePositiveInt(
+      countRaw,
+      DEFAULT_VALUES_PER_CHECK_BY_PROBE[probeKey],
+      1,
+      Math.floor(targetForProbe / 2),
+      `modelFingerprint.valuesPerCheckByProbe.${probeKey}`,
+      errors,
+    );
+  }
+  return base;
+}
+
 function parseTargetAccuracy(raw: unknown, errors: string[]): number {
   if (raw === undefined) return DEFAULT_TARGET_ACCURACY;
   const num = optionalNumber(raw);
@@ -234,6 +295,7 @@ function cloneDefaultConfig(): ModelFingerprintConfig {
   return {
     ...DEFAULT_MODEL_FINGERPRINT_CONFIG,
     samplesByProbe: { ...DEFAULT_SAMPLES_BY_PROBE },
+    valuesPerCheckByProbe: { ...DEFAULT_VALUES_PER_CHECK_BY_PROBE },
     probes: [],
     references: [],
     modelPrompts: {},
@@ -247,12 +309,20 @@ function parseNumericFields(node: Record<string, unknown>, errors: string[]) {
   const samplesByProbe = parseSamplesByProbe(node.samplesByProbe, node.samplesPerProbe !== undefined, errors);
   const byProbeVals = Object.values(samplesByProbe).filter((n): n is number => typeof n === "number");
   const minTarget = byProbeVals.length > 0 ? Math.min(samplesPerProbe, ...byProbeVals) : samplesPerProbe;
+  const valuesPerCheck = parsePositiveInt(
+    node.valuesPerCheck, DEFAULT_VALUES_PER_CHECK, 1, Math.floor(minTarget / 2), "modelFingerprint.valuesPerCheck", errors,
+  );
+  const hasCustomUniformCheck =
+    node.valuesPerCheck !== undefined &&
+    (node.valuesPerCheck !== DEFAULT_VALUES_PER_CHECK || Object.keys(samplesByProbe).length === 0);
+  const valuesPerCheckByProbe = parseValuesPerCheckByProbe(
+    node.valuesPerCheckByProbe, hasCustomUniformCheck, samplesPerProbe, samplesByProbe, errors,
+  );
   return {
     samplesPerProbe,
     samplesByProbe,
-    valuesPerCheck: parsePositiveInt(
-      node.valuesPerCheck, DEFAULT_VALUES_PER_CHECK, 1, Math.floor(minTarget / 2), "modelFingerprint.valuesPerCheck", errors,
-    ),
+    valuesPerCheck,
+    valuesPerCheckByProbe,
     checkAttempts: parsePositiveInt(
       node.checkAttempts, DEFAULT_CHECK_ATTEMPTS, 1, 20, "modelFingerprint.checkAttempts", errors,
     ),

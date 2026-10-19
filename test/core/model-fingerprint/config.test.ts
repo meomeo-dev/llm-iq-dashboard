@@ -129,10 +129,14 @@ describe("modelFingerprint config parser", () => {
       const cfg = loadConfig(cfgPath);
       assert.equal(cfg.modelFingerprint?.enabled, true);
       assert.equal(cfg.modelFingerprint?.valuesPerCheck, 10);
+      const resolved = resolveModelFingerprintConfig(cfg);
+      assert.deepEqual(resolved.references, [{ cli: "codex", model: "gpt-5.4" }]);
 
       const exampleCfg = loadConfig("config/pelican.example.yaml");
       assert.equal(exampleCfg.modelFingerprint?.enabled, false);
       assert.equal(exampleCfg.modelFingerprint?.samplesPerProbe, 20);
+      const resolvedExample = resolveModelFingerprintConfig(exampleCfg);
+      assert.ok(resolvedExample.references.length >= 3, "derives unique (cli, model) pairs from example targets");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

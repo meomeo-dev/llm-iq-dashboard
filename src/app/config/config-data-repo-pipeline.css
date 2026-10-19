@@ -38,7 +38,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -46,19 +46,19 @@
 }
 
 .data-repo-pipeline-step.completed .data-repo-pipeline-step-badge {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.3);
+  background: var(--ok-tint);
+  border-color: var(--ok-border);
   color: var(--ok);
 }
 
 .data-repo-pipeline-step.current .data-repo-pipeline-step-badge {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-solid);
 }
 
 .data-repo-pipeline-step-label {
-  font-size: 13px;
+  font-size: var(--text-md);
   font-weight: 500;
   color: var(--text-dim);
 }
@@ -73,7 +73,7 @@
 }
 
 .data-repo-pipeline-step-count {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   padding-left: 28px;
 }
@@ -84,17 +84,17 @@
 
 .data-repo-pipeline-connector {
   color: var(--text-dim);
-  font-size: 14px;
+  font-size: var(--text-lg);
   user-select: none;
 }
 
 .data-repo-pipeline-static-notice {
-  font-size: 12px;
+  font-size: var(--text-sm);
   color: var(--text-dim);
   padding: 6px 10px;
-  border-radius: 4px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-xs);
+  background: var(--warn-tint);
+  border: 1px solid var(--warn-border);
 }
 
 .data-repo-pipeline-action-bar {
@@ -114,19 +114,19 @@
   gap: 12px;
 }
 
-.data-repo-pipeline-desc { font-size: 13px; color: var(--text); }
+.data-repo-pipeline-desc { font-size: var(--text-md); color: var(--text); }
 .data-repo-pipeline-primary-wrap { display: flex; align-items: center; gap: 10px; }
 
 .data-repo-pipeline-btn {
   padding: 6px 14px;
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: var(--text-md);
   cursor: pointer;
   border: 1px solid transparent;
 }
 
 .data-repo-pipeline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.data-repo-pipeline-btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.data-repo-pipeline-btn-primary { background: var(--accent); color: var(--text-on-solid); border-color: var(--accent); }
 .data-repo-pipeline-btn-refresh { background: var(--surface); color: var(--text); border-color: var(--border); }
 
 .data-repo-pipeline-btn-secondary {
@@ -139,8 +139,8 @@
 }
 
 .data-repo-pipeline-btn-secondary:hover:not(:disabled) { color: var(--text); }
-.data-repo-pipeline-disabled-reason { font-size: 12px; color: #d97706; }
-a.data-repo-pipeline-disabled-link { color: var(--accent); text-decoration: underline; cursor: pointer; }
+.data-repo-pipeline-disabled-reason { font-size: var(--text-sm); color: var(--warn); }
+.data-repo-pipeline-disabled-link { color: var(--accent); text-decoration: underline; cursor: pointer; }
 
 @media (max-width: 640px) {
   .data-repo-pipeline-steps { flex-direction: column; align-items: flex-start; }

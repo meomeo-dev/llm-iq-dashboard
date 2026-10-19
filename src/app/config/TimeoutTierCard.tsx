@@ -31,10 +31,11 @@ export function TimeoutTierCard({
         {items.map(({ level, label, desc, defaultSec }) => {
           const override = currentEfforts[level];
           return (
-            <label key={level} title={desc}>
+            <label key={level} className="ui-field" title={desc}>
               {isEn ? `${label} Timeout (s)` : `${label} 超时（秒）`}
               <input
                 type="number"
+                className="ui-input"
                 min={1}
                 value={formatSeconds(override)}
                 placeholder={isEn ? `Rec. ${defaultSec}` : `推荐 ${defaultSec}`}

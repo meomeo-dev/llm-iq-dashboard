@@ -1,5 +1,3 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import React from "react";
@@ -13,11 +11,12 @@ import { RunOnceMenu } from "@/app/components/run-control/RunOnceMenu";
 import { StopRunButton } from "@/app/components/run-control/StopRunButton";
 import { UnavailableNote } from "@/app/components/run-control/UnavailableNote";
 import type { UnavailableCli } from "@/capabilities/callable-targets";
+import { expectFixture } from "../../../support/fixtures";
 
 const FIXTURES_DIR = path.resolve("test/fixtures/markup/wp-f");
 
-function loadFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
+function assertFixture(actual: string, name: string): void {
+  expectFixture(actual, path.join(FIXTURES_DIR, name));
 }
 
 const noop = () => {};
@@ -34,14 +33,14 @@ describe("RunControl Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(RunOnceMenu, { open: false, onToggle: noop, onClose: noop }),
       );
-      assert.equal(actual, loadFixture("RunOnceMenu-closed.html"));
+      assertFixture(actual, "RunOnceMenu-closed.html");
     });
 
     test("open 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(RunOnceMenu, { open: true, onToggle: noop, onClose: noop }),
       );
-      assert.equal(actual, loadFixture("RunOnceMenu-open.html"));
+      assertFixture(actual, "RunOnceMenu-open.html");
     });
   });
 
@@ -50,14 +49,14 @@ describe("RunControl Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(AutoRunToggle, { timeZone: "Asia/Shanghai", readOnly: false }),
       );
-      assert.equal(actual, loadFixture("AutoRunToggle-normal.html"));
+      assertFixture(actual, "AutoRunToggle-normal.html");
     });
 
     test("readonly 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(AutoRunToggle, { timeZone: "UTC", readOnly: true }),
       );
-      assert.equal(actual, loadFixture("AutoRunToggle-readonly.html"));
+      assertFixture(actual, "AutoRunToggle-readonly.html");
     });
   });
 
@@ -70,7 +69,7 @@ describe("RunControl Components Markup Characterization", () => {
           promptCount: 0,
         }),
       );
-      assert.equal(actual, loadFixture("RunForecast-empty.html"));
+      assertFixture(actual, "RunForecast-empty.html");
     });
 
     test("populated 场景逐字节一致", () => {
@@ -81,7 +80,7 @@ describe("RunControl Components Markup Characterization", () => {
           promptCount: 2,
         }),
       );
-      assert.equal(actual, loadFixture("RunForecast-populated.html"));
+      assertFixture(actual, "RunForecast-populated.html");
     });
 
     test("overbudget 场景逐字节一致", () => {
@@ -96,7 +95,7 @@ describe("RunControl Components Markup Characterization", () => {
           promptCount: 1,
         }),
       );
-      assert.equal(actual, loadFixture("RunForecast-overbudget.html"));
+      assertFixture(actual, "RunForecast-overbudget.html");
     });
   });
 
@@ -105,14 +104,14 @@ describe("RunControl Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(StopRunButton, { runId: "20260927T020000Z", stopping: false }),
       );
-      assert.equal(actual, loadFixture("StopRunButton-normal.html"));
+      assertFixture(actual, "StopRunButton-normal.html");
     });
 
     test("stopping 场景逐字节一致", () => {
       const actual = renderToStaticMarkup(
         React.createElement(StopRunButton, { runId: "20260927T020000Z", stopping: true }),
       );
-      assert.equal(actual, loadFixture("StopRunButton-stopping.html"));
+      assertFixture(actual, "StopRunButton-stopping.html");
     });
   });
 
@@ -121,7 +120,7 @@ describe("RunControl Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(UnavailableNote, { unavailable: [] }),
       );
-      assert.equal(actual, loadFixture("UnavailableNote-empty.html"));
+      assertFixture(actual, "UnavailableNote-empty.html");
     });
 
     test("populated 场景逐字节一致", () => {
@@ -132,7 +131,7 @@ describe("RunControl Components Markup Characterization", () => {
       const actual = renderToStaticMarkup(
         React.createElement(UnavailableNote, { unavailable }),
       );
-      assert.equal(actual, loadFixture("UnavailableNote-populated.html"));
+      assertFixture(actual, "UnavailableNote-populated.html");
     });
   });
 });

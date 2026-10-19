@@ -1,10 +1,10 @@
 /* ---------- 操作与状态 ---------- */
 
 /* 编辑区很长，保存与执行常驻视口底部，不必滚到页尾 */
-.actions {
+.config-actions-bar {
   position: sticky;
   bottom: 0;
-  z-index: 5;
+  z-index: var(--z-sticky-bar);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -13,11 +13,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 -6px 16px rgb(0 0 0 / 35%);
+  box-shadow: var(--shadow-lg);
 }
 
 .status {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
 }
 
 .status.ok {
@@ -44,14 +44,14 @@
   overflow-x: auto;
   margin: 10px 0;
   color: var(--err);
-  font-size: 12px;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
 }
 
 .device-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 .device-table th,
@@ -72,5 +72,5 @@
 
 .device-error {
   margin: 8px 0 0;
-  color: var(--danger, #b42318);
+  color: var(--err);
 }

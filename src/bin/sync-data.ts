@@ -27,6 +27,35 @@ import {
   type SyncReport,
   type SyncScope,
 } from "../core/sync/sync-orchestrator";
+import {
+  canonicalizeFlag,
+  confirmOrAbort,
+  consumeFlagValue,
+  expandEqualsTokens,
+  extractGlobalPathFlags,
+  formatCliError,
+  hasHelpFlag,
+  normalizeMultiValueFlag,
+  stripPnpmSeparators,
+} from "./cli-args";
+
+const VALID_SYNC_FLAGS: readonly string[] = [
+  "--repo",
+  "--dry-run",
+  "--push",
+  "--confirm-published",
+  "--json",
+  "--run",
+  "--runs",
+  "--only",
+  "--yes",
+  "-y",
+  "--config",
+  "-c",
+  "--data-dir",
+  "--help",
+  "-h",
+];
 
 export interface ParsedArgs {
   repoPath?: string;
@@ -34,27 +63,51 @@ export interface ParsedArgs {
   push: boolean;
   confirmPublished: boolean;
   json: boolean;
+  yes: boolean;
   runIds: string[];
 }
 
+export function formatSyncHelp(): string {
+  return [
+    "用法: pnpm sync:data [-- <options>]",
+    "别名: pnpm pelican sync [options]",
+    "",
+    "说明:",
+    "  将本地脱敏后的评测运行产物导出至公开数据仓（llm-iq-data）。",
+    "",
+    "选项:",
+    "  --repo <path>          覆盖目标数据仓本地路径（缺省读取配置 dataRepo.path）",
+    "  --run <runId,...>      仅同步指定轮次（可重复传参或逗号分隔；别名: --runs, --only）",
+    "  --dry-run              演练模式，零写入输出同步报告",
+    "  --push                 同步提交后执行 git push 推送远端（需交互确认或传 --yes）",
+    "  --confirm-published    执行 git fetch 并将远端已含的 exported 轮次确认为 published",
+    "  --json                 以 JSON 格式输出报告",
+    "  -y, --yes              跳过 --push 的交互式 [y/N] 确认",
+    "  -c, --config <path>    覆盖配置文件路径（同 PELICAN_CONFIG）",
+    "  --data-dir <path>      覆盖数据目录路径（同 PELICAN_DATA_DIR）",
+    "  -h, --help             显示此帮助信息并退出",
+    "",
+    "示例:",
+    "  pnpm pelican sync --dry-run",
+    "  pnpm sync:data -- --run 20261019T000000Z --push --yes",
+  ].join("\n");
+}
+
 export function parseCliArgs(args: readonly string[]): ParsedArgs {
+  const tokens = expandEqualsTokens(stripPnpmSeparators(extractGlobalPathFlags(args)));
   const result: ParsedArgs = {
     dryRun: false,
     push: false,
     confirmPublished: false,
     json: false,
+    yes: false,
     runIds: [],
   };
 
-  for (let i = 0; i < args.length; i += 1) {
-    const arg = args[i];
-    if (arg === "--repo") {
-      const next = args[i + 1];
-      if (next !== undefined) {
-        i += 1;
-        result.repoPath = resolve(process.cwd(), next);
-      }
-    } else if (arg === "--dry-run") {
+  for (let i = 0; i < tokens.length; i += 1) {
+    const arg = tokens[i]!;
+    const canonical = canonicalizeFlag(arg);
+    if (arg === "--dry-run") {
       result.dryRun = true;
     } else if (arg === "--push") {
       result.push = true;
@@ -62,12 +115,18 @@ export function parseCliArgs(args: readonly string[]): ParsedArgs {
       result.confirmPublished = true;
     } else if (arg === "--json") {
       result.json = true;
-    } else if (arg === "--run") {
-      const next = args[i + 1];
-      if (next !== undefined) {
-        i += 1;
-        result.runIds.push(next);
-      }
+    } else if (canonical === "--yes") {
+      result.yes = true;
+    } else if (arg === "--repo") {
+      const next = consumeFlagValue(tokens, i, "--repo");
+      result.repoPath = resolve(process.cwd(), next);
+      i += 1;
+    } else if (canonical === "--run") {
+      const next = consumeFlagValue(tokens, i, arg);
+      result.runIds = normalizeMultiValueFlag(result.runIds, next, arg);
+      i += 1;
+    } else {
+      throw new Error(formatCliError(arg, VALID_SYNC_FLAGS, "pnpm sync:data -- --help"));
     }
   }
 
@@ -258,29 +317,43 @@ export async function runSyncCli(
   args: readonly string[] = process.argv.slice(2),
   out: (msg: string) => void = console.log,
   err: (msg: string) => void = console.error,
+  customConfirm?: (prompt: string) => Promise<boolean>,
 ): Promise<number> {
-  const parsed = parseCliArgs(args);
-
+  if (hasHelpFlag(stripPnpmSeparators(args))) {
+    out(formatSyncHelp());
+    return 0;
+  }
+  let parsed: ParsedArgs;
+  try {
+    parsed = parseCliArgs(args);
+  } catch (cause) {
+    err(cause instanceof Error ? cause.message : String(cause));
+    return 1;
+  }
   if (parsed.push && parsed.confirmPublished) {
     err("参数错误：--confirm-published 与 --push 互斥，不能同时使用");
     return 1;
   }
-
   const scope = resolveSyncScope(parsed.repoPath, tryLoadConfig());
   if (scope === null) {
     err("错误：未指定 --repo 且配置文件中未配置 dataRepo.path");
     return 1;
   }
-
   if (!existsSync(scope.repoPath)) {
     err(`错误：目标数据仓路径不存在：${scope.repoPath}`);
     return 1;
   }
-
-  if (parsed.confirmPublished) {
-    return handleConfirmCli(scope.repoPath, parsed, out, err);
+  if (parsed.confirmPublished) return handleConfirmCli(scope.repoPath, parsed, out, err);
+  if (parsed.push && !parsed.dryRun) {
+    const ok = await confirmOrAbort(`确认将同步结果推送至公开数据仓远端（${scope.repoPath}）吗？`, {
+      yes: parsed.yes,
+      customConfirm,
+      nonTtyHint: "pnpm sync:data -- --push --yes",
+      writeInfo: out,
+      writeError: err,
+    });
+    if (!ok) return 1;
   }
-
   return handleSyncCli(scope, parsed, out, err);
 }
 

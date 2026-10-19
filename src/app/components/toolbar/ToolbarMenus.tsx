@@ -7,6 +7,60 @@ import { Calendar } from "./Calendar";
 import { FilterMenu, type FilterGroup } from "./FilterMenu";
 import type { FilterKey, HiddenFilters } from "./filters";
 
+export interface ToolbarDayMenuProps {
+  readonly dayKey: string | null;
+  readonly days: readonly DayOption[];
+  readonly todayKey: string;
+  readonly onPickDay: (day: string) => void;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+  readonly onClose: () => void;
+}
+
+/** 顶栏共享日期下拉日历菜单 */
+export function ToolbarDayMenu({
+  dayKey,
+  days,
+  todayKey,
+  onPickDay,
+  open,
+  onToggle,
+  onClose,
+}: ToolbarDayMenuProps) {
+  const { locale, t } = useI18n();
+  const isEn = locale === "en";
+  return (
+    <Menu
+      label={dayKey === null ? (isEn ? "Date" : "日期") : formatDayLabel(dayKey, locale)}
+      panelClassName="day-panel"
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+    >
+      <div className="day-panel-head-bar">
+        <span className="day-panel-title">{isEn ? "Pick Date" : "选择日期"}</span>
+        <button
+          type="button"
+          className="day-panel-close-btn"
+          onClick={onClose}
+          aria-label={t.common.actions.close}
+        >
+          ✕
+        </button>
+      </div>
+      <Calendar
+        days={days}
+        dayKey={dayKey}
+        todayKey={todayKey}
+        onPick={(next) => {
+          onPickDay(next);
+          onClose();
+        }}
+      />
+    </Menu>
+  );
+}
+
 interface ToolbarMenusProps {
   readonly dayKey: string | null;
   readonly days: readonly DayOption[];
@@ -33,38 +87,19 @@ export function ToolbarMenus({
   onToggleMenu,
   onCloseMenus,
 }: ToolbarMenusProps) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const isEn = locale === "en";
   return (
     <nav className="menus" aria-label={isEn ? "Date and filters" : "日期与筛选"}>
-      <Menu
-        label={dayKey === null ? (isEn ? "Date" : "日期") : formatDayLabel(dayKey, locale)}
-        panelClassName="day-panel"
+      <ToolbarDayMenu
+        dayKey={dayKey}
+        days={days}
+        todayKey={todayKey}
+        onPickDay={onPickDay}
         open={openMenu === "day"}
         onToggle={() => onToggleMenu("day")}
         onClose={onCloseMenus}
-      >
-        <div className="day-panel-head-bar">
-          <span className="day-panel-title">{isEn ? "Pick Date" : "选择日期"}</span>
-          <button
-            type="button"
-            className="day-panel-close-btn"
-            onClick={onCloseMenus}
-            aria-label={t.common.actions.close}
-          >
-            ✕
-          </button>
-        </div>
-        <Calendar
-          days={days}
-          dayKey={dayKey}
-          todayKey={todayKey}
-          onPick={(next) => {
-            onPickDay(next);
-            onCloseMenus();
-          }}
-        />
-      </Menu>
+      />
       <FilterMenu
         groups={filterGroups}
         hidden={hidden}

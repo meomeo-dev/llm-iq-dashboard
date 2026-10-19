@@ -30,16 +30,16 @@ export function ProfileCard(props: ProfileCardProps) {
   const { profile, saved, usage, onChange, onRemove } = props;
   return (
     <div className={`profile-card${profile.enabled ? "" : " profile-disabled"}`}>
-      <div className="profile-card-head">
+      <div className="config-profile-head">
         <ProfileNameField name={profile.name} locked={saved} onRename={props.onRename} />
         <span className="profile-cli">{profile.cli}</span>
-        <label className="checkbox">
+        <label className="ui-check-row checkbox">
           <input type="checkbox" checked={profile.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />
           {isEn ? "Enabled" : "启用"}
         </label>
         <button
           type="button"
-          className="danger"
+          className="ui-btn ui-btn-danger ui-btn-sm danger"
           disabled={usage > 0}
           title={
             usage > 0
@@ -71,7 +71,7 @@ function ProfileNameField({ name, locked, onRename }: { name: string; locked: bo
   if (locked) {
     return (
       <strong
-        className="profile-name"
+        className="config-profile-name"
         title={isEn ? "Saved profile name cannot be changed: API key file is named after it" : "已保存的 profile 不能改名：API key 按名字存放"}
       >
         {name}
@@ -79,14 +79,14 @@ function ProfileNameField({ name, locked, onRename }: { name: string; locked: bo
     );
   }
   return (
-    <label>
+    <label className="ui-field">
       {isEn
         ? "Name (ID: lowercase letters, digits, hyphens, e.g. kedaya-tehui-005)"
         : "名字（标识用：小写字母、数字、连字符，如 kedaya-tehui-005）"}
       <input
         type="text"
         value={name}
-        className={isKebabName(name) ? undefined : "invalid"}
+        className={isKebabName(name) ? "ui-input" : "ui-input invalid"}
         onChange={(e) => onRename(e.target.value)}
       />
     </label>
@@ -102,37 +102,39 @@ function ProfileFields(props: ProfileCardProps) {
 
   return (
     <div className="profile-fields">
-      <label className="profile-wide">
+      <label className="ui-field profile-wide">
         {isEn
           ? "Display Name (shown in UI; falls back to Name if empty)"
           : "显示名（页面上展示，可含中文，如 kedaya-我又来了特惠0.05；留空则用名字）"}
-        <input type="text" value={profile.label ?? ""} onChange={(e) => onChange({ label: e.target.value || null })} />
+        <input type="text" className="ui-input" value={profile.label ?? ""} onChange={(e) => onChange({ label: e.target.value || null })} />
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? "Upstream Type" : "上游类型"}
-        <select value={profile.upstreamType} onChange={(e) => onChange({ upstreamType: e.target.value })}>
+        <select className="ui-select" value={profile.upstreamType} onChange={(e) => onChange({ upstreamType: e.target.value })}>
           {[...new Set([...upstreamTypes, profile.upstreamType])].map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
         </select>
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? "Group" : "分组"}
-        <input type="text" value={profile.group ?? ""} onChange={(e) => onChange({ group: e.target.value || null })} />
+        <input type="text" className="ui-input" value={profile.group ?? ""} onChange={(e) => onChange({ group: e.target.value || null })} />
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? "Website" : "官网"}
         <input
           type="text"
+          className="ui-input"
           value={profile.website ?? ""}
           placeholder="https://"
           onChange={(e) => onChange({ website: e.target.value || null })}
         />
       </label>
-      <label className="profile-wide">
+      <label className="ui-field profile-wide">
         {isEn ? "API Endpoint baseUrl (not published)" : "接口地址 baseUrl（不公开）"}
         <input
           type="text"
+          className="ui-input"
           value={profile.baseUrl}
           placeholder="https://api.example.com/v1"
           onChange={(e) => onChange({ baseUrl: e.target.value })}
@@ -144,10 +146,11 @@ function ProfileFields(props: ProfileCardProps) {
         onChange={(models) => onChange({ models })}
         onSync={props.onSyncModels}
       />
-      <label>
+      <label className="ui-field">
         {isEn ? "Price Multiplier (Official ×)" : "倍率（官价 ×）"}
         <input
           type="number"
+          className="ui-input"
           min={0}
           step="any"
           value={multiplierText}

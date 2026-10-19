@@ -16,7 +16,7 @@ export function RotationForm({
     <div className="stack">
       <div className="field-row">
         <span>{isEn ? "Variable Rotation" : "变量轮换"}</span>
-        <label className="radio">
+        <label className="ui-check-row radio">
           <input
             type="radio"
             name="rotation-period"
@@ -25,7 +25,7 @@ export function RotationForm({
           />
           {isEn ? "Once per day" : "每天一换"}
         </label>
-        <label className="radio">
+        <label className="ui-check-row radio">
           <input
             type="radio"
             name="rotation-period"
@@ -67,10 +67,11 @@ function TimeZoneField({
 }) {
   const { locale } = useI18n();
   return (
-    <label>
+    <label className="ui-field">
       {locale === "en" ? "Day boundary time zone" : "按此时区划分“一天”"}
       <input
         type="text"
+        className="ui-input"
         list="rotation-time-zones"
         value={timeZone}
         disabled={disabled}

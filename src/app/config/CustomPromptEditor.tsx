@@ -40,10 +40,10 @@ export function CustomPromptEditor({
   return (
     <div className="custom-prompt">
       <div className="field-row">
-        <button type="button" onClick={() => setOpen(!open)}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={() => setOpen(!open)}>
           {open ? "▾" : "▸"} {spec.label}
         </button>
-        <button type="button" className="danger" onClick={onRemove}>
+        <button type="button" className="ui-btn ui-btn-danger ui-btn-sm" onClick={onRemove}>
           {isEn ? "Remove" : "删除"}
         </button>
       </div>
@@ -61,7 +61,7 @@ export function CustomPromptEditor({
             />
           ))}
 
-          <button type="button" onClick={addVariable}>
+          <button type="button" className="ui-btn ui-btn-default" onClick={addVariable}>
             {isEn ? "+ Add Variable" : "+ 增加变量"}
           </button>
         </div>
@@ -81,25 +81,28 @@ function CustomPromptFields({
   const isEn = locale === "en";
   return (
     <>
-      <label>
+      <label className="ui-field">
         {isEn ? "ID (id)" : "标识（id）"}
         <input
           type="text"
+          className="ui-input"
           value={spec.id}
           onChange={(e) => onChange({ ...spec, id: e.target.value })}
         />
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? "Display Name" : "显示名"}
         <input
           type="text"
+          className="ui-input"
           value={spec.label}
           onChange={(e) => onChange({ ...spec, label: e.target.value })}
         />
       </label>
-      <label>
+      <label className="ui-field">
         {isEn ? 'Template (use {{"{{varName}}"}} placeholders)' : '模板（用 {{"{{变量名}}"}} 占位）'}
         <textarea
+          className="ui-textarea"
           rows={3}
           value={spec.template}
           onChange={(e) => onChange({ ...spec, template: e.target.value })}
@@ -124,11 +127,13 @@ function VariableRow({
     <div className="variable-row">
       <input
         type="text"
+        className="ui-input"
         value={variable.name}
         placeholder={isEn ? "Variable name" : "变量名"}
         onChange={(e) => onChange({ ...variable, name: e.target.value })}
       />
       <select
+        className="ui-select"
         value={variable.mode}
         onChange={(e) =>
           onChange({ ...variable, mode: e.target.value as VariableMode })
@@ -142,6 +147,7 @@ function VariableRow({
       </select>
       <input
         type="text"
+        className="ui-input variable-values-input"
         value={variable.values.join(", ")}
         placeholder={isEn ? "Values, comma-separated" : "取值，逗号分隔"}
         onChange={(e) =>
@@ -151,7 +157,7 @@ function VariableRow({
           })
         }
       />
-      <button type="button" className="danger" onClick={onRemove}>
+      <button type="button" className="ui-btn ui-btn-danger ui-btn-sm" onClick={onRemove}>
         ×
       </button>
       <span className="note">{getModeHint(variable.mode, locale)}</span>

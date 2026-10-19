@@ -25,7 +25,7 @@ export type StartMode =
 
 type TargetOption = RunOptionsView["targets"][number];
 
-function supportsProfiles(cli: string): boolean {
+export function supportsProfiles(cli: string): boolean {
   return (PROFILE_CLIS as readonly string[]).includes(cli);
 }
 
@@ -132,7 +132,7 @@ export function describeRound(
   return `${shorten(combos, locale)} × ${shorten(titles, locale)}`;
 }
 
-function shorten(items: readonly string[], locale: Locale = "zh-CN"): string {
+export function shorten(items: readonly string[], locale: Locale = "zh-CN"): string {
   const sep = locale === "en" ? ", " : "、";
   if (items.length <= 3) return items.join(sep);
   return locale === "en"

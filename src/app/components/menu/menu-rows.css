@@ -8,11 +8,11 @@
   width: 100%;
   padding: 7px 8px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--text-md);
   text-align: left;
   cursor: pointer;
 }
@@ -32,7 +32,7 @@
 
 .menu-row-count {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -49,25 +49,27 @@
   width: 17px;
   height: 17px;
   border: 1.5px solid var(--text-faint);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .menu-row input:checked ~ .checkbox {
   border-color: var(--accent);
   background:
-    linear-gradient(-45deg, transparent 47%, #fff 47%, #fff 56%, transparent 56%) 5px 1px / 5px 7px no-repeat,
-    linear-gradient(45deg, transparent 63%, #fff 63%, #fff 72%, transparent 72%) 2px 4px / 5px 7px no-repeat,
+    linear-gradient(-45deg, transparent 47%, var(--text-on-solid) 47%, var(--text-on-solid) 56%, transparent 56%) 5px 1px / 5px 7px no-repeat,
+    linear-gradient(45deg, transparent 63%, var(--text-on-solid) 63%, var(--text-on-solid) 72%, transparent 72%) 2px 4px / 5px 7px no-repeat,
     var(--accent);
+}
+
+/* 同一模型只勾了部分强度：复选框画一条横杠 */
+.checkbox.partial {
+  border-color: var(--accent);
+  background: linear-gradient(var(--text-on-solid), var(--text-on-solid)) center / 8px 2px no-repeat, var(--accent);
 }
 
 .menu-row input:checked ~ .menu-row-name {
   color: var(--text);
 }
 
-.menu-panel.align-right {
-  right: 0;
-  left: auto;
-}
 
 /* 复选清单顶部的批量操作 */
 .check-bulk {
@@ -78,23 +80,23 @@
   border-bottom: 1px solid var(--border);
 }
 
-.check-bulk button {
+.check-bulk-btn {
   padding: 3px 9px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-dim);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 
-.check-bulk button:hover:not(:disabled) {
+.check-bulk-btn:hover:not(:disabled) {
   background: var(--surface-hi);
   color: var(--text);
 }
 
-.check-bulk button:disabled {
+.check-bulk-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
@@ -121,7 +123,7 @@
 .zone-id {
   margin-left: 4px;
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 /* 导出菜单：生成中禁用，失败原因显示在面板底部 */
@@ -134,7 +136,7 @@
   max-width: 280px;
   margin: 6px 8px 2px;
   color: var(--err);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 /* 四行「名称 + 提示」并排，最宽的一行（竖版 PNG · 时间竖排 · 2 倍清晰度）要放得下 */

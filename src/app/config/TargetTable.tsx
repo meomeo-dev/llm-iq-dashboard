@@ -52,7 +52,7 @@ export function TargetTable({
   return (
     <div className="stack">
       <div className="table-responsive">
-        <table className="matrix">
+        <table className="config-target-table">
           <TargetTableHeader />
           <TargetTableRows
             targets={targets}
@@ -66,7 +66,7 @@ export function TargetTable({
       </div>
 
       <div className="field-row">
-        <button type="button" onClick={addRow}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={addRow}>
           {isEn ? "+ Add Row" : "+ 增加一行"}
         </button>
       </div>

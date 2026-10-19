@@ -79,13 +79,14 @@ export function TargetRow({
       <td>
         <input
           type="text"
+          className="ui-input"
           value={target.label}
           placeholder={isEn ? "Auto-generated if empty" : "留空自动生成"}
           onChange={(e) => onChange({ label: e.target.value })}
         />
       </td>
       <td>
-        <button type="button" className="danger" onClick={onRemove}>
+        <button type="button" className="ui-btn ui-btn-danger ui-btn-sm" onClick={onRemove}>
           {isEn ? "Delete" : "删除"}
         </button>
       </td>
@@ -101,7 +102,7 @@ function TargetCliCell({
   onChange: (cli: CliKind) => void;
 }) {
   return (
-    <select value={cli} onChange={(e) => onChange(e.target.value as CliKind)}>
+    <select className="ui-select" value={cli} onChange={(e) => onChange(e.target.value as CliKind)}>
       {CLI_KINDS.map((kind) => (
         <option key={kind} value={kind}>
           {kind}
@@ -125,7 +126,7 @@ function TargetProfileCell({
   const defaultLabel = isEn ? "Official Login" : "登录态";
   if (choices.length === 0 && value === DEFAULT_PROFILE) return <span className="note">{defaultLabel}</span>;
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="ui-select" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value={DEFAULT_PROFILE}>{defaultLabel}</option>
       {choices.map((choice) => (
         <option key={choice.name} value={choice.name}>
@@ -148,7 +149,7 @@ function TargetModelCell({
 }) {
   const { locale } = useI18n();
   return (
-    <select value={model} onChange={(e) => onChange(e.target.value)}>
+    <select className="ui-select" value={model} onChange={(e) => onChange(e.target.value)}>
       {models.map((option) => (
         <option key={option.id} value={option.id}>
           {option.id}
@@ -179,6 +180,7 @@ function TargetEffortCell({
   }
   return (
     <select
+      className="ui-select"
       value={effort}
       onChange={(e) => onChange(e.target.value as EffortLevel)}
     >

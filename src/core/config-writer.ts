@@ -111,15 +111,22 @@ function applyModelFingerprint(doc: YamlDoc, mf: ModelFingerprintConfig | undefi
     doc.setIn(["modelFingerprint", "probes"], [...mf.probes]);
   }
   doc.setIn(["modelFingerprint", "valuesPerCheck"], mf.valuesPerCheck);
+  if (mf.valuesPerCheckByProbe && Object.keys(mf.valuesPerCheckByProbe).length > 0) {
+    doc.setIn(["modelFingerprint", "valuesPerCheckByProbe"], { ...mf.valuesPerCheckByProbe });
+  } else {
+    deleteKeyKeepingComment(doc, ["modelFingerprint"], "valuesPerCheckByProbe");
+  }
   doc.setIn(["modelFingerprint", "checkAttempts"], mf.checkAttempts);
   doc.setIn(["modelFingerprint", "targetAccuracy"], mf.targetAccuracy);
   doc.setIn(["modelFingerprint", "maxCallsFactor"], mf.maxCallsFactor);
   doc.setIn(["modelFingerprint", "concurrency"], mf.concurrency);
-  if (Array.isArray(mf.references)) {
+  if (Array.isArray(mf.references) && mf.references.length > 0) {
     doc.setIn(
       ["modelFingerprint", "references"],
       mf.references.map((r) => ({ cli: r.cli, model: r.model })),
     );
+  } else {
+    deleteKeyKeepingComment(doc, ["modelFingerprint"], "references");
   }
   const prompts = mf.modelPrompts ?? {};
   if (Object.keys(prompts).length > 0) {

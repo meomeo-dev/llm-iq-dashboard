@@ -1,6 +1,4 @@
 import test from "node:test";
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import React from "react";
 (globalThis as unknown as { React: typeof React }).React = React;
@@ -12,11 +10,12 @@ import { PromptPicker } from "@/app/config/PromptPicker";
 import { TargetTable } from "@/app/config/TargetTable";
 import { CapabilityPanel } from "@/app/config/CapabilityPanel";
 import { ScheduleForm } from "@/app/config/ScheduleForm";
+import { expectFixture } from "../../support/fixtures";
 
 const FIXTURES_DIR = path.resolve(__dirname, "../../fixtures/markup/wp-g");
 
-function readFixture(name: string): string {
-  return fs.readFileSync(path.join(FIXTURES_DIR, name), "utf-8");
+function assertFixture(actual: string, name: string): void {
+  expectFixture(actual, path.join(FIXTURES_DIR, name));
 }
 
 test("RotationForm markup matches fixtures", async (t) => {
@@ -27,7 +26,7 @@ test("RotationForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("rotationform-day.html"));
+    assertFixture(html, "rotationform-day.html");
   });
 
   await t.test("run period", () => {
@@ -37,7 +36,7 @@ test("RotationForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("rotationform-run.html"));
+    assertFixture(html, "rotationform-run.html");
   });
 });
 
@@ -55,7 +54,7 @@ test("TimeoutForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("timeoutform-default.html"));
+    assertFixture(html, "timeoutform-default.html");
   });
 
   await t.test("empty overrides", () => {
@@ -71,7 +70,7 @@ test("TimeoutForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("timeoutform-empty.html"));
+    assertFixture(html, "timeoutform-empty.html");
   });
 
   await t.test("custom high efforts", () => {
@@ -87,7 +86,7 @@ test("TimeoutForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("timeoutform-custom-efforts.html"));
+    assertFixture(html, "timeoutform-custom-efforts.html");
   });
 });
 
@@ -143,7 +142,7 @@ test("PromptPicker markup matches fixtures", async (t) => {
         onCustom: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("promptpicker-default.html"));
+    assertFixture(html, "promptpicker-default.html");
   });
 
   await t.test("minimal scenario with single builtin and no custom", () => {
@@ -156,7 +155,7 @@ test("PromptPicker markup matches fixtures", async (t) => {
         onCustom: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("promptpicker-minimal.html"));
+    assertFixture(html, "promptpicker-minimal.html");
   });
 });
 
@@ -248,7 +247,7 @@ test("TargetTable markup matches fixtures", async (t) => {
         onCustomModels: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("targettable-default.html"));
+    assertFixture(html, "targettable-default.html");
   });
 
   await t.test("model with no effort choices", () => {
@@ -273,7 +272,7 @@ test("TargetTable markup matches fixtures", async (t) => {
         onCustomModels: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("targettable-no-efforts.html"));
+    assertFixture(html, "targettable-no-efforts.html");
   });
 });
 
@@ -301,7 +300,7 @@ test("CapabilityPanel markup matches fixtures", async (t) => {
         onCatalog: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("capabilitypanel-available.html"));
+    assertFixture(html, "capabilitypanel-available.html");
   });
 
   await t.test("unavailable cli", () => {
@@ -324,7 +323,7 @@ test("CapabilityPanel markup matches fixtures", async (t) => {
         onCatalog: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("capabilitypanel-unavailable.html"));
+    assertFixture(html, "capabilitypanel-unavailable.html");
   });
 });
 
@@ -336,7 +335,7 @@ test("ScheduleForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("scheduleform-cron.html"));
+    assertFixture(html, "scheduleform-cron.html");
   });
 
   await t.test("interval mode", () => {
@@ -346,7 +345,7 @@ test("ScheduleForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("scheduleform-interval.html"));
+    assertFixture(html, "scheduleform-interval.html");
   });
 
   await t.test("none mode", () => {
@@ -356,6 +355,6 @@ test("ScheduleForm markup matches fixtures", async (t) => {
         onChange: () => {},
       })
     );
-    assert.strictEqual(html, readFixture("scheduleform-none.html"));
+    assertFixture(html, "scheduleform-none.html");
   });
 });

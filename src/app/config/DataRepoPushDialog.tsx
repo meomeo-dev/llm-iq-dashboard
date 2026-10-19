@@ -1,5 +1,6 @@
 import React from "react";
 import { useI18n } from "@/i18n";
+import { useOverlayStack } from "../components/ui/use-overlay-stack";
 
 interface DataRepoPushDialogProps {
   isOpen: boolean;
@@ -25,12 +26,23 @@ export function DataRepoPushDialog({
 }: DataRepoPushDialogProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
+  useOverlayStack(isOpen, () => {
+    if (!isBusy) onCancel();
+  });
   if (!isOpen) return null;
 
   const confirmText = isBusy ? (isEn ? "Pushing…" : "正在推送…") : isEn ? "Confirm Push" : "确认推送";
 
   return (
-    <div className="data-repo-dialog-backdrop" role="dialog" aria-modal="true" aria-labelledby="data-repo-push-title">
+    <div
+      className="data-repo-dialog-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="data-repo-push-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isBusy) onCancel();
+      }}
+    >
       <div className="data-repo-dialog">
         <header className="data-repo-dialog-header">
           <h3 id="data-repo-push-title">

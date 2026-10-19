@@ -5,13 +5,14 @@ import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 import { useI18n } from "@/i18n";
 import { profileColor } from "./profile-color";
-import { ProfileInfoCard } from "./ProfileInfoCard";
+import { ProfileInfoCard, type ProfileWorkItem } from "./ProfileInfoCard";
 import { useProfiles } from "./profiles-context";
 
 interface ProfileNameProps {
   name: string;
   /** 信息卡"本件"一栏列出的调用 */
   cards?: readonly DashboardCard[];
+  workItems?: readonly ProfileWorkItem[];
   className?: string;
 }
 
@@ -19,7 +20,7 @@ interface ProfileNameProps {
  * 上游名字按钮：色点 + 显示名，点击在名字下方打开信息卡。
  * 外点、Esc、再点名字关闭；在弹窗里打开时 Esc 只关信息卡（捕获阶段截断）。
  */
-export function ProfileName({ name, cards = [], className = "" }: ProfileNameProps) {
+export function ProfileName({ name, cards = [], workItems = [], className = "" }: ProfileNameProps) {
   const { profiles, owner } = useProfiles();
   const { locale } = useI18n();
   const [open, setOpen] = useState(false);
@@ -56,6 +57,7 @@ export function ProfileName({ name, cards = [], className = "" }: ProfileNamePro
           name={name}
           profile={profiles.find((profile) => profile.name === name) ?? null}
           cards={cards}
+          workItems={workItems}
           owner={owner}
           closeRef={closeButton}
           onClose={close}

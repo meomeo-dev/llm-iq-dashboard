@@ -1,5 +1,3 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import * as React from "react";
@@ -7,12 +5,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ArtViewer } from "@/app/view/ArtViewer";
 import type { DashboardCard } from "@/core/types";
 import type { PromptStandard } from "@/core/prompt";
+import { expectFixture } from "../../support/fixtures";
 
 (globalThis as unknown as { React: unknown }).React = React;
 
-const fixture = (name: string): string => {
-  const filePath = path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`);
-  return fs.readFileSync(filePath, "utf-8");
+const assertFixture = (actual: string, name: string): void => {
+  expectFixture(actual, path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`));
 };
 
 describe("ArtViewer 特征测试", () => {
@@ -58,7 +56,7 @@ describe("ArtViewer 特征测试", () => {
     const html = renderToStaticMarkup(
       React.createElement(ArtViewer, { card, svg: "<svg></svg>" })
     );
-    assert.equal(html, fixture("art-viewer-minimal"));
+    assertFixture(html, "art-viewer-minimal");
   });
 
   test("全量卡片：含绑定、SVG 下载链接、提示词抽屉与客观标准抽屉", () => {
@@ -122,7 +120,7 @@ describe("ArtViewer 特征测试", () => {
         standard,
       })
     );
-    assert.equal(html, fixture("art-viewer-full"));
+    assertFixture(html, "art-viewer-full");
   });
 
   test("失败卡片：effort 降级（low → high），无标准", () => {
@@ -167,6 +165,6 @@ describe("ArtViewer 特征测试", () => {
     const html = renderToStaticMarkup(
       React.createElement(ArtViewer, { card, svg: "<svg></svg>" })
     );
-    assert.equal(html, fixture("art-viewer-failed-card"));
+    assertFixture(html, "art-viewer-failed-card");
   });
 });

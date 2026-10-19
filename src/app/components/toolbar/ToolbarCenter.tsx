@@ -4,6 +4,7 @@ import { RunOnceMenu } from "../run-control/RunOnceMenu";
 
 interface ToolbarCenterProps {
   owner: boolean;
+  readonly?: boolean;
   remote: boolean;
   timeZone: string;
   stats: { runs: number; works: number; rate: number };
@@ -15,6 +16,7 @@ interface ToolbarCenterProps {
 /** 工具栏中心区：作品统计、跑一次入口与自动执行开关 */
 export function ToolbarCenter({
   owner,
+  readonly = false,
   remote,
   timeZone,
   stats,
@@ -46,7 +48,7 @@ export function ToolbarCenter({
       )}
       {owner ? (
         <AutoRunToggle timeZone={timeZone} />
-      ) : !remote ? (
+      ) : !remote && !readonly ? (
         <AutoRunToggle timeZone={timeZone} readOnly={true} />
       ) : null}
     </div>

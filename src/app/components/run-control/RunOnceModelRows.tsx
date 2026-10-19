@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { listEfforts } from "../timeline/moments";
 import { groupByModel, type ModelGroup, type Target } from "./run-once-grouping";
 import { toggled, without } from "./run-once-selection-utils";
@@ -15,8 +16,9 @@ interface PickProps {
  */
 export function ModelRows({ targets, picked, onPick }: PickProps & { targets: readonly Target[] }) {
   const efforts = listEfforts(targets);
+  const gridStyle = { "--effort-count": Math.max(1, efforts.length) } as React.CSSProperties;
   return (
-    <div className="run-once-models" style={{ gridTemplateColumns: `minmax(140px, 1fr) repeat(${efforts.length}, auto)` }}>
+    <div className="run-once-models" style={gridStyle}>
       {groupByModel(targets).map((group) => (
         <ModelRow key={group.key} group={group} efforts={efforts} picked={picked} onPick={onPick} />
       ))}

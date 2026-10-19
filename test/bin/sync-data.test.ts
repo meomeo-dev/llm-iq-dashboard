@@ -81,18 +81,19 @@ describe("sync-data CLI", () => {
     await rm(tempBase, { recursive: true, force: true });
   });
 
-  it("parseCliArgs 正确解析各选项", () => {
+  it("parseCliArgs 正确解析各选项及同义别名，并拦截未知选项与响应 --help", async () => {
     const args = [
-      "--repo",
-      "/my/repo",
+      "--",
+      "--repo=/my/repo",
       "--dry-run",
       "--push",
       "--confirm-published",
       "--json",
       "--run",
-      "20260927T010000Z",
-      "--run",
-      "20260927T020000Z",
+      "20260927T010000Z,20260927T020000Z",
+      "--only",
+      "20260927T030000Z",
+      "-y",
     ];
     const parsed = parseCliArgs(args);
     assert.equal(parsed.repoPath, "/my/repo");
@@ -100,7 +101,33 @@ describe("sync-data CLI", () => {
     assert.equal(parsed.push, true);
     assert.equal(parsed.confirmPublished, true);
     assert.equal(parsed.json, true);
-    assert.deepEqual(parsed.runIds, ["20260927T010000Z", "20260927T020000Z"]);
+    assert.equal(parsed.yes, true);
+    assert.deepEqual(parsed.runIds, ["20260927T010000Z", "20260927T020000Z", "20260927T030000Z"]);
+
+    const helpOut: string[] = [];
+    const helpCode = await runSyncCli(["--help"], (m) => helpOut.push(m), () => {});
+    assert.equal(helpCode, 0);
+    assert.ok(helpOut.some((m) => m.includes("用法: pnpm sync:data")));
+
+    const badErr: string[] = [];
+    const badCode = await runSyncCli(["--unknown-flag"], () => {}, (m) => badErr.push(m));
+    assert.equal(badCode, 1);
+    assert.ok(badErr.some((m) => m.includes("未知选项")));
+
+    // --push without --dry-run invokes confirmOrAbort and aborts if declined
+    let confirmPrompted = false;
+    const cancelCode = await runSyncCli(
+      ["--repo", repoDir, "--push"],
+      () => {},
+      () => {},
+      async () => {
+        confirmPrompted = true;
+        return false;
+      },
+    );
+    assert.equal(confirmPrompted, true);
+    assert.equal(cancelCode, 1);
+    process.exitCode = 0;
   });
 
   it("缺少 repo 参数且未配置时退出码为 1", async () => {

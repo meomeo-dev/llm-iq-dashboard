@@ -63,36 +63,24 @@ async function executeSampleMutation(params: SamplePatchParams, deviceId: string
     : null;
   if (params.exclude || params.include) {
     await mutateSampleSetFlags({
-      cli: params.cli,
-      appliedEffort,
-      model: params.model,
-      probe: params.probe,
-      exclude: params.exclude,
-      include: params.include,
+      cli: params.cli, appliedEffort, model: params.model, probe: params.probe,
+      exclude: params.exclude, include: params.include,
     });
   }
 
   const updatedSet = await readSampleSet(params.cli, appliedEffort, params.model, params.probe);
   const gap = computeProbeSampleGap({
-    cli: params.cli,
-    model: params.model,
-    probe: params.probe,
-    sampleSet: updatedSet ?? undefined,
-    samplesPerProbe: fpCfg.samplesPerProbe,
-    samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck,
-    maxCallsFactor: fpCfg.maxCallsFactor,
-    overrides: fpCfg.modelPrompts,
+    cli: params.cli, model: params.model, probe: params.probe, sampleSet: updatedSet ?? undefined,
+    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+    maxCallsFactor: fpCfg.maxCallsFactor, overrides: fpCfg.modelPrompts,
   });
   const attempts = updatedSet
-    ? decodeSampleSetAttempts(updatedSet, gap.targetValues, fpCfg.valuesPerCheck, fpCfg.modelPrompts, undefined, fpCfg.samplesByProbe)
+    ? decodeSampleSetAttempts(updatedSet, gap.targetValues, fpCfg.valuesPerCheck, fpCfg.modelPrompts, undefined, fpCfg.samplesByProbe, fpCfg.valuesPerCheckByProbe)
     : [];
 
   await audit({
-    action: "fingerprint-samples",
-    outcome: "ok",
-    deviceId,
-    ip,
+    action: "fingerprint-samples", outcome: "ok", deviceId, ip,
     detail: `${params.cli}/${params.model}/${params.probe} reset=${String(params.reset)}`,
   });
   return { ok: true, cli: params.cli, model: params.model, probe: params.probe, archivePath, gap, attempts };

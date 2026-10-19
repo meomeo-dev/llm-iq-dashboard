@@ -20,6 +20,7 @@ export type {
 export { DEFAULT_UPSTREAM_TYPES, hasRhythm } from "./config/types";
 export {
   DEFAULT_MODEL_FINGERPRINT_CONFIG,
+  deriveReferencesFromTargets,
   parseModelFingerprint,
   resolveModelFingerprintConfig,
 } from "./config/model-fingerprint";

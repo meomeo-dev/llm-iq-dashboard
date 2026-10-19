@@ -10,9 +10,9 @@ import {
 } from "./jsd";
 import { getProbe, type Probe, type PromptCodec } from "./probes";
 import {
-  DEFAULT_SAMPLES_PER_PROBE, DEFAULT_TARGET_ACCURACY, DEFAULT_VALUES_PER_CHECK,
+  DEFAULT_SAMPLES_PER_PROBE, DEFAULT_TARGET_ACCURACY, DEFAULT_VALUES_PER_CALL, DEFAULT_VALUES_PER_CHECK,
   MAX_SELF_TEST_FOLDS, MIN_PAIRWISE_THRESHOLD, MIN_SAMPLES_PER_PROBE, PROBE_IDS,
-  resolveProbeTargetSamples,
+  resolveProbeTargetSamples, resolveProbeValuesPerCheck,
   type DecodedAttemptSummary, type ModelPromptOverrides, type ProbeId, type ProbeSampleSet, type QualifiedProbeValue,
 } from "./types";
 
@@ -41,7 +41,8 @@ export interface CapacityCurvePoint {
 
 export interface SelfTestReport {
   readonly samplesPerProbe: number; readonly samplesByProbe?: Partial<Record<ProbeId, number>>;
-  readonly valuesPerCheck: number; readonly foldCount: number; readonly targetAccuracy: number;
+  readonly valuesPerCheck: number; readonly valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  readonly foldCount: number; readonly targetAccuracy: number;
   readonly modelSelfBounds: Record<string, { usableProbes: ProbeId[]; selfLowerBound: number; expectedConsistency: number; expectedFalseInconsistentRate: number }>;
   readonly pairs: SelfTestPairSummary[];
   readonly probeSeparability: Partial<Record<ProbeId, { distinguishablePairs: number; totalPairs: number; meanThreshold: number | null }>>;
@@ -58,27 +59,24 @@ export function resolveMinProbeTargetSamples(
 
 export function extractValidValuesFromSampleSet(
   sampleSet: Pick<ProbeSampleSet, "probe" | "cli" | "model" | "attempts">,
-  overrides?: ModelPromptOverrides,
-  customProbe?: Probe,
+  overrides?: ModelPromptOverrides, customProbe?: Probe,
 ): QualifiedProbeValue[] {
   const probe = customProbe ?? getProbe(sampleSet.probe);
   const activeCodec: PromptCodec = probe.resolveCodec({ cli: sampleSet.cli, model: sampleSet.model }, overrides);
   const results: QualifiedProbeValue[] = [];
   for (const attempt of sampleSet.attempts) {
     if (attempt.outcome !== "ok" || attempt.excluded === true) continue;
-    for (const value of probe.extractAttempt(attempt, activeCodec).values) {
-      results.push({ reqId: attempt.reqId, value });
-    }
+    for (const value of probe.extractAttempt(attempt, activeCodec).values) results.push({ reqId: attempt.reqId, value });
   }
   return results;
 }
 
 export function capAndSliceReferencePool(
-  values: readonly QualifiedProbeValue[],
-  samplesPerProbe: number,
-  valuesPerCheck: number,
+  values: readonly QualifiedProbeValue[], samplesPerProbe: number, valuesPerCheck: number,
 ): QualifiedProbeValue[] {
-  const maxPerReqId = Math.max(1, Math.floor(samplesPerProbe / (2 * valuesPerCheck)));
+  const holdoutBatches =
+    valuesPerCheck >= DEFAULT_VALUES_PER_CALL ? Math.ceil(valuesPerCheck / DEFAULT_VALUES_PER_CALL) : valuesPerCheck;
+  const maxPerReqId = Math.max(1, Math.floor(samplesPerProbe / (2 * holdoutBatches)));
   const countsByReq = new Map<string, number>();
   const pool: QualifiedProbeValue[] = [];
   for (const item of values) {
@@ -150,11 +148,27 @@ export function buildFoldIndexSets(samplesPerProbe: number, valuesPerCheck: numb
     : sampleDeterministicCombinations(samplesPerProbe, valuesPerCheck, MAX_SELF_TEST_FOLDS);
 }
 
+function buildProbeBatchFoldIndices(
+  pool: readonly QualifiedProbeValue[], valuesPerCheck: number, fallbackFolds: readonly (readonly number[])[],
+): readonly (readonly number[])[] {
+  if (valuesPerCheck < DEFAULT_VALUES_PER_CALL) return fallbackFolds;
+  const reqBuckets = new Map<string, number[]>();
+  pool.forEach((item, idx) => {
+    const bucket = reqBuckets.get(item.reqId) ?? [];
+    bucket.push(idx);
+    reqBuckets.set(item.reqId, bucket);
+  });
+  const buckets = [...reqBuckets.values()];
+  if (buckets.length < 2) return fallbackFolds;
+  const holdoutReqs = Math.max(1, Math.min(Math.floor(buckets.length / 2), Math.ceil(valuesPerCheck / (pool.length / buckets.length))));
+  const combos = buildFoldIndexSets(buckets.length, holdoutReqs).map((c) =>
+    c.flatMap((bIdx) => buckets[bIdx]!).slice(0, Math.max(valuesPerCheck, DEFAULT_VALUES_PER_CALL)),
+  );
+  return Array.from({ length: fallbackFolds.length }, (_, r) => combos[r % combos.length]!);
+}
+
 export function prepareModelProbeFolds(
-  probeId: ProbeId,
-  pool: readonly QualifiedProbeValue[],
-  foldIndices: readonly (readonly number[])[],
-  customProbe?: Probe,
+  probeId: ProbeId, pool: readonly QualifiedProbeValue[], foldIndices: readonly (readonly number[])[], customProbe?: Probe,
 ): PreparedProbeFolds {
   const probe = customProbe ?? getProbe(probeId);
   const queryDists: PooledProbeDistributions[] = [];
@@ -167,9 +181,7 @@ export function prepareModelProbeFolds(
       mappedIdx.length === 1
         ? pool.filter((item, pos) => heldOutPos.has(pos) || heldOutReqIds.has(item.reqId)).map((item) => item.value)
         : mappedIdx.map((idx) => pool[idx]!.value);
-    const remaining = pool
-      .filter((item, pos) => !heldOutPos.has(pos) && !heldOutReqIds.has(item.reqId))
-      .map((item) => item.value);
+    const remaining = pool.filter((item, pos) => !heldOutPos.has(pos) && !heldOutReqIds.has(item.reqId)).map((item) => item.value);
     queryDists.push(poolProbeDistributions(probe, queryVals));
     remainingByFold.push(remaining);
   }
@@ -180,12 +192,9 @@ export function prepareModelProbeFolds(
 
 export function prepareAllModelsFolds(
   sampleSetsByModel: ReadonlyMap<string, Readonly<Partial<Record<ProbeId, ProbeSampleSet>>>>,
-  selectedProbes: readonly ProbeId[],
-  samplesPerProbe: number,
-  valuesPerCheck: number,
-  foldIndices: readonly (readonly number[])[],
-  overrides?: ModelPromptOverrides,
-  samplesByProbe?: Partial<Record<ProbeId, number>>,
+  selectedProbes: readonly ProbeId[], samplesPerProbe: number, valuesPerCheck: number,
+  foldIndices: readonly (readonly number[])[], overrides?: ModelPromptOverrides,
+  samplesByProbe?: Partial<Record<ProbeId, number>>, valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>,
 ): Map<string, Partial<Record<ProbeId, PreparedProbeFolds>>> {
   const preparedByModel = new Map<string, Partial<Record<ProbeId, PreparedProbeFolds>>>();
   for (const [model, byProbe] of sampleSetsByModel.entries()) {
@@ -194,8 +203,11 @@ export function prepareAllModelsFolds(
       const set = byProbe[p];
       if (!set) continue;
       const targetForProbe = resolveProbeTargetSamples(p, { samplesPerProbe, samplesByProbe });
-      const pool = capAndSliceReferencePool(extractValidValuesFromSampleSet(set, overrides), targetForProbe, valuesPerCheck);
-      if (pool.length >= targetForProbe) prepMap[p] = prepareModelProbeFolds(p, pool, foldIndices);
+      const checkForProbe = resolveProbeValuesPerCheck(p, { valuesPerCheck, valuesPerCheckByProbe });
+      const pool = capAndSliceReferencePool(extractValidValuesFromSampleSet(set, overrides), targetForProbe, checkForProbe);
+      if (pool.length >= targetForProbe) {
+        prepMap[p] = prepareModelProbeFolds(p, pool, buildProbeBatchFoldIndices(pool, checkForProbe, foldIndices));
+      }
     }
     if (Object.keys(prepMap).length > 0) preparedByModel.set(model, prepMap);
   }
@@ -203,9 +215,7 @@ export function prepareAllModelsFolds(
 }
 
 export function computeSelfSimFoldScores(
-  probes: readonly ProbeId[],
-  preparedByProbe: Readonly<Partial<Record<ProbeId, PreparedProbeFolds>>>,
-  foldCount: number,
+  probes: readonly ProbeId[], preparedByProbe: Readonly<Partial<Record<ProbeId, PreparedProbeFolds>>>, foldCount: number,
 ): number[] {
   return Array.from({ length: foldCount }, (_, r) => {
     const sum = probes.reduce(
@@ -222,45 +232,32 @@ export function computeFifthPercentileBound(foldScores: readonly number[]): numb
 }
 
 export function computeIntraProbeConvergence(
-  probeId: ProbeId,
-  rawValues: readonly QualifiedProbeValue[],
-  targetValues: number,
-  valuesPerCheck: number,
-  customProbe?: Probe,
+  probeId: ProbeId, rawValues: readonly QualifiedProbeValue[], targetValues: number, valuesPerCheck: number, customProbe?: Probe,
 ): { intraProbeSim: number | null; intraProbeLowerBound: number | null } {
   const pool = capAndSliceReferencePool(rawValues, targetValues, valuesPerCheck);
   if (pool.length < MIN_SAMPLES_PER_PROBE) return { intraProbeSim: null, intraProbeLowerBound: null };
   const probe = customProbe ?? getProbe(probeId);
-  const folds = buildFoldIndexSets(pool.length, valuesPerCheck);
+  const baseFolds = buildFoldIndexSets(pool.length, valuesPerCheck >= DEFAULT_VALUES_PER_CALL ? 2 : valuesPerCheck);
+  const folds = buildProbeBatchFoldIndices(pool, valuesPerCheck, baseFolds);
   const prep = prepareModelProbeFolds(probeId, pool, folds, probe);
   if (prep.singleRefCapacity < 1) return { intraProbeSim: null, intraProbeLowerBound: null };
   const checkScores = computeSelfSimFoldScores([probeId], { [probeId]: prep }, folds.length);
   const reqIds = [...new Set(pool.map((v) => v.reqId))];
   const splitScores =
     reqIds.length >= 2
-      ? buildFoldIndexSets(reqIds.length, Math.floor(reqIds.length / 2))
-          .slice(0, 20)
-          .map((idxSet) => {
-            const setA = new Set(idxSet.map((i) => reqIds[i]!));
-            const halfA = pool.filter((v) => setA.has(v.reqId)).map((v) => v.value);
-            const halfB = pool.filter((v) => !setA.has(v.reqId)).map((v) => v.value);
-            const cap = Math.min(halfA.length, halfB.length);
-            return computeProbeSubsetScore(probe, halfA.slice(0, cap), halfB.slice(0, cap));
-          })
-      : [
-          computeProbeSubsetScore(
-            probe,
-            pool.slice(0, Math.floor(pool.length / 2)).map((v) => v.value),
-            pool.slice(Math.floor(pool.length / 2), 2 * Math.floor(pool.length / 2)).map((v) => v.value),
-          ),
-        ];
-  const meanSplitSim = splitScores.reduce((a, b) => a + b, 0) / splitScores.length;
-  return { intraProbeSim: meanSplitSim, intraProbeLowerBound: computeFifthPercentileBound(checkScores) };
+      ? buildFoldIndexSets(reqIds.length, Math.floor(reqIds.length / 2)).slice(0, 20).map((idxSet) => {
+          const setA = new Set(idxSet.map((i) => reqIds[i]!));
+          const halfA = pool.filter((v) => setA.has(v.reqId)).map((v) => v.value);
+          const halfB = pool.filter((v) => !setA.has(v.reqId)).map((v) => v.value);
+          const cap = Math.min(halfA.length, halfB.length);
+          return computeProbeSubsetScore(probe, halfA.slice(0, cap), halfB.slice(0, cap));
+        })
+      : [computeProbeSubsetScore(probe, pool.slice(0, Math.floor(pool.length / 2)).map((v) => v.value), pool.slice(Math.floor(pool.length / 2), 2 * Math.floor(pool.length / 2)).map((v) => v.value))];
+  return { intraProbeSim: splitScores.reduce((a, b) => a + b, 0) / splitScores.length, intraProbeLowerBound: computeFifthPercentileBound(checkScores) };
 }
 
 export function buildPairwiseRefDistsForProbe(
-  prepC: PreparedProbeFolds,
-  prepA: PreparedProbeFolds,
+  prepC: PreparedProbeFolds, prepA: PreparedProbeFolds,
 ): { refDistsC: PooledProbeDistributions[]; refDistsA: PooledProbeDistributions[] } {
   const commonCap = Math.min(prepC.singleRefCapacity, prepA.singleRefCapacity);
   const slicePool = (prep: PreparedProbeFolds): PooledProbeDistributions[] =>
@@ -322,18 +319,20 @@ export function computeExpectedRatesForDeclaredModel(
   calibrations: readonly PairwiseCalibration[],
 ): { expectedConsistency: number; expectedFalseInconsistentRate: number } {
   const R = selfFoldScores.length;
+  if (R === 0) return { expectedConsistency: 0, expectedFalseInconsistentRate: 0 };
+  if (calibrations.length === 0) {
+    const selfPassed = selfFoldScores.filter((s) => s >= selfLowerBound).length;
+    return { expectedConsistency: selfPassed / R, expectedFalseInconsistentRate: 0 };
+  }
   const distCals = calibrations.filter(
     (c): c is PairwiseCalibration & { threshold: number } => c.distinguishable && c.threshold !== null,
   );
-  if (distCals.length === 0 || R === 0) return { expectedConsistency: 0, expectedFalseInconsistentRate: 0 };
+  if (distCals.length === 0) return { expectedConsistency: 0, expectedFalseInconsistentRate: 0 };
   let consistentFolds = 0;
   let falseInconsistentFolds = 0;
   for (let r = 0; r < R; r += 1) {
-    if (distCals.some((c) => c.foldDiffsC[r]! <= -c.threshold)) {
-      falseInconsistentFolds += 1;
-    } else if (selfFoldScores[r]! >= selfLowerBound && distCals.every((c) => c.foldDiffsC[r]! >= c.threshold)) {
-      consistentFolds += 1;
-    }
+    if (distCals.some((c) => c.foldDiffsC[r]! <= -c.threshold)) falseInconsistentFolds += 1;
+    else if (selfFoldScores[r]! >= selfLowerBound && distCals.every((c) => c.foldDiffsC[r]! >= c.threshold)) consistentFolds += 1;
   }
   return { expectedConsistency: consistentFolds / R, expectedFalseInconsistentRate: falseInconsistentFolds / R };
 }
@@ -345,9 +344,11 @@ export function decodeSampleSetAttempts(
   overrides?: ModelPromptOverrides,
   customProbe?: Probe,
   samplesByProbe?: Partial<Record<ProbeId, number>>,
+  valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>,
 ): DecodedAttemptSummary[] {
   const probe = customProbe ?? getProbe(sampleSet.probe);
   const targetForProbe = resolveProbeTargetSamples(sampleSet.probe, { samplesPerProbe, samplesByProbe });
+  const checkForProbe = resolveProbeValuesPerCheck(sampleSet.probe, { valuesPerCheck, valuesPerCheckByProbe });
   const activeCodec = probe.resolveCodec({ cli: sampleSet.cli, model: sampleSet.model }, overrides);
   const allValid: QualifiedProbeValue[] = [];
   const extracted = sampleSet.attempts.map((a) => {
@@ -357,7 +358,7 @@ export function decodeSampleSetAttempts(
     return ext;
   });
   const activeCounts = new Map<string, number>();
-  for (const item of capAndSliceReferencePool(allValid, targetForProbe, valuesPerCheck)) {
+  for (const item of capAndSliceReferencePool(allValid, targetForProbe, checkForProbe)) {
     activeCounts.set(item.reqId, (activeCounts.get(item.reqId) ?? 0) + 1);
   }
   return sampleSet.attempts.map((a, idx) => {
@@ -380,9 +381,7 @@ export function decodeSampleSetAttempts(
 
 function evaluatePreparedModels(
   preparedByModel: ReadonlyMap<string, Partial<Record<ProbeId, PreparedProbeFolds>>>,
-  selectedProbes: readonly ProbeId[],
-  foldCount: number,
-  targetAccuracy: number,
+  selectedProbes: readonly ProbeId[], foldCount: number, targetAccuracy: number,
 ) {
   const models = [...preparedByModel.keys()].sort();
   const modelSelfBounds: SelfTestReport["modelSelfBounds"] = {};
@@ -415,11 +414,8 @@ function evaluatePreparedModels(
 }
 
 function computeProbeSeparability(
-  models: readonly string[],
-  preparedByModel: ReadonlyMap<string, Partial<Record<ProbeId, PreparedProbeFolds>>>,
-  selectedProbes: readonly ProbeId[],
-  foldCount: number,
-  targetAccuracy: number,
+  models: readonly string[], preparedByModel: ReadonlyMap<string, Partial<Record<ProbeId, PreparedProbeFolds>>>,
+  selectedProbes: readonly ProbeId[], foldCount: number, targetAccuracy: number,
 ): SelfTestReport["probeSeparability"] {
   const probeSeparability: SelfTestReport["probeSeparability"] = {};
   for (const p of selectedProbes) {
@@ -474,7 +470,8 @@ function buildCapacityCurve(
 export function buildSelfTestReport(options: {
   sampleSetsByModel: ReadonlyMap<string, Readonly<Partial<Record<ProbeId, ProbeSampleSet>>>>;
   probes?: readonly ProbeId[]; samplesPerProbe?: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number; targetAccuracy?: number; overrides?: ModelPromptOverrides;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
+  targetAccuracy?: number; overrides?: ModelPromptOverrides; includeCapacityCurve?: boolean;
 }): SelfTestReport {
   const valuesPerCheck = options.valuesPerCheck ?? DEFAULT_VALUES_PER_CHECK;
   const targetAccuracy = options.targetAccuracy ?? DEFAULT_TARGET_ACCURACY;
@@ -482,18 +479,20 @@ export function buildSelfTestReport(options: {
   const minTarget = resolveMinProbeTargetSamples(selectedProbes, {
     samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
   });
-  const foldIndices = buildFoldIndexSets(minTarget, valuesPerCheck);
+  const hasBatchChecks = selectedProbes.some((p) => resolveProbeValuesPerCheck(p, options) >= DEFAULT_VALUES_PER_CALL);
+  const foldIndices = buildFoldIndexSets(minTarget, hasBatchChecks ? 2 : valuesPerCheck);
   const foldCount = foldIndices.length;
   const preparedByModel = prepareAllModelsFolds(
     options.sampleSetsByModel, selectedProbes, options.samplesPerProbe ?? minTarget,
-    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe,
+    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe, options.valuesPerCheckByProbe,
   );
   const { models, modelSelfBounds, pairs } = evaluatePreparedModels(preparedByModel, selectedProbes, foldCount, targetAccuracy);
   return {
     samplesPerProbe: options.samplesPerProbe ?? minTarget,
     ...(options.samplesByProbe ? { samplesByProbe: options.samplesByProbe } : {}),
-    valuesPerCheck, foldCount, targetAccuracy, modelSelfBounds, pairs,
+    valuesPerCheck, ...(options.valuesPerCheckByProbe ? { valuesPerCheckByProbe: options.valuesPerCheckByProbe } : {}),
+    foldCount, targetAccuracy, modelSelfBounds, pairs,
     probeSeparability: computeProbeSeparability(models, preparedByModel, selectedProbes, foldCount, targetAccuracy),
-    capacityCurve: buildCapacityCurve(options.sampleSetsByModel, selectedProbes, minTarget, valuesPerCheck, targetAccuracy, options.overrides),
+    capacityCurve: options.includeCapacityCurve === false ? [] : buildCapacityCurve(options.sampleSetsByModel, selectedProbes, minTarget, valuesPerCheck, targetAccuracy, options.overrides),
   };
 }

@@ -43,7 +43,7 @@ export function PendingRunRow({ run, state, disabled, onToggleRun, onToggleAttem
   return (
     <li className={pick === "none" ? "unselected" : ""}>
       <div className="data-repo-pending-row">
-        <label>
+        <label className="data-repo-pending-label">
           <TriStateCheckbox pick={pick} disabled={disabled} onChange={() => onToggleRun(run)} />
           <span className="data-repo-pending-time">{formatRunIdTime(run.runId)}</span>
           <code className="data-repo-pending-id">{run.runId}</code>
@@ -109,6 +109,7 @@ function TriStateCheckbox({ pick, disabled, onChange }: { pick: string; disabled
     <input
       ref={ref}
       type="checkbox"
+      className="data-repo-pending-checkbox"
       checked={pick !== "none"}
       aria-checked={pick === "some" ? "mixed" : pick === "all"}
       disabled={disabled}
@@ -133,7 +134,7 @@ function AttemptTile({ runId, item, picked, disabled, onToggle }: AttemptTilePro
   const art = item.svgFile === null ? null : artHref(runId, item.svgFile);
   return (
     <li className={picked ? "" : "unselected"}>
-      <label>
+      <label className="data-repo-attempt-label">
         <input type="checkbox" checked={picked} disabled={disabled} onChange={onToggle} />
         <span className="data-repo-attempt-thumb">
           {art !== null ? <img src={art} alt="" loading="lazy" /> : (

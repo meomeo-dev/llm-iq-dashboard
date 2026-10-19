@@ -7,45 +7,30 @@
  */
 
 import { NextResponse } from "next/server";
+import { listProfileOptions } from "@/app/api/run/run-options";
 import { readCachedCatalog } from "@/capabilities/catalog";
 import { describeActiveWorkConflict, findActiveWork } from "@/core/active-work";
 import { audit } from "@/core/auth/audit";
 import { clientIp, requireOwner, requireOwnerAction } from "@/core/auth/guard";
 import { loadConfig, resolveModelFingerprintConfig, type AppConfig } from "@/core/config";
 import { isReadonly } from "@/core/deploy-mode";
+import { executeFingerprintCheckBatch, executeFingerprintFill, rescoreCheckRecord, resolveFingerprintTarget } from "@/core/model-fingerprint/collect";
 import {
-  executeFingerprintCheck,
-  executeFingerprintFill,
-  rescoreCheckRecord,
-  resolveFingerprintTarget,
-} from "@/core/model-fingerprint/collect";
+  listCachedCheckRecords,
+  listCachedSampleSets,
+  resolveDashboardBaseline,
+} from "@/core/model-fingerprint/baseline-cache";
+import { computeTargetFallbackCost } from "@/core/model-fingerprint/cost";
 import { findActiveFingerprintJob, requestFingerprintJobCancel } from "@/core/model-fingerprint/job";
-import {
-  computeProbeSampleGap,
-  planFingerprintStatus,
-  planReferenceFill,
-  planVerificationCheck,
-  resolveSelectedProbes,
-} from "@/core/model-fingerprint/plan";
+import { aggregateVerificationCheckPlans, computeProbeSampleGap, planFingerprintStatus, planReferenceFill, planVerificationCheck, resolveSelectedProbes } from "@/core/model-fingerprint/plan";
 import { buildSelfTestReport, decodeSampleSetAttempts } from "@/core/model-fingerprint/self-test";
-import {
-  buildSampleSetsByKeyMap,
-  buildSampleSetsByModelMap,
-  listAllSampleSets,
-  listCheckRecords,
-  readCheckRecord,
-  readSampleSet,
-} from "@/core/model-fingerprint/store";
+import { buildSampleSetsByKeyMap, buildSampleSetsByModelMap, listAllSampleSets, listCheckRecords, readCheckRecord, readSampleSet } from "@/core/model-fingerprint/store";
 import { isProbeId, type ProbeId, type ProbeSampleSet } from "@/core/model-fingerprint/types";
-import { listProfileOptions } from "@/app/api/run/run-options";
 import { configPath } from "@/core/paths";
 import { readCredentialStatus } from "@/core/profile-credentials";
-import {
-  enqueueRequest,
-  waitForRequest,
-  type FingerprintCheckRequestPayload,
-  type FingerprintFillRequestPayload,
-} from "@/core/requests";
+import { toProfileView } from "@/core/profile-view";
+import { enqueueRequest, waitForRequest, type FingerprintCheckRequestPayload, type FingerprintFillRequestPayload } from "@/core/requests";
+import { launchFor } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
 import { CLI_KINDS, DEFAULT_PROFILE, type CliKind } from "@/core/types";
 
@@ -53,6 +38,7 @@ export const dynamic = "force-dynamic";
 
 const FLAG = Symbol.for("pelican.fingerprintJobInFlight");
 const RUNNER_START_TIMEOUT_MS = 60_000;
+const SAFE_ID_RE = /^[A-Za-z0-9._-]+$/;
 
 interface FlagHolder {
   [FLAG]?: boolean;
@@ -80,13 +66,9 @@ function parseStringList(raw: unknown): string[] | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-const SAFE_ID_RE = /^[A-Za-z0-9._-]+$/;
-
 function parseCountInput(raw: unknown): number | undefined {
   if (raw === undefined || raw === null) return undefined;
-  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0) {
-    throw new Error("count 必须为非负整数");
-  }
+  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0) throw new Error("count 必须为非负整数");
   return raw;
 }
 
@@ -104,18 +86,10 @@ function parseSampleDetailTarget(url: URL): { cli: string | null; model: string;
     const first = compact.indexOf(":");
     const last = compact.lastIndexOf(":");
     if (first > 0 && last > first + 1) {
-      return {
-        cli: compact.slice(0, first),
-        model: compact.slice(first + 1, last),
-        probe: compact.slice(last + 1),
-      };
+      return { cli: compact.slice(0, first), model: compact.slice(first + 1, last), probe: compact.slice(last + 1) };
     }
   }
-  return {
-    cli: url.searchParams.get("cli"),
-    model: url.searchParams.get("model")?.trim() ?? "",
-    probe: url.searchParams.get("probe"),
-  };
+  return { cli: url.searchParams.get("cli"), model: url.searchParams.get("model")?.trim() ?? "", probe: url.searchParams.get("probe") };
 }
 
 async function handleSampleDetailGet(config: AppConfig, url: URL): Promise<NextResponse> {
@@ -124,14 +98,19 @@ async function handleSampleDetailGet(config: AppConfig, url: URL): Promise<NextR
     return NextResponse.json({ error: "查询单格样本须提供合法的 cli、model 与 probe" }, { status: 400 });
   }
   const fpCfg = resolveModelFingerprintConfig(config);
-  const sampleSet = await findSampleSetForTarget(config, cli, model, probe);
+  const [sampleSet, cliSets] = await Promise.all([
+    findSampleSetForTarget(config, cli, model, probe),
+    listCachedSampleSets({ cli, appliedEffort: fpCfg.effort }),
+  ]);
+  const fallbackCost = computeTargetFallbackCost(cliSets, cli, model);
   const gap = computeProbeSampleGap({
     cli, model, probe, sampleSet: sampleSet ?? undefined,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe, valuesPerCheck: fpCfg.valuesPerCheck,
-    maxCallsFactor: fpCfg.maxCallsFactor, overrides: fpCfg.modelPrompts,
+    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+    maxCallsFactor: fpCfg.maxCallsFactor, overrides: fpCfg.modelPrompts, fallbackUnitCostUsd: fallbackCost,
   });
   const attempts = sampleSet
-    ? decodeSampleSetAttempts(sampleSet, gap.targetValues, fpCfg.valuesPerCheck, fpCfg.modelPrompts, undefined, fpCfg.samplesByProbe)
+    ? decodeSampleSetAttempts(sampleSet, gap.targetValues, fpCfg.valuesPerCheck, fpCfg.modelPrompts, undefined, fpCfg.samplesByProbe, fpCfg.valuesPerCheckByProbe)
     : [];
   return NextResponse.json({ cli, model, probe, gap, attempts });
 }
@@ -144,19 +123,17 @@ function buildSelfTestsByCli(config: AppConfig, allSets: readonly ProbeSampleSet
     const cliSets = allSets.filter((s) => s.cli === cli);
     if (cliSets.length === 0) continue;
     byCli[cli] = buildSelfTestReport({
-      sampleSetsByModel: buildSampleSetsByModelMap(cliSets),
-      probes,
-      samplesPerProbe: fpCfg.samplesPerProbe,
-      samplesByProbe: fpCfg.samplesByProbe,
-      valuesPerCheck: fpCfg.valuesPerCheck,
-      targetAccuracy: fpCfg.targetAccuracy,
-      overrides: fpCfg.modelPrompts,
+      sampleSetsByModel: buildSampleSetsByModelMap(cliSets), probes,
+      samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+      valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+      targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
     });
   }
   const firstCli = Object.keys(byCli)[0];
   const primary = firstCli ? byCli[firstCli]! : buildSelfTestReport({
     sampleSetsByModel: new Map(), probes,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe, valuesPerCheck: fpCfg.valuesPerCheck,
+    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
     targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
   });
   return { selfTest: primary, selfTestByCli: byCli };
@@ -164,22 +141,27 @@ function buildSelfTestsByCli(config: AppConfig, allSets: readonly ProbeSampleSet
 
 async function buildDashboardSnapshot(config: AppConfig): Promise<NextResponse> {
   const fpCfg = resolveModelFingerprintConfig(config);
-  const allSets = await listAllSampleSets({ appliedEffort: fpCfg.effort });
-  const baseOpts = {
-    configuredProbes: fpCfg.probes, samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck, maxCallsFactor: fpCfg.maxCallsFactor, overrides: fpCfg.modelPrompts,
-  };
-  const matrix = planFingerprintStatus({ configuredReferences: fpCfg.references, onDiskSampleSets: allSets, ...baseOpts });
-  const fillPlan = planReferenceFill({ configuredReferences: fpCfg.references, sampleSets: buildSampleSetsByKeyMap(allSets), ...baseOpts });
-  const { selfTest, selfTestByCli } = buildSelfTestsByCli(config, allSets);
-  const [activeJob, activeWork, checks, credentials] = await Promise.all([
-    findActiveFingerprintJob(),
-    findActiveWork(),
-    listCheckRecords(50),
-    readCredentialStatus(),
+  const [allSets, activeJob, activeWork, checks, credentials] = await Promise.all([
+    listCachedSampleSets({ appliedEffort: fpCfg.effort }),
+    findActiveFingerprintJob(), findActiveWork(), listCachedCheckRecords(50), readCredentialStatus(),
   ]);
-  const profiles = listProfileOptions(config, credentials);
-  return NextResponse.json({ modelFingerprint: fpCfg, profiles, matrix, fillPlan, selfTest, selfTestByCli, activeJob, activeWork, checks });
+  const { matrix, fillPlan, selfTest, selfTestByCli } = resolveDashboardBaseline(fpCfg, allSets);
+  const profiles = listProfileOptions(config, credentials).map((opt, idx) => ({
+    ...(config.profiles[idx] ? toProfileView(config.profiles[idx]!) : {}),
+    ...opt,
+  }));
+  return NextResponse.json({
+    modelFingerprint: fpCfg,
+    defaultTimeZone: config.schedule.timezone,
+    profiles,
+    matrix,
+    fillPlan,
+    selfTest,
+    selfTestByCli,
+    activeJob,
+    activeWork,
+    checks,
+  });
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -248,20 +230,31 @@ async function handleSelfTestPost(config: AppConfig, body: Record<string, unknow
 }
 
 async function handleCheckPlanPost(config: AppConfig, body: Record<string, unknown>, probes: ProbeId[] | undefined, allSets: ProbeSampleSet[]): Promise<NextResponse> {
-  if (!isCliKind(body.cli)) throw new Error("核验计划须指定合法的 cli");
-  const declaredModel = typeof body.model === "string" ? body.model.trim() : "";
-  if (!declaredModel) throw new Error("核验计划须指定声明模型 model");
+  const rawTargets = Array.isArray(body.targets) && body.targets.length > 0
+    ? body.targets.filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null)
+    : [body];
   const fpCfg = resolveModelFingerprintConfig(config);
   const catalog = await readCachedCatalog();
-  resolveFingerprintTarget(config, catalog, body.cli, declaredModel);
-  const cliSets = allSets.filter((s) => s.cli === body.cli);
-  const checkPlan = planVerificationCheck({
-    cli: body.cli, declaredModel, sampleSetsByModel: buildSampleSetsByModelMap(cliSets),
-    requestedProbes: probes, configuredProbes: fpCfg.probes, samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck, checkAttempts: fpCfg.checkAttempts,
-    targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
+  const plans = rawTargets.map((item) => {
+    const cli = item.cli ?? body.cli;
+    if (!isCliKind(cli)) throw new Error("核验计划须指定合法的 cli");
+    const declaredModel = typeof (item.model ?? item.declaredModel ?? body.model) === "string"
+      ? String(item.model ?? item.declaredModel ?? body.model).trim()
+      : "";
+    if (!declaredModel) throw new Error("核验计划须指定声明模型 model");
+    const profile = typeof item.profile === "string" && item.profile.trim() !== "" ? item.profile.trim() : DEFAULT_PROFILE;
+    if (profile !== DEFAULT_PROFILE) launchFor(config, cli, profile, { allowDisabled: true });
+    resolveFingerprintTarget(config, catalog, cli, declaredModel, profile);
+    const cliSets = allSets.filter((s) => s.cli === cli);
+    return planVerificationCheck({
+      cli, declaredModel, sampleSetsByModel: buildSampleSetsByModelMap(cliSets),
+      requestedProbes: parseProbesInput(item.probes) ?? probes, configuredProbes: fpCfg.probes,
+      samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+      valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+      checkAttempts: fpCfg.checkAttempts, targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
+    });
   });
-  return NextResponse.json({ ok: true, mode: "check", checkPlan });
+  return NextResponse.json({ ok: true, mode: "check", checkPlan: aggregateVerificationCheckPlans(plans) });
 }
 
 async function handlePlanPost(config: AppConfig, body: Record<string, unknown>): Promise<NextResponse> {
@@ -281,7 +274,8 @@ async function handlePlanPost(config: AppConfig, body: Record<string, unknown>):
   const fillPlan = planReferenceFill({
     configuredReferences: fpCfg.references, sampleSets: buildSampleSetsByKeyMap(allSets),
     cliFilter, modelFilter, requestedProbes: probes, configuredProbes: fpCfg.probes,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe, valuesPerCheck: fpCfg.valuesPerCheck,
+    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
     maxCallsFactor: fpCfg.maxCallsFactor, countLimit, overrides: fpCfg.modelPrompts,
     mutation: { reset, excludeReqIds: parseStringList(body.exclude), includeReqIds: parseStringList(body.include) },
   });
@@ -313,11 +307,35 @@ async function handleCancelPost(body: Record<string, unknown>, who: { deviceId: 
   return NextResponse.json({ ok: true, jobId: active.jobId });
 }
 
-function parseFillPayload(body: Record<string, unknown>): FingerprintFillRequestPayload {
+function parseProfilesByCliInput(raw: unknown): Partial<Record<CliKind, string>> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Partial<Record<CliKind, string>> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isCliKind(k) || typeof v !== "string") continue;
+    const name = v.trim();
+    if (name && name !== DEFAULT_PROFILE) out[k] = name;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+async function validateProfileLaunch(config: AppConfig, cli: CliKind, profile: string): Promise<void> {
+  if (!profile || profile === DEFAULT_PROFILE) return;
+  const res = await launchFor(config, cli, profile, { allowDisabled: true });
+  if (typeof res === "string") throw new Error(res);
+}
+
+async function parseFillPayload(config: AppConfig, body: Record<string, unknown>): Promise<FingerprintFillRequestPayload> {
   const cli = body.cli !== undefined && body.cli !== "" ? (isCliKind(body.cli) ? body.cli : undefined) : undefined;
   if (body.cli !== undefined && body.cli !== "" && cli === undefined) throw new Error(`未知 CLI：${String(body.cli)}`);
   const model = typeof body.model === "string" && body.model.trim() !== "" ? body.model.trim() : undefined;
   const profile = typeof body.profile === "string" && body.profile.trim() !== "" ? body.profile.trim() : undefined;
+  const profilesByCli = parseProfilesByCliInput(body.profilesByCli);
+  if (profile && profile !== DEFAULT_PROFILE && cli) await validateProfileLaunch(config, cli, profile);
+  if (profilesByCli) {
+    for (const [k, p] of Object.entries(profilesByCli)) {
+      if (p) await validateProfileLaunch(config, k as CliKind, p);
+    }
+  }
   const probes = parseProbesInput(body.probes);
   const count = parseCountInput(body.count);
   const exclude = parseStringList(body.exclude);
@@ -326,38 +344,29 @@ function parseFillPayload(body: Record<string, unknown>): FingerprintFillRequest
   if (reset && (!cli || !model || !probes || probes.length === 0)) {
     throw new Error("--reset 必须同时显式指定 cli、model 与 probes");
   }
-  return { cli, profile, model, probes, count, exclude, include, reset };
+  return { cli, profile, profilesByCli, model, probes, count, exclude, include, reset };
 }
 
 async function handleFillPost(config: AppConfig, body: Record<string, unknown>, who: { deviceId: string; ip: string | null }): Promise<NextResponse> {
-  const payload = parseFillPayload(body);
+  const payload = await parseFillPayload(config, body);
   const holder = globalThis as FlagHolder;
   if (holder[FLAG] === true) return NextResponse.json({ error: "已有模型指纹作业正在启动" }, { status: 409 });
   holder[FLAG] = true;
-
-  const active = await findActiveWork();
-  if (active !== null) {
+  try {
+    const active = await findActiveWork();
+    if (active !== null) return NextResponse.json({ error: describeActiveWorkConflict(active) }, { status: 409 });
+    return externalRunner()
+      ? await startViaRunner("fingerprint-fill", payload, who)
+      : await startLocalFill(config, payload, who);
+  } finally {
     holder[FLAG] = false;
-    return NextResponse.json({ error: describeActiveWorkConflict(active) }, { status: 409 });
   }
-
-  if (externalRunner()) {
-    try {
-      return await startViaRunner("fingerprint-fill", payload, who);
-    } finally {
-      holder[FLAG] = false;
-    }
-  }
-  return startLocalFill(config, payload, who, () => {
-    holder[FLAG] = false;
-  });
 }
 
 async function startLocalFill(
   config: AppConfig,
   payload: FingerprintFillRequestPayload,
   who: { deviceId: string; ip: string | null },
-  onFinished: () => void,
 ): Promise<NextResponse> {
   let startedResolve!: (out: { jobId: string | null; completed: boolean }) => void;
   let startedReject!: (err: unknown) => void;
@@ -368,8 +377,7 @@ async function startLocalFill(
 
   void executeFingerprintFill(config, { ...payload, onStarted: (jobId) => startedResolve({ jobId, completed: false }) })
     .then((result) => startedResolve({ jobId: result.jobId, completed: true }))
-    .catch((cause: unknown) => startedReject(cause))
-    .finally(onFinished);
+    .catch((cause: unknown) => startedReject(cause));
 
   try {
     const out = await signalPromise;
@@ -386,6 +394,7 @@ async function parseAndValidateCheckPayload(config: AppConfig, body: Record<stri
   const model = typeof body.model === "string" ? body.model.trim() : "";
   if (!model) return NextResponse.json({ error: "check 须指定声明模型 model" }, { status: 400 });
   const profile = typeof body.profile === "string" && body.profile.trim() !== "" ? body.profile.trim() : DEFAULT_PROFILE;
+  await validateProfileLaunch(config, body.cli, profile);
   const probes = parseProbesInput(body.probes);
 
   const fpCfg = resolveModelFingerprintConfig(config);
@@ -395,8 +404,8 @@ async function parseAndValidateCheckPayload(config: AppConfig, body: Record<stri
   const plan = planVerificationCheck({
     cli: body.cli, declaredModel: model, sampleSetsByModel: buildSampleSetsByModelMap(referenceSets),
     requestedProbes: probes, configuredProbes: fpCfg.probes, samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck, checkAttempts: fpCfg.checkAttempts,
-    targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
+    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+    checkAttempts: fpCfg.checkAttempts, targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
   });
   if (plan.executableProbes.length === 0) {
     return NextResponse.json({ error: `声明模型 ${body.cli}/${model} 在所选探针上无满额基准样本集，请先运行 fingerprint:fill` }, { status: 400 });
@@ -421,42 +430,29 @@ async function parseAndValidateCheckBatch(config: AppConfig, body: Record<string
 async function handleCheckPost(config: AppConfig, body: Record<string, unknown>, who: { deviceId: string; ip: string | null }): Promise<NextResponse> {
   const validated = await parseAndValidateCheckBatch(config, body);
   if (validated instanceof NextResponse) return validated;
+  const batchPayload: FingerprintCheckRequestPayload = { ...validated[0]!, targets: validated };
 
   const holder = globalThis as FlagHolder;
   if (holder[FLAG] === true) return NextResponse.json({ error: "已有模型指纹作业正在启动" }, { status: 409 });
   holder[FLAG] = true;
-  const active = await findActiveWork();
-  if (active !== null) {
+  try {
+    const active = await findActiveWork();
+    if (active !== null) return NextResponse.json({ error: describeActiveWorkConflict(active) }, { status: 409 });
+    return externalRunner()
+      ? await startViaRunner("fingerprint-check", batchPayload, who)
+      : await startLocalCheck(config, batchPayload, who);
+  } finally {
     holder[FLAG] = false;
-    return NextResponse.json({ error: describeActiveWorkConflict(active) }, { status: 409 });
   }
-
-  if (externalRunner()) {
-    try {
-      return await startViaRunner("fingerprint-check", validated[0]!, who);
-    } finally {
-      holder[FLAG] = false;
-    }
-  }
-  return startLocalCheck(config, validated, who, () => {
-    holder[FLAG] = false;
-  });
 }
 
 async function startLocalCheck(
   config: AppConfig,
-  payloads: readonly FingerprintCheckRequestPayload[],
+  batchPayload: FingerprintCheckRequestPayload,
   who: { deviceId: string; ip: string | null },
-  onFinished: () => void,
 ): Promise<NextResponse> {
   const started = new Promise<string>((resolve, reject) => {
-    void (async () => {
-      for (let i = 0; i < payloads.length; i++) {
-        await executeFingerprintCheck(config, { ...payloads[i]!, onStarted: i === 0 ? resolve : undefined });
-      }
-    })()
-      .catch((cause: unknown) => reject(cause))
-      .finally(onFinished);
+    void executeFingerprintCheckBatch(config, { ...batchPayload, onStarted: resolve }).catch((cause: unknown) => reject(cause));
   });
   try {
     const jobId = await started;

@@ -40,10 +40,10 @@ export function CheckList({ items, hidden, onChange }: CheckListProps) {
   return (
     <>
       <div className="check-bulk">
-        <button type="button" onClick={showAll} disabled={allShown}>
+        <button type="button" className="check-bulk-btn" onClick={showAll} disabled={allShown}>
           {isEn ? "All" : "全选"}
         </button>
-        <button type="button" onClick={invert} disabled={items.length === 0}>
+        <button type="button" className="check-bulk-btn" onClick={invert} disabled={items.length === 0}>
           {isEn ? "Invert" : "反选"}
         </button>
       </div>

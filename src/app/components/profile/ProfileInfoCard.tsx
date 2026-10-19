@@ -4,15 +4,24 @@ import type { RefObject } from "react";
 import type { ProfileView } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 import { useI18n, type Locale } from "@/i18n";
-import { formatCost, formatDuration } from "../card/card-format";
+import { formatCost, formatDuration, formatUsd } from "../card/card-format";
 import { profileColor } from "./profile-color";
+
+export interface ProfileWorkItem {
+  key: string;
+  label?: string;
+  durationMs: number;
+  costUsd: number | null;
+}
 
 interface ProfileInfoCardProps {
   name: string;
   /** 配置里的上游；已删除、历史结果仍引用时为 null */
   profile: ProfileView | null;
   /** "本件"：弹窗里是该列该轮的调用，大图页是当前作品 */
-  cards: readonly DashboardCard[];
+  cards?: readonly DashboardCard[];
+  /** 指纹核验等非 DashboardCard 场景下的耗时与成本明细 */
+  workItems?: readonly ProfileWorkItem[];
   owner: boolean;
   closeRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
@@ -21,12 +30,12 @@ interface ProfileInfoCardProps {
 /**
  * 上游信息卡：这是哪家、什么套餐、几折，以及本件的耗时与成本。
  */
-export function ProfileInfoCard({ name, profile, cards, owner, closeRef, onClose }: ProfileInfoCardProps) {
+export function ProfileInfoCard({ name, profile, cards = [], workItems = [], owner, closeRef, onClose }: ProfileInfoCardProps) {
   const { locale, t } = useI18n();
   const isEn = locale === "en";
   const title = profile?.label ?? name;
   return (
-    <div className="profile-card" role="dialog" aria-label={isEn ? `Profile ${title}` : `上游 ${title}`}>
+    <div className="profile-popover-card" role="dialog" aria-label={isEn ? `Profile ${title}` : `上游 ${title}`}>
       <header className="profile-card-head">
         <span className="profile-dot" style={{ background: profileColor(name) }} aria-hidden="true" />
         <b className="profile-card-title">{title}</b>
@@ -60,6 +69,19 @@ export function ProfileInfoCard({ name, profile, cards, owner, closeRef, onClose
               : ` · 折算 ${formatCost({ ...card.cost, usd: card.cost.usd * profile.multiplier })}`)}
           {card.judgeCost != null &&
             (isEn ? ` · Judge ${formatCost(card.judgeCost.cost)}` : ` · 裁判 ${formatCost(card.judgeCost.cost)}`)}
+        </p>
+      ))}
+      {workItems.map((item) => (
+        <p key={item.key} className="profile-card-work">
+          {item.label ? `${item.label} ` : isEn ? "Item " : "本件 "}
+          {isEn
+            ? `Time ${formatDuration(item.durationMs)} · List ${formatUsd(item.costUsd)}`
+            : `耗时 ${formatDuration(item.durationMs)} · 官价 ${formatUsd(item.costUsd)}`}
+          {profile !== null &&
+            item.costUsd !== null &&
+            (isEn
+              ? ` · Net ${formatUsd(item.costUsd * profile.multiplier)}`
+              : ` · 折算 ${formatUsd(item.costUsd * profile.multiplier)}`)}
         </p>
       ))}
       {owner && (

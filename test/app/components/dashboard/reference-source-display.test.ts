@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReferenceSourceDisplay } from "@/app/components/ReferenceSourceDisplay";
+import { expectFixture } from "../../../support/fixtures";
 
 (globalThis as unknown as { React: unknown }).React = React;
 
-const fixture = (name: string): string => {
-  const filePath = path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`);
-  return fs.readFileSync(filePath, "utf-8");
+const assertFixture = (actual: string, name: string): void => {
+  expectFixture(actual, path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`));
 };
 
 describe("ReferenceSourceDisplay 特征测试", () => {
@@ -18,7 +17,7 @@ describe("ReferenceSourceDisplay 特征测试", () => {
     const html = renderToStaticMarkup(
       React.createElement(ReferenceSourceDisplay, { source: "https://example.com/paper.pdf" })
     );
-    assert.equal(html, fixture("reference-source-display-url"));
+    assertFixture(html, "reference-source-display-url");
   });
 
   test("学术引文包含 DOI 提取出 DOI 外链", () => {
@@ -27,7 +26,7 @@ describe("ReferenceSourceDisplay 特征测试", () => {
         source: "Nature 580, 123-128 (2020), doi: 10.1038/s41586-020-2649-2",
       })
     );
-    assert.equal(html, fixture("reference-source-display-doi"));
+    assertFixture(html, "reference-source-display-doi");
   });
 
   test("学术引文包含嵌入式 URL 提取出外链", () => {
@@ -36,7 +35,7 @@ describe("ReferenceSourceDisplay 特征测试", () => {
         source: "Available at https://arxiv.org/abs/2101.00001 (accessed 2026)",
       })
     );
-    assert.equal(html, fixture("reference-source-display-embedded-url"));
+    assertFixture(html, "reference-source-display-embedded-url");
   });
 
   test("纯文本引文渲染为普通文本，不包含 <a> 标签", () => {
@@ -45,7 +44,7 @@ describe("ReferenceSourceDisplay 特征测试", () => {
         source: "Standard Test Method for Cycling IQ, 2025",
       })
     );
-    assert.equal(html, fixture("reference-source-display-plain-text"));
+    assertFixture(html, "reference-source-display-plain-text");
   });
 
   test("「 · 」分隔的多条出处逐段成链，仓库路径不成链", () => {

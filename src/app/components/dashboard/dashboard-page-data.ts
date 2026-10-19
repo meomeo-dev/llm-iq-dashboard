@@ -60,13 +60,22 @@ export function readDashboardSettings(): DashboardSettings {
   }
 }
 
-/** 汇总题库标准映射：包含套题各候选的特异性标准与前沿独立题标准 */
-export function buildPromptStandards(prompts: readonly PromptSpec[]): Record<string, PromptStandard> {
+/** 汇总题库标准映射：包含套题各候选的特异性标准与前沿独立题标准；传入 cards 时仅打包当天的题目与候选以削减 RSC 体积 */
+export function buildPromptStandards(
+  prompts: readonly PromptSpec[],
+  cards?: readonly DashboardCard[],
+): Record<string, PromptStandard> {
+  const activePromptIds = cards ? new Set(cards.map((c) => c.promptId)) : null;
+  const activeCandidates = cards
+    ? new Set(cards.map((c) => c.bindings?.["回目"] || c.bindings?.["candidate"]).filter((v): v is string => Boolean(v)))
+    : null;
   const promptStandards: Record<string, PromptStandard> = {};
   for (const spec of prompts) {
+    if (activePromptIds && !activePromptIds.has(spec.id)) continue;
     if (spec.standard) promptStandards[spec.id] = spec.standard;
     if (spec.candidates && spec.candidates.length > 0) {
       for (const cand of spec.candidates) {
+        if (activeCandidates && !activeCandidates.has(cand.label) && !activeCandidates.has(cand.id)) continue;
         const candStd =
           cand.standard ??
           FRONTIER_INDIVIDUAL_PROMPT_MAP.get(cand.id)?.standard ??
@@ -81,6 +90,9 @@ export function buildPromptStandards(prompts: readonly PromptSpec[]): Record<str
     }
   }
   for (const [id, spec] of FRONTIER_INDIVIDUAL_PROMPT_MAP.entries()) {
+    if (activePromptIds && !activePromptIds.has(id) && (!activeCandidates || (!activeCandidates.has(id) && !activeCandidates.has(spec.label)))) {
+      continue;
+    }
     if (spec.standard) {
       promptStandards[id] = spec.standard;
       promptStandards[spec.label] = spec.standard;

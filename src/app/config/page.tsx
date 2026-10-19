@@ -69,34 +69,35 @@ export default async function ConfigPage() {
   }
 
   return (
-    <main className="page config-page-layout">
-      <ConfigSideNav />
-      <div className="config-content">
-        <ConfigPageHeader path={path} />
-
-        {loadError !== null ? (
-          <ConfigLoadErrorAlert error={loadError} />
-        ) : (
-          <ConfigEditor
-            initialConfig={{
-              schedule: config!.schedule,
-              run: config!.run,
-              upstreamTypes: config!.upstreamTypes,
-              profiles: config!.profiles,
-              targets: config!.targets,
-              customPrompts: config!.customPrompts,
-              customModels: config!.customModels,
-              judge: config!.judge,
-              modelFingerprint: config!.modelFingerprint,
-              dataRepo: dataRepoDraftOf(config!, path),
-            }}
-            builtinPrompts={[...BUILTIN_PROMPTS]}
-            initialCatalog={catalog}
-            initialCredentials={credentials}
-          />
-        )}
-        <DataRepoPanel />
-        <DevicePanel pairCommand={commandHint("pnpm pair")} />
+    <main className="page config-page">
+      <ConfigPageHeader path={path} />
+      <div className="config-page-layout">
+        <ConfigSideNav />
+        <div className="config-content">
+          {loadError !== null ? (
+            <ConfigLoadErrorAlert error={loadError} />
+          ) : (
+            <ConfigEditor
+              initialConfig={{
+                schedule: config!.schedule,
+                run: config!.run,
+                upstreamTypes: config!.upstreamTypes,
+                profiles: config!.profiles,
+                targets: config!.targets,
+                customPrompts: config!.customPrompts,
+                customModels: config!.customModels,
+                judge: config!.judge,
+                modelFingerprint: config!.modelFingerprint,
+                dataRepo: dataRepoDraftOf(config!, path),
+              }}
+              builtinPrompts={[...BUILTIN_PROMPTS]}
+              initialCatalog={catalog}
+              initialCredentials={credentials}
+            />
+          )}
+          <DataRepoPanel />
+          <DevicePanel pairCommand={commandHint("pnpm pair")} />
+        </div>
       </div>
     </main>
   );

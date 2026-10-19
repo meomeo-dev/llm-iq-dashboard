@@ -25,8 +25,10 @@ import {
 import {
   DEFAULT_SAMPLES_PER_PROBE,
   DEFAULT_TARGET_ACCURACY,
+  DEFAULT_VALUES_PER_CALL,
   DEFAULT_VALUES_PER_CHECK,
   PROBE_IDS,
+  resolveProbeValuesPerCheck,
   type InconclusiveReason,
   type ModelComparisonResult,
   type ModelPromptOverrides,
@@ -48,6 +50,7 @@ export interface ScoreCheckOptions {
   readonly samplesPerProbe?: number;
   readonly samplesByProbe?: Partial<Record<ProbeId, number>>;
   readonly valuesPerCheck?: number;
+  readonly valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
   readonly targetAccuracy?: number;
   readonly overrides?: ModelPromptOverrides;
 }
@@ -314,32 +317,46 @@ function collectCandidateComparisons(params: {
   return { uncomparedModels, comparisons, calibrations };
 }
 
-export function scoreVerificationQuery(options: ScoreCheckOptions): ScoreCheckOutput {
+function resolveEffectiveQueryCalibration(options: ScoreCheckOptions, selectedProbes: readonly ProbeId[]) {
   const samplesPerProbe = options.samplesPerProbe ?? DEFAULT_SAMPLES_PER_PROBE;
   const valuesPerCheck = options.valuesPerCheck ?? DEFAULT_VALUES_PER_CHECK;
-  const targetAccuracy = options.targetAccuracy ?? DEFAULT_TARGET_ACCURACY;
-  const selectedProbes =
-    options.selectedProbes && options.selectedProbes.length > 0 ? options.selectedProbes : PROBE_IDS;
+  const effectiveCheckByProbe: Partial<Record<ProbeId, number>> = {};
+  for (const p of selectedProbes) {
+    const cfgCheck = resolveProbeValuesPerCheck(p, options);
+    const qLen = options.queryValuesByProbe[p]?.length ?? 0;
+    effectiveCheckByProbe[p] = qLen > 0 ? Math.min(qLen, cfgCheck) : cfgCheck;
+  }
   const minTarget = resolveMinProbeTargetSamples(selectedProbes, {
     samplesPerProbe: options.samplesPerProbe, samplesByProbe: options.samplesByProbe,
   });
-  const foldIndices = buildFoldIndexSets(minTarget, valuesPerCheck);
-  const foldCount = foldIndices.length;
+  const hasBatchChecks = selectedProbes.some((p) => (effectiveCheckByProbe[p] ?? 1) >= DEFAULT_VALUES_PER_CALL);
+  const foldIndices = buildFoldIndexSets(minTarget, hasBatchChecks ? 2 : valuesPerCheck);
   const preparedByModel = prepareAllModelsFolds(
     options.sampleSetsByModel, selectedProbes, samplesPerProbe,
-    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe,
+    valuesPerCheck, foldIndices, options.overrides, options.samplesByProbe, effectiveCheckByProbe,
   );
   const prepC = preparedByModel.get(options.declaredModel);
-  const validProbes = selectedProbes.filter(
-    (p) => prepC?.[p] !== undefined && (options.queryValuesByProbe[p]?.length ?? 0) >= valuesPerCheck,
-  );
+  const validProbes = selectedProbes.filter((p) => {
+    const minReq = options.valuesPerCheckByProbe?.[p] !== undefined
+      ? Math.min(resolveProbeValuesPerCheck(p, options), getProbe(p).defaultCodec.valuesPerCall)
+      : valuesPerCheck;
+    return prepC?.[p] !== undefined && (options.queryValuesByProbe[p]?.length ?? 0) >= minReq;
+  });
+  return { foldCount: foldIndices.length, preparedByModel, prepC, validProbes };
+}
+
+export function scoreVerificationQuery(options: ScoreCheckOptions): ScoreCheckOutput {
+  const targetAccuracy = options.targetAccuracy ?? DEFAULT_TARGET_ACCURACY;
+  const selectedProbes =
+    options.selectedProbes && options.selectedProbes.length > 0 ? options.selectedProbes : PROBE_IDS;
+  const { foldCount, preparedByModel, prepC, validProbes } = resolveEffectiveQueryCalibration(options, selectedProbes);
   const allOtherModels = [...options.sampleSetsByModel.keys()].filter((m) => m !== options.declaredModel).sort();
   if (!prepC || validProbes.length === 0) return emptyScoreOutput(allOtherModels, selectedProbes);
 
   const queryDistByProbe = Object.fromEntries(
     validProbes.map((p) => {
       const probe = getProbe(p);
-      const maxBatch = Math.max(valuesPerCheck, probe.defaultCodec.valuesPerCall);
+      const maxBatch = Math.max(resolveProbeValuesPerCheck(p, options), probe.defaultCodec.valuesPerCall);
       return [p, poolProbeDistributions(probe, options.queryValuesByProbe[p]!.slice(0, maxBatch))];
     }),
   ) as Partial<Record<ProbeId, PooledProbeDistributions>>;

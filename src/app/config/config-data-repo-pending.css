@@ -12,11 +12,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px 12px;
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 /* 配置页的通用 label 规则是纵向排布，这里的勾选行要横排 */
-.data-repo-pending label.data-repo-pending-all {
+.data-repo-pending .data-repo-pending-all {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -27,7 +27,7 @@
 
 .data-repo-pending-hint {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .data-repo-pending-items {
@@ -54,7 +54,7 @@
   gap: 4px 12px;
 }
 
-.data-repo-pending-items .data-repo-pending-row > label {
+.data-repo-pending-items .data-repo-pending-row > .data-repo-pending-label {
   flex: 1 1 auto;
   display: flex;
   flex-direction: row;
@@ -63,11 +63,11 @@
   gap: 4px 10px;
   margin: 0;
   padding: 6px 0;
-  font-size: 12.5px;
+  font-size: var(--text-base);
   cursor: pointer;
 }
 
-.data-repo-pending-items .data-repo-pending-row > label > input {
+.data-repo-pending-items .data-repo-pending-row > .data-repo-pending-label > .data-repo-pending-checkbox {
   margin: 0 2px 0 0;
 }
 
@@ -77,7 +77,7 @@
 }
 
 .data-repo-pending-id {
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   color: var(--text-faint);
 }
 
@@ -94,7 +94,7 @@
   flex: none;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
 .data-repo-pending-actions a {
@@ -107,7 +107,7 @@
   background: none;
   color: var(--accent);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 
@@ -134,14 +134,14 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 6px;
-  font-size: 11.5px;
+  font-size: var(--text-sm);
 }
 
 .data-repo-pending-attempts li.unselected {
   opacity: 0.45;
 }
 
-.data-repo-pending-attempts li > label {
+.data-repo-pending-attempts li > .data-repo-attempt-label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -155,8 +155,8 @@
   justify-content: center;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 4px;
-  background: #fff;
+  border-radius: var(--radius-xs);
+  background: var(--canvas-bg);
 }
 
 .data-repo-attempt-thumb img {
@@ -192,7 +192,7 @@
 }
 
 .data-repo-pending-attempts li > a {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-dim);
 }
 
@@ -201,7 +201,7 @@
   padding: 8px 14px;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  font-size: 12.5px;
+  font-size: var(--text-base);
   color: var(--text-dim);
 }
 

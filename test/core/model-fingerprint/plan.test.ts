@@ -7,7 +7,13 @@ import {
   resolveSelectedProbes,
   simulateSampleSetMutation,
 } from "../../../src/core/model-fingerprint/plan";
-import { PROBE_IDS, type ProbeId, type ProbeSampleSet } from "../../../src/core/model-fingerprint/types";
+import {
+  DEFAULT_SAMPLES_BY_PROBE,
+  DEFAULT_VALUES_PER_CHECK_BY_PROBE,
+  PROBE_IDS,
+  type ProbeId,
+  type ProbeSampleSet,
+} from "../../../src/core/model-fingerprint/types";
 
 function makeSeedSet(model: string, count: number): ProbeSampleSet {
   const alphabet = "0123456789abcdef";
@@ -137,6 +143,10 @@ describe("model-fingerprint planner: probes, fill, status & check", () => {
     assert.deepEqual(diskEntry.usableProbes, ["seed"]);
     assert.ok((diskEntry.probes.seed?.intraProbeSim ?? 0) > 0.5);
     assert.ok((diskEntry.probes.seed?.intraProbeLowerBound ?? 0) > 0.4);
+    assert.ok(Math.abs((diskEntry.probes.seed?.unitCostUsd ?? 0) - 0.02) < 1e-12);
+    assert.ok(Math.abs((diskEntry.probes.seed?.spentCostUsd ?? 0) - 0.2) < 1e-12);
+    assert.ok(Math.abs((cfgEntry.probes.seed?.unitCostUsd ?? 0) - 0.02) < 1e-12);
+    assert.ok(Math.abs((cfgEntry.probes.seed?.estimatedCostUsd ?? 0) - 0.04) < 1e-12);
   });
 
   it("skips missing-reference probes during check and reports fill call counts across 1, 3, and 6 probes (AC 4, AC 7)", () => {
@@ -192,6 +202,23 @@ describe("model-fingerprint planner: probes, fill, status & check", () => {
       assert.equal(subPlan.totalEstimatedCalls, subset.length);
       assert.equal(subPlan.totalMaxCalls, subset.length * 3);
     }
+
+    const calibratedByModel = new Map([["model-c", makeFullProbeSets("model-c", 80)]]);
+    const calibratedPlan = planVerificationCheck({
+      cli: "codex",
+      declaredModel: "model-c",
+      sampleSetsByModel: calibratedByModel,
+      requestedProbes: [...PROBE_IDS],
+      samplesByProbe: { ...DEFAULT_SAMPLES_BY_PROBE },
+      valuesPerCheckByProbe: { ...DEFAULT_VALUES_PER_CHECK_BY_PROBE },
+      checkAttempts: 3,
+    });
+    assert.deepEqual(
+      calibratedPlan.executableProbes.map((p) => p.estimatedCalls),
+      [1, 1, 2, 2, 1, 3],
+    );
+    assert.equal(calibratedPlan.totalEstimatedCalls, 10);
+    assert.equal(calibratedPlan.totalMaxCalls, 30);
 
     assert.throws(() => resolveSelectedProbes(["invalid-only"], ["seed"]), /Invalid probe filter/);
   });

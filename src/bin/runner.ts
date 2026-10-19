@@ -12,7 +12,7 @@ import { describeActiveWorkConflict, findActiveWork } from "../core/active-work"
 import { readAutoRunSwitch, recordSchedulerProcess } from "../core/auto-run";
 import { loadConfig, type AppConfig } from "../core/config";
 import { resumeInterruptedJudging } from "../core/judge/ai-round";
-import { executeFingerprintCheck, executeFingerprintFill } from "../core/model-fingerprint/collect";
+import { executeFingerprintCheckBatch, executeFingerprintFill } from "../core/model-fingerprint/collect";
 import { configPath } from "../core/paths";
 import { handleProfileCredential, handleProfileModels } from "../core/profile-credential-request";
 import {
@@ -29,6 +29,13 @@ import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
 import {
+  expandEqualsTokens,
+  extractGlobalPathFlags,
+  formatCliError,
+  hasHelpFlag,
+  stripPnpmSeparators,
+} from "./cli-args";
+import {
   handleDataRepoStatus,
   handleGithubAppConvert,
   handleGithubDisconnect,
@@ -40,8 +47,46 @@ import {
 const REQUEST_POLL_MS = 1000;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 
+const VALID_RUNNER_FLAGS: readonly string[] = [
+  "--config",
+  "-c",
+  "--data-dir",
+  "--help",
+  "-h",
+];
+
+export function formatRunnerHelp(): string {
+  return [
+    "用法: pnpm runner [-- <options>]",
+    "别名: pnpm pelican runner [options]",
+    "",
+    "说明:",
+    "  启动分容器执行器常驻进程（内含定时调度器、data/requests 队列消费与心跳）。",
+    "",
+    "选项:",
+    "  -c, --config <path>     覆盖配置文件路径（同 PELICAN_CONFIG）",
+    "  --data-dir <path>       覆盖数据目录路径（同 PELICAN_DATA_DIR）",
+    "  -h, --help              显示此帮助信息并退出",
+  ].join("\n");
+}
+
 function log(message: string): void {
   console.log(`${new Date().toISOString()} ${message}`);
+}
+
+export async function runRunnerCli(
+  argv: readonly string[] = process.argv.slice(2),
+  writeLine: (line: string) => void = console.log,
+): Promise<void> {
+  if (hasHelpFlag(stripPnpmSeparators(argv))) {
+    writeLine(formatRunnerHelp());
+    return;
+  }
+  const tokens = expandEqualsTokens(stripPnpmSeparators(extractGlobalPathFlags(argv)));
+  for (const token of tokens) {
+    throw new Error(formatCliError(token, VALID_RUNNER_FLAGS, "pnpm runner -- --help"));
+  }
+  await main();
 }
 
 async function main(): Promise<void> {
@@ -172,7 +217,7 @@ async function startFingerprintCheck(request: RunnerRequest, full: AppConfig): P
   if (active !== null) return failRequest(request.id, describeActiveWorkConflict(active));
   await new Promise<void>((resolve) => {
     let answered = false;
-    executeFingerprintCheck(full, {
+    executeFingerprintCheckBatch(full, {
       ...payload,
       log,
       onStarted: (jobId) => {
@@ -180,8 +225,13 @@ async function startFingerprintCheck(request: RunnerRequest, full: AppConfig): P
         void completeRequest(request.id, { jobId }).finally(resolve);
       },
     })
-      .then((record) => {
-        if (!answered) void completeRequest(request.id, { checkId: record.checkId }).finally(resolve);
+      .then((records) => {
+        if (!answered) {
+          void completeRequest(request.id, {
+            checkId: records[0]?.checkId,
+            checkIds: records.map((r) => r.checkId),
+          }).finally(resolve);
+        }
       })
       .catch((cause: unknown) => {
         log(`模型指纹核验失败：${describe(cause)}`);
@@ -227,7 +277,7 @@ function describe(cause: unknown): string {
 }
 
 if (process.argv[1]?.endsWith("runner.ts") || process.argv[1]?.endsWith("runner")) {
-  main().catch((cause: unknown) => {
+  runRunnerCli(process.argv.slice(2)).catch((cause: unknown) => {
     console.error(describe(cause));
     process.exit(1);
   });

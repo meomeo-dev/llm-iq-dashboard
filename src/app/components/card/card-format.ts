@@ -103,12 +103,59 @@ export function rawSvgHref(card: Pick<DashboardCard, "runId" | "svgFile">): stri
 }
 
 /** API 等价成本的简写；无法计价时为"—"，部分计价加"≥"表示下限 */
+export function formatUsd(usd: number | null | undefined, partial = false): string {
+  if (usd === null || usd === undefined || !Number.isFinite(usd)) return "—";
+  const prefix = partial ? "≥" : "";
+  if (usd > 0 && usd < 0.001) return `${prefix}<$0.001`;
+  if (usd === 0) return `${prefix}$0.000`;
+  return `${prefix}$${usd.toFixed(usd < 1 ? 3 : 2)}`;
+}
+
 export function formatCost(cost: DashboardCard["cost"]): string {
-  if (cost.usd === null) return "—";
-  const prefix = cost.status === "partial" ? "≥" : "";
-  // 页脚为定宽单行：一美元以下保留三位小数，明细见悬停说明
-  if (cost.usd < 0.001) return `${prefix}<$0.001`;
-  return `${prefix}$${cost.usd.toFixed(cost.usd < 1 ? 3 : 2)}`;
+  return formatUsd(cost.usd, cost.status === "partial");
+}
+
+export function sumUsageTokens(usage: DashboardCard["usage"] | null | undefined): number | null {
+  if (!usage || !usage.tokens) return null;
+  const vals = Object.values(usage.tokens).filter((n): n is number => typeof n === "number" && Number.isFinite(n));
+  return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) : null;
+}
+
+export function formatAttemptCostTitle(
+  attempt: { usage: DashboardCard["usage"] | null; estimatedCostUsd: number | null; profile?: string },
+  locale: Locale = "zh-CN",
+): string {
+  const isEn = locale === "en";
+  const { usage, estimatedCostUsd, profile } = attempt;
+  const tokenLines = usage?.tokens
+    ? Object.entries(usage.tokens)
+        .filter(([, n]) => typeof n === "number" && n > 0)
+        .map(([k, n]) => `${k}: ${(n as number).toLocaleString("en-US")} tok`)
+    : [];
+  const lines = [
+    estimatedCostUsd != null
+      ? isEn
+        ? `API-Equivalent Cost: ${formatUsd(estimatedCostUsd)}`
+        : `API 等价成本：${formatUsd(estimatedCostUsd)}`
+      : null,
+    profile && profile !== "default"
+      ? isEn
+        ? `Via profile ${profile}: official list price`
+        : `经上游 ${profile}：显示官价`
+      : null,
+    ...tokenLines,
+    usage != null && usage.reasoningTokens != null && usage.reasoningTokens > 0
+      ? isEn
+        ? `Includes ${usage.reasoningTokens.toLocaleString("en-US")} reasoning tok in output`
+        : `其中推理 ${usage.reasoningTokens.toLocaleString("en-US")} tok 已计入 output`
+      : null,
+    usage?.reportedCostUsd != null
+      ? isEn
+        ? `CLI self-reported $${usage.reportedCostUsd.toFixed(4)}`
+        : `CLI 自报 $${usage.reportedCostUsd.toFixed(4)}`
+      : null,
+  ];
+  return lines.filter((l): l is string => l !== null).join("\n");
 }
 
 /** 成本的悬停说明：口径、逐项明细、目录版本，以及 CLI 自报成本（可对照） */

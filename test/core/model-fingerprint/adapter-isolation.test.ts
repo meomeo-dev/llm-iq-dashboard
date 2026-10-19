@@ -11,8 +11,10 @@ import {
   renderProfileConfig,
 } from "../../../src/adapters/codex-profile-home";
 import type { AgentRequest } from "../../../src/adapters/types";
+import { parseFingerprintCliArgs, runModelFingerprintCli } from "../../../src/bin/model-fingerprint";
 import type { AppConfig } from "../../../src/core/config";
 import { buildConfigLeakGuard } from "../../../src/core/leak-guard";
+import { planFingerprintStatus } from "../../../src/core/model-fingerprint/plan";
 import { fingerprintWorkdir } from "../../../src/core/paths";
 import { writeProfileKey } from "../../../src/core/profile-credentials";
 import { launchFor } from "../../../src/core/runner";
@@ -67,21 +69,29 @@ describe("CLI adapter isolation for model fingerprint", () => {
     assert.equal(fpArgs[fpArgs.indexOf("--tools") + 1], "");
   });
 
-  it("appends --disable-slash-commands to agy and intercepts write_to_file without disk reads in fingerprint mode", async () => {
+  it("appends --disable-slash-commands and zero-tool prompt instruction to agy in fingerprint mode", async () => {
     const normalArgs = buildAgyArgs(
       sampleAgentRequest({
         target: sampleTarget({ id: "agy-gemini", cli: "agy", model: "gemini-2.5-pro" }),
+        promptText: "Generate values\n[req:req-123]",
       }),
     );
     assert.equal(normalArgs.includes("--disable-slash-commands"), false);
+    assert.equal(normalArgs[normalArgs.indexOf("--print") + 1], "Generate values\n[req:req-123]");
 
     const fpArgs = buildAgyArgs(
       sampleAgentRequest({
         target: sampleTarget({ id: "agy-gemini", cli: "agy", model: "gemini-2.5-pro" }),
+        promptText: "Generate values\n[req:req-123]",
         fingerprint: true,
       }),
     );
     assert.equal(fpArgs.includes("--disable-slash-commands"), true);
+    const injectedPrompt = fpArgs[fpArgs.indexOf("--print") + 1] ?? "";
+    assert.equal(
+      injectedPrompt,
+      "Generate values\nDo not call any tools, run any commands, or write any files; reply inline with the <answer> block only.\n[req:req-123]",
+    );
 
     const stream = {
       startedAt: new Date(),
@@ -221,5 +231,60 @@ describe("CLI adapter isolation for model fingerprint", () => {
       else process.env.PELICAN_DATA_DIR = prevDataDir;
       await rm(tempDataDir, { recursive: true, force: true });
     }
+  });
+
+  it("parses fingerprint CLI --help, --effort, --probe, and synthesizes ad-hoc status targets", async () => {
+    const parsed = parseFingerprintCliArgs([
+      "--",
+      "check",
+      "--cli=agy",
+      "--model",
+      "gemini-3.8-flash",
+      "--effort",
+      "low",
+      "--probe",
+      "uuid,seed",
+      "--dry-run",
+    ]);
+    assert.equal(parsed.command, "check");
+    assert.equal(parsed.cli, "agy");
+    assert.equal(parsed.model, "gemini-3.8-flash");
+    assert.equal(parsed.effort, "low");
+    assert.deepEqual(parsed.probes, ["uuid", "seed"]);
+    assert.equal(parsed.dryRun, true);
+
+    assert.throws(() => parseFingerprintCliArgs(["fill", "--clii", "agy"]), /您是否想输入 --cli/);
+
+    const adHocStatus = planFingerprintStatus({
+      configuredReferences: [{ cli: "codex", model: "gpt-5.4" }],
+      onDiskSampleSets: [],
+      cliFilter: "agy",
+      modelFilter: "gemini-3.8-flash",
+      requestedProbes: ["uuid"],
+      samplesPerProbe: 10,
+    });
+    assert.equal(adHocStatus.length, 1);
+    assert.equal(adHocStatus[0]?.cli, "agy");
+    assert.equal(adHocStatus[0]?.model, "gemini-3.8-flash");
+    assert.equal(adHocStatus[0]?.probes.uuid?.validValues, 0);
+    assert.equal(adHocStatus[0]?.probes.uuid?.targetValues, 10);
+
+    const helpLines: string[] = [];
+    await runModelFingerprintCli(["--", "status", "--help"], {
+      loadConfig: async () => {
+        throw new Error("should not load config on --help");
+      },
+      writeLine: (line) => helpLines.push(line),
+    });
+    assert.ok(helpLines.some((line) => line.includes("用法: pnpm fingerprint status")));
+
+    const bareLines: string[] = [];
+    await runModelFingerprintCli([], {
+      loadConfig: async () => {
+        throw new Error("should not load config on bare invocation");
+      },
+      writeLine: (line) => bareLines.push(line),
+    });
+    assert.ok(bareLines.some((line) => line.includes("用法: pnpm fingerprint <command>")));
   });
 });

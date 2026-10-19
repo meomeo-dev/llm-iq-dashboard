@@ -12,7 +12,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 9px 10px;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   color: var(--text);
   cursor: pointer;
 }
@@ -30,32 +30,32 @@
 
 .prompt-head code {
   color: var(--text-faint);
-  font-size: 11.5px;
+  font-size: var(--text-sm);
 }
 
 .prompt-template {
   margin-top: 3px;
   color: var(--text-dim);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
 }
 
 /* 候选集的全部条目，即轮换可能抽到的题目 */
 .prompt-candidates {
   margin-top: 3px;
   color: var(--text-faint);
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
-.badge.lock {
+.prompt-badge.lock {
   color: var(--warn);
 }
 
 .custom-prompt {
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--bg);
 }
 
@@ -66,7 +66,7 @@
   gap: 8px;
 }
 
-.variable-row input[type="text"]:last-of-type {
+.variable-row .variable-values-input {
   flex: 1;
   min-width: 220px;
 }
@@ -78,7 +78,7 @@
   gap: 6px;
 }
 
-.harness-guard-text textarea {
+.harness-guard-text .ui-textarea {
   width: 100%;
   max-width: 820px;
   resize: vertical;

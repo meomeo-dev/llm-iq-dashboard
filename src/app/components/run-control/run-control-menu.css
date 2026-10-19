@@ -4,13 +4,13 @@
   color: var(--text);
 }
 
-.menu-panel.run-once-panel {
+.run-once-panel.menu-panel {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   right: auto;
-  z-index: 100;
+  z-index: var(--z-modal);
   display: flex;
   flex-direction: column;
   width: min(850px, 94vw);
@@ -18,9 +18,9 @@
   max-height: 82vh;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -55,7 +55,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--text-md);
 }
 
 /* 复用 .check-bulk 的按钮外观，去掉其分隔线与留白 */
@@ -63,6 +63,30 @@
   margin: 0 0 0 auto;
   padding: 0;
   border-bottom: 0;
+}
+
+.run-once-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: 0 4px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.run-once-close:hover {
+  background: var(--surface-hi);
+  border-color: var(--text-faint);
+  color: var(--text);
 }
 
 /* 主体分为两列各自独立滚动：左列模型范围，右列题目清单 */
@@ -84,30 +108,19 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-
-.run-once-col::-webkit-scrollbar {
-  width: 5px;
-}
-
-.run-once-col::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.run-once-col::-webkit-scrollbar { width: 5px; }
+.run-once-col::-webkit-scrollbar-track { background: transparent; }
 .run-once-col::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
-
-.run-once-col::-webkit-scrollbar-thumb:hover {
-  background: var(--text-faint);
-}
+.run-once-col::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
 .run-once-col-models {
   padding-right: 10px;
   border-right: 1px solid var(--border);
   overflow-x: auto;
 }
-
 .run-once-col-prompts {
   padding-left: 12px;
   padding-right: 2px;
@@ -117,6 +130,7 @@
 /* 范围清单网格：第 1 列模型名，其后每个强度一列；各行用 subgrid 共用列宽 */
 .run-once-models {
   display: grid;
+  grid-template-columns: minmax(140px, 1fr) repeat(var(--effort-count, 1), auto);
   column-gap: 4px;
 }
 
@@ -140,11 +154,11 @@
   min-width: 38px;
   padding: 3px 6px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-faint);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--text-xs);
   text-align: center;
   cursor: pointer;
 }
@@ -155,7 +169,7 @@
 
 .effort-chip[aria-pressed="true"] {
   border-color: var(--accent);
-  background: rgba(79, 141, 247, 0.16);
+  background: var(--accent-tint);
   color: var(--text);
 }
 
@@ -163,24 +177,24 @@
 .run-once-unavailable {
   margin: 8px 0 0;
   color: var(--text-faint);
-  font-size: 11.5px;
+  font-size: var(--text-sm);
 }
 
 .run-once-prompt small {
   display: block;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 14px;
 }
 
 .run-once-group-header {
   padding: 8px 4px 4px 4px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  border-bottom: 1px dashed var(--border-subtle);
   margin-top: 8px;
   margin-bottom: 4px;
 }
@@ -205,29 +219,72 @@
   width: 100%;
   padding: 3px 6px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface-hi);
   color: var(--text-dim);
   font: inherit;
-  font-size: 11.5px;
+  font-size: var(--text-sm);
   line-height: 1.4;
   outline: none;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
-.candidate-picker-select:hover {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
+.candidate-picker-select:hover,
 .candidate-picker-select:focus {
   border-color: var(--accent);
   color: var(--text);
 }
 
-/* 同一模型只勾了部分强度：复选框画一条横杠 */
-.checkbox.partial {
-  border-color: var(--accent);
-  background: linear-gradient(#fff, #fff) center / 8px 2px no-repeat, var(--accent);
+@media (max-width: 640px) {
+  .run-once-panel.menu-panel {
+    top: 10px;
+    bottom: 10px;
+    left: 8px;
+    right: 8px;
+    transform: none;
+    width: auto;
+    height: auto;
+    max-height: calc(100vh - 20px);
+  }
+
+  .run-once-head-bar {
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .run-once-close { margin: 4px 6px; }
+
+  .run-once-head-cell {
+    flex: 1;
+    padding: 8px 10px;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    background: var(--surface);
+    transition: all 0.15s ease;
+  }
+  .run-once-head-cell:first-child {
+    padding-right: 10px;
+    border-right: 1px solid var(--border);
+  }
+  .run-once-head-cell:last-child { padding-left: 10px; }
+  .run-once-head-cell.tab-active {
+    border-bottom-color: var(--accent);
+    background: var(--surface-hi);
+  }
+
+  .run-once-body {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+  }
+  .run-once-col {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+  }
+  .run-once-col.tab-visible { display: block; }
 }

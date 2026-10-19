@@ -9,10 +9,10 @@ import { checkAndRecord } from "../capabilities/readiness-cache";
 import { forecastRound, usd } from "../core/budget";
 import { commandHint } from "../core/command-hint";
 import { loadConfig, type AppConfig } from "../core/config";
-import { scheduledRound } from "../core/run-selection";
 import { loadCostHistory } from "../core/cost-history";
 import { configPath } from "../core/paths";
-import { CLI_KINDS } from "../core/types";
+import { scheduledRound } from "../core/run-selection";
+import { CLI_KINDS, type CliKind } from "../core/types";
 import { loadPriceCatalog } from "../pricing/catalog-files";
 
 const MIN_NODE_MAJOR = 22;
@@ -45,16 +45,18 @@ function checkConfig(): AppConfig | null {
   }
 }
 
-/** 配置用到的 CLI 有问题才算失败；没用到的只列出状态，供加目标前参考 */
-async function checkClis(config: AppConfig | null): Promise<void> {
-  const results = await checkAndRecord(CLI_KINDS);
+/** 配置用到的（或显式过滤的）CLI 有问题才算失败；没用到的只列出状态，供加目标前参考 */
+async function checkClis(config: AppConfig | null, cliFilter?: readonly CliKind[]): Promise<void> {
+  const targetClis = cliFilter && cliFilter.length > 0 ? cliFilter : CLI_KINDS;
+  const results = await checkAndRecord(targetClis);
   for (const readiness of results) {
     const used = config?.targets.filter((target) => target.cli === readiness.cli).length ?? 0;
+    const explicitlyRequested = Boolean(cliFilter && cliFilter.includes(readiness.cli));
     const scope = config === null ? "" : used > 0 ? `（${used} 个目标）` : "（配置未使用）";
     const detail = readiness.detail ?? "已安装并登录";
     if (readiness.state === "ready") report("✓", `${readiness.cli}${scope}：${detail}`);
     else if (readiness.state === "unverified") report("?", `${readiness.cli}${scope}：${detail}`);
-    else report(used > 0 || config === null ? "✗" : "·", `${readiness.cli}${scope}：${detail}`);
+    else report(used > 0 || explicitlyRequested || config === null ? "✗" : "·", `${readiness.cli}${scope}：${detail}`);
   }
 }
 
@@ -77,12 +79,16 @@ async function checkBudget(config: AppConfig): Promise<void> {
   console.log(`· 每轮 ${forecast.calls} 次调用，预计 ≈ ${usd(forecast.usd)}${unpriced}；24 小时内已用 ${usd(history.spentLastDayUsd)}；${caps}`);
 }
 
+export interface ReportEnvironmentOptions {
+  clis?: readonly CliKind[];
+}
+
 /** 打印全部检查项；配置用到的项目都没问题时返回 true */
-export async function reportEnvironment(): Promise<boolean> {
+export async function reportEnvironment(options: ReportEnvironmentOptions = {}): Promise<boolean> {
   failed = false;
   checkNode();
   const config = checkConfig();
-  await checkClis(config);
+  await checkClis(config, options.clis);
   checkPricing();
   if (config !== null) await checkBudget(config);
   return !failed;

@@ -31,6 +31,27 @@ export function SettingsIcon() {
   );
 }
 
+/** 鹈鹕自行车基准入口图标（双轮车架） */
+export function PelicanNavIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="4" cy="11.5" r="2.4" />
+      <circle cx="12" cy="11.5" r="2.4" />
+      <path d="M4 11.5 7.2 6.5h4.2L8.4 11.5M7.2 6.5 6.2 4.5H4.8M12 11.5 10.6 4.8h1.8" />
+    </svg>
+  );
+}
+
 /** 模型统计指纹入口图标（同心弧纹） */
 export function FingerprintIcon() {
   return (
@@ -79,18 +100,5 @@ export function RepositoryLink() {
     >
       <GitHubIcon />
     </a>
-  );
-}
-
-/** 品牌标识与名称 */
-export function ToolbarBrand() {
-  const { t } = useI18n();
-  return (
-    <div className="brand" title={t.toolbar.brandTitle}>
-      <span className="brand-mark" aria-hidden="true">
-        &gt;_
-      </span>
-      <h1 className="brand-title">{t.toolbar.brandTitle}</h1>
-    </div>
   );
 }

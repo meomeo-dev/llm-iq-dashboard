@@ -1,89 +1,41 @@
-/* 模型统计指纹核验页样式（复用看板全局控件与 RunOnce / RunStatus 面板样式） */
-@import "../components/toolbar/toolbar-elements.css";
+/* 模型统计指纹核验页样式（与主看板共享 .page > .workspace、.toolbar 及 RunOnce / RunStatus / Timeline 样式） */
+@import "../components/toolbar/toolbar.css";
+@import "../components/toolbar/calendar.css";
 @import "../components/menu/menu.css";
 @import "../components/run-status/run-status.css";
 @import "../components/run-control/run-control.css";
 @import "../components/profile/profile.css";
-
-.fp-page {
-  max-width: 1480px;
-  margin: 0 auto;
-  padding: 20px 20px 56px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.fp-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.fp-header-titles h1 {
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.fp-header-titles p {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-.fp-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.fp-nav-link {
-  color: var(--text-dim);
-  text-decoration: none;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  font-size: 13px;
-}
-
-.fp-nav-link:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
+@import "./fingerprint-timeline.css";
+@import "./fingerprint-check-modal.css";
+@import "./fingerprint-matrix.css";
 
 .fp-job-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2-5) 14px;
   background: var(--surface-hi);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
 }
 
 .fp-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
+  padding-bottom: var(--space-2);
 }
 
 .fp-tab {
   padding: 7px 14px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-base);
 }
 
 .fp-tab.active {
@@ -93,11 +45,18 @@
   font-weight: 600;
 }
 
+.fp-subview-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .fp-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -107,105 +66,45 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .fp-card-head h2 {
-  margin: 0 0 4px;
-  font-size: 16px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
 }
 
 .fp-card-head p {
   margin: 0;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--text-sm);
 }
 
-.fp-table-wrap {
-  overflow-x: auto;
+.fp-empty-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
 }
 
-.fp-matrix-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.fp-matrix-table th,
-.fp-matrix-table td {
-  border: 1px solid var(--border);
-  padding: 8px 10px;
-  text-align: left;
-}
-
-.fp-matrix-table th {
-  background: var(--surface-hi);
-  font-weight: 600;
-}
-
-.fp-cell-btn {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-}
-
-.fp-cell-btn.ready {
-  border-color: rgba(74, 222, 128, 0.45);
-  color: var(--ok);
-}
-
-.fp-cell-btn.partial {
-  border-color: rgba(251, 191, 36, 0.45);
-  color: var(--warn);
-}
-
-.fp-cell-btn.empty {
-  color: var(--text-faint);
+.fp-text-dim {
+  color: var(--text-dim);
 }
 
 .fp-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
   font-weight: 600;
   border: 1px solid var(--border);
+  white-space: nowrap;
 }
 
-.fp-badge.consistent {
-  color: var(--ok);
-  border-color: rgba(74, 222, 128, 0.5);
-}
-
-.fp-badge.inconsistent {
-  color: var(--err);
-  border-color: rgba(248, 113, 113, 0.5);
-}
-
-.fp-badge.inconclusive,
 .fp-badge.not-comparable {
   color: var(--warn);
-  border-color: rgba(251, 191, 36, 0.5);
-}
-
-.fp-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  justify-content: flex-end;
-  z-index: 60;
+  border-color: var(--warn-border);
 }
 
 .fp-drawer {
@@ -213,81 +112,103 @@
   height: 100%;
   background: var(--surface);
   border-left: 1px solid var(--border);
-  padding: 20px;
+  padding: var(--space-5);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
+.fp-drawer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  align-items: center;
+}
+
+.fp-drawer-gap-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+}
+
+.fp-drawer-sim-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.fp-reset-warn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--err-border);
+  border-radius: var(--radius-md);
+  background: var(--err-tint);
+  font-size: var(--text-sm);
+}
+
+.fp-attempt-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .fp-attempt-item {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-2-5) var(--space-3);
   background: var(--bg);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .fp-attempt-item.excluded {
   opacity: 0.55;
 }
 
+.fp-attempt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.fp-attempt-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.fp-attempt-err {
+  font-size: var(--text-sm);
+  color: var(--err);
+}
+
+.fp-attempt-values-head {
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+  margin-bottom: var(--space-1);
+}
+
 .fp-pre {
   margin: 0;
-  padding: 8px;
+  padding: var(--space-2);
+  max-height: 160px;
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   white-space: pre-wrap;
   word-break: break-all;
-}
-
-.fp-form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.fp-btn-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.fp-card button:not(.fp-cell-btn):not(.fp-tab),
-.fp-drawer button,
-.fp-job-banner button {
-  padding: 7px 14px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface-hi);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.fp-card button:hover:not(:disabled),
-.fp-drawer button:hover:not(:disabled),
-.fp-job-banner button:hover:not(:disabled) {
-  border-color: var(--text-faint);
-}
-
-.fp-card button:disabled,
-.fp-drawer button:disabled,
-.fp-job-banner button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.fp-card button.primary,
-.fp-drawer button.primary,
-.fp-job-banner button.primary {
-  border-color: var(--accent);
-  color: var(--accent);
 }

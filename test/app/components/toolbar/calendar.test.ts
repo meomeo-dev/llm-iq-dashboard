@@ -1,16 +1,14 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Calendar } from "@/app/components/toolbar/Calendar";
+import { expectFixture } from "../../../support/fixtures";
 
 (globalThis as unknown as { React: unknown }).React = React;
 
-const fixture = (name: string): string => {
-  const filePath = path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`);
-  return fs.readFileSync(filePath, "utf-8");
+const assertFixture = (actual: string, name: string): void => {
+  expectFixture(actual, path.resolve(process.cwd(), "test/fixtures/markup/wp-h", `${name}.html`));
 };
 
 describe("Calendar 特征测试", () => {
@@ -26,7 +24,7 @@ describe("Calendar 特征测试", () => {
         onPick: () => {},
       })
     );
-    assert.equal(html, fixture("calendar-normal"));
+    assertFixture(html, "calendar-normal");
   });
 
   test("所选日期与今天不同：分别标出 selected 与 today", () => {
@@ -38,7 +36,7 @@ describe("Calendar 特征测试", () => {
         onPick: () => {},
       })
     );
-    assert.equal(html, fixture("calendar-different-today"));
+    assertFixture(html, "calendar-different-today");
   });
 
   test("未选中任何日期（dayKey 为 null）", () => {
@@ -50,6 +48,6 @@ describe("Calendar 特征测试", () => {
         onPick: () => {},
       })
     );
-    assert.equal(html, fixture("calendar-no-selected"));
+    assertFixture(html, "calendar-no-selected");
   });
 });

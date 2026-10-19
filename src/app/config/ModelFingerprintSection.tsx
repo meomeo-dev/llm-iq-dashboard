@@ -1,8 +1,12 @@
 "use client";
 
+import { Button } from "@/app/components/ui/Button";
 import type { CapabilitySnapshot } from "@/capabilities/types";
-import { DEFAULT_MODEL_FINGERPRINT_CONFIG } from "@/core/config/model-fingerprint";
-import type { ModelFingerprintConfig } from "@/core/config/types";
+import {
+  DEFAULT_MODEL_FINGERPRINT_CONFIG,
+  deriveReferencesFromTargets,
+} from "@/core/config/model-fingerprint";
+import type { ModelFingerprintConfig, ProfileConfig } from "@/core/config/types";
 import {
   DEFAULT_SAMPLES_BY_PROBE,
   PROBE_IDS,
@@ -10,17 +14,20 @@ import {
   type FingerprintReferenceTarget,
   type ProbeId,
 } from "@/core/model-fingerprint/types";
-import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel } from "@/core/types";
-import { useI18n } from "@/i18n";
+import { EFFORT_LEVELS, type EffortLevel, type Target } from "@/core/types";
+import { formatText, useI18n } from "@/i18n";
 import { ConfigSection } from "./ConfigSection";
 
 export function ModelFingerprintSection({
   value,
-  catalog,
+  targets,
+  profiles,
   onChange,
 }: {
   value?: ModelFingerprintConfig;
-  catalog: CapabilitySnapshot;
+  catalog?: CapabilitySnapshot;
+  targets?: readonly Target[];
+  profiles?: readonly ProfileConfig[];
   onChange: (next: ModelFingerprintConfig) => void;
 }) {
   const { t } = useI18n();
@@ -32,18 +39,26 @@ export function ModelFingerprintSection({
       title={t.config.sections.modelFingerprintTitle}
       hint={t.config.sections.modelFingerprintDesc}
     >
-      <ModelFingerprintForm value={draft} catalog={catalog} onChange={onChange} />
+      <ModelFingerprintForm
+        value={draft}
+        targets={targets}
+        profiles={profiles}
+        onChange={(next) => onChange({ ...next, references: [] })}
+      />
     </ConfigSection>
   );
 }
 
 export function ModelFingerprintForm({
   value,
-  catalog,
+  targets,
+  profiles,
   onChange,
 }: {
   value: ModelFingerprintConfig;
-  catalog: CapabilitySnapshot;
+  catalog?: CapabilitySnapshot;
+  targets?: readonly Target[];
+  profiles?: readonly ProfileConfig[];
   onChange: (next: ModelFingerprintConfig) => void;
 }) {
   const { t } = useI18n();
@@ -58,11 +73,18 @@ export function ModelFingerprintForm({
     set("probes", PROBE_IDS.filter((id) => current.has(id)));
   };
 
+  const sharedModels =
+    targets && targets.length > 0 ? deriveReferencesFromTargets(targets) : value.references;
+
   return (
     <div className="stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <label className="checkbox">
-          <input type="checkbox" checked={value.enabled} onChange={(e) => set("enabled", e.target.checked)} />
+      <div className="field-row config-fp-row-between">
+        <label className="checkbox ui-check-row">
+          <input
+            type="checkbox"
+            checked={value.enabled}
+            onChange={(e) => set("enabled", e.target.checked)}
+          />
           {fp.configSection.enabledLabel}
         </label>
         <a href="/fingerprint" className="secondary-link">
@@ -71,11 +93,11 @@ export function ModelFingerprintForm({
       </div>
       <FingerprintNumericFields value={value} onChange={onChange} />
       <FingerprintProbeTargetsEditor value={value} onChange={onChange} />
-      <div className="stack">
-        <span>{fp.configSection.probesLabel}</span>
-        <div className="row" style={{ flexWrap: "wrap", gap: "12px" }}>
+      <div className="stack config-fp-block">
+        <span className="config-fp-sublabel">{fp.configSection.probesLabel}</span>
+        <div className="config-fp-probes-grid">
           {PROBE_IDS.map((probeId) => (
-            <label key={probeId} className="checkbox" title={fp.probes[probeId].desc}>
+            <label key={probeId} className="checkbox ui-check-row" title={fp.probes[probeId].desc}>
               <input
                 type="checkbox"
                 checked={value.probes.includes(probeId)}
@@ -87,12 +109,7 @@ export function ModelFingerprintForm({
           ))}
         </div>
       </div>
-      <FingerprintReferencesEditor
-        references={value.references}
-        catalog={catalog}
-        disabled={!value.enabled}
-        onChange={(refs) => set("references", refs)}
-      />
+      <FingerprintSharedSourcesSummary models={sharedModels} profiles={profiles ?? []} />
     </div>
   );
 }
@@ -107,10 +124,11 @@ function NumericInputField(props: {
   onChange: (num: number) => void;
 }) {
   return (
-    <label>
-      {props.label}
+    <label className="ui-field config-fp-field-label">
+      <span className="config-fp-field-text">{props.label}</span>
       <input
         type="number"
+        className="ui-input"
         min={props.min}
         max={props.max}
         step={props.step}
@@ -140,25 +158,15 @@ function FingerprintNumericFields({
     onChange({ ...value, [key]: next });
 
   return (
-    <div
-      className="grid-fields"
-      style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}
-    >
-      <label>
-        {cs.effortLabel}
-        <select value={value.effort} disabled={disabled} onChange={(e) => set("effort", e.target.value as EffortLevel)}>
+    <div className="config-fp-numeric-grid">
+      <label className="ui-field config-fp-field-label">
+        <span>{cs.effortLabel}</span>
+        <select className="ui-select" value={value.effort} disabled={disabled} onChange={(e) => set("effort", e.target.value as EffortLevel)}>
           {EFFORT_LEVELS.map((ef) => (
             <option key={ef} value={ef}>{ef}</option>
           ))}
         </select>
       </label>
-      <NumericInputField
-        label={cs.samplesPerProbeLabel} min={10} max={500} value={value.samplesPerProbe} disabled={disabled}
-        onChange={(raw) => {
-          const nextSamples = Math.max(10, raw || 20);
-          onChange({ ...value, samplesPerProbe: nextSamples, valuesPerCheck: Math.min(value.valuesPerCheck, Math.max(1, Math.floor(nextSamples / 2))) });
-        }}
-      />
       <NumericInputField label={cs.valuesPerCheckLabel} min={1} max={maxCheck} value={value.valuesPerCheck} disabled={disabled} onChange={(raw) => set("valuesPerCheck", Math.min(maxCheck, Math.max(1, raw || 1)))} />
       <NumericInputField label={cs.checkAttemptsLabel} min={1} max={20} value={value.checkAttempts} disabled={disabled} onChange={(raw) => set("checkAttempts", Math.min(20, Math.max(1, raw || 3)))} />
       <NumericInputField label={cs.targetAccuracyLabel} min={0.51} max={1} step={0.01} value={value.targetAccuracy} disabled={disabled} onChange={(raw) => set("targetAccuracy", Math.min(1, Math.max(0.51, raw || 0.95)))} />
@@ -182,13 +190,8 @@ function FingerprintProbeTargetsEditor({
 
   const updateProbeTarget = (probeId: ProbeId, nextCount: number) => {
     const sanitized = Math.max(10, Math.min(500, Math.round(nextCount || DEFAULT_SAMPLES_BY_PROBE[probeId])));
-    const nextByProbe: Partial<Record<ProbeId, number>> = {
-      ...(value.samplesByProbe ?? {}),
-      [probeId]: sanitized,
-    };
-    const minTarget = Math.min(
-      ...PROBE_IDS.map((id) => resolveProbeTargetSamples(id, { ...value, samplesByProbe: nextByProbe })),
-    );
+    const nextByProbe: Partial<Record<ProbeId, number>> = { ...(value.samplesByProbe ?? {}), [probeId]: sanitized };
+    const minTarget = Math.min(...PROBE_IDS.map((id) => resolveProbeTargetSamples(id, { ...value, samplesByProbe: nextByProbe })));
     onChange({
       ...value,
       samplesByProbe: nextByProbe,
@@ -197,25 +200,28 @@ function FingerprintProbeTargetsEditor({
   };
 
   return (
-    <div className="stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <span>{cs.samplesByProbeTitle}</span>
-        <button
-          type="button"
+    <div className="stack config-fp-block-bordered">
+      <div className="field-row config-fp-row-between">
+        <span className="config-fp-sublabel">{cs.samplesByProbeTitle}</span>
+        <Button
+          size="sm"
           disabled={disabled}
-          onClick={() => onChange({ ...value, samplesByProbe: { ...DEFAULT_SAMPLES_BY_PROBE } })}
+          onClick={() =>
+            onChange({
+              ...value,
+              samplesPerProbe: DEFAULT_MODEL_FINGERPRINT_CONFIG.samplesPerProbe,
+              samplesByProbe: { ...DEFAULT_SAMPLES_BY_PROBE },
+            })
+          }
         >
           {cs.resetDefaultSamplesBtn}
-        </button>
+        </Button>
       </div>
-      <div
-        className="grid-fields"
-        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px" }}
-      >
+      <div className="config-fp-targets-grid">
         {PROBE_IDS.map((probeId) => (
           <NumericInputField
             key={probeId}
-            label={`${probeId} (${fp.probes[probeId].label})`}
+            label={`${probeId} · ${fp.probes[probeId].label}`}
             min={10}
             max={500}
             value={resolveProbeTargetSamples(probeId, value)}
@@ -228,54 +234,36 @@ function FingerprintProbeTargetsEditor({
   );
 }
 
-function FingerprintReferencesEditor({
-  references,
-  catalog,
-  disabled,
-  onChange,
+function FingerprintSharedSourcesSummary({
+  models,
+  profiles,
 }: {
-  references: FingerprintReferenceTarget[];
-  catalog: CapabilitySnapshot;
-  disabled: boolean;
-  onChange: (next: FingerprintReferenceTarget[]) => void;
+  models: readonly FingerprintReferenceTarget[];
+  profiles: readonly ProfileConfig[];
 }) {
   const { t } = useI18n();
   const cs = t.fingerprint.configSection;
-  const updateRow = (idx: number, patch: Partial<FingerprintReferenceTarget>) =>
-    onChange(references.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
-
-  const addRow = () => {
-    const entry = catalog.clis.find((c) => c.cli === "codex");
-    const firstModel = entry?.models[0]?.id ?? "gpt-5.4";
-    onChange([...references, { cli: "codex", model: firstModel }]);
-  };
-
   return (
-    <div className="stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <span>{cs.referencesTitle}</span>
-        <button type="button" onClick={addRow} disabled={disabled}>+ {cs.addReferenceBtn}</button>
-      </div>
-      {references.map((ref, idx) => (
-        <div key={`${idx}-${ref.cli}`} className="row" style={{ gap: "8px", alignItems: "center" }}>
-          <select value={ref.cli} disabled={disabled} onChange={(e) => updateRow(idx, { cli: e.target.value as CliKind })}>
-            {CLI_KINDS.map((cli) => (
-              <option key={cli} value={cli}>{cli}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={ref.model}
-            disabled={disabled}
-            placeholder="model-id"
-            onChange={(e) => updateRow(idx, { model: e.target.value })}
-            style={{ flex: 1 }}
-          />
-          <button type="button" disabled={disabled} onClick={() => onChange(references.filter((_, i) => i !== idx))}>
-            {cs.removeReferenceBtn}
-          </button>
+    <div className="stack config-fp-block-bordered">
+      <div className="field-row config-fp-row-between">
+        <span className="config-fp-sublabel">{cs.referencesTitle}</span>
+        <div className="field-row config-fp-links-row">
+          <a href="#matrix" className="secondary-link">{cs.manageMatrixLink}</a>
+          <a href="#profiles" className="secondary-link">{cs.manageProfilesLink}</a>
         </div>
-      ))}
+      </div>
+      <p className="note config-fp-note">
+        {formatText(cs.sharedMatrixHint, { modelCount: models.length, profileCount: profiles.length })}
+      </p>
+      {models.length > 0 && (
+        <div className="field-row config-fp-chips-row">
+          {models.map((ref) => (
+            <code key={`${ref.cli}:${ref.model}`} className="config-fp-model-chip fp-model-chip">
+              {ref.cli}/{ref.model}
+            </code>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

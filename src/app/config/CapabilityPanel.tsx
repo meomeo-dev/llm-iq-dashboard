@@ -59,7 +59,7 @@ export function CapabilityPanel({
       </div>
 
       <div className="field-row">
-        <button type="button" onClick={refresh} disabled={busy || disabled}>
+        <button type="button" className="ui-btn ui-btn-default" onClick={refresh} disabled={busy || disabled}>
           {busy ? (isEn ? "Probing…" : "正在探测…") : isEn ? "Re-probe" : "重新探测"}
         </button>
         {/* 服务端与浏览器时区不同，本地化时间的水合文本允许不一致 */}

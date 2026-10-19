@@ -4,26 +4,29 @@
 
 .pair-card {
   display: grid;
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid var(--line, #d9d9d9);
-  border-radius: 8px;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
 .pair-code {
   width: 100%;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.1rem;
+  height: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
   letter-spacing: 0.08em;
   padding: 10px 12px;
 }
 
-.pair-card .actions {
+.pair-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .pair-error {
-  color: var(--danger, #b42318);
+  color: var(--err);
+  font-size: var(--text-sm);
 }

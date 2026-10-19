@@ -29,10 +29,11 @@ interface LiveState {
   /** 收到首份快照之前为 null */
   progress: ProgressView[] | null;
   autoRun: LiveAutoRun | null;
-  fingerprintJob: FingerprintJobView | null;
+  /** 收到首份快照之前为 undefined；无活跃作业时为 null */
+  fingerprintJob: FingerprintJobView | null | undefined;
 }
 
-const INITIAL: LiveState = { progress: null, autoRun: null, fingerprintJob: null };
+const INITIAL: LiveState = { progress: null, autoRun: null, fingerprintJob: undefined };
 
 let state: LiveState = INITIAL;
 const listeners = new Set<() => void>();
@@ -49,8 +50,8 @@ export function useLiveAutoRun(): LiveAutoRun | null {
   return useSyncExternalStore(subscribe, () => state.autoRun, () => INITIAL.autoRun);
 }
 
-/** 当前活跃的模型指纹作业；无活跃作业或尚未连上时为 null */
-export function useLiveFingerprintJob(): FingerprintJobView | null {
+/** 当前活跃的模型指纹作业；无活跃作业时为 null，尚未连上 SSE 时为 undefined */
+export function useLiveFingerprintJob(): FingerprintJobView | null | undefined {
   return useSyncExternalStore(subscribe, () => state.fingerprintJob, () => INITIAL.fingerprintJob);
 }
 

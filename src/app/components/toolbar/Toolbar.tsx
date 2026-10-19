@@ -4,10 +4,9 @@ import { useMemo, useState } from "react";
 import type { DashboardCard } from "@/core/types";
 import { useI18n } from "@/i18n";
 import type { FilterKey, HiddenFilters } from "./filters";
-import { ToolbarBrand } from "./ToolbarIcons";
 import { ToolbarCenter } from "./ToolbarCenter";
 import { ToolbarMenus } from "./ToolbarMenus";
-import { ToolbarUtils } from "./ToolbarUtils";
+import { WorkspaceToolbar } from "./WorkspaceToolbar";
 import { buildFilterGroups } from "./toolbar-filter-groups";
 import { useProfiles } from "../profile/profiles-context";
 import type { TimeZoneOption } from "../timeline/zoned-time";
@@ -40,8 +39,7 @@ export interface ToolbarProps {
 }
 
 /**
- * 顶部单行工具栏（不换行）：品牌、日期月历、筛选菜单；右端为当天总计、执行控制与状态、
- * 时钟与时区、配置入口。
+ * 鹈鹕看板顶部单行工具栏：基于跨页面组共享的 `WorkspaceToolbar` 渲染日期/筛选菜单与运行控制。
  */
 export function Toolbar(props: ToolbarProps) {
   const {
@@ -57,7 +55,7 @@ export function Toolbar(props: ToolbarProps) {
   } = props;
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { profiles } = useProfiles();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const filterGroups = useMemo(
     () => buildFilterGroups(cards, promptLabels, profiles, locale),
     [cards, promptLabels, profiles, locale],
@@ -66,9 +64,19 @@ export function Toolbar(props: ToolbarProps) {
   const closeMenus = (): void => setOpenMenu(null);
 
   return (
-    <header className="toolbar">
-      <div className="toolbar-top-row">
-        <ToolbarBrand />
+    <WorkspaceToolbar
+      activePage="pelican"
+      pageTitle={t.toolbar.brandTitle}
+      owner={owner}
+      readonly={readonly}
+      timeZone={timeZone}
+      timeZones={props.timeZones}
+      onPickTimeZone={props.onPickTimeZone}
+      onJumpToNow={props.onJumpToNow}
+      openMenu={openMenu}
+      onToggleMenu={toggleMenu}
+      onCloseMenus={closeMenus}
+      menusSlot={
         <ToolbarMenus
           dayKey={dayKey}
           days={days}
@@ -81,27 +89,19 @@ export function Toolbar(props: ToolbarProps) {
           onToggleMenu={toggleMenu}
           onCloseMenus={closeMenus}
         />
-        <ToolbarUtils
+      }
+      centerSlot={
+        <ToolbarCenter
           owner={owner}
           readonly={readonly}
+          remote={remote}
           timeZone={timeZone}
-          timeZones={props.timeZones}
-          onPickTimeZone={props.onPickTimeZone}
-          onJumpToNow={props.onJumpToNow}
+          stats={stats}
           openMenu={openMenu}
           onToggleMenu={toggleMenu}
           onCloseMenus={closeMenus}
         />
-      </div>
-      <ToolbarCenter
-        owner={owner}
-        remote={remote}
-        timeZone={timeZone}
-        stats={stats}
-        openMenu={openMenu}
-        onToggleMenu={toggleMenu}
-        onCloseMenus={closeMenus}
-      />
-    </header>
+      }
+    />
   );
 }

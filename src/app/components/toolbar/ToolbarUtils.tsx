@@ -3,8 +3,8 @@ import { LanguageSwitch, useI18n } from "@/i18n";
 import type { TimeZoneOption } from "../timeline/zoned-time";
 import { RunStatus } from "../run-status/RunStatus";
 import { LiveClock } from "./LiveClock";
+import { PageAuthActions } from "./PageGroupNav";
 import { TimeZoneMenu } from "./TimeZoneMenu";
-import { FingerprintIcon, KeyIcon, RepositoryLink, SettingsIcon } from "./ToolbarIcons";
 
 interface ToolbarUtilsProps {
   readonly owner: boolean;
@@ -16,6 +16,9 @@ interface ToolbarUtilsProps {
   readonly openMenu: string | null;
   readonly onToggleMenu: (id: string) => void;
   readonly onCloseMenus: () => void;
+  readonly configHref?: string;
+  readonly configTitle?: string;
+  readonly pairHref?: string;
 }
 
 /** 工具栏右侧工具区：运行状态、时钟、时区切换、语言切换与配置/登录入口；只读展台改为徽章与源码仓库入口 */
@@ -29,8 +32,11 @@ export function ToolbarUtils({
   openMenu,
   onToggleMenu,
   onCloseMenus,
+  configHref,
+  configTitle,
+  pairHref,
 }: ToolbarUtilsProps) {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const isEn = locale === "en";
   return (
     <div className="toolbar-utils">
@@ -60,42 +66,13 @@ export function ToolbarUtils({
         />
       </div>
       <LanguageSwitch />
-      {readonly ? (
-        <>
-          <span className="badge-readonly" title={isEn ? "Read-only Showcase" : "只读展台"}>
-            {isEn ? "Showcase" : "只读展台"}
-          </span>
-          <RepositoryLink />
-        </>
-      ) : owner ? (
-        <>
-          <a
-            className="icon-link"
-            href="/fingerprint"
-            title={t.toolbar.fingerprintLinkTitle}
-            aria-label={t.toolbar.fingerprintLinkTitle}
-          >
-            <FingerprintIcon />
-          </a>
-          <a
-            className="icon-link"
-            href="/config"
-            title={isEn ? "Configuration" : "配置"}
-            aria-label={isEn ? "Configuration" : "配置"}
-          >
-            <SettingsIcon />
-          </a>
-        </>
-      ) : (
-        <a
-          className="icon-link"
-          href="/pair"
-          title={isEn ? "Owner Sign-In" : "所有者登录"}
-          aria-label={isEn ? "Owner Sign-In" : "所有者登录"}
-        >
-          <KeyIcon />
-        </a>
-      )}
+      <PageAuthActions
+        owner={owner}
+        readonly={readonly}
+        configHref={configHref}
+        configTitle={configTitle}
+        pairHref={pairHref}
+      />
     </div>
   );
 }

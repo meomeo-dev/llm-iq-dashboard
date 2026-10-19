@@ -18,6 +18,7 @@ import {
   DEFAULT_VALUES_PER_CHECK,
   MIN_SAMPLES_PER_PROBE,
   resolveProbeTargetSamples,
+  resolveProbeValuesPerCheck,
   type CheckRescoreEntry,
   type FingerprintCheckRecord,
   type ModelPromptOverrides,
@@ -268,19 +269,14 @@ export function buildSampleSetsByModelMap(
  * 则从 archive/ 按时间戳倒序查找最新满额的归档样本集。
  */
 export async function readReferenceSampleSetWithArchiveFallback(params: {
-  cli: CliKind;
-  appliedEffort: EffortLevel;
-  model: string;
-  probe: ProbeId;
-  samplesPerProbe: number;
-  samplesByProbe?: Partial<Record<ProbeId, number>>;
-  valuesPerCheck?: number;
+  cli: CliKind; appliedEffort: EffortLevel; model: string; probe: ProbeId;
+  samplesPerProbe: number; samplesByProbe?: Partial<Record<ProbeId, number>>;
+  valuesPerCheck?: number; valuesPerCheckByProbe?: Partial<Record<ProbeId, number>>;
   modelPrompts?: ModelPromptOverrides;
 }): Promise<{ sampleSet: ProbeSampleSet | null; fromArchive: boolean; archiveFile?: string }> {
-  const valuesPerCheck = params.valuesPerCheck ?? DEFAULT_VALUES_PER_CHECK;
+  const valuesPerCheck = resolveProbeValuesPerCheck(params.probe, params);
   const targetForProbe = resolveProbeTargetSamples(params.probe, {
-    samplesPerProbe: params.samplesPerProbe,
-    samplesByProbe: params.samplesByProbe,
+    samplesPerProbe: params.samplesPerProbe, samplesByProbe: params.samplesByProbe,
   });
   const current = await readSampleSet(params.cli, params.appliedEffort, params.model, params.probe);
   if (current !== null) {
@@ -307,9 +303,10 @@ export async function readReferenceSampleSetWithArchiveFallback(params: {
   return { sampleSet: current, fromArchive: false };
 }
 
-export function formatCheckId(cli: CliKind, profile: string, at: Date = new Date()): string {
+export function formatCheckId(cli: CliKind, profile: string, at: Date = new Date(), model?: string): string {
   const iso = at.toISOString();
-  return `${iso.slice(0, 10).replace(/-/g, "")}-${iso.slice(11, 19).replace(/:/g, "")}-${cli}-${sanitizeSegment(profile)}`;
+  const base = `${iso.slice(0, 10).replace(/-/g, "")}-${iso.slice(11, 19).replace(/:/g, "")}-${cli}-${sanitizeSegment(profile)}`;
+  return model ? `${base}-${sanitizeSegment(model)}` : base;
 }
 
 export function checkRecordFilePath(checkId: string, createdAtIso?: string): string {
@@ -397,20 +394,17 @@ export async function rescoreCheckRecord(
     const effectiveByProbe: Partial<Record<ProbeId, number>> = { ...fpCfg.samplesByProbe };
     for (const p of loaded.selectedProbes) {
       const cfgTarget = resolveProbeTargetSamples(p, fpCfg);
+      const cfgCheck = resolveProbeValuesPerCheck(p, fpCfg);
       const declSet = sampleSetsByModel.get(loaded.declaredModel)?.[p];
-      const avail = declSet ? extractValidCanonicalValues(declSet, cfgTarget, fpCfg.valuesPerCheck, fpCfg.modelPrompts).length : 0;
+      const avail = declSet ? extractValidCanonicalValues(declSet, cfgTarget, cfgCheck, fpCfg.modelPrompts).length : 0;
       if (avail >= MIN_SAMPLES_PER_PROBE && avail < cfgTarget) effectiveByProbe[p] = avail;
     }
     const scoreOut = scoreVerificationQuery({
-      declaredModel: loaded.declaredModel,
-      selectedProbes: loaded.selectedProbes,
-      queryValuesByProbe,
-      sampleSetsByModel,
-      samplesPerProbe: fpCfg.samplesPerProbe,
-      samplesByProbe: effectiveByProbe,
-      valuesPerCheck: fpCfg.valuesPerCheck,
-      targetAccuracy: fpCfg.targetAccuracy,
-      overrides: fpCfg.modelPrompts,
+      declaredModel: loaded.declaredModel, selectedProbes: loaded.selectedProbes,
+      queryValuesByProbe, sampleSetsByModel,
+      samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: effectiveByProbe,
+      valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+      targetAccuracy: fpCfg.targetAccuracy, overrides: fpCfg.modelPrompts,
     });
 
     const entry: CheckRescoreEntry = { rescoredAt: new Date().toISOString(), ...scoreOut };
@@ -424,13 +418,16 @@ function decodeRecordedCheckAttempts(
   record: FingerprintCheckRecord,
   fpCfg: ModelFingerprintConfig,
 ): Partial<Record<ProbeId, string[]>> {
-  const needed = fpCfg.valuesPerCheck;
   const queryValuesByProbe: Partial<Record<ProbeId, string[]>> = {};
   for (const probeId of record.selectedProbes) {
     const attempts = record.probeAttempts[probeId] ?? [];
     const probe = getProbe(probeId);
     const activeCodec = probe.resolveCodec({ cli: record.cli, model: record.declaredModel }, fpCfg.modelPrompts);
-    const maxBatch = Math.max(needed, activeCodec.valuesPerCall);
+    const cfgCheck = resolveProbeValuesPerCheck(probeId, fpCfg);
+    const minNeeded = fpCfg.valuesPerCheckByProbe?.[probeId] !== undefined
+      ? Math.min(cfgCheck, activeCodec.valuesPerCall)
+      : fpCfg.valuesPerCheck;
+    const maxBatch = Math.max(cfgCheck, activeCodec.valuesPerCall);
     const collected: string[] = [];
     for (const attempt of attempts) {
       if (attempt.excluded === true || attempt.outcome !== "ok") continue;
@@ -438,7 +435,7 @@ function decodeRecordedCheckAttempts(
         if (collected.length < maxBatch) collected.push(val);
       }
     }
-    if (collected.length >= needed) queryValuesByProbe[probeId] = collected.slice(0, maxBatch);
+    if (collected.length >= minNeeded) queryValuesByProbe[probeId] = collected.slice(0, maxBatch);
   }
   return queryValuesByProbe;
 }
@@ -468,7 +465,8 @@ async function loadRescoreReferenceSets(
       const { sampleSet } = await readReferenceSampleSetWithArchiveFallback({
         cli: record.cli, appliedEffort, model, probe,
         samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-        valuesPerCheck: fpCfg.valuesPerCheck, modelPrompts: fpCfg.modelPrompts,
+        valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+        modelPrompts: fpCfg.modelPrompts,
       });
       if (sampleSet !== null) resolved.push(sampleSet);
     }

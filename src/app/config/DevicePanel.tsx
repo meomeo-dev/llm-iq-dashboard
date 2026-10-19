@@ -20,7 +20,8 @@ export function DevicePanel({
   const error = hookResult.error;
   const revoke = hookResult.revoke;
 
-  if (view === null || !view.owner) return null;
+  if (view !== null && !view.owner) return null;
+  if (view === null && error === null) return null;
 
   return (
     <section id="devices" className="config-section">
@@ -37,7 +38,7 @@ export function DevicePanel({
           </p>
         )}
       </header>
-      <DeviceTable devices={view.devices} onRevoke={revoke} />
+      {view !== null && <DeviceTable devices={view.devices} onRevoke={revoke} />}
       {error !== null && <p className="device-error">{error}</p>}
     </section>
   );

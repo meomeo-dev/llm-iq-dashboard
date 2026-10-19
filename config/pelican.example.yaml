@@ -259,12 +259,18 @@ targets:
 #     words-zh: 80
 #   probes: []
 #   valuesPerCheck: 1
+#   valuesPerCheckByProbe:
+#     uuid: 5
+#     number: 5
+#     seed: 10
+#     palette: 10
+#     words-en: 5
+#     words-zh: 15
 #   checkAttempts: 3
 #   targetAccuracy: 0.95
 #   maxCallsFactor: 3
 #   concurrency: 5
-#   references:
-#     - { cli: codex, model: gpt-5.5 }
-#     - { cli: codex, model: gpt-6-mini }
+#   # Reference models and upstream channels are shared automatically from `targets` (#matrix) and `profiles` (#profiles) above.
+#   # 基准模型与待测渠道自动共用上方的 `targets`（被测矩阵）与 `profiles`（上游 Profile），无需重复配置。
 #   modelPrompts: {}
 

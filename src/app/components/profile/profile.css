@@ -21,7 +21,7 @@
   min-width: 0;
   padding: 2px 6px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -46,19 +46,19 @@
 }
 
 /* 桌面：锚定在名字下方的浮层 */
-.profile-card {
+.profile-popover-card {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 300;
+  z-index: var(--z-modal);
   width: 320px;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   line-height: 18px;
   text-align: left;
   white-space: normal;
@@ -74,7 +74,7 @@
 .profile-card-title {
   flex: 1;
   min-width: 0;
-  font-size: 13.5px;
+  font-size: var(--text-base);
   overflow-wrap: anywhere;
 }
 
@@ -84,7 +84,7 @@
   border: none;
   background: transparent;
   color: var(--text-dim);
-  font-size: 18px;
+  font-size: var(--text-xl);
   line-height: 1;
   cursor: pointer;
 }
@@ -131,7 +131,7 @@
   display: block;
   margin-top: 8px;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--text-xs);
   text-align: right;
   text-decoration: none;
 }
@@ -152,10 +152,10 @@
   top: 5px;
   left: 6px;
   padding: 0 5px;
-  border-radius: 8px;
-  background: rgba(3, 6, 12, 0.72);
+  border-radius: var(--radius-md);
+  background: var(--backdrop-bg);
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   line-height: 16px;
   font-variant-numeric: tabular-nums;
@@ -172,7 +172,7 @@
   gap: 6px;
   margin: 0 0 6px;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
@@ -184,7 +184,7 @@
   gap: 4px;
   min-width: 0;
   max-width: 50%;
-  font-size: 12.5px;
+  font-size: var(--text-sm);
 }
 
 /* 放不下的上游横向滚动，不显示滚动条；当前项由组件滚进视野 */
@@ -207,7 +207,7 @@
   gap: 5px;
   padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--text-dim);
   text-decoration: none;
   white-space: nowrap;
@@ -230,25 +230,22 @@
   pointer-events: none;
 }
 
-/* 窄屏：切换条独占一行排在标题下面 */
+/* 窄屏：切换条独占一行排在标题下面，信息卡改为底部抽屉 */
 @media (max-width: 640px) {
   .viewer-siblings {
     flex-basis: 100%;
     max-width: none;
     order: 1;
   }
-}
 
-/* 窄屏：底部抽屉 */
-@media (max-width: 767px) {
-  .profile-card {
+  .profile-popover-card {
     position: fixed;
     top: auto;
     right: 0;
     bottom: 0;
     left: 0;
     width: auto;
-    border-radius: 12px 12px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 }

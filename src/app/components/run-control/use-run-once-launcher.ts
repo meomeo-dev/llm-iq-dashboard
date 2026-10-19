@@ -15,23 +15,27 @@ export function useRunOnceLauncher(
 
   /** 发起一轮；`profiles` 为本轮上游（不涉及上游时不传）。返回是否发起成功 */
   const start = async (profiles?: readonly string[]): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
-    const result = await postRun([...targets], [...prompts], candidateOverridesRef.current, profiles, locale);
-    setBusy(false);
-    if ("error" in result) {
-      setNotice({ kind: "error", text: result.error });
-      return false;
+    try {
+      const result = await postRun([...targets], [...prompts], candidateOverridesRef.current, profiles, locale);
+      if ("error" in result) {
+        setNotice({ kind: "error", text: result.error });
+        return false;
+      }
+      setNotice({
+        kind: "ok",
+        text:
+          locale === "en"
+            ? `Started ${result.runId} (${result.calls} calls); see live status on the right`
+            : `已开始 ${result.runId}，共 ${result.calls} 次调用；进度见右侧执行状态`,
+      });
+      // 本轮跑完前按钮置灰，避免重复发起得到 409
+      setStartedRunId(result.runId);
+      return true;
+    } finally {
+      setBusy(false);
     }
-    setNotice({
-      kind: "ok",
-      text:
-        locale === "en"
-          ? `Started ${result.runId} (${result.calls} calls); see live status on the right`
-          : `已开始 ${result.runId}，共 ${result.calls} 次调用；进度见右侧执行状态`,
-    });
-    // 本轮跑完前按钮置灰，避免重复发起得到 409
-    setStartedRunId(result.runId);
-    return true;
   };
 
   return { busy, notice, setNotice, startedRunId, start };

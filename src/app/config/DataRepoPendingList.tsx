@@ -33,7 +33,7 @@ export function DataRepoPendingList(props: DataRepoPendingListProps) {
   return (
     <div className="data-repo-pending">
       <div className="data-repo-pending-head">
-        <label className="data-repo-pending-all">
+        <label className="data-repo-pending-all ui-check-row">
           <input
             type="checkbox"
             checked={selectedCount === runs.length}

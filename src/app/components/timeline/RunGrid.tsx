@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { profileLabel } from "@/core/profile-view";
 import type { DashboardCard } from "@/core/types";
 import { useI18n, type Locale } from "@/i18n";
@@ -13,6 +13,9 @@ import { cellUpstreams, folderCell, planSlots } from "./effort-slots";
 import type { Moment } from "./moments";
 import { listRows, rowKeyOf } from "./rows";
 import { CELL_WIDTH, layoutColumns, timeX } from "./track-layout";
+import { useScrollAnchor } from "./use-scroll-anchor";
+
+export { useScrollAnchor };
 
 /** 打开的格子：哪一轮的哪一行 */
 export interface OpenCell {
@@ -109,16 +112,4 @@ function RowUpstreams({ cards, locale }: { cards: readonly DashboardCard[]; loca
       ))}
     </span>
   );
-}
-
-function useScrollAnchor(anchorX: number | null, scrollKey: string) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const anchor = useRef(anchorX);
-  anchor.current = anchorX;
-  useEffect(() => {
-    const element = scroller.current;
-    if (element === null || anchor.current === null) return;
-    element.scrollLeft = anchor.current - element.clientWidth / 2;
-  }, [scrollKey]);
-  return scroller;
 }

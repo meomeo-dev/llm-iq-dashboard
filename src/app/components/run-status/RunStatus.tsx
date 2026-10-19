@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ProgressView } from "@/core/progress";
 import { useI18n, type Locale } from "@/i18n";
+import { formatUsd } from "../card/card-format";
 import { Menu } from "../menu/Menu";
 import { StopRunButton } from "../run-control/StopRunButton";
 import { formatZonedClock } from "../timeline/zoned-time";
@@ -63,7 +64,7 @@ export function RunStatus({ timeZone, owner, open, onToggle, onClose }: RunStatu
   const { locale, t } = useI18n();
   const isEn = locale === "en";
   const runs = useRunProgress();
-  const now = useTicker(open);
+  const now = useTicker(open || Boolean(runs?.some((r) => r.alive)));
   const primary =
     runs?.find((run) => {
       const phase = phaseOf(run, now);
@@ -146,44 +147,16 @@ function triggerLabel(run: ProgressView, isEn: boolean): string {
   return isEn ? "Manual" : "手动";
 }
 
-function RunSection({
-  run,
-  now,
-  timeZone,
-  owner,
-  locale,
-}: {
+function RunSectionWarnings(props: {
   run: ProgressView;
-  now: number;
-  timeZone: string;
-  owner: boolean;
+  phase: RunPhase;
+  cancelledCount: number;
   locale: Locale;
 }) {
+  const { run, phase, cancelledCount, locale } = props;
   const isEn = locale === "en";
-  const phase = phaseOf(run, now);
-  const clock: Clock = { at: runClock(run, phase, now), ticking: isTicking(phase) };
-  const counts = countCalls(allCalls(run));
-  const trigger = triggerLabel(run, isEn);
   return (
-    <section className="run-section">
-      <header className="run-head">
-        <span className={`run-dot ${phase}`} aria-hidden="true" />
-        <b>{phaseText(phase, locale)}</b>
-        <span>
-          {isEn
-            ? `Started ${formatZonedClock(new Date(run.startedAt), timeZone)} · ${trigger} · Elapsed ${formatElapsed(runElapsedMs(run, phase, now))}`
-            : `${formatZonedClock(new Date(run.startedAt), timeZone)} 开始 · ${trigger} · 用时 ${formatElapsed(runElapsedMs(run, phase, now))}`}
-        </span>
-        <span className="run-head-count">
-          {counts.done}/{counts.total} · {isEn ? `OK ${counts.ok}` : `成功 ${counts.ok}`}
-        </span>
-      </header>
-      <Bar ratio={counts.done / Math.max(1, counts.total)} />
-      {owner && isActivePhase(phase) && (
-        <div className="run-actions">
-          <StopRunButton runId={run.runId} stopping={phase === "stopping"} />
-        </div>
-      )}
+    <>
       {phase === "interrupted" && (
         <p className="run-warn">
           {isEn
@@ -201,8 +174,13 @@ function RunSection({
       {phase === "cancelled" && (
         <p className="run-warn">
           {isEn
-            ? `Stopped manually; ${counts.cancelled} calls were cancelled and completed results are preserved.`
-            : `本轮已手动停止，${counts.cancelled} 个调用未完成、不计入结果；停止前完成的结果照常保留。`}
+            ? `Stopped manually; ${cancelledCount} calls were cancelled and completed results are preserved.`
+            : `本轮已手动停止，${cancelledCount} 个调用未完成、不计入结果；停止前完成的结果照常保留。`}
+        </p>
+      )}
+      {run.jobError != null && (
+        <p className="run-warn run-warn-err">
+          {run.jobError}
         </p>
       )}
       {run.budgetStop != null && (
@@ -210,6 +188,52 @@ function RunSection({
           {isEn ? `${localizeBudgetStop(run.budgetStop, locale)}; remaining calls were not started.` : `${run.budgetStop}，其余调用未发起。`}
         </p>
       )}
+    </>
+  );
+}
+
+function RunSection({
+  run,
+  now,
+  timeZone,
+  owner,
+  locale,
+}: {
+  run: ProgressView;
+  now: number;
+  timeZone: string;
+  owner: boolean;
+  locale: Locale;
+}) {
+  const isEn = locale === "en";
+  const phase = phaseOf(run, now);
+  const clock: Clock = { at: runClock(run, phase, now), ticking: isTicking(phase) };
+  const counts = countCalls(allCalls(run));
+  const failedCount = Math.max(0, counts.done - counts.ok);
+  const trigger = triggerLabel(run, isEn);
+  return (
+    <section className="run-section">
+      <header className="run-head">
+        <span className={`run-dot ${phase}`} aria-hidden="true" />
+        <b>{phaseText(phase, locale)}</b>
+        <span>
+          {isEn
+            ? `Started ${formatZonedClock(new Date(run.startedAt), timeZone)} · ${trigger} · Elapsed ${formatElapsed(runElapsedMs(run, phase, now))}`
+            : `${formatZonedClock(new Date(run.startedAt), timeZone)} 开始 · ${trigger} · 用时 ${formatElapsed(runElapsedMs(run, phase, now))}`}
+        </span>
+        <span className="run-head-count">
+          {counts.done}/{counts.total} · {isEn ? `OK ${counts.ok}` : `成功 ${counts.ok}`}
+          {failedCount > 0 ? (isEn ? ` · Failed ${failedCount}` : ` · 失败 ${failedCount}`) : ""}
+          {run.spentCostUsd != null && run.spentCostUsd > 0 ? ` · ${formatUsd(run.spentCostUsd)}` : ""}
+        </span>
+      </header>
+      <Bar ratio={counts.done / Math.max(1, counts.total)} />
+      {owner && isActivePhase(phase) && (
+        <div className="run-actions">
+          <StopRunButton runId={run.runId} stopping={phase === "stopping"} />
+        </div>
+      )}
+      <RunSectionWarnings run={run} phase={phase} cancelledCount={counts.cancelled} locale={locale} />
       {run.judging != null && <JudgingSection judging={run.judging} phase={phase} clock={clock} locale={locale} />}
       <p className="run-note">
         {run.jobKind

@@ -50,6 +50,9 @@ export interface ToolbarMessages {
   stopRunButton: string;
   stopRunStopping: string;
   stopRunConfirmTitle: string;
+  navGroupAria: string;
+  navPelican: string;
+  navFingerprint: string;
   fingerprintLinkTitle: string;
   configLinkTitle: string;
   pairLinkTitle: string;
@@ -111,6 +114,9 @@ export const zhCNToolbar: ToolbarMessages = {
   stopRunButton: "停止本轮",
   stopRunStopping: "停止中…",
   stopRunConfirmTitle: "立即终止当前正在执行的评测轮次",
+  navGroupAria: "基准看板页面切换",
+  navPelican: "鹈鹕基准",
+  navFingerprint: "模型指纹",
   fingerprintLinkTitle: "模型统计指纹核验",
   configLinkTitle: "打开配置管理台",
   pairLinkTitle: "设备配对与所有者认证",
@@ -172,6 +178,9 @@ export const enToolbar: ToolbarMessages = {
   stopRunButton: "Stop Run",
   stopRunStopping: "Stopping…",
   stopRunConfirmTitle: "Stop the currently running benchmark round",
+  navGroupAria: "Benchmark page switcher",
+  navPelican: "Pelican",
+  navFingerprint: "Fingerprint",
   fingerprintLinkTitle: "Model Statistical Fingerprint",
   configLinkTitle: "Open Configuration Console",
   pairLinkTitle: "Device Pairing & Owner Auth",

@@ -7,6 +7,7 @@ import { useLiveProgress } from "../live-state/live-store";
 import { profileColor } from "../profile/profile-color";
 import { useProfiles } from "../profile/profiles-context";
 import { pendingJudgeState } from "../run-status/run-phase";
+import { JudgeStatusBadge } from "../standard/JudgeStatusBadge";
 import { formatZonedDateTime } from "../timeline/zoned-time";
 import { LazySvgFrame } from "./LazySvgFrame";
 import {
@@ -17,10 +18,7 @@ import {
   formatDuration,
   judgeCostBrief,
   judgeCostLine,
-  judgeText,
-  judgeTitle,
   localizeCardError,
-  pendingJudgeText,
   rawSvgHref,
   statusText,
   viewHref,
@@ -144,18 +142,15 @@ function JudgeTag({
     judge.total.verdict === "pending"
       ? pendingJudgeState(useLiveProgress(), card.runId, judge.subject.attemptKey, Date.now())
       : null;
-  if (live !== null) {
-    const info = pendingJudgeText(live, locale);
-    return (
-      <span className={`judge-tag judge-${live === "interrupted" ? "interrupted" : "judging"}`} title={info.title}>
-        {info.label}
-      </span>
-    );
-  }
   return (
-    <span className={`judge-tag judge-${judge.total.verdict}`} title={judgeTitle(judge, judgeCost, locale)}>
-      {judgeText(judge.total.verdict, locale)} {judge.total.score}
-    </span>
+    <JudgeStatusBadge
+      judge={judge}
+      judgeCost={judgeCost}
+      liveState={live}
+      locale={locale}
+      withTooltip
+      className="judge-tag"
+    />
   );
 }
 
