@@ -73,6 +73,26 @@ export function FingerprintIcon() {
   );
 }
 
+/** 测评题目库入口图标（题卡列表） */
+export function PromptsNavIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="2" width="11" height="12" rx="1.8" />
+      <path d="M5.2 5.5h5.6M5.2 8.2h5.6M5.2 10.9h3.4" />
+    </svg>
+  );
+}
+
 /** 项目源码仓库；与 package.json 的 repository 一致（见 repository-link 测试） */
 export const PROJECT_REPOSITORY_URL = "https://github.com/meomeo-dev/llm-iq-dashboard";
 

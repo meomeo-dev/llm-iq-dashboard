@@ -53,7 +53,13 @@ export function WorkspaceToolbar({
   return (
     <header className="toolbar">
       <div className="toolbar-top-row">
-        <PageGroupNav active={activePage} pageTitle={pageTitle} />
+        <PageGroupNav
+          active={activePage}
+          pageTitle={pageTitle}
+          open={openMenu === "pageGroup"}
+          onToggle={() => onToggleMenu("pageGroup")}
+          onClose={onCloseMenus}
+        />
         {menusSlot}
         <ToolbarUtils
           owner={owner}

@@ -1,61 +1,92 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n";
+import { Menu } from "../menu/Menu";
 import {
   FingerprintIcon,
   KeyIcon,
   PelicanNavIcon,
+  PromptsNavIcon,
   RepositoryLink,
   SettingsIcon,
 } from "./ToolbarIcons";
 
-export type PageGroupId = "pelican" | "fingerprint";
+export type PageGroupId = "pelican" | "fingerprint" | "prompts";
 
 export interface PageGroupNavProps {
-  /** 当前所在页面（"pelican" 对应 "/"，"fingerprint" 对应 "/fingerprint"） */
+  /** 当前所在页面（"pelican" -> "/"，"fingerprint" -> "/fingerprint"，"prompts" -> "/prompts"） */
   readonly active: PageGroupId;
-  /** 页面主标题（可选） */
+  /** 保留兼容属性（已按设计移除顶栏左侧重复文字标题） */
   readonly pageTitle?: string;
   readonly className?: string;
+  readonly open?: boolean;
+  readonly onToggle?: () => void;
+  readonly onClose?: () => void;
 }
 
 /**
- * 看板页面组统一导航切换器（鹈鹕基准 `/` ⇄ 模型指纹 `/fingerprint`）：
- * 在主看板与指纹页、登录配对态/未登录访客态/只读展台模式下始终可见。
+ * 看板页面组统一导航下拉菜单（鹈鹕基准 `/` ⇄ 模型指纹 `/fingerprint` ⇄ 测评题目 `/prompts`）：
+ * 移除左侧重复文字标题，采用下拉选择切换页面组。
  */
 export function PageGroupNav({
   active,
-  pageTitle,
   className,
+  open,
+  onToggle,
+  onClose,
 }: PageGroupNavProps): React.ReactElement {
   const { t } = useI18n();
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const handleToggle = onToggle ?? (() => setInternalOpen((prev) => !prev));
+  const handleClose = onClose ?? (() => setInternalOpen(false));
   const classes = ["brand", "page-group-brand", className].filter(Boolean).join(" ");
+  const items: ReadonlyArray<{
+    id: PageGroupId;
+    href: string;
+    label: string;
+    title: string;
+    icon: React.ReactElement;
+  }> = [
+    { id: "pelican", href: "/", label: t.toolbar.navPelican, title: t.toolbar.brandTitle, icon: <PelicanNavIcon /> },
+    { id: "fingerprint", href: "/fingerprint", label: t.toolbar.navFingerprint, title: t.toolbar.fingerprintLinkTitle, icon: <FingerprintIcon /> },
+    { id: "prompts", href: "/prompts", label: t.toolbar.navPrompts, title: t.toolbar.promptsLinkTitle, icon: <PromptsNavIcon /> },
+  ];
+  const current = items.find((item) => item.id === active) ?? items[0]!;
 
   return (
-    <div className={classes}>
-      {pageTitle && <h1 className="brand-title">{pageTitle}</h1>}
-      <nav className="page-group-nav" aria-label={t.toolbar.navGroupAria}>
-        <Link
-          href="/"
-          className={`page-group-link${active === "pelican" ? " is-active" : ""}`}
-          aria-current={active === "pelican" ? "page" : undefined}
-          title={t.toolbar.brandTitle}
-        >
-          <PelicanNavIcon />
-          <span className="page-group-label">{t.toolbar.navPelican}</span>
-        </Link>
-        <Link
-          href="/fingerprint"
-          className={`page-group-link${active === "fingerprint" ? " is-active" : ""}`}
-          aria-current={active === "fingerprint" ? "page" : undefined}
-          title={t.toolbar.fingerprintLinkTitle}
-        >
-          <FingerprintIcon />
-          <span className="page-group-label">{t.toolbar.navFingerprint}</span>
-        </Link>
-      </nav>
+    <div className={classes} aria-label={t.toolbar.navGroupAria}>
+      <Menu
+        label={
+          <>
+            {current.icon}
+            <span className="page-group-label">{current.label}</span>
+          </>
+        }
+        buttonClassName="page-group-trigger"
+        panelClassName="page-group-panel"
+        open={isOpen}
+        onToggle={handleToggle}
+        onClose={handleClose}
+      >
+        {items.map((item) => (
+          <Link
+            key={item.id}
+            href={item.href}
+            role="menuitemradio"
+            aria-checked={active === item.id}
+            className="menu-row page-group-option"
+            title={item.title}
+            onClick={handleClose}
+          >
+            <span className="radio" aria-hidden="true" />
+            {item.icon}
+            <span className="menu-row-name">{item.label}</span>
+          </Link>
+        ))}
+      </Menu>
     </div>
   );
 }

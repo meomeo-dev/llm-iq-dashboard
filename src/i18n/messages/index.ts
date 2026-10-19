@@ -7,6 +7,7 @@ import { enCommon, zhCNCommon, type CommonMessages } from "./common";
 import { enConfig, zhCNConfig, type ConfigMessages } from "./config";
 import { enFingerprint, zhCNFingerprint, type FingerprintMessages } from "./fingerprint";
 import { enPair, zhCNPair, type PairMessages } from "./pair";
+import { enPromptsPage, zhCNPromptsPage, type PromptsPageMessages } from "./prompts-page";
 import { enToolbar, zhCNToolbar, type ToolbarMessages } from "./toolbar";
 import { enViewer, zhCNViewer, type ViewerMessages } from "./viewer";
 
@@ -17,6 +18,7 @@ export type {
   ConfigMessages,
   FingerprintMessages,
   PairMessages,
+  PromptsPageMessages,
 };
 
 export interface Messages {
@@ -26,6 +28,7 @@ export interface Messages {
   config: ConfigMessages;
   fingerprint: FingerprintMessages;
   pair: PairMessages;
+  promptsPage: PromptsPageMessages;
 }
 
 export const zhCNMessages: Messages = {
@@ -35,6 +38,7 @@ export const zhCNMessages: Messages = {
   config: zhCNConfig,
   fingerprint: zhCNFingerprint,
   pair: zhCNPair,
+  promptsPage: zhCNPromptsPage,
 };
 
 export const enMessages: Messages = {
@@ -44,6 +48,7 @@ export const enMessages: Messages = {
   config: enConfig,
   fingerprint: enFingerprint,
   pair: enPair,
+  promptsPage: enPromptsPage,
 };
 
 export function getMessages(locale: Locale): Messages {

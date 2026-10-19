@@ -358,9 +358,9 @@ describe("fingerprint UI view-model & SSR bilingual components", () => {
     const baseProps = {
       timeZone: "UTC",
       timeZones: [{ id: "UTC", label: "UTC", short: "UTC" }],
-      onPickTimeZone: () => {}, onJumpToNow: () => {}, openMenu: null, onToggleMenu: () => {}, onCloseMenus: () => {},
+      onPickTimeZone: () => {}, onJumpToNow: () => {}, openMenu: "pageGroup" as string | null, onToggleMenu: () => {}, onCloseMenus: () => {},
     };
-    const renderHeaderRow = (activePage: "pelican" | "fingerprint", owner: boolean, readonly: boolean) =>
+    const renderHeaderRow = (activePage: "pelican" | "fingerprint" | "prompts", owner: boolean, readonly: boolean, openMenu: string | null = "pageGroup") =>
       renderToStaticMarkup(
         React.createElement(
           AppRouterContext.Provider,
@@ -369,8 +369,9 @@ describe("fingerprint UI view-model & SSR bilingual components", () => {
             initialLocale: "zh-CN",
             children: React.createElement(WorkspaceToolbar, {
               ...baseProps,
+              openMenu,
               activePage,
-              pageTitle: activePage === "pelican" ? "鹈鹕自行车基准看板" : "模型指纹控制台",
+              pageTitle: activePage === "pelican" ? "鹈鹕自行车基准看板" : activePage === "fingerprint" ? "模型指纹控制台" : "测评题目库",
               owner,
               readonly,
             }),
@@ -378,19 +379,23 @@ describe("fingerprint UI view-model & SSR bilingual components", () => {
         ),
       );
 
-    const ownerPelican = renderHeaderRow("pelican", true, false);
+    const closedPelican = renderHeaderRow("pelican", true, false, null);
+    assert.ok(!closedPelican.includes("brand-title"), "Removed duplicate text title on the left of toolbar");
+    assert.ok(closedPelican.includes("page-group-trigger") && closedPelican.includes("鹈鹕基准"));
+
+    const ownerPelican = renderHeaderRow("pelican", true, false, "pageGroup");
     assert.ok(ownerPelican.includes('class="toolbar"') && ownerPelican.includes('class="toolbar-top-row"'));
-    assert.ok(ownerPelican.includes('href="/"') && ownerPelican.includes('href="/fingerprint"'));
-    assert.ok(ownerPelican.includes("鹈鹕基准") && ownerPelican.includes("模型指纹"));
+    assert.ok(ownerPelican.includes('href="/"') && ownerPelican.includes('href="/fingerprint"') && ownerPelican.includes('href="/prompts"'));
+    assert.ok(ownerPelican.includes("鹈鹕基准") && ownerPelican.includes("模型指纹") && ownerPelican.includes("测评题目"));
     assert.ok(ownerPelican.includes('href="/config"'));
 
-    const readonlyPelican = renderHeaderRow("pelican", false, true);
-    assert.ok(readonlyPelican.includes('href="/"') && readonlyPelican.includes('href="/fingerprint"'), "Readonly showcase must show unified switcher");
-    assert.ok(readonlyPelican.includes("badge-readonly"));
+    const readonlyPrompts = renderHeaderRow("prompts", false, true, "pageGroup");
+    assert.ok(readonlyPrompts.includes('href="/"') && readonlyPrompts.includes('href="/fingerprint"') && readonlyPrompts.includes('href="/prompts"'), "Readonly showcase must show unified switcher with /prompts");
+    assert.ok(readonlyPrompts.includes("badge-readonly"));
 
-    const guestFingerprint = renderHeaderRow("fingerprint", false, false);
+    const guestFingerprint = renderHeaderRow("fingerprint", false, false, "pageGroup");
     assert.ok(guestFingerprint.includes('class="toolbar"') && guestFingerprint.includes('class="toolbar-top-row"'));
-    assert.ok(guestFingerprint.includes('href="/"') && guestFingerprint.includes('href="/fingerprint"'), "Unauthenticated guest on /fingerprint must see unified switcher");
+    assert.ok(guestFingerprint.includes('href="/"') && guestFingerprint.includes('href="/fingerprint"') && guestFingerprint.includes('href="/prompts"'), "Unauthenticated guest must see unified switcher");
     assert.ok(guestFingerprint.includes('href="/pair"'));
   });
 

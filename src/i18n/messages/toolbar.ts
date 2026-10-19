@@ -53,7 +53,9 @@ export interface ToolbarMessages {
   navGroupAria: string;
   navPelican: string;
   navFingerprint: string;
+  navPrompts: string;
   fingerprintLinkTitle: string;
+  promptsLinkTitle: string;
   configLinkTitle: string;
   pairLinkTitle: string;
   githubRepoTitle: string;
@@ -117,7 +119,9 @@ export const zhCNToolbar: ToolbarMessages = {
   navGroupAria: "基准看板页面切换",
   navPelican: "鹈鹕基准",
   navFingerprint: "模型指纹",
+  navPrompts: "测评题目",
   fingerprintLinkTitle: "模型统计指纹核验",
+  promptsLinkTitle: "查看与筛选全部基准测评题目",
   configLinkTitle: "打开配置管理台",
   pairLinkTitle: "设备配对与所有者认证",
   githubRepoTitle: "在 GitHub 查看源码仓库",
@@ -181,7 +185,9 @@ export const enToolbar: ToolbarMessages = {
   navGroupAria: "Benchmark page switcher",
   navPelican: "Pelican",
   navFingerprint: "Fingerprint",
+  navPrompts: "Prompts",
   fingerprintLinkTitle: "Model Statistical Fingerprint",
+  promptsLinkTitle: "Browse and filter benchmark prompts",
   configLinkTitle: "Open Configuration Console",
   pairLinkTitle: "Device Pairing & Owner Auth",
   githubRepoTitle: "View source repository on GitHub",

@@ -4,6 +4,8 @@
 @import "./components/ui/ui-overlays.css";
 @import "./components/ui/ui-layout.css";
 @import "./components/standard/standard.css";
+@import "./prompts/prompts-page.css";
+@import "./prompts/prompts-modal.css";
 
 :root {
   /* 卡片三段的固定尺寸（见 components/card/cards.css）。表头 = 上内边距 12 + 时刻 20

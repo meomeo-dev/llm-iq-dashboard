@@ -137,6 +137,35 @@
   flex: none;
 }
 
+.page-group-trigger.menu-button {
+  border-color: var(--border);
+  background: var(--surface-hi);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.page-group-trigger.menu-button svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.page-group-panel.menu-panel {
+  min-width: 180px;
+}
+
+.page-group-option.menu-row {
+  text-decoration: none;
+}
+
+.page-group-option.menu-row svg {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.page-group-option.menu-row[aria-checked="true"] svg {
+  color: var(--accent);
+}
+
 .page-group-nav {
   display: inline-flex;
   align-items: center;
