@@ -1,184 +1,154 @@
-# 运维与工程交接文档 (Handoff Guide)
+# llm-iq-dashboard 项目工作记忆交接文档 (handoff.md)
 
-> **文档定位**：本文件为系统当前状态的运维与协作者交接文档。  
-> **更新日期**：2026-10-15  
-> **当前状态**：评测自动化、作品评审（代码层 + AI 语义层）、中英双语国际化（`en` / `zh-CN`）、数据脱敏同步与两容器部署已完成；
-> 只读公开展台运行于 <https://llm-iq-dashboard.vercel.app>。当前版本 v0.8.0，之后的改动见
-> `CHANGELOG.md` 的「未发布」。
+> **文档定位**：本文档记录当前项目演进过程中的**动态工作记忆**（上下文背景、已落地的核心变更、关键架构决策、踩坑教训、当前运行状态及下一步待办路线）。  
+> 静态架构与编码规范请参考 [`AGENTS.md`](./AGENTS.md)。每次新会话开始时，请优先通读本文档以快速恢复现场工作记忆。  
+> **更新日期**：2026-10-19
 
 ---
 
-## 1. 项目全貌与两仓分工
+## 一、 项目定位与核心红线
 
-系统由两个物理隔离、职责明确的开源代码/数据仓库组成：
-
-| 仓库名称 | GitHub 远程地址 | 本地工作副本路径 | 职责范围与开源协议 |
-| :--- | :--- | :--- | :--- |
-| **主工程看板仓**<br/>`llm-iq-dashboard` | [`meomeo-dev/llm-iq-dashboard`](https://github.com/meomeo-dev/llm-iq-dashboard) | 本工程根目录 | **系统源码与本地控制台**<br/>• Next.js 15 看板、调度器、CLI 适配器、作品评审、数据同步流水线<br/>• 协议：**MIT License** |
-| **公开数据仓**<br/>`llm-iq-data` | [`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data) | 同级目录 `../llm-iq-data` | **评测结果与矢量作品归档**<br/>• 仅存放脱敏后成果（`run.json`、`*.svg`、`index.json`）<br/>• 协议：**代码 MIT + 数据/作品 CC-BY-4.0** |
-
-数据仓是哪一个由配置 `dataRepo.repository` 决定（配置页「数据仓设置」可改）；本地副本的
-`origin` 与之不一致时拒绝同步。
-
-### 纪律与规则（详见 `AGENTS.md`）
-- **代码与数据物理分离**：本地评测运行产物（`data/`，含 `data/runs/`）严禁提交到主看板代码仓，仅经脱敏后写入公开数据仓。
-- **发布须经人工确认**：向数据仓推送即公开发布，只在所有者确认后发生——看板面板的「推送」二次确认，
-  或宿主机操作者手动 `git push`。推送令牌只存放在 runner 专用卷 `runner-secrets`，web 容器不挂该卷。
-- **数据契约唯一权威**：数据仓格式与多级时序布局的权威契约为本仓库 `src/core/data-repo/contract.ts`；数据仓只追加（Append-Only），已归档轮次不改写、不删除。
-- **永不发布题目**：`UNPUBLISHABLE_PROMPT_IDS` 清单内题目的题面与结果永不上传至公开数据仓，由两仓代码双重强制阻断（见 `AGENTS.md`）。
-- **评审配额**：AI 语义层的裁判调用真实消耗配额，历史作品不补评。
+- **核心使命**：面向大语言模型（Claude / Codex / Antigravity `agy` / OpenCode / Grok）的自动化 SVG 视觉基准评测看板与模型统计指纹（Model Fingerprint，ACR-024）核验控制台，支持定时轮次调度、双层作品评审（代码层 30 分 + AI 裁判层 70 分）、题库画廊浏览与公开数据仓脱敏发布。
+- **技术栈总览**：Node 22+、pnpm 10+、TypeScript 5、Next.js 15 (App Router) + React 19、chokidar + SSE 实时状态同步、jsdom + playwright-core (Chromium)、node:test 单元测试体系。
+- **两仓物理分工**：
+  - **主工程看板仓（`llm-iq-dashboard`）**：系统源码与本地控制台（MIT License）。
+  - **公开数据仓（[`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data)，本地 `../llm-iq-data`）**：仅存放脱敏后的评测成果（`run.json`、`*.svg`、`index.json`）。
+- **核心铁律 / 防御红线**：
+  1. **代码与数据严格分离**：`data/`（含 `data/runs/` 与 `data/model-fingerprint/`）严禁入库；`data/model-fingerprint/` 绝不同步至公开数据仓。
+  2. **配额与发布红线**：`pnpm run:once`、`pnpm fingerprint fill/check`（不带 `--dry-run`）与 `--ai-only` 评审会真实调用 CLI 消耗配额；向数据仓 `--push` 须经人工确认（CLI 端由 `confirmOrAbort` 拦截，非 TTY 必须显式传 `--yes`）。
+  3. **代码长度与 UI 卫生红线**：严格执行 [`config/code-length-policy.yaml`](./config/code-length-policy.yaml)（TS 模块 $\le 500$ 行、TSX 组件 $\le 300$ 行、CSS $\le 300$ 行、函数 $\le 50$ 行）与 [`scripts/check-ui-hygiene.ts`](./scripts/check-ui-hygiene.ts)（Token 化色彩/字号、标准断点、前缀命名隔离）。
+  4. **四大名著补全主观作业铁律**：补全四大名著全章节题目时，**严禁使用脚本批量生成题面或标准**；每一回必须先派子代理联网搜索 5–10 轮考证原著情节与阶段衣冠细节，再主观撰写提示词，随后派子代理到 `/tmp` 临时目录实测生图，若不通过则继续优化（每题最多优化 3 轮取最优版本）。
 
 ---
 
-## 2. 核心能力与入口命令
+## 二、 当前版本核心进展 (Current Milestones)
 
-| 功能领域 | 入口命令 / 地址 | 功能描述 |
-| :--- | :--- | :--- |
-| **单次执行** | `pnpm run:once` | 手动发起一轮基准评测（真实调用 CLI、消耗配额） |
-| **常驻调度** | `pnpm scheduler` | 宿主机直跑时的常驻定时调度，按配置节奏与自动任务开关执行 |
-| **执行器** | `pnpm runner` | 分容器部署时 runner 容器的执行进程：调度、执行看板请求、评审与自动同步 |
-| **生产看板** | `pnpm dashboard:prod` | 检出已提交的 HEAD 到同级目录构建并在 :3000 启动 |
-| **开发看板** | `pnpm dev --port 3001` | 开发服务器，端口避开生产看板 |
-| **环境自查** | `pnpm preflight` | 预检 Node 环境、配置合法性、三家 CLI 登录态与价格目录 |
-| **引导登录** | `pnpm onboard` | 交互式逐家引导完成 `claude` / `codex` / `agy` 账号授权 |
-| **设备配对** | `pnpm pair` | 生成临时配对码，配对本地浏览器为所有者管理控制台 |
-| **价格同步** | `pnpm pricing:sync` | 按锁文件拉取公开价格目录并校验 sha256 完整性 |
-| **题库校验** | `pnpm validate:prompts` | 校验题库规范、候选集完备性与评判标准 |
-| **数据同步** | `pnpm sync:data [options]` | 执行数据仓脱敏导出、提交、发布确认或推送 |
-| **评审补跑** | `pnpm judge:backfill -- --dry-run` | 对本地历史作品预演代码层评审；`--ai-only` 只在明确要求时按轮运行 |
-| **展台自检** | `pnpm showcase:smoke` | 端到端校验公开只读模式、远程数据拉取与安全边界 |
-| **健康检查** | `GET /api/health` | 返回部署模式（只读、数据源）、远程数据仓连通性（仅 remote 模式）与版本号 |
+### 1. 四大名著全章节（460 回 / 920 道候选）补全计划编排（2026-10-19，Ready 待执行）
+- **解决诉求**：将四大名著测试题的每一部著作全章节调查补全（《西游记》100 回、《三国演义》120 回、《水浒传》120 回、《红楼梦》120 回，含静态与动态双套题），强制逐回子代理联网调研（5–10 轮）+ 主观写题 + 子代理 `/tmp` 生图测试迭代（最多 3 轮取最优版）。
+- **落地计划文件（均已通过 `plan:check` 校验，状态 `ready`）**：
+  1. [`plans/20261019_classics-xiyou-100ch_execution-plan.yaml`](./plans/20261019_classics-xiyou-100ch_execution-plan.yaml)（《西游记》全 100 回，`WU-001`~`WU-006`）
+  2. [`plans/20261019_classics-sanguo-120ch_execution-plan.yaml`](./plans/20261019_classics-sanguo-120ch_execution-plan.yaml)（《三国演义》全 120 回，`WU-001`~`WU-006`）
+  3. [`plans/20261019_classics-shuihu-120ch_execution-plan.yaml`](./plans/20261019_classics-shuihu-120ch_execution-plan.yaml)（《水浒传》全 120 回，`WU-001`~`WU-006`）
+  4. [`plans/20261019_classics-honglou-120ch_execution-plan.yaml`](./plans/20261019_classics-honglou-120ch_execution-plan.yaml)（《红楼梦》全 120 回，`WU-001`~`WU-006`）
 
-### 2026-09-27 之后上线的能力
+### 2. 新增「测评题目」画廊页（`/prompts`）与顶栏下拉导航改造（Commit `f5401f7`）
+- **解决诉求**：
+  1. 删除顶栏冗余的重复页面标题（`.brand-title`），将平铺的页面分段开关（[`PageGroupNav.tsx`](./src/app/components/toolbar/PageGroupNav.tsx)）改造为紧凑的下拉选择菜单。
+  2. 新增 `/prompts`「测评题目」（`Benchmark Prompts`）页面，支持筛选搜索工具栏、响应式卡片瀑布流、卡片快捷复制提示词原文，以及点击卡片弹出模态窗查看题目详情（含多场景题组候选切换器、[`StandardCriteriaPanel.tsx`](./src/app/components/modal/StandardCriteriaPanel.tsx) 黄金标准、[`G1`–`G5` / `C1`–`C9`](./src/core/judge/schema.ts) 100 分评审量表、模板变量插槽与生命周期溯源）。
+- **落地改动**：
+  - 路由与视图模型：[`src/app/prompts/page.tsx`](./src/app/prompts/page.tsx)、[`src/app/prompts/prompts-page-model.ts`](./src/app/prompts/prompts-page-model.ts)
+  - 界面组件与样式：[`src/app/prompts/PromptsGalleryPage.tsx`](./src/app/prompts/PromptsGalleryPage.tsx)、[`src/app/prompts/PromptsFilterBar.tsx`](./src/app/prompts/PromptsFilterBar.tsx)、[`src/app/prompts/PromptCard.tsx`](./src/app/prompts/PromptCard.tsx)、[`src/app/prompts/PromptDetailModal.tsx`](./src/app/prompts/PromptDetailModal.tsx)、[`src/app/prompts/prompts-page.css`](./src/app/prompts/prompts-page.css)、[`src/app/prompts/prompts-modal.css`](./src/app/prompts/prompts-modal.css)
+  - 国际化词典：[`src/i18n/messages/prompts-page.ts`](./src/i18n/messages/prompts-page.ts)、[`src/i18n/messages/toolbar.ts`](./src/i18n/messages/toolbar.ts)
+- **质量验证**：`pnpm lint`、`pnpm check:length`、`pnpm check:ui`、`pnpm check:secrets`、`pnpm validate:prompts` 与 `pnpm test`（1,036 项单测）全绿通过。
 
-逐项设计见 `docs/architecture/revisions/`，用户可见的变化见 `CHANGELOG.md`。
-
-- **上游 profile**（ACR-013～016）：codex 多 profile，每个 profile 一个 app-server 与临时 home；
-  「跑一次」可多选上游；看板提供上游对比视图与大图页同轮切换。
-- **结果集导出 GIF**（ACR-017）：按时刻定格各作品的动画帧合成。
-- **数据仓发布范围**（ACR-018）：发布 profile 结果、题目白名单 `publishPrompts`、面板按轮次勾选导出、
-  丢弃与恢复。
-- **作品评审**（ACR-019～021）：动态鹈鹕车的代码层（静态解析 + 无头 Chromium 量测，30 分）与
-  AI 语义层（裁判 CLI 看联系图，盲描述 → 定位部位 → 按 C5–C9 打 70 分）。
-- **Git 钩子**（ACR-022）：lefthook 管理 pre-commit 与 pre-push。
-- **数据仓网页配置**（ACR-023）：配置页可改 `dataRepo.repository`，执行器按地址 clone 本地副本。
-- **2026-09 动态专题与题库归档收敛**（Sprint M1 + v0.8.0）：新增 10 道高辨识度动态评测题（2 题入「经典基准」、8 题建「2026-09」分组）；将前沿工程（FE-1~8）、前沿视效（VFX）与微观物理三个分组（31 题）移入 `ARCHIVED_PROMPTS` 归档，从 `BUILTIN_PROMPTS` 与「跑一次」分组面板移除，活跃题库精简为 23 题（160 候选），历史记录仍可经归档表无损解析。
-- **中英双语全栈国际化**（Sprint M2）：零外部依赖实现 SSR + 客户端零闪烁语言切换（`en` / `zh-CN`）、全界面与导出图双语化、题库与评审标准展示层映射，以及核心文档双语互链。
-- 其余：直出约束 `run.harnessGuard`、定时轮次排队、时间线行标签的鹈鹕通过率、竖版时间线导出、`agy` 内置 `gemini-4-argon` 模型支持。
+### 3. CLI 命令树统一、指纹成本追踪、实时状态同步与 `judge:backfill` 开关（Commit `8611272`）
+- **解决诉求**：
+  1. 统一 CLI 入口 [`src/bin/pelican.ts`](./src/bin/pelican.ts)（`pnpm pelican <subcommand>`），收敛单复数同义参数（`--effort/--efforts`、`--model/--models/--declared` 等）、TTY 感知安全确认（`confirmOrAbort`）与 4 层模型反查 CLI。
+  2. 为 `scripts/judge-backfill.ts` 增加 `PELICAN_DISABLE_JUDGE_BACKFILL=1` 与 `config.judge.backfillEnabled: false` 禁用开关。
+  3. 修复 `/fingerprint` 页面跑完后台任务或 CLI 任务后不自动刷新的问题：在 [`src/core/watcher.ts`](./src/core/watcher.ts) 监听 `checks/` 与 `samples/` 变更，并在 [`src/app/fingerprint/FingerprintDashboard.tsx`](./src/app/fingerprint/FingerprintDashboard.tsx) 订阅 `/api/events` SSE 自动拉取最新快照。
+  4. 为模型指纹采样与核验引入真實 Token 用量与 USD 成本汇总展示，并实跑验证 `agy` 的 `gemini-4-argon` 与 `gemini-3.8-flash` 渠道核验结果（两模型 6 探针平均相似度 `0.941`，排除同模套壳）。
 
 ---
 
-## 3. 标准运维操作规程
+## 三、 关键技术决策与踩坑教训 (Decisions & Lessons Learned)
 
-### 3.1 数据同步流程（所有者面板优先，CLI 备用）
+1. **`src/core/classics/**/*.ts` 的 500 行代码长度硬限制与分卷拆分决策**
+   - **背景与陷阱**：[`config/code-length-policy.yaml`](./config/code-length-policy.yaml) 仅豁免了 `src/core/prompts/**`，而 **`src/core/classics/**` 未被豁免**，受 TypeScript 模块 $\le 500$ 行、函数 $\le 50$ 行硬性门禁约束。若将 100~120 回的题面与 `PromptStandard` 塞入单个 `src/core/classics/xiyou.ts`，必然触发 `pnpm check:length` 失败。
+   - **最终决策**：在实施四大名著全章节补全计划时，按每 10~12 回拆分为独立子模块 `src/core/classics/<novel>/chNNN-MMM.ts`（每文件控制在 $\le 450$ 行），由 [`src/core/classics/xiyou.ts`](./src/core/classics/xiyou.ts)、[`sanguo.ts`](./src/core/classics/sanguo.ts)、[`shuihu.ts`](./src/core/classics/shuihu.ts)、[`honglou.ts`](./src/core/classics/honglou.ts) 汇总组装导出 `*_PROMPT` 与 `*_ANIM_PROMPT`。
 
-系统提供看板网页面板与终端 CLI 两种操作入口，二者共用底层同步流水线与本地台账：
+2. **题库 SHA-256 锁定测试（`EXPECTED_BUILTIN_PROMPTS_SHA256`）与候选计数同步**
+   - **故障现象**：修改 `BUILTIN_PROMPTS` 中任意题目的 `template` 或 `candidates` 列表后，[`test/i18n/i18n-integrity.test.ts`](./test/i18n/i18n-integrity.test.ts) 中的 `EXPECTED_BUILTIN_PROMPTS_SHA256` 与 `assert.equal(candidateTotal, ...)` 会拦截未授权变更。
+   - **终态防范措施**：每部名著在 `WU-001`~`WU-005` 分批推进时，运行 `pnpm lint`、`pnpm check:length` 与 `pnpm validate:prompts` 验证；在该名著的收官单元 `WU-006` 统一补齐 [`src/core/prompts/i18n/labels-en.ts`](./src/core/prompts/i18n/labels-en.ts)（`CLASSICS_CANDIDATES_EN`）、英文标准映射 `src/core/prompts/i18n/standards-classics-<novel>-en.ts`、[`src/bin/validate-prompts.ts`](./src/bin/validate-prompts.ts)（`CANDIDATE_STANDARD_SUITE_IDS`），并同步更新 `test/i18n/i18n-integrity.test.ts` 中的 `EXPECTED_BUILTIN_PROMPTS_SHA256` 与候选总数断言。
 
-1. **看板面板操作（首选）**：
-   所有者登录后进入看板 `/config` 页：
-   - 「数据仓设置」区块填写数据仓地址 `repository`、本地路径 `path`、`autoSync` 与 `push`；
-   - 「数据仓」区块查看工作副本连通性、当前分支与上游、领先/落后提交数及待同步轮次；
-   - 勾选要导出的轮次，或丢弃不发布的轮次（台账记 `skipped/discarded`，可恢复）；
-   - 点击「演练」预览待导出与脱敏情况（无写操作）；
-   - 点击「导出」执行脱敏归档并生成本地 `chore(data)` Git 提交；
-   - 点击「发布确认」基于匿名 fetch 校验上游祖先关系，自动回填 `published` 状态；
-   - 点击「推送」：二次确认框核对即将公开的提交短哈希列表，确认后由 runner 经授权的 GitHub App 推送（未授权时提示连接 GitHub 或在宿主机推送）。
+3. **`agy` 零工具指纹隔离与不污染全局探针原则**
+   - **背景**：`agy` CLI 无 `--tools ""` 硬件级禁用参数，在指纹采样时可能尝试调用 `run_command` 写文件。
+   - **最终决策**：严禁修改 `src/core/model-fingerprint/probes/*.ts` 中的全局探针文本（避免破坏 Claude / Codex 等适配器的 Prompt Cache 前缀与既有基准分布），仅在 [`src/adapters/agy.ts`](./src/adapters/agy.ts) 当 `request.fingerprint === true` 时在 `[req:...]` 之前注入内联直出后缀约束。
 
-2. **CLI 运维工具（备用，`pnpm sync:data`）**：
-   参数与说明：
-   - `--repo <path>`：数据仓本地路径（缺省读取 `pelican.config.yaml` 的 `dataRepo.path`）；
-   - `--dry-run`：演练模式，任何地方都不写入，仅输出详细报告；
-   - `--run <runId>`：指定同步的单个轮次（可多次传入）；
-   - `--confirm-published`：发布确认模式，执行匿名 `git fetch` 并将已被远端包含的轮次标为 `published`；
-   - `--push`：同步提交后执行 `git push`（与 `--confirm-published` 互斥）；
-   - `--json`：以标准 JSON 结构输出执行结果。
-
-   退出码定义：`0` 成功；`1` 执行出错（配置有误、工作区不干净、fetch/push 失败）；`2` 存在脱敏拦截拒绝发布或冲突。
-
-### 3.2 容器部署与发布闭环工作流（网页优先，宿主机备用）
-在两容器部署（`compose.yaml`：`llm-iq-web` 与 `llm-iq-runner`）架构下：
-1. **自动导出与提交**：
-   - `compose.yaml` 把宿主机数据仓（`${PELICAN_DATA_REPO_DIR:-../llm-iq-data}`）挂载至 runner 的 `/data-repo`，配置 `dataRepo.path: /data-repo`、`autoSync: true`、`push: false`；该宿主机路径须加入 Docker Desktop 的 File Sharing；
-   - 填了 `dataRepo.repository` 时，挂进来的是空目录也行，runner 启动时按地址 clone；
-   - runner 每轮评测结束自动完成脱敏归档，并在 `/data-repo` 生成 `chore(data)` 提交，台账记录为 `status: exported`。
-2. **网页一键授权与推送（首选闭环）**：
-   - 所有者在看板 `/config` 页点击「连接 GitHub」，按流程创建 GitHub App 并安装至 `dataRepo.repository` 指定的数据仓；
-   - 推送凭据自动保存在 runner 专用卷 `runner-secrets` 中（web 容器不接触任何密钥）；
-   - 在面板点击「推送」核对领先提交列表后确认，runner 自动刷新令牌并推送，自动更新台账为 `published`。
-3. **宿主机人工发布（备用）**：
-   - 若未连接 GitHub App，宿主机操作者可使用宿主机 Git 凭据推送：
-     ```bash
-     git -C ../llm-iq-data push
-     ```
-   - 推送后在看板点击「发布确认」，或等待 runner 下次评测自动确认回填 `published` 状态。
-4. **升级容器**：先确认 runner 空闲（最近一轮的 `run.json` 有 `finishedAt`，评审队列没有
-   `queued` / `running`），再在仓库目录执行 `docker compose up -d --build`。升级只替换镜像与容器，
-   数据、凭据与 CLI 登录态所在的卷保持不变；不要带 `-v` 执行 `down`。详见 `docs/deploy-docker.md`。
-
-### 3.3 历史轮次滚动保留与修剪守卫
-- 由 `retention.days` 控制历史轮次保留天数；每轮评测启动前由 `pruneExpiredRuns` 执行清理巡检，
-  与数据仓动作共用一把锁，拿不到锁时跳过本次修剪；
-- 过期且台账为 `published`、`skipped/unpublishable-prompt`、`skipped/empty`、`skipped/discarded` 的轮次删除；
-- 过期且台账为 `skipped/rejected` 的轮次永不自动删除，汇总日志提示人工处理；
-- 缺 `run.json` 或仍为 `inProgress` 的残轮，过期超过保留期两倍时记 `skipped/abandoned` 后删除；
-- 其余未发布的过期轮次保留，防止网络异常导致数据丢失；过期空目录删除；
-- 执行进程启动时收尾上一个进程没跑完的轮次：只有 `progress.json` 的目录直接删除，有 `run.json` 的置为已中断并照常导出。
-
-### 3.4 公开展台自检与运行监控
-- **展台地址**：<https://llm-iq-dashboard.vercel.app>，Vercel 经 GitHub 集成从 `main` 自动部署；
-  环境变量与缓存时效见 `docs/deploy-public-showcase.md`；
-- **发布前自检**：运行 `pnpm showcase:smoke`，脚本在本地拉起静态数据服务与生产构建，验证只读路由拦截（写操作 403、配对 404、配置 307）与远程数据拉取；
-- **健康监控**：`GET /api/health` 返回如下结构（`dataRepo` 仅在 remote 模式下填写，本地模式为 `null`）：
-  ```json
-  {
-    "mode": { "readonly": true, "dataSource": "remote" },
-    "dataRepo": { "reachable": true, "schemaVersion": 1, "totalRuns": 128, "latestDay": "2026-10-11" },
-    "version": "0.8.0"
-  }
-  ```
-
-### 3.5 作品评审
-- 缺省关闭，配置页「作品评审」区块开启；只有带评分标准的题目（`animated-pelican-v1`）参与；
-- 代码层在作品落盘后运行；AI 语义层在整轮定稿后由 `judge.ai.judges` 中厂商与作品不同的第一个裁判评，
-  评审进程中途退出的队列由下一个执行进程启动时续评；
-- 评分口径改动升 `src/core/judge/schema.ts` 的 rubric `version`；只修解析、量测或截帧逻辑时
-  只升实现版本（`static-judge@N` / `render-judge@N`），已有记录不重评；
-- `pnpm judge:backfill -- --dry-run` 只预演代码层；`--ai-only` 会真实消耗配额，只在明确要求时运行。
+4. **只读展台与访客模式下的导航可见性**
+   - **背景**：`/fingerprint` 仅对配对所有者开放，而 `/`（鹈鹕基准）与 `/prompts`（测评题目）对所有访客及只读展台（`PELICAN_READONLY=1`）开放。
+   - **防范措施**：[`PageGroupNav.tsx`](./src/app/components/toolbar/PageGroupNav.tsx) 按 `availableItems.length <= 1` 判断是否隐藏导航；隐藏 `/fingerprint` 后仍保留 `/` 与 `/prompts` 两项，访客与只读展台均可正常下拉切换浏览题库。
 
 ---
 
-## 4. 需人工完成的事项
+## 四、 核心代码架构与文件速查 (Architecture Map)
 
-以下步骤涉及账号登录、私有凭据或公开发布，须由运维或所有者人工完成：
-
-1. **CLI 登录**：容器部署后在宿主机执行 `docker exec -it llm-iq-runner pnpm onboard`，逐家登录；
-   登录态存于各自的卷，升级不需要重新登录。
-2. **发布确认**：面板「推送」的二次确认，或未连接 GitHub App 时在宿主机执行：
-   ```bash
-   git -C ../llm-iq-data status
-   git -C ../llm-iq-data log -n 5 --oneline
-   git -C ../llm-iq-data push
-   ```
-3. **Docker Desktop File Sharing**：数据仓的宿主机路径须加入 File Sharing，修改时 Docker Desktop
-   需完全退出，其他容器会短暂中断。
+- **四大名著题库与国际化映射**：
+  - [`src/core/classics/xiyou.ts`](./src/core/classics/xiyou.ts)：《西游记》静态（`xiyou-v1`）与动态（`xiyou-anim-v1`）套题入口（当前 10 回，待按计划扩展为 100 回）。
+  - [`src/core/classics/sanguo.ts`](./src/core/classics/sanguo.ts)：《三国演义》静态（`sanguo-v1`）与动态（`sanguo-anim-v1`）套题入口（当前 10 回，待按计划扩展为 120 回）。
+  - [`src/core/classics/shuihu.ts`](./src/core/classics/shuihu.ts)：《水浒传》静态（`shuihu-v1`）与动态（`shuihu-anim-v1`）套题入口（当前 10 回，待按计划扩展为 120 回）。
+  - [`src/core/classics/honglou.ts`](./src/core/classics/honglou.ts)：《红楼梦》静态（`honglou-v1`）与动态（`honglou-anim-v1`）套题入口（当前 10 回，待按计划扩展为 120 回）。
+  - [`src/core/prompts/i18n/labels-en.ts`](./src/core/prompts/i18n/labels-en.ts)：题组与候选条目英文标题映射（`PROMPT_LABELS_EN`、`CLASSICS_CANDIDATES_EN`）。
+  - [`src/core/prompts/i18n/standards-en.ts`](./src/core/prompts/i18n/standards-en.ts)：`PromptStandard` 英文翻译聚合表。
+  - [`src/bin/validate-prompts.ts`](./src/bin/validate-prompts.ts)：题库 Schema 与候选级 `PromptStandard` 完整性校验器（`CANDIDATE_STANDARD_SUITE_IDS`）。
+- **测评题目画廊页（`/prompts`）**：
+  - [`src/app/prompts/prompts-page-model.ts`](./src/app/prompts/prompts-page-model.ts)：题库目录构建、多维筛选搜索与提示词原文复制纯函数模型。
+  - [`src/app/prompts/PromptsGalleryPage.tsx`](./src/app/prompts/PromptsGalleryPage.tsx)、[`PromptsFilterBar.tsx`](./src/app/prompts/PromptsFilterBar.tsx)、[`PromptCard.tsx`](./src/app/prompts/PromptCard.tsx)、[`PromptDetailModal.tsx`](./src/app/prompts/PromptDetailModal.tsx)：瀑布流画廊与详情模态窗组件。
+- **统一 CLI 与模型指纹核心**：
+  - [`src/bin/pelican.ts`](./src/bin/pelican.ts)、[`src/bin/cli-args.ts`](./src/bin/cli-args.ts)、[`src/core/cli-run-selection.ts`](./src/core/cli-run-selection.ts)：统一 CLI 命令树、参数正交词典与临时目标合成。
+  - [`src/core/model-fingerprint/`](./src/core/model-fingerprint/)：ACR-024 模型指纹 6 探针采样、JSD 相似度核验与成本统计。
 
 ---
 
-## 5. 质量门禁要求
+## 五、 标准验证、运行与部署流水线指令 (Runbook)
 
-在本仓库进行任何代码改动并提交前，必须依次通过以下质量门禁：
-
+### 1. 运行自动化门禁与测试
 ```bash
-pnpm lint               # TypeScript 类型检查，含 test/
-pnpm test               # 单元与集成测试，不调用 CLI、不读本机 data/
-pnpm validate:prompts   # 题库与候选条目完整性校验
-pnpm build              # Next.js 生产构建
-pnpm check:length       # 文件与函数长度门禁（config/code-length-policy.yaml）
-pnpm check:secrets      # 已跟踪文件的密钥扫描（config/secret-scan-policy.yaml）
+pnpm lint                   # TypeScript 全量类型检查（含 src/、scripts/、test/）
+pnpm check:length           # 代码行数与函数长度红线检查
+pnpm check:ui               # UI 组件、Token 与 CSS 卫生门禁检查
+pnpm check:secrets          # 敏感凭据扫描
+pnpm validate:prompts       # 题库 Schema 与黄金标准完整性体检
+pnpm test                   # 全量单元测试（1,036 项测试，零 CLI 调用、零 data/ 污染）
 ```
 
-若改动涉及只读展示或远程数据源逻辑，另须通过 `pnpm showcase:smoke`。
+### 2. 检查四大名著执行计划状态
+```bash
+for p in plans/20261019_classics-xiyou-100ch_execution-plan.yaml \
+         plans/20261019_classics-sanguo-120ch_execution-plan.yaml \
+         plans/20261019_classics-shuihu-120ch_execution-plan.yaml \
+         plans/20261019_classics-honglou-120ch_execution-plan.yaml; do
+  npm --prefix /Users/luojin/.gemini/antigravity-cli/skills/plan-work-unit-orchestration --silent run plan:status -- --root /Users/luojin/git/git-my-code/llm_iq_dashboard "$p"
+done
+```
 
-Git 钩子由 lefthook 管理（`lefthook.yml`），`pnpm install` 时自动安装：pre-commit 并行跑
-`check:secrets`、`lint`、`check:length`，pre-push 跑 `validate:prompts` 与 `test`。确认误报时用
-`LEFTHOOK=0 git commit` 绕过一次；容器构建用 `CI=1 pnpm install` 跳过装钩子。
+### 3. 本地开发与生产看板服务
+```bash
+pnpm dev --port 3001        # 开发看板 http://127.0.0.1:3001（当前 PID 7873 已在后台运行）
+pnpm dashboard:prod         # 生产看板 http://127.0.0.1:3000（当前 PID 42304 已在后台运行）
+```
+
+---
+
+## 六、 下一步演进路线与待办清单 (Prioritized Backlog)
+
+新会话开启后，直接按顺序逐个计划、按工作单元（`WU-001` $\rightarrow$ `WU-006`）执行四大名著全章节补全：
+
+- [ ] **P1 - 执行《西游记》全 100 回计划（[`plans/20261019_classics-xiyou-100ch_execution-plan.yaml`](./plans/20261019_classics-xiyou-100ch_execution-plan.yaml)）**：
+  - **当前进度**：`status: ready`，下一个待执行单元为 **`WU-001`（第 1–20 回）**。
+  - **执行步骤**：
+    1. `WU-001`（第 1–20 回，拆分为 `src/core/classics/xiyou/ch001-010.ts` 与 `ch011-020.ts`）
+    2. `WU-002`（第 21–40 回，拆分为 `ch021-030.ts` 与 `ch031-040.ts`）
+    3. `WU-003`（第 41–60 回，拆分为 `ch041-050.ts` 与 `ch051-060.ts`）
+    4. `WU-004`（第 61–80 回，拆分为 `ch061-070.ts` 与 `ch071-080.ts`）
+    5. `WU-005`（第 81–100 回，拆分为 `ch081-090.ts` 与 `ch091-100.ts`）
+    6. `WU-006`（总装 `src/core/classics/xiyou.ts`、补齐 `labels-en.ts` 与 `standards-classics-xiyou-en.ts`、接入 `CANDIDATE_STANDARD_SUITE_IDS` 并更新 `test/i18n/i18n-integrity.test.ts`）
+  - **每回硬性纪律**：派子代理联网搜索 5–10 轮核查维基文库通行百回本原著细节（注意阶段造型：第 1–13 回悟空无金箍与虎皮裙，第 14 回始戴金箍围虎皮裙，第 15 回收白龙马，第 19 回收八戒，第 22 回收沙僧） $\rightarrow$ Agent 主观写题面与 `PromptStandard`（严禁批量脚本） $\rightarrow$ 派子代理在 `/tmp/pelican-xiyou-chNNN-XXXXXX` 生图实测并最多优化 3 轮取最优版，测试后清理 `/tmp`。
+
+- [ ] **P2 - 执行《三国演义》全 120 回计划（[`plans/20261019_classics-sanguo-120ch_execution-plan.yaml`](./plans/20261019_classics-sanguo-120ch_execution-plan.yaml)）**：
+  - **当前进度**：`status: ready`，待 P1 完成后按 `WU-001`（第 1–24 回）~ `WU-006` 顺序执行，每 12 回拆分为 `src/core/classics/sanguo/chNNN-MMM.ts`。
+
+- [ ] **P3 - 执行《水浒传》全 120 回计划（[`plans/20261019_classics-shuihu-120ch_execution-plan.yaml`](./plans/20261019_classics-shuihu-120ch_execution-plan.yaml)）**：
+  - **当前进度**：`status: ready`，待 P2 完成后按 `WU-001`（第 1–24 回）~ `WU-006` 顺序执行，对照袁无涯刊百二十回全本（含聚义、招安、征辽、征田虎、征王庆、征方腊），每 12 回拆分为 `src/core/classics/shuihu/chNNN-MMM.ts`。
+
+- [ ] **P4 - 执行《红楼梦》全 120 回计划（[`plans/20261019_classics-honglou-120ch_execution-plan.yaml`](./plans/20261019_classics-honglou-120ch_execution-plan.yaml)）**：
+  - **当前进度**：`status: ready`，待 P3 完成后按 `WU-001`（第 1–24 回）~ `WU-006` 顺序执行，对照程高百二十回通行本，每 12 回拆分为 `src/core/classics/honglou/chNNN-MMM.ts`。
+
+---
+
+## 七、 会话交接前自检清单 (Pre-Handoff Checklist)
+
+- [x] 代码库 Git 工作区完全干净（最新功能提交 Commit Hash: `f5401f7`，含本交接文档更新提交）。
+- [x] 所有门禁与测试全绿（`pnpm lint`、`pnpm check:length`、`pnpm check:ui`、`pnpm check:secrets`、`pnpm validate:prompts`、`pnpm test` 1,036 项单测全部通过）。
+- [x] 4 份四大名著执行计划文件已落盘 `plans/` 并全部通过 `plan:check` 校验。
+- [x] 本地服务运行状态确认：开发看板 `:3001`（PID `7873`）与生产看板 `:3000`（PID `42304`）均在线运行。
+- [x] 遵守代码规范与工程行数红线，100% 恪守数据安全红线，零未授权破坏性操作。
