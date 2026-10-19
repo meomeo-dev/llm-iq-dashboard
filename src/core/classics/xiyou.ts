@@ -4,11 +4,11 @@
  * 回数与回目对照维基文库原著全文核对，逐回考证笔记在 docs/research/classics/xiyou/，
  * 题面与评判标准的写法见 docs/research/classics/README.md。画面描述为本仓库自撰，只取原著
  * 描写的要点、以今语转述，不借用 1986 版电视剧等改编作品的造型。悟空的样貌按原著分阶段：
- * 第 14 回之前没有金箍与虎皮裙，第 14 回之后才围虎皮裙、戴金箍；“定海神针”“八戒背媳妇”
- * 属后世流传，不入题面。
+ * 第 14 回之前没有金箍与虎皮裙，第 14 回之后才围虎皮裙、戴金箍，第 100 回成佛后金箍自去；
+ * “定海神针”“八戒背媳妇”属后世流传，不入题面。
  *
- * 已考证的回目按每十回一卷放在 xiyou/chNNN-MMM.ts，各带本回评判标准；其余回目暂列本文件，
- * 只有套题级标准。
+ * 百回按每十回一卷放在 xiyou/chNNN-MMM.ts，各带本回评判标准；本文件只汇总两套候选，
+ * 并保留套题级标准。
  */
 
 import type { PromptSpec } from "../prompt";
@@ -20,6 +20,8 @@ import { XIYOU_ANIM_CH041_050, XIYOU_CH041_050 } from "./xiyou/ch041-050";
 import { XIYOU_ANIM_CH051_060, XIYOU_CH051_060 } from "./xiyou/ch051-060";
 import { XIYOU_ANIM_CH061_070, XIYOU_CH061_070 } from "./xiyou/ch061-070";
 import { XIYOU_ANIM_CH071_080, XIYOU_CH071_080 } from "./xiyou/ch071-080";
+import { XIYOU_ANIM_CH081_090, XIYOU_CH081_090 } from "./xiyou/ch081-090";
+import { XIYOU_ANIM_CH091_100, XIYOU_CH091_100 } from "./xiyou/ch091-100";
 
 export const XIYOU_PROMPT: PromptSpec = {
   id: "xiyou-v1",
@@ -35,6 +37,8 @@ export const XIYOU_PROMPT: PromptSpec = {
     ...XIYOU_CH051_060,
     ...XIYOU_CH061_070,
     ...XIYOU_CH071_080,
+    ...XIYOU_CH081_090,
+    ...XIYOU_CH091_100,
   ],
   source: "https://zh.wikisource.org/wiki/西遊記",
   verified: true,
@@ -64,6 +68,8 @@ export const XIYOU_ANIM_PROMPT: PromptSpec = {
     ...XIYOU_ANIM_CH051_060,
     ...XIYOU_ANIM_CH061_070,
     ...XIYOU_ANIM_CH071_080,
+    ...XIYOU_ANIM_CH081_090,
+    ...XIYOU_ANIM_CH091_100,
   ],
   source: "https://zh.wikisource.org/wiki/西遊記",
   verified: true,

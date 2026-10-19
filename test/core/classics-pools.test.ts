@@ -12,8 +12,8 @@ import { BUILTIN_PROMPTS } from "@/core/prompt";
 const POOLS: Record<string, readonly [string, number]> = {
   "shuihu-v1": ["shuihu", 10],
   "shuihu-anim-v1": ["shuihu-anim", 10],
-  "xiyou-v1": ["xiyou", 80],
-  "xiyou-anim-v1": ["xiyou-anim", 80],
+  "xiyou-v1": ["xiyou", 100],
+  "xiyou-anim-v1": ["xiyou-anim", 100],
   "sanguo-v1": ["sanguo", 10],
   "sanguo-anim-v1": ["sanguo-anim", 10],
   "honglou-v1": ["honglou", 10],
