@@ -13,6 +13,8 @@ import { SANGUO_ANIM_CH001_012, SANGUO_CH001_012 } from "./sanguo/ch001-012";
 import { SANGUO_ANIM_CH013_024, SANGUO_CH013_024 } from "./sanguo/ch013-024";
 import { SANGUO_ANIM_CH025_036, SANGUO_CH025_036 } from "./sanguo/ch025-036";
 import { SANGUO_ANIM_CH037_048, SANGUO_CH037_048 } from "./sanguo/ch037-048";
+import { SANGUO_ANIM_CH049_060, SANGUO_CH049_060 } from "./sanguo/ch049-060";
+import { SANGUO_ANIM_CH061_072, SANGUO_CH061_072 } from "./sanguo/ch061-072";
 
 export const SANGUO_PROMPT: PromptSpec = {
   id: "sanguo-v1",
@@ -24,24 +26,8 @@ export const SANGUO_PROMPT: PromptSpec = {
     ...SANGUO_CH013_024,
     ...SANGUO_CH025_036,
     ...SANGUO_CH037_048,
-    {
-      id: "sanguo-049",
-      label: "第49回 七星坛祭风",
-      text:
-        "生成一幅 SVG 插画，描绘《三国演义》第四十九回“七星坛诸葛祭风”的场面：冬夜，" +
-        "南屏山上筑起一座三层高坛，坛边插满青、黑、白、红四色的星宿旗和黄色的卦旗。" +
-        "诸葛亮披散头发、赤着双脚、身穿道袍，在香炉前仰天祷告；旗帜被骤起的东南风吹得猎猎向西北翻卷。" +
-        "山下远处的江面上，隐约可见连成一片的战船。",
-    },
-    {
-      id: "sanguo-050",
-      label: "第50回 华容道",
-      text:
-        "生成一幅 SVG 插画，描绘《三国演义》第五十回“关云长义释曹操”的场面：隆冬雨后，" +
-        "华容道狭窄泥泞，马蹄陷在泥水里。曹操带着几百名残兵，人马疲惫、盔甲焦黑，在马上拱手哀求。" +
-        "对面红脸长须的关羽手提大刀、骑一匹赤红骏马，身后一排持刀步兵列阵，" +
-        "关羽神情犹豫，正要勒转马头让开道路。",
-    },
+    ...SANGUO_CH049_060,
+    ...SANGUO_CH061_072,
     {
       id: "sanguo-075",
       label: "第75回 刮骨疗毒",
@@ -85,20 +71,8 @@ export const SANGUO_ANIM_PROMPT: PromptSpec = {
     ...SANGUO_ANIM_CH013_024,
     ...SANGUO_ANIM_CH025_036,
     ...SANGUO_ANIM_CH037_048,
-    {
-      id: "sanguo-anim-049",
-      label: "第49回 七星坛祭风（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《三国演义》第四十九回“七星坛诸葛祭风”的动态场面：冬夜南屏山三层高坛插满星宿卦旗，诸葛亮披发跣足道袍仗剑向天作法，骤起的东南狂风将六十四面大旗吹向西北狂卷，江面战船连天。" +
-        "动效要求：1. 坛周六十四面星宿旗在狂暴东南风中激烈翻卷抽打；2. 坛前香炉烈火香烟随狂风呼啸倾斜拉长；3. 诸葛亮道袍与黑发随风激扬。严格遵守合法 XML 规范。",
-    },
-    {
-      id: "sanguo-anim-050",
-      label: "第50回 华容道（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《三国演义》第五十回“关云长义释曹操”的动态场面：狭窄泥泞华容道，曹操带焦黑盔甲残兵在马上拱手哀求，关羽红脸长须跨赤兔马手提大刀，神情迟疑犹豫，正要勒马让道。" +
-        "动效要求：1. 道路两旁枯芦苇在寒风凄雨中剧烈倒伏起伏；2. 曹军残卒颓然喘息步履摇晃；3. 关羽长髯微扬、赤兔马马头微扬轻踏。严格遵守合法 XML 规范。",
-    },
+    ...SANGUO_ANIM_CH049_060,
+    ...SANGUO_ANIM_CH061_072,
     {
       id: "sanguo-anim-075",
       label: "第75回 刮骨疗毒（动态）",
