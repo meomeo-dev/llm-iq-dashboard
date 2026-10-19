@@ -16,6 +16,8 @@ import { XIYOU_ANIM_CH001_010, XIYOU_CH001_010 } from "./xiyou/ch001-010";
 import { XIYOU_ANIM_CH011_020, XIYOU_CH011_020 } from "./xiyou/ch011-020";
 import { XIYOU_ANIM_CH021_030, XIYOU_CH021_030 } from "./xiyou/ch021-030";
 import { XIYOU_ANIM_CH031_040, XIYOU_CH031_040 } from "./xiyou/ch031-040";
+import { XIYOU_ANIM_CH041_050, XIYOU_CH041_050 } from "./xiyou/ch041-050";
+import { XIYOU_ANIM_CH051_060, XIYOU_CH051_060 } from "./xiyou/ch051-060";
 
 export const XIYOU_PROMPT: PromptSpec = {
   id: "xiyou-v1",
@@ -27,23 +29,8 @@ export const XIYOU_PROMPT: PromptSpec = {
     ...XIYOU_CH011_020,
     ...XIYOU_CH021_030,
     ...XIYOU_CH031_040,
-    {
-      id: "xiyou-054",
-      label: "第54回 西梁女国",
-      text:
-        "生成一幅 SVG 插画，描绘《西游记》第五十四回西梁女国的场面：女儿国城门外，" +
-        "宫女和女官的仪仗排成长列，一辆装饰着龙凤的华丽车驾停在路中。女王发髻盘金凤、簪满珠翠，" +
-        "披着红纱，含笑拉住唐僧的手请他同乘；唐僧身披锦襕袈裟、头戴毗卢帽，满脸窘迫。" +
-        "悟空、八戒与沙僧站在一旁，神情各异。",
-    },
-    {
-      id: "xiyou-058",
-      label: "第58回 真假美猴王",
-      text:
-        "生成一幅 SVG 插画，描绘《西游记》第五十八回“真假美猴王”的场面：灵山雷音寺前的云头上，" +
-        "两个一模一样的孙悟空——同样的金箍、虎皮裙和铁棒——正在缠斗，谁也分不出真假。" +
-        "下方莲台上端坐着如来，诸佛与罗汉分列两旁，如来手中托着一只金色的钵盂。",
-    },
+    ...XIYOU_CH041_050,
+    ...XIYOU_CH051_060,
     {
       id: "xiyou-061",
       label: "第61回 扇灭火焰山",
@@ -77,20 +64,8 @@ export const XIYOU_ANIM_PROMPT: PromptSpec = {
     ...XIYOU_ANIM_CH011_020,
     ...XIYOU_ANIM_CH021_030,
     ...XIYOU_ANIM_CH031_040,
-    {
-      id: "xiyou-anim-054",
-      label: "第54回 西梁女国（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《西游记》第五十四回西梁女国的动态场面：女儿国城门外龙凤车驾华美，女王盘凤髻披红纱含笑牵住唐僧双手邀其同乘，唐僧锦襕袈裟毗卢帽满脸窘迫，悟空八戒沙僧站在旁边神态各异。" +
-        "动效要求：1. 龙凤车驾四角挂着的金铃流苏在微风中轻柔摇晃晃动；2. 女王身上轻薄红纱曼妙飘拂；3. 唐僧窘迫低头合十手中念珠轻转。严格遵守合法 XML 规范。",
-    },
-    {
-      id: "xiyou-anim-058",
-      label: "第58回 真假美猴王（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《西游记》第五十八回“真假美猴王”的动态场面：灵山大雷音寺云头上，两个一模一样戴金箍、围虎皮裙的孙悟空挥舞铁棒激烈缠斗，下方莲台如来端坐托着金钵，诸佛罗汉分列观战。" +
-        "动效要求：1. 两个美猴王在半空中交错对攻、铁棒碰撞交锋火花迸射；2. 如来掌中金钵散发出一道道旋转扩散的金色佛光光晕；3. 脚底祥云飞卷。严格遵守合法 XML 规范。",
-    },
+    ...XIYOU_ANIM_CH041_050,
+    ...XIYOU_ANIM_CH051_060,
     {
       id: "xiyou-anim-061",
       label: "第61回 扇灭火焰山（动态）",
