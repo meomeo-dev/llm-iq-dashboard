@@ -31,7 +31,7 @@ const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
   "common.languageSwitchTitle",
 ]);
 const EXPECTED_BUILTIN_PROMPTS_SHA256 =
-  "747a7c7f4acd29bce9d0ae733eca91022c322498b898f89c1d56be0265946401";
+  "b81f5f7d4d04e75327b77ba11a01722f72b2702d5d6acfd0d0bf00622dd186f9";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
@@ -144,7 +144,7 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     }
   });
 
-  it("verifies all 23 BUILTIN_PROMPTS and 160 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
+  it("verifies all 23 BUILTIN_PROMPTS and 190 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
     assert.equal(BUILTIN_PROMPTS.length, 23);
     const classic = BUILTIN_PROMPTS.find((p) => p.id === "classic-v1");
     assert.ok(classic);
@@ -202,9 +202,18 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
         assert.ok(zhCand.trim().length > 0);
         assert.equal(CJK_RE.test(enCand), false, `CJK in en candidate label ${c.id}: ${enCand}`);
         assert.equal(localizedEn.candidates[i]?.text, origText, "localizePromptSpec must never alter candidate text");
+        if (c.standard) {
+          const enCandStd = localizePromptStandard(c.id, c.standard, "en");
+          assert.ok(enCandStd, `en standard missing for candidate ${c.id}`);
+          assert.equal(
+            CJK_RE.test(`${enCandStd.coreKey}${enCandStd.groundTruth}${enCandStd.evaluationCriteria}`),
+            false,
+            `CJK in en standard for candidate ${c.id}`,
+          );
+        }
       }
     }
-    assert.equal(candidateTotal, 160);
+    assert.equal(candidateTotal, 190);
   });
 
   it("verifies bilingual documentation pairs exist and contain reciprocal language switch links", () => {

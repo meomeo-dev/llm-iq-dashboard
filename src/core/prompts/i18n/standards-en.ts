@@ -3,6 +3,7 @@
  */
 
 import type { PromptStandard } from "../../prompt/types";
+import { XIYOU_STANDARDS_EN } from "./standards-classics-xiyou-en";
 import { STANDARDS_FE_PART1_EN } from "./standards-fe-part1-en";
 import { STANDARDS_FE_PART2_EN } from "./standards-fe-part2-en";
 import { STANDARDS_LANDMARKS_EN } from "./standards-landmarks-en";
@@ -26,6 +27,7 @@ export const STANDARDS_EN: Readonly<
   ...STANDARDS_FE_PART2_EN,
   ...STANDARDS_VFX_PART1_EN,
   ...STANDARDS_VFX_PART2_EN,
+  ...XIYOU_STANDARDS_EN,
 };
 
 const PHRASE_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [

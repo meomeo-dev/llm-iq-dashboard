@@ -5,6 +5,7 @@
  */
 
 import type { Locale } from "../../../i18n/types";
+import { XIYOU_LABELS_EN } from "./standards-classics-xiyou-en";
 
 /** 题组与特殊单题的显式英文标题 */
 export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
@@ -16,8 +17,8 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
   "ice-water-v1": "Floating Ice in Glass (Archimedes)",
   "shuihu-v1": "Water Margin · 10 Classic Scenes",
   "shuihu-anim-v1": "Water Margin · 10 Animated Scenes",
-  "xiyou-v1": "Journey to the West · 10 Classic Scenes",
-  "xiyou-anim-v1": "Journey to the West · 10 Animated Scenes",
+  "xiyou-v1": "Journey to the West · Chapter Scenes",
+  "xiyou-anim-v1": "Journey to the West · Animated Chapter Scenes",
   "sanguo-v1": "Romance of the Three Kingdoms · 10 Classic Scenes",
   "sanguo-anim-v1": "Romance of the Three Kingdoms · 10 Animated Scenes",
   "honglou-v1": "Dream of the Red Chamber · 10 Classic Scenes",
@@ -52,11 +53,7 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   "shuihu-040": "Ch. 40 · Raid on the Execution Ground",
   "shuihu-056": "Ch. 56 · Shi Qian Steals the Golden Armor",
   "shuihu-071": "Ch. 71 · The Stone Tablet from Heaven at Liangshan",
-  "xiyou-001": "Ch. 1 · The Stone Monkey Enters Water-Curtain Cave",
-  "xiyou-003": "Ch. 3 · Claiming the Golden-Hooped Rod at Dragon Palace",
-  "xiyou-005": "Ch. 5 · Havoc in the Immortal Peach Garden",
-  "xiyou-007": "Ch. 7 · Beneath the Buddha's Five-Finger Mountain",
-  "xiyou-018": "Ch. 18 · Subduing Zhu Bajie at Gao Village",
+  ...XIYOU_LABELS_EN,
   "xiyou-024": "Ch. 24 · Stealing the Ginseng Fruit",
   "xiyou-027": "Ch. 27 · Three Battles with the White Bone Demon",
   "xiyou-054": "Ch. 54 · The Kingdom of Women of Western Liang",
