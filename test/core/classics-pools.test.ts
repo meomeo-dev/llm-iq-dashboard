@@ -14,8 +14,8 @@ const POOLS: Record<string, readonly [string, number]> = {
   "shuihu-anim-v1": ["shuihu-anim", 10],
   "xiyou-v1": ["xiyou", 100],
   "xiyou-anim-v1": ["xiyou-anim", 100],
-  "sanguo-v1": ["sanguo", 10],
-  "sanguo-anim-v1": ["sanguo-anim", 10],
+  "sanguo-v1": ["sanguo", 31],
+  "sanguo-anim-v1": ["sanguo-anim", 31],
   "honglou-v1": ["honglou", 10],
   "honglou-anim-v1": ["honglou-anim", 10],
 };

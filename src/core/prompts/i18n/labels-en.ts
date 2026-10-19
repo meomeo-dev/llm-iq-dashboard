@@ -1,10 +1,11 @@
 /**
- * 54 道内置题目与 340 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 382 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
 
 import type { Locale } from "../../../i18n/types";
+import { SANGUO_LABELS_EN } from "./standards-classics-sanguo-en";
 import { XIYOU_LABELS_EN } from "./standards-classics-xiyou-en";
 
 /** 题组与特殊单题的显式英文标题 */
@@ -19,8 +20,8 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
   "shuihu-anim-v1": "Water Margin · 10 Animated Scenes",
   "xiyou-v1": "Journey to the West · Chapter Scenes",
   "xiyou-anim-v1": "Journey to the West · Animated Chapter Scenes",
-  "sanguo-v1": "Romance of the Three Kingdoms · 10 Classic Scenes",
-  "sanguo-anim-v1": "Romance of the Three Kingdoms · 10 Animated Scenes",
+  "sanguo-v1": "Romance of the Three Kingdoms · Chapter Scenes",
+  "sanguo-anim-v1": "Romance of the Three Kingdoms · Animated Chapter Scenes",
   "honglou-v1": "Dream of the Red Chamber · 10 Classic Scenes",
   "honglou-anim-v1": "Dream of the Red Chamber · 10 Animated Scenes",
   "landmarks-v1": "World City Landmarks · 40 Miniatures",
@@ -54,9 +55,7 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   "shuihu-056": "Ch. 56 · Shi Qian Steals the Golden Armor",
   "shuihu-071": "Ch. 71 · The Stone Tablet from Heaven at Liangshan",
   ...XIYOU_LABELS_EN,
-  "sanguo-001": "Ch. 1 · Oath of the Peach Garden",
-  "sanguo-005": "Ch. 5 · Three Heroes Battle Lü Bu at Hulao Pass",
-  "sanguo-021": "Ch. 21 · Warming Wine and Discussing Heroes",
+  ...SANGUO_LABELS_EN,
   "sanguo-037": "Ch. 37 · Three Visits to the Thatched Cottage",
   "sanguo-041": "Ch. 41 · Zhao Yun's Lone Ride at Changban",
   "sanguo-046": "Ch. 46 · Borrowing Arrows with Straw Boats",
