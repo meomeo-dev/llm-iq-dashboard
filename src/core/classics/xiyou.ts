@@ -18,6 +18,8 @@ import { XIYOU_ANIM_CH021_030, XIYOU_CH021_030 } from "./xiyou/ch021-030";
 import { XIYOU_ANIM_CH031_040, XIYOU_CH031_040 } from "./xiyou/ch031-040";
 import { XIYOU_ANIM_CH041_050, XIYOU_CH041_050 } from "./xiyou/ch041-050";
 import { XIYOU_ANIM_CH051_060, XIYOU_CH051_060 } from "./xiyou/ch051-060";
+import { XIYOU_ANIM_CH061_070, XIYOU_CH061_070 } from "./xiyou/ch061-070";
+import { XIYOU_ANIM_CH071_080, XIYOU_CH071_080 } from "./xiyou/ch071-080";
 
 export const XIYOU_PROMPT: PromptSpec = {
   id: "xiyou-v1",
@@ -31,14 +33,8 @@ export const XIYOU_PROMPT: PromptSpec = {
     ...XIYOU_CH031_040,
     ...XIYOU_CH041_050,
     ...XIYOU_CH051_060,
-    {
-      id: "xiyou-061",
-      label: "第61回 扇灭火焰山",
-      text:
-        "生成一幅 SVG 插画，描绘《西游记》第六十一回扇灭火焰山的场面：八百里火焰山烈焰冲天、寸草不生。" +
-        "头戴金箍、腰围虎皮裙的孙悟空站在山前，双手抡动一柄比人还高的巨大芭蕉扇；" +
-        "扇过之处火焰熄灭，乌云翻滚、大雨倾盆，一半画面仍是火海，一半已被雨水浇灭。",
-    },
+    ...XIYOU_CH061_070,
+    ...XIYOU_CH071_080,
   ],
   source: "https://zh.wikisource.org/wiki/西遊記",
   verified: true,
@@ -66,13 +62,8 @@ export const XIYOU_ANIM_PROMPT: PromptSpec = {
     ...XIYOU_ANIM_CH031_040,
     ...XIYOU_ANIM_CH041_050,
     ...XIYOU_ANIM_CH051_060,
-    {
-      id: "xiyou-anim-061",
-      label: "第61回 扇灭火焰山（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《西游记》第六十一回扇灭火焰山的动态场面：八百里火焰山烈焰滔天。戴金箍围虎皮裙的悟空站在山前双手抡动比人还高的巨大芭蕉扇，扇过之处暴风呼啸、黑云泼雨浇灭熊熊火海。" +
-        "动效要求：1. 孙悟空挥舞芭蕉扇画弧扇动，扇面掀起螺旋形狂暴风暴；2. 八百里火焰山千丈火海在狂风暴雨中被大幅压制翻腾；3. 泼盆大雨急促倾泻。严格遵守合法 XML 规范。",
-    },
+    ...XIYOU_ANIM_CH061_070,
+    ...XIYOU_ANIM_CH071_080,
   ],
   source: "https://zh.wikisource.org/wiki/西遊記",
   verified: true,

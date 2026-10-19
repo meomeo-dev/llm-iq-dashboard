@@ -67,14 +67,14 @@ describe("prompt and judge metadata i18n (M2-03)", () => {
       }
     }
 
-    assert.equal(candidateCount, 262);
+    assert.equal(candidateCount, 300);
 
     let archivedCandidateCount = 0;
     for (const spec of ARCHIVED_PROMPTS) {
       archivedCandidateCount += spec.candidates?.length ?? 0;
     }
     assert.equal(archivedCandidateCount, 140);
-    assert.equal(candidateCount + archivedCandidateCount, 402);
+    assert.equal(candidateCount + archivedCandidateCount, 440);
 
     const frontierEntries = [...FRONTIER_INDIVIDUAL_PROMPT_MAP.entries()];
     assert.equal(frontierEntries.length, 140);
