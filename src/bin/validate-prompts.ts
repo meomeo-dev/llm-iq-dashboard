@@ -51,6 +51,8 @@ const CANDIDATE_STANDARD_SUITE_IDS = [
   "vfx-sys-v1",
   "landmarks-v1",
   "landmarks-anim-v1",
+  "xiyou-v1",
+  "xiyou-anim-v1",
 ];
 
 export function formatValidatePromptsHelp(): string {

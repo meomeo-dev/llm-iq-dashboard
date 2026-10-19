@@ -24,7 +24,7 @@ test("validate-prompts CLI 执行成功且包含三大校验步骤", async () =>
   assert.ok(stdout.includes("23 道内置题目通过严格校验"));
   assert.ok(stdout.includes("[2/3] 校验 14 领域全量 140 道独立前沿题目..."));
   assert.ok(stdout.includes("140 道前沿单题通过严格校验"));
-  assert.ok(stdout.includes("[3/3] 校验 16 套带候选集的套题 candidate 级特异性标准..."));
-  assert.ok(stdout.includes("16 套题共 220 个候选条目均具备独立针对性标准"));
+  assert.ok(stdout.includes("[3/3] 校验 18 套带候选集的套题 candidate 级特异性标准..."));
+  assert.ok(stdout.includes("18 套题共 420 个候选条目均具备独立针对性标准"));
   assert.ok(stdout.includes("[PASS] 题库全量体检通过！"));
 });

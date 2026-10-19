@@ -23,7 +23,7 @@ export interface PromptStandard {
 export interface PromptCandidate {
   /** 稳定标识，如 `xiyou-027`（书名拼音 + 三位回数），写入运行记录 */
   readonly id: string;
-  /** 看板徽章上显示的名字，如 “第27回 三打白骨精” */
+  /** 看板徽章上显示的名字，如 “第27回 尸魔一戏唐三藏” */
   readonly label: string;
   /** 完整的提示词，逐字发送 */
   readonly text: string;

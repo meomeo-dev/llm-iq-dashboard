@@ -23,14 +23,14 @@ export const STANDARDS_SUITES_EN: Readonly<Record<string, LocalizedStandardEntry
   "xiyou-v1": {
     coreKey: "Journey to the West Mythological Composition & Iconic Magical Artifacts",
     groundTruth:
-      "Faithfully depicts the canonical mythological scene from Journey to the West (e.g., Stone Monkey entering Water-Curtain Cave, claiming the Golden-Hooped Rod at the Dragon Palace, Five-Finger Mountain, Three Battles with the White Bone Demon, Quenching the Flaming Mountains with the Plantain Fan) with expressive characters and atmosphere.",
+      "Faithfully depicts the original-text scene of the drawn chapter of Journey to the West (e.g., the Stone Monkey entering Water-Curtain Cave, taking the Golden-Hooped Rod from the Dragon Palace, somersaulting in the Buddha's palm, the Corpse Demon tricking the Tang Monk three times, borrowing the Plantain Fan at the Flaming Mountains); character appearance and attire follow the novel's stages without later adaptation designs, with expressive characters and atmosphere.",
     evaluationCriteria:
-      "1. Magical artifacts: Iconic treasures (Ruyi Jingu Bang, Plantain Fan, Buddha's palm seal) are accurately represented; 2. Scene recognizability: Environmental setting and character silhouettes match the novel.",
+      "1. Magical artifacts: Iconic treasures (Golden-Hooped Rod, Plantain Fan) are accurately represented; 2. Scene recognizability: The setting and character attire match the chapter's original text.",
   },
   "xiyou-anim-v1": {
     coreKey: "Journey to the West Mythological Artifact Aura & Pure Inline Transform/Motion Animation",
     groundTruth:
-      "Faithfully depicts the magical artifacts and supernatural powers of Journey to the West with continuous, smooth inline SVG animation (scaling Golden-Hooped Rod, billowing Samadhi flames, sweeping Plantain Fan gales) and strictly well-formed XML.",
+      "Faithfully depicts the original-text scene of the drawn chapter of Journey to the West and its magical artifacts and powers with continuous, smooth inline SVG animation (scaling Golden-Hooped Rod, billowing Samadhi flames, sweeping Plantain Fan gales) and strictly well-formed XML.",
     evaluationCriteria:
       "1. Magical VFX animation: Flowing divine auras, rolling flames, and artifact transformations animate smoothly; 2. Character iconography: Monkey King and celestial/demonic figures are clearly recognizable; 3. XML compliance: Zero XML parse errors and zero <script> tags.",
   },
