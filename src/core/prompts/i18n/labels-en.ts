@@ -1,10 +1,11 @@
 /**
- * 54 道内置题目与 780 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 820 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
 
 import type { Locale } from "../../../i18n/types";
+import { HONGLOU_LABELS_EN } from "./standards-classics-honglou-en";
 import { SANGUO_LABELS_EN } from "./standards-classics-sanguo-en";
 import { SHUIHU_LABELS_EN } from "./standards-classics-shuihu-en";
 import { XIYOU_LABELS_EN } from "./standards-classics-xiyou-en";
@@ -23,8 +24,8 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
   "xiyou-anim-v1": "Journey to the West · Animated Chapter Scenes",
   "sanguo-v1": "Romance of the Three Kingdoms · Chapter Scenes",
   "sanguo-anim-v1": "Romance of the Three Kingdoms · Animated Chapter Scenes",
-  "honglou-v1": "Dream of the Red Chamber · 10 Classic Scenes",
-  "honglou-anim-v1": "Dream of the Red Chamber · 10 Animated Scenes",
+  "honglou-v1": "Dream of the Red Chamber · Chapter Scenes",
+  "honglou-anim-v1": "Dream of the Red Chamber · Animated Chapter Scenes",
   "landmarks-v1": "World City Landmarks · 40 Miniatures",
   "landmarks-anim-v1": "Animated World City Landmarks · 40 Miniatures",
   "fe-ai-v1": "FE-1: AI Compute & Physical AI (10-Prompt Suite)",
@@ -48,10 +49,7 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...SHUIHU_LABELS_EN,
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
-  "honglou-003": "Ch. 3 · Lin Daiyu Enters the Rongguo Mansion",
-  "honglou-005": "Ch. 5 · Dreaming of the Land of Illusion",
-  "honglou-008": "Ch. 8 · Comparing the Magic Jade and Golden Locket",
-  "honglou-017": "Ch. 17 · Imperial Consort Yuanchun's Home Visitation",
+  ...HONGLOU_LABELS_EN,
   "honglou-027": "Ch. 27 · Daiyu Buries the Fallen Blossoms",
   "honglou-031": "Ch. 31 · Qingwen Tears the Folding Fans",
   "honglou-040": "Ch. 40 · Granny Liu Tours Grand View Garden",

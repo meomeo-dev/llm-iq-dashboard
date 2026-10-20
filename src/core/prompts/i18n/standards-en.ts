@@ -3,6 +3,7 @@
  */
 
 import type { PromptStandard } from "../../prompt/types";
+import { HONGLOU_STANDARDS_EN } from "./standards-classics-honglou-en";
 import { SANGUO_STANDARDS_EN } from "./standards-classics-sanguo-en";
 import { SHUIHU_STANDARDS_EN } from "./standards-classics-shuihu-en";
 import { XIYOU_STANDARDS_EN } from "./standards-classics-xiyou-en";
@@ -32,6 +33,7 @@ export const STANDARDS_EN: Readonly<
   ...XIYOU_STANDARDS_EN,
   ...SANGUO_STANDARDS_EN,
   ...SHUIHU_STANDARDS_EN,
+  ...HONGLOU_STANDARDS_EN,
 };
 
 const PHRASE_REPLACEMENTS: ReadonlyArray<readonly [RegExp, string]> = [
