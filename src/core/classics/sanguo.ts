@@ -17,6 +17,8 @@ import { SANGUO_ANIM_CH049_060, SANGUO_CH049_060 } from "./sanguo/ch049-060";
 import { SANGUO_ANIM_CH061_072, SANGUO_CH061_072 } from "./sanguo/ch061-072";
 import { SANGUO_ANIM_CH073_084, SANGUO_CH073_084 } from "./sanguo/ch073-084";
 import { SANGUO_ANIM_CH085_096, SANGUO_CH085_096 } from "./sanguo/ch085-096";
+import { SANGUO_ANIM_CH097_108, SANGUO_CH097_108 } from "./sanguo/ch097-108";
+import { SANGUO_ANIM_CH109_120, SANGUO_CH109_120 } from "./sanguo/ch109-120";
 
 export const SANGUO_PROMPT: PromptSpec = {
   id: "sanguo-v1",
@@ -32,6 +34,8 @@ export const SANGUO_PROMPT: PromptSpec = {
     ...SANGUO_CH061_072,
     ...SANGUO_CH073_084,
     ...SANGUO_CH085_096,
+    ...SANGUO_CH097_108,
+    ...SANGUO_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/三國演義",
   verified: true,
@@ -61,6 +65,8 @@ export const SANGUO_ANIM_PROMPT: PromptSpec = {
     ...SANGUO_ANIM_CH061_072,
     ...SANGUO_ANIM_CH073_084,
     ...SANGUO_ANIM_CH085_096,
+    ...SANGUO_ANIM_CH097_108,
+    ...SANGUO_ANIM_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/三國演義",
   verified: true,
