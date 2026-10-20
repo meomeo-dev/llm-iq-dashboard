@@ -8,7 +8,7 @@
 | :--- | :--- | :--- |
 | **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 180 rows) | All 54 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
 | **§二** | Classic & Upgraded Pelican Series (经典基准与进阶) | `classic-v1`, `upgraded-v2` |
-| **§三** | Four Classic Chinese Novels Suites — Static & Animated (四大名著静态与纯内联动画候选集, 8 suites: Journey to the West 2 × 100 chapters + 6 × 10 chapters = 260 candidates) | `shuihu-v1`, `shuihu-anim-v1`, `xiyou-v1`, `xiyou-anim-v1`, `sanguo-v1`, `sanguo-anim-v1`, `honglou-v1`, `honglou-anim-v1` |
+| **§三** | Four Classic Chinese Novels Suites — Static & Animated (四大名著静态与纯内联动画候选集, 8 suites: Journey to the West 2 × 100 chapters + Romance of the Three Kingdoms 2 × 120 chapters + 4 × 10 chapters = 480 candidates) | `shuihu-v1`, `shuihu-anim-v1`, `xiyou-v1`, `xiyou-anim-v1`, `sanguo-v1`, `sanguo-anim-v1`, `honglou-v1`, `honglou-anim-v1` |
 | **§四** | World City Landmarks Miniature Dioramas (世界地标微缩景观, 2 suites × 40 landmarks = 80 candidates) | `landmarks-v1`, `landmarks-anim-v1` |
 | **§五** | Cognitive Science & Spatio-Temporal Geometry (认知科学与时空几何逻辑) | `clock-v1`, `penrose-v1`, `ice-water-v1` |
 | **§六** | Classical Mechanics & Control Theory Dynamics (经典力学与控制理论动态仿真) | `animated-pelican-v1`, `four-stroke-engine-v1`, `cart-pole-v1` |
@@ -34,7 +34,7 @@
 | **§二十六** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
 | **§二十七** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
 
-本文档说明 `llm_iq_dashboard` 收录的全部 **54 个内置提示词条目**（`PromptSpec`：**30 道独立单题** + **24 套轮换候选集**，候选集内含 **340 个场景候选**，合计 **370 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **180 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
+本文档说明 `llm_iq_dashboard` 收录的全部 **54 个内置提示词条目**（`PromptSpec`：**30 道独立单题** + **24 套轮换候选集**，候选集内含 **560 个场景候选**，合计 **590 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **180 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
 所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据（支持中英双语切换）。
 
@@ -42,7 +42,7 @@
 
 ## 一、 全量测试题目总览与台账
 
-本基准共内置 **54 个不可变（`immutable: true`）提示词条目**（30 道独立单题 + 24 套含 340 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 180 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
+本基准共内置 **54 个不可变（`immutable: true`）提示词条目**（30 道独立单题 + 24 套含 560 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 180 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
 
 | 序号 | 题目 ID | 题目名称 | 领域分类 | 形式 | 首发时间 (`originDate`) | 收录时间 (`registeredAt`) | 来源权威出处 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -52,8 +52,8 @@
 | 4 | `shuihu-anim-v1` | 水浒传·动态十回名场面 | 古典名著 | 动态轮换 | 2026-09 | 2026-09-26 | [维基文库《水浒传》120回本](https://zh.wikisource.org/wiki/水滸傳_(120回本)) |
 | 5 | `xiyou-v1` | 西游记·逐回名场面 | 古典名著 | 静态轮换 | 2026-09 | 2026-09-26 | [维基文库《西游记》100回本](https://zh.wikisource.org/wiki/西遊記) |
 | 6 | `xiyou-anim-v1` | 西游记·动态名场面 | 古典名著 | 动态轮换 | 2026-09 | 2026-09-26 | [维基文库《西游记》100回本](https://zh.wikisource.org/wiki/西遊記) |
-| 7 | `sanguo-v1` | 三国演义·十回名场面 | 古典名著 | 静态轮换 | 2026-09 | 2026-09-26 | [维基文库《三国演义》毛本](https://zh.wikisource.org/wiki/三國演義) |
-| 8 | `sanguo-anim-v1` | 三国演义·动态十回名场面 | 古典名著 | 动态轮换 | 2026-09 | 2026-09-26 | [维基文库《三国演义》毛本](https://zh.wikisource.org/wiki/三國演義) |
+| 7 | `sanguo-v1` | 三国演义·逐回名场面 | 古典名著 | 静态轮换 | 2026-09 | 2026-09-26 | [维基文库《三国演义》毛本](https://zh.wikisource.org/wiki/三國演義) |
+| 8 | `sanguo-anim-v1` | 三国演义·动态名场面 | 古典名著 | 动态轮换 | 2026-09 | 2026-09-26 | [维基文库《三国演义》毛本](https://zh.wikisource.org/wiki/三國演義) |
 | 9 | `honglou-v1` | 红楼梦·十回名场面 | 古典名著 | 静态轮换 | 2026-09 | 2026-09-26 | 人民文学出版社 120 回校注本 |
 | 10 | `honglou-anim-v1` | 红楼梦·动态十回名场面 | 古典名著 | 动态轮换 | 2026-09 | 2026-09-26 | 人民文学出版社 120 回校注本 |
 | 11 | `clock-v1` | 时钟空间几何 (3:45) | 认知空间几何 | 静态 | 2026-07 | 2026-09-26 | [Clock-drawing Test (CDT)](https://en.wikipedia.org/wiki/Clock-drawing_test) |
@@ -258,7 +258,7 @@
 * **出处依据**：
   * 《水浒传》：维基文库 120 回本（拳打镇关西、倒拔垂杨柳、风雪山神庙、智取生辰纲、景阳冈打虎等）；
   * 《西游记》：维基文库 100 回本，逐回各取一个名场面，共 100 回（石猴入水帘洞、龙宫取宝、蟠桃园、如来掌中、尸魔三戏唐三藏等）；
-  * 《三国演义》：维基文库毛宗岗评本 120 回本（桃园结义、三英战吕布、煮酒论英雄、三顾茅庐、单骑救主、草船借箭等）；
+  * 《三国演义》：维基文库毛宗岗评本 120 回本，逐回各取一个名场面，共 120 回（桃园结义、三英战吕布、煮酒论英雄、三顾草庐、单骑救主、草船借箭、空城计等）；
   * 《红楼梦》：人民文学出版社 120 回校注本（黛玉进府、梦游太虚幻境、比通灵、黛玉葬花、晴雯撕扇等）。
 * **设计理念**：采用现代书面语转述原著情节要点，不照录原文段落，不借用现代影视影视剧剧照或戏曲扮相，重点考察大模型对复杂中文叙事场景的构图、服饰道具考据与人物关系组织能力。
 
@@ -266,7 +266,7 @@
 * **设计理念**：在古典文学场景的基础上，引入高难度纯内联 SVG 动画（SMIL 或 CSS @keyframes），考察大模型对中文文学意境与动态物理过程的结合能力：
   * **水浒**：重拳往复挥砸、垂柳随风剧烈摇曳、漫天大雪旋转飘落与草料场烈焰升腾；
   * **西游**：水帘洞飞瀑波光流淌、如来掌中万道佛光散射脉动、金箍棒伸缩变幻；
-  * **三国**：草船借箭江雾与漫天箭雨穿梭、关羽回刀斩华雄之刀光、七星坛祭风旗幡烈烈翻卷；
+  * **三国**：草船借箭江雾流动与箭落草把、三英战吕布伞盖袍角与战马鬃尾飞扬、七星坛祭风旗幡烈烈翻卷；
   * **红楼**：葬花花瓣随风纷扬飘落、撕扇裂帛动态、潇湘馆竹影摇曳与烛火微颤。
 * **黄金判定标准**：核心动作平滑循环，旋转与位移中心点精准；无脱节拉伸变形；XML 严格合规。
 
@@ -1726,7 +1726,7 @@
   * 套题（Suite）必须具备领域级 `standard`，且前沿套题的所有候选条目（`candidates`）强制必须具备独立的单题特异性 `standard`。
 
 ### 2. 自动化体检与质量门禁（Tooling & CI）
-* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 54 个内置提示词条目、140 道前沿工程/视效单题（合计 194 项）及 18 套带候选特异性标准的套题（420 个候选条目，全部 24 套候选集共 340 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
+* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 54 个内置提示词条目、140 道前沿工程/视效单题（合计 194 项）及 20 套带候选特异性标准的套题（660 个候选条目，全部 24 套候选集共 560 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
 * **测试套件集成**：`test/core/prompt-schema.test.ts` 纳入自动化测试链路（`pnpm test`），包含正向全覆盖与属性缺失、格式错误的负向拦截断言；
 * **配置加载即时校验**：用户通过 `pelican.config.yaml` 或 UI 添加自定义题目时，`config-prompts.ts` 解析 `standard` 并执行 Schema 校验，实现 fail-fast。
 

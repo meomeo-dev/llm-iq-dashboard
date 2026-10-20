@@ -5,7 +5,7 @@
  * 写法见 docs/research/classics/README.md。画面描述为本仓库自撰：人物外貌取原著描写的要点、
  * 以今语转述，不照录原文；不用后世影视、戏曲、游戏的独有造型（如赵云白袍白马、京剧脸谱）。
  *
- * 已考证的回目按每十二回一卷放在 sanguo/chNNN-MMM.ts，各带本回评判标准；其余回目暂留本文件。
+ * 逐回题面按每十二回一卷放在 sanguo/chNNN-MMM.ts，各带本回评判标准。
  */
 
 import type { PromptSpec } from "../prompt";
@@ -43,9 +43,13 @@ export const SANGUO_PROMPT: PromptSpec = {
   originDate: "2026-09",
   registeredAt: "2026-09-24",
   standard: {
-    coreKey: "三国历史演义典故与名将英姿还原",
-    groundTruth: "忠实还原抽中回目的历史典故（如桃园结义乌牛白马、煮酒论英雄青梅盘、长坂坡单骑救主阿斗与青釭剑、草船借箭万箭束草等）。",
-    evaluationCriteria: "1. 典故标志物：核心物象准确（如青梅、羽扇、青龙偃月刀）；2. 阵营与氛围：历史厚重感与人物气魄传达。",
+    coreKey: "三国演义原著典故与人物衣冠还原",
+    groundTruth:
+      "忠实还原抽中回目的原著场面（如桃园结义乌牛白马、煮酒论英雄、长坂坡赵云怀护阿斗、草船借箭、空城计凭栏抚琴等），" +
+      "人物样貌衣冠按原著所写，不借用后世戏曲、影视造型，不画血腥。",
+    evaluationCriteria:
+      "1. 典故标志物：本回原文写到的器物准确（如乌牛白马、青釭剑、受箭草把、焚香抚琴）；" +
+      "2. 阵营与氛围：人物神态、阵营旗号与历史厚重感符合本回描写。",
     referenceSource: "https://zh.wikisource.org/wiki/三國演義",
   },
 };
@@ -74,9 +78,13 @@ export const SANGUO_ANIM_PROMPT: PromptSpec = {
   originDate: "2026-09",
   registeredAt: "2026-09-26",
   standard: {
-    coreKey: "三国战阵交锋与纯内联兵刃/自然动效",
-    groundTruth: "忠实还原三国历史战役与英雄决断氛围，具备连续平滑的内联 SVG 动画（箭雨破空、青龙刀寒芒、战马奔腾、狂风旌旗等），XML 严格合法。",
-    evaluationCriteria: "1. 战阵动效：兵刃碰撞火花、箭雨密集落点、风云变幻流畅自然；2. 历史厚重感：汉末魏晋甲胄与器械考据；3. 语法规范：XML 解析零错误。",
+    coreKey: "三国原著名场面与纯内联旌旗/自然动效",
+    groundTruth:
+      "忠实还原抽中回目的原著场面与战阵氛围，具备连续平滑的内联 SVG 动画（旌旗翻卷、战马鬃尾与蹄下扬尘、" +
+      "火焰烟尘、江雾水波等），一次性动作取定格，XML 严格合法。",
+    evaluationCriteria:
+      "1. 环境动效：旌旗、鬃尾、火焰烟尘、江雾水波循环流畅自然，人物不整体漂移；" +
+      "2. 历史厚重感：汉末魏晋甲胄与器械考据；3. 语法规范：XML 解析零错误。",
     referenceSource: "https://zh.wikisource.org/wiki/三國演義",
   },
 };

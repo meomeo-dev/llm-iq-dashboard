@@ -35,18 +35,18 @@ export const STANDARDS_SUITES_EN: Readonly<Record<string, LocalizedStandardEntry
       "1. Magical VFX animation: Flowing divine auras, rolling flames, and artifact transformations animate smoothly; 2. Character iconography: Monkey King and celestial/demonic figures are clearly recognizable; 3. XML compliance: Zero XML parse errors and zero <script> tags.",
   },
   "sanguo-v1": {
-    coreKey: "Romance of the Three Kingdoms Historical Lore & Heroic General Iconography",
+    coreKey: "Romance of the Three Kingdoms Original-Text Episodes & Character Attire",
     groundTruth:
-      "Faithfully depicts the canonical historical episode from Romance of the Three Kingdoms (e.g., Oath of the Peach Garden, Three Heroes battling Lü Bu at Hulao Pass, Warming Wine and Discussing Heroes, Zhao Yun at Changban, Borrowing Arrows with Straw Boats, Empty Fort Strategy).",
+      "Faithfully depicts the original-text scene of the drawn chapter of Romance of the Three Kingdoms (e.g., the black ox and white horse at the Oath of the Peach Garden, Warming Wine and Discussing Heroes, Zhao Yun shielding A Dou at Changban, Borrowing Arrows with Straw Boats, Zhuge Liang playing the qin at the parapet in the Empty Fort Strategy); character appearance and attire follow the novel's descriptions without later opera or screen designs, and no gore is shown.",
     evaluationCriteria:
-      "1. Iconic emblems: Signature weapons and props (Green Dragon Crescent Blade, Dual Halberds, feather fan, guqin, straw-covered boats) are accurate; 2. Historical gravitas: Composition conveys the strategic tension and martial presence of the era.",
+      "1. Iconic emblems: Objects named in the chapter's original text (the black ox and white horse, the Qinggang Sword, straw bundles catching arrows, incense and qin) are accurately represented; 2. Faction and atmosphere: Expressions, faction banners, and historical gravitas match the chapter's description.",
   },
   "sanguo-anim-v1": {
-    coreKey: "Three Kingdoms Battlefield Dynamics & Pure Inline Weapon/Elemental Animation",
+    coreKey: "Three Kingdoms Original-Text Scenes & Pure Inline Banner/Natural Animation",
     groundTruth:
-      "Faithfully captures the battlefield momentum and strategic tension of Romance of the Three Kingdoms with continuous, smooth inline SVG animation (volleys of arrows, sweeping polearms, galloping steeds, billowing war banners) and strictly well-formed XML.",
+      "Faithfully depicts the original-text scene and battlefield atmosphere of the drawn chapter of Romance of the Three Kingdoms with continuous, smooth inline SVG animation (billowing banners, flowing manes and tails with dust under hooves, fire and smoke, river mist and waves); one-time actions are held as a frozen moment, and XML is strictly well-formed.",
     evaluationCriteria:
-      "1. Battlefield kinematics: Clashing weapons, arrow trajectories, wind, and wave motions loop smoothly; 2. Period authenticity: Late-Han/Three-Kingdoms armor, weaponry, and architecture match historical lore; 3. XML compliance: Zero XML parse errors and zero <script> tags.",
+      "1. Environmental motion: Banners, manes and tails, fire and smoke, and river mist and waves loop smoothly and naturally, with no figure drifting as a whole; 2. Period authenticity: Late-Han/Three-Kingdoms armor, weaponry, and architecture match historical lore; 3. XML compliance: Zero XML parse errors and zero <script> tags.",
   },
   "honglou-v1": {
     coreKey: "Dream of the Red Chamber Classical Poetic Imagery & Refined Attire/Garden Aesthetics",

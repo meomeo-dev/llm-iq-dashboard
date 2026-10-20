@@ -2,7 +2,7 @@
 
 > **English** | [简体中文](README.zh-CN.md)
 
-Scheduled benchmark runner and visual observability dashboard that drives `agy`, `codex`, and `claude` command-line agents across models and reasoning efforts on the **Pelican on a Bicycle** SVG benchmark and **54 built-in prompt entries** (30 standalone prompts + 24 rotating candidate suites containing **340 scene candidates**, totaling **370 unique benchmark prompt templates**), presenting results on a 24-hour timeline.
+Scheduled benchmark runner and visual observability dashboard that drives `agy`, `codex`, and `claude` command-line agents across models and reasoning efforts on the **Pelican on a Bicycle** SVG benchmark and **54 built-in prompt entries** (30 standalone prompts + 24 rotating candidate suites containing **560 scene candidates**, totaling **590 unique benchmark prompt templates**), presenting results on a 24-hour timeline.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -125,7 +125,7 @@ Override paths via `PELICAN_CONFIG` and `PELICAN_DATA_DIR`.
 
 ## Prompts & Rotation
 
-The registry ships with **54 built-in prompt entries** (**30 standalone prompts** + **24 rotating candidate suites** containing **340 scene candidates**, totaling **370 unique benchmark prompt templates**):
+The registry ships with **54 built-in prompt entries** (**30 standalone prompts** + **24 rotating candidate suites** containing **560 scene candidates**, totaling **590 unique benchmark prompt templates**):
 
 | Prompt ID | Summary |
 | --- | --- |
@@ -139,7 +139,7 @@ The registry ships with **54 built-in prompt entries** (**30 standalone prompts*
 | `jwst-deployment-v1` + 6 more | Frontier visual science: Quantum Double-Slit, Ferrofluid Spikes, JWST Deployment, Tokamak Plasma, 2nm GAA Nanosheet, CRISPR-Cas9, Pulsar Jet |
 | `fe-*-v1` / `vfx-*-v1` (14 suites) | 140 frontier engineering (AI, Semi, Quantum, Bio, Energy, Aero, Meta, Neuro) & visual effects (Sim, Optics, Geom, SciVis, Motion, Sys) prompts, 10 candidates per suite |
 | `landmarks-v1` / `landmarks-anim-v1` | 80 miniature world city landmark prompts across 2 suites (40 static + 40 animated scene candidates) |
-| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels across 8 suites (Journey to the West covers all 100 chapters; the other three novels 10 iconic chapters each; 130 static + 130 animated scene candidates) |
+| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels across 8 suites (Journey to the West covers all 100 chapters and Romance of the Three Kingdoms all 120 chapters; the other two novels 10 iconic chapters each; 240 static + 240 animated scene candidates) |
 
 Candidate-set prompts shuffle and draw one candidate per rotation period (`day` or `run`) without replacement until the deck is exhausted. Full provenance is in [`docs/benchmark-provenance.md`](docs/benchmark-provenance.md).
 
