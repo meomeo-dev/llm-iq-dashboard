@@ -1,5 +1,5 @@
 /**
- * 54 道内置题目与 468 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 512 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
@@ -56,8 +56,6 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   "shuihu-071": "Ch. 71 · The Stone Tablet from Heaven at Liangshan",
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
-  "sanguo-075": "Ch. 75 · Scraping Poison from the Bone",
-  "sanguo-095": "Ch. 95 · The Empty Fort Strategy",
   "honglou-003": "Ch. 3 · Lin Daiyu Enters the Rongguo Mansion",
   "honglou-005": "Ch. 5 · Dreaming of the Land of Illusion",
   "honglou-008": "Ch. 8 · Comparing the Magic Jade and Golden Locket",

@@ -31,7 +31,7 @@ const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
   "common.languageSwitchTitle",
 ]);
 const EXPECTED_BUILTIN_PROMPTS_SHA256 =
-  "60933e689dba0ad40acf9ebb755eeb82251239d2863557ba239da1b8ea5e54f0";
+  "7a68052854a74984746a6a87ee3fde3b6eba47b5ccd8ade455096ae26dba1afd";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
@@ -144,7 +144,7 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     }
   });
 
-  it("verifies all 23 BUILTIN_PROMPTS and 468 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
+  it("verifies all 23 BUILTIN_PROMPTS and 512 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
     assert.equal(BUILTIN_PROMPTS.length, 23);
     const classic = BUILTIN_PROMPTS.find((p) => p.id === "classic-v1");
     assert.ok(classic);
@@ -213,7 +213,7 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
         }
       }
     }
-    assert.equal(candidateTotal, 468);
+    assert.equal(candidateTotal, 512);
   });
 
   it("verifies bilingual documentation pairs exist and contain reciprocal language switch links", () => {

@@ -15,6 +15,8 @@ import { SANGUO_ANIM_CH025_036, SANGUO_CH025_036 } from "./sanguo/ch025-036";
 import { SANGUO_ANIM_CH037_048, SANGUO_CH037_048 } from "./sanguo/ch037-048";
 import { SANGUO_ANIM_CH049_060, SANGUO_CH049_060 } from "./sanguo/ch049-060";
 import { SANGUO_ANIM_CH061_072, SANGUO_CH061_072 } from "./sanguo/ch061-072";
+import { SANGUO_ANIM_CH073_084, SANGUO_CH073_084 } from "./sanguo/ch073-084";
+import { SANGUO_ANIM_CH085_096, SANGUO_CH085_096 } from "./sanguo/ch085-096";
 
 export const SANGUO_PROMPT: PromptSpec = {
   id: "sanguo-v1",
@@ -28,24 +30,8 @@ export const SANGUO_PROMPT: PromptSpec = {
     ...SANGUO_CH037_048,
     ...SANGUO_CH049_060,
     ...SANGUO_CH061_072,
-    {
-      id: "sanguo-075",
-      label: "第75回 刮骨疗毒",
-      text:
-        "生成一幅 SVG 插画，描绘《三国演义》第七十五回“关云长刮骨疗毒”的场面：军帐之中，" +
-        "红脸长须的关羽袒露右臂伸在桌边，另一只手拈着棋子与对面的人下棋，桌上摆着酒肉，神色谈笑自若。" +
-        "头戴方巾、身穿宽袍、臂挎青布药囊的医者华佗正持小刀刮骨，一名小兵捧着大盆在臂下接血，" +
-        "帐边围观的将士纷纷掩面。",
-    },
-    {
-      id: "sanguo-095",
-      label: "第95回 空城计",
-      text:
-        "生成一幅 SVG 插画，描绘《三国演义》第九十五回“空城计”的场面：西城城楼上，" +
-        "诸葛亮头戴纶巾、身披鹤氅，倚着栏杆焚香抚琴，左边童子捧着宝剑，右边童子拿着拂尘。" +
-        "城下四门大开，旌旗全都收起，几名扮成百姓的士兵低头洒扫街道。城外远处，" +
-        "司马懿骑在马上勒马观望，满脸疑虑，身后大军停步不前。",
-    },
+    ...SANGUO_CH073_084,
+    ...SANGUO_CH085_096,
   ],
   source: "https://zh.wikisource.org/wiki/三國演義",
   verified: true,
@@ -73,20 +59,8 @@ export const SANGUO_ANIM_PROMPT: PromptSpec = {
     ...SANGUO_ANIM_CH037_048,
     ...SANGUO_ANIM_CH049_060,
     ...SANGUO_ANIM_CH061_072,
-    {
-      id: "sanguo-anim-075",
-      label: "第75回 刮骨疗毒（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《三国演义》第七十五回“关云长刮骨疗毒”的动态场面：中军大帐内，关羽袒露右臂伸在桌边弈棋下子谈笑，华佗手持尖刀上下刮骨悉悉有声，小兵捧大盆在臂下接血，满帐将士掩面失色。" +
-        "动效要求：1. 关羽左手持黑子在棋盘上沉稳起落对弈；2. 华佗右手持手术小刀在臂骨伤口处细密刮除；3. 鲜血滴滴答答坠入盆中泛起涟漪。严格遵守合法 XML 规范。",
-    },
-    {
-      id: "sanguo-anim-095",
-      label: "第95回 空城计（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《三国演义》第九十五回“空城计”的动态场面：西城城楼上诸葛亮鹤氅纶巾凭栏焚香抚琴，城门大开百姓扫街，城外司马懿勒马停驻疑虑不前，身后大军止步。" +
-        "动效要求：1. 城楼上诸葛亮双手手指在琴弦上平稳抚弄波动琴弦；2. 案头香炉一缕青烟在静谧虚空中袅袅笔直升腾；3. 城门下扫街军士来回从容扫地。严格遵守合法 XML 规范。",
-    },
+    ...SANGUO_ANIM_CH073_084,
+    ...SANGUO_ANIM_CH085_096,
   ],
   source: "https://zh.wikisource.org/wiki/三國演義",
   verified: true,
