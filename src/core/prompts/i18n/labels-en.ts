@@ -43,7 +43,7 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
   "vfx-sys-v1": "VFX-6: Virtual Production & Differentiable Rendering (10-Prompt Suite)",
 };
 
-/** 四大名著 40 回基础候选 ID → 英文标题（动态版 `-anim-` 自动追加 `(Animated)`） */
+/** 四大名著候选 ID → 英文标题（动态版 `-anim-` 自动追加 `(Animated)`） */
 export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...SHUIHU_LABELS_EN,
   ...XIYOU_LABELS_EN,

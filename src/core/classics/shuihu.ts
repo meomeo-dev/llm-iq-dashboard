@@ -6,7 +6,7 @@
  * 以今语转述，不照录原文；不用戏曲扮相与影视造型（如西门庆的折扇）。原文里的血腥与裸露细节不入画，
  * 打斗只取出手之前的一刻。
  *
- * 已考证的回目按每十二回一卷放在 shuihu/chNNN-MMM.ts，各带本回评判标准。
+ * 逐回题面按每十二回一卷放在 shuihu/chNNN-MMM.ts，各带本回评判标准。
  */
 
 import type { PromptSpec } from "../prompt";
@@ -44,9 +44,13 @@ export const SHUIHU_PROMPT: PromptSpec = {
   originDate: "2026-09",
   registeredAt: "2026-09-24",
   standard: {
-    coreKey: "中国古典文学水浒原著情节与人物标志性道具/姿态",
-    groundTruth: "忠实还原抽中回目的原著核心情节（如拳打镇关西鲁达英武姿态、倒拔垂杨柳发力神态、林冲风雪山神庙雪夜长枪葫芦、景阳冈武松打虎等），不混入戏曲现代魔改造型。",
-    evaluationCriteria: "1. 人物身份：标志性武器与服饰符合宋代背景与原著描写；2. 情节叙事：关键场景道具与动作合乎回目核心冲突。",
+    coreKey: "水浒传原著场面与人物衣冠还原",
+    groundTruth:
+      "忠实还原抽中回目的原著场面（如倒拔垂杨柳、风雪山神庙、智取生辰纲、景阳冈打虎、江州劫法场、六和寺听潮等），" +
+      "人物样貌衣冠按本回阶段的原著描写，不借用后世戏曲、影视造型；打斗只取出手之前的一刻，不画血腥与裸露。",
+    evaluationCriteria:
+      "1. 情节时刻与器物：所画为本回原文那一刻，器物准确（如山神庙门边大石、景阳冈半截断棒与白毡笠、发配者脸上" +
+      "刺字）；2. 人物身份：样貌衣冠符合宋代背景与本回描写，具名人物可辨。",
     referenceSource: "https://zh.wikisource.org/wiki/水滸傳_(120回本)",
   },
 };
@@ -75,9 +79,13 @@ export const SHUIHU_ANIM_PROMPT: PromptSpec = {
   originDate: "2026-09",
   registeredAt: "2026-09-26",
   standard: {
-    coreKey: "水浒名场面叙事还原与纯内联动作动效",
-    groundTruth: "忠实还原水浒经典回目动作张力，具备连续平滑的内联 SVG 动画（SMIL 或 CSS @keyframes），关节旋转与位移中心准确，XML 严格合法。",
-    evaluationCriteria: "1. 动效质量：打击、拔树、风雪、奔马等核心动作流畅循环；2. 人物考据：宋代服饰兵刃与原著相符；3. 语法规范：XML 解析零错误、无重复属性与非法注释。",
+    coreKey: "水浒原著名场面与纯内联环境动效",
+    groundTruth:
+      "忠实还原抽中回目的原著场面，具备连续平滑的内联 SVG 动画（风雪、火光烟尘、水波芦苇、旌旗、灯烛、柳枝等" +
+      "现实中会动的物件），一次性动作取定格，人物不整体漂移，XML 严格合法。",
+    evaluationCriteria:
+      "1. 环境动效：所列动效循环流畅自然，由 SMIL 或内联 CSS 驱动；2. 人物考据：宋代衣冠兵刃与本回原著描写相符；" +
+      "3. 语法规范：XML 解析零错误、无重复属性与非法注释。",
     referenceSource: "https://zh.wikisource.org/wiki/水滸傳_(120回本)",
   },
 };

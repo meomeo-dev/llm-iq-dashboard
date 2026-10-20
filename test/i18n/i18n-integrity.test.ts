@@ -31,7 +31,7 @@ const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
   "common.languageSwitchTitle",
 ]);
 const EXPECTED_BUILTIN_PROMPTS_SHA256 =
-  "098e1c53e9f741ea986fb9259d1a532fb7e76df3727861ccc07f840131b9e561";
+  "97267b017e6ea28d4b289911e77ba75d93e8e75a1aeee94c3835deab22c8d576";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
