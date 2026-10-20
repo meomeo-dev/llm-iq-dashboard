@@ -1,11 +1,12 @@
 /**
- * 54 道内置题目与 560 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 598 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
 
 import type { Locale } from "../../../i18n/types";
 import { SANGUO_LABELS_EN } from "./standards-classics-sanguo-en";
+import { SHUIHU_LABELS_EN } from "./standards-classics-shuihu-en";
 import { XIYOU_LABELS_EN } from "./standards-classics-xiyou-en";
 
 /** 题组与特殊单题的显式英文标题 */
@@ -16,8 +17,8 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
   "clock-v1": "Clock Spatial Geometry (3:45)",
   "penrose-v1": "Penrose Impossible Triangle",
   "ice-water-v1": "Floating Ice in Glass (Archimedes)",
-  "shuihu-v1": "Water Margin · 10 Classic Scenes",
-  "shuihu-anim-v1": "Water Margin · 10 Animated Scenes",
+  "shuihu-v1": "Water Margin · Chapter Scenes",
+  "shuihu-anim-v1": "Water Margin · Animated Chapter Scenes",
   "xiyou-v1": "Journey to the West · Chapter Scenes",
   "xiyou-anim-v1": "Journey to the West · Animated Chapter Scenes",
   "sanguo-v1": "Romance of the Three Kingdoms · Chapter Scenes",
@@ -44,11 +45,7 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
 
 /** 四大名著 40 回基础候选 ID → 英文标题（动态版 `-anim-` 自动追加 `(Animated)`） */
 export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
-  "shuihu-003": "Ch. 3 · Lu Da Punches Butcher Zheng",
-  "shuihu-007": "Ch. 7 · Uprooting the Weeping Willow",
-  "shuihu-010": "Ch. 10 · Mountain Spirit Temple in the Blizzard",
-  "shuihu-016": "Ch. 16 · Outwitting the Birthday Convoy",
-  "shuihu-023": "Ch. 23 · Wu Song Fights the Tiger on Jingyang Ridge",
+  ...SHUIHU_LABELS_EN,
   "shuihu-038": "Ch. 38 · Brawl in the River with Zhang Shun",
   "shuihu-039": "Ch. 39 · Writing the Rebellious Poem at Xunyang Tower",
   "shuihu-040": "Ch. 40 · Raid on the Execution Ground",
