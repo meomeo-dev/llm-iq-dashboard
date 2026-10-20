@@ -18,6 +18,8 @@ import { SHUIHU_ANIM_CH049_060, SHUIHU_CH049_060 } from "./shuihu/ch049-060";
 import { SHUIHU_ANIM_CH061_072, SHUIHU_CH061_072 } from "./shuihu/ch061-072";
 import { SHUIHU_ANIM_CH073_084, SHUIHU_CH073_084 } from "./shuihu/ch073-084";
 import { SHUIHU_ANIM_CH085_096, SHUIHU_CH085_096 } from "./shuihu/ch085-096";
+import { SHUIHU_ANIM_CH097_108, SHUIHU_CH097_108 } from "./shuihu/ch097-108";
+import { SHUIHU_ANIM_CH109_120, SHUIHU_CH109_120 } from "./shuihu/ch109-120";
 
 export const SHUIHU_PROMPT: PromptSpec = {
   id: "shuihu-v1",
@@ -33,6 +35,8 @@ export const SHUIHU_PROMPT: PromptSpec = {
     ...SHUIHU_CH061_072,
     ...SHUIHU_CH073_084,
     ...SHUIHU_CH085_096,
+    ...SHUIHU_CH097_108,
+    ...SHUIHU_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/水滸傳_(120回本)",
   verified: true,
@@ -62,6 +66,8 @@ export const SHUIHU_ANIM_PROMPT: PromptSpec = {
     ...SHUIHU_ANIM_CH061_072,
     ...SHUIHU_ANIM_CH073_084,
     ...SHUIHU_ANIM_CH085_096,
+    ...SHUIHU_ANIM_CH097_108,
+    ...SHUIHU_ANIM_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/水滸傳_(120回本)",
   verified: true,

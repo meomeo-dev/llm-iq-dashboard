@@ -36,6 +36,14 @@ import {
   SHUIHU_CH085_096_LABELS_EN,
   SHUIHU_CH085_096_STANDARDS_EN,
 } from "./classics-shuihu/ch085-096-en";
+import {
+  SHUIHU_CH097_108_LABELS_EN,
+  SHUIHU_CH097_108_STANDARDS_EN,
+} from "./classics-shuihu/ch097-108-en";
+import {
+  SHUIHU_CH109_120_LABELS_EN,
+  SHUIHU_CH109_120_STANDARDS_EN,
+} from "./classics-shuihu/ch109-120-en";
 
 /** 静态候选 id → 英文标签；动态候选由 localizeCandidateLabel 追加 “(Animated)” */
 export const SHUIHU_LABELS_EN: Readonly<Record<string, string>> = {
@@ -47,6 +55,8 @@ export const SHUIHU_LABELS_EN: Readonly<Record<string, string>> = {
   ...SHUIHU_CH061_072_LABELS_EN,
   ...SHUIHU_CH073_084_LABELS_EN,
   ...SHUIHU_CH085_096_LABELS_EN,
+  ...SHUIHU_CH097_108_LABELS_EN,
+  ...SHUIHU_CH109_120_LABELS_EN,
 };
 
 /** 静态与动态候选 id → 英文评判标准 */
@@ -59,4 +69,6 @@ export const SHUIHU_STANDARDS_EN: Readonly<Record<string, LocalizedStandardEntry
   ...SHUIHU_CH061_072_STANDARDS_EN,
   ...SHUIHU_CH073_084_STANDARDS_EN,
   ...SHUIHU_CH085_096_STANDARDS_EN,
+  ...SHUIHU_CH097_108_STANDARDS_EN,
+  ...SHUIHU_CH109_120_STANDARDS_EN,
 };

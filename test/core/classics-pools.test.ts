@@ -10,8 +10,8 @@ import { BUILTIN_PROMPTS } from "@/core/prompt";
 
 /** 套题 → [候选 id 前缀, 候选数] */
 const POOLS: Record<string, readonly [string, number]> = {
-  "shuihu-v1": ["shuihu", 96],
-  "shuihu-anim-v1": ["shuihu-anim", 96],
+  "shuihu-v1": ["shuihu", 120],
+  "shuihu-anim-v1": ["shuihu-anim", 120],
   "xiyou-v1": ["xiyou", 100],
   "xiyou-anim-v1": ["xiyou-anim", 100],
   "sanguo-v1": ["sanguo", 120],
