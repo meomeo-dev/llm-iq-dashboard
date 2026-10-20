@@ -1,5 +1,5 @@
 /**
- * 54 道内置题目与 640 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 684 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
@@ -46,8 +46,6 @@ export const PROMPT_LABELS_EN: Readonly<Record<string, string>> = {
 /** 四大名著 40 回基础候选 ID → 英文标题（动态版 `-anim-` 自动追加 `(Animated)`） */
 export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...SHUIHU_LABELS_EN,
-  "shuihu-056": "Ch. 56 · Shi Qian Steals the Golden Armor",
-  "shuihu-071": "Ch. 71 · The Stone Tablet from Heaven at Liangshan",
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
   "honglou-003": "Ch. 3 · Lin Daiyu Enters the Rongguo Mansion",
