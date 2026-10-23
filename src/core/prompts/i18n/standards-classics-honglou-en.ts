@@ -20,6 +20,14 @@ import {
   HONGLOU_CH037_048_LABELS_EN,
   HONGLOU_CH037_048_STANDARDS_EN,
 } from "./classics-honglou/ch037-048-en";
+import {
+  HONGLOU_CH049_060_LABELS_EN,
+  HONGLOU_CH049_060_STANDARDS_EN,
+} from "./classics-honglou/ch049-060-en";
+import {
+  HONGLOU_CH061_072_LABELS_EN,
+  HONGLOU_CH061_072_STANDARDS_EN,
+} from "./classics-honglou/ch061-072-en";
 
 /** 静态候选 id → 英文标签；动态候选由 localizeCandidateLabel 追加 “(Animated)” */
 export const HONGLOU_LABELS_EN: Readonly<Record<string, string>> = {
@@ -27,6 +35,8 @@ export const HONGLOU_LABELS_EN: Readonly<Record<string, string>> = {
   ...HONGLOU_CH013_024_LABELS_EN,
   ...HONGLOU_CH025_036_LABELS_EN,
   ...HONGLOU_CH037_048_LABELS_EN,
+  ...HONGLOU_CH049_060_LABELS_EN,
+  ...HONGLOU_CH061_072_LABELS_EN,
 };
 
 /** 静态与动态候选 id → 英文评判标准 */
@@ -35,4 +45,6 @@ export const HONGLOU_STANDARDS_EN: Readonly<Record<string, LocalizedStandardEntr
   ...HONGLOU_CH013_024_STANDARDS_EN,
   ...HONGLOU_CH025_036_STANDARDS_EN,
   ...HONGLOU_CH037_048_STANDARDS_EN,
+  ...HONGLOU_CH049_060_STANDARDS_EN,
+  ...HONGLOU_CH061_072_STANDARDS_EN,
 };

@@ -50,8 +50,6 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
   ...HONGLOU_LABELS_EN,
-  "honglou-050": "Ch. 50 · Baoqin Stands in Snow Holding Red Plum Blossoms",
-  "honglou-062": "Ch. 62 · Xiangyun Sleeps Drunk Among Peony Petals",
   "honglou-097": "Ch. 97 · Daiyu Burns Her Poems",
 };
 

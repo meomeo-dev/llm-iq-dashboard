@@ -14,6 +14,8 @@ import { HONGLOU_ANIM_CH001_012, HONGLOU_CH001_012 } from "./honglou/ch001-012";
 import { HONGLOU_ANIM_CH013_024, HONGLOU_CH013_024 } from "./honglou/ch013-024";
 import { HONGLOU_ANIM_CH025_036, HONGLOU_CH025_036 } from "./honglou/ch025-036";
 import { HONGLOU_ANIM_CH037_048, HONGLOU_CH037_048 } from "./honglou/ch037-048";
+import { HONGLOU_ANIM_CH049_060, HONGLOU_CH049_060 } from "./honglou/ch049-060";
+import { HONGLOU_ANIM_CH061_072, HONGLOU_CH061_072 } from "./honglou/ch061-072";
 
 export const HONGLOU_PROMPT: PromptSpec = {
   id: "honglou-v1",
@@ -25,22 +27,8 @@ export const HONGLOU_PROMPT: PromptSpec = {
     ...HONGLOU_CH013_024,
     ...HONGLOU_CH025_036,
     ...HONGLOU_CH037_048,
-    {
-      id: "honglou-050",
-      label: "第50回 宝琴立雪",
-      text:
-        "生成一幅 SVG 插画，描绘《红楼梦》第五十回宝琴立雪的场面：大雪初晴，四面一片银白。" +
-        "山坡上，少女薛宝琴披着一件金翠闪烁的野鸭羽毛斗篷，独自立在雪中远远等候，身后的丫鬟抱着一瓶红梅。" +
-        "坡后转出一位披着大红毡斗篷的少年，手里也拿着一枝红梅。画面以白雪、金翠和大红为主色。",
-    },
-    {
-      id: "honglou-062",
-      label: "第62回 湘云醉眠",
-      text:
-        "生成一幅 SVG 插画，描绘《红楼梦》第六十二回“憨湘云醉眠芍药裀”的场面：暮春，山石背后的僻静处，" +
-        "史湘云醉卧在一条青石板凳上酣睡，头上、脸上、衣襟上落满红色芍药花瓣，枕着一包用手帕包起的花瓣，" +
-        "掉在地上的扇子被落花埋了一半，一群蜜蜂和蝴蝶在她身边飞绕。几位姐妹闻讯赶来，围着她又笑又推。",
-    },
+    ...HONGLOU_CH049_060,
+    ...HONGLOU_CH061_072,
     {
       id: "honglou-097",
       label: "第97回 黛玉焚稿",
@@ -74,20 +62,8 @@ export const HONGLOU_ANIM_PROMPT: PromptSpec = {
     ...HONGLOU_ANIM_CH013_024,
     ...HONGLOU_ANIM_CH025_036,
     ...HONGLOU_ANIM_CH037_048,
-    {
-      id: "honglou-anim-050",
-      label: "第50回 宝琴立雪（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《红楼梦》第五十回宝琴立雪的动态场面：大雪初晴四面皆白，少女薛宝琴披金翠闪烁野鸭毛斗篷立在雪中等候，身后丫鬟抱一瓶红梅，坡后转出披大红毡斗篷手持红梅的少年。" +
-        "动效要求：1. 琉璃世界白雪间偶尔掠过的稀疏雪花晶莹飘落；2. 宝琴金翠羽毛斗篷在晴雪反光中泛出五彩流光斑驳；3. 红梅枝头红白对比的花枝微颤。严格遵守合法 XML 规范。",
-    },
-    {
-      id: "honglou-anim-062",
-      label: "第62回 湘云醉眠（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《红楼梦》第六十二回“憨湘云醉眠芍药裀”的动态场面：僻静处史湘云醉卧青石板凳酣睡，满头衣襟落满红色芍药花瓣，身旁蝴蝶蜜蜂飞舞绕飞，姐妹闻讯围来推笑。" +
-        "动效要求：1. 周遭芍药花丛红花瓣在微风中轻盈回旋飘落落在湘云身上；2. 两只斑斓彩蝶与数只小蜜蜂在湘云周围上下盘旋绕飞；3. 湘云酣睡呼吸微动。严格遵守合法 XML 规范。",
-    },
+    ...HONGLOU_ANIM_CH049_060,
+    ...HONGLOU_ANIM_CH061_072,
     {
       id: "honglou-anim-097",
       label: "第97回 黛玉焚稿（动态）",
