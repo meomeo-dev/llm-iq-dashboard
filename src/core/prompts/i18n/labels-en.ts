@@ -1,5 +1,5 @@
 /**
- * 54 道内置题目与 862 条候选的英文标题映射表与双语括号提取器。
+ * 23 道内置核心题目、140 道前沿单题与 1000 条内置候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
@@ -50,7 +50,6 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
   ...HONGLOU_LABELS_EN,
-  "honglou-097": "Ch. 97 · Daiyu Burns Her Poems",
 };
 
 /** 城市地标 40 景基础 slug → 英文标题 */

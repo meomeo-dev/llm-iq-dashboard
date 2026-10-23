@@ -33,7 +33,7 @@ const VALID_PROMPTS_FLAGS: readonly string[] = [
   "-h",
 ];
 
-/** 候选集逐条带独立 standard 的套题：14 套前沿领域套题 + 城市地标静态与动态两套 */
+/** 候选集逐条带独立 standard 的套题：14 套前沿领域套题 + 城市地标静态与动态两套 + 四大名著全量八套 */
 const CANDIDATE_STANDARD_SUITE_IDS = [
   "fe-ai-v1",
   "fe-semi-v1",
@@ -57,6 +57,8 @@ const CANDIDATE_STANDARD_SUITE_IDS = [
   "sanguo-anim-v1",
   "shuihu-v1",
   "shuihu-anim-v1",
+  "honglou-v1",
+  "honglou-anim-v1",
 ];
 
 export function formatValidatePromptsHelp(): string {
