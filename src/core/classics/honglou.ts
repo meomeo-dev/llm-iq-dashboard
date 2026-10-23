@@ -18,6 +18,8 @@ import { HONGLOU_ANIM_CH049_060, HONGLOU_CH049_060 } from "./honglou/ch049-060";
 import { HONGLOU_ANIM_CH061_072, HONGLOU_CH061_072 } from "./honglou/ch061-072";
 import { HONGLOU_ANIM_CH073_084, HONGLOU_CH073_084 } from "./honglou/ch073-084";
 import { HONGLOU_ANIM_CH085_096, HONGLOU_CH085_096 } from "./honglou/ch085-096";
+import { HONGLOU_ANIM_CH097_108, HONGLOU_CH097_108 } from "./honglou/ch097-108";
+import { HONGLOU_ANIM_CH109_120, HONGLOU_CH109_120 } from "./honglou/ch109-120";
 
 export const HONGLOU_PROMPT: PromptSpec = {
   id: "honglou-v1",
@@ -33,14 +35,8 @@ export const HONGLOU_PROMPT: PromptSpec = {
     ...HONGLOU_CH061_072,
     ...HONGLOU_CH073_084,
     ...HONGLOU_CH085_096,
-    {
-      id: "honglou-097",
-      label: "第97回 黛玉焚稿",
-      text:
-        "生成一幅 SVG 插画，描绘《红楼梦》第九十七回“林黛玉焚稿断痴情”的场面：潇湘馆内室，窗外竹影摇曳，" +
-        "天气寒冷。病骨支离的黛玉被扶着靠坐在炕上，把一卷诗稿和一方题过诗的旧手帕投进炕上的火盆，火苗窜起。" +
-        "丫鬟紫鹃伸手想抢又不敢，另一个小丫鬟从火里抢出残稿扔在地上踩灭。一盏孤灯照着满室凄清。",
-    },
+    ...HONGLOU_CH097_108,
+    ...HONGLOU_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/紅樓夢",
   verified: true,
@@ -70,13 +66,8 @@ export const HONGLOU_ANIM_PROMPT: PromptSpec = {
     ...HONGLOU_ANIM_CH061_072,
     ...HONGLOU_ANIM_CH073_084,
     ...HONGLOU_ANIM_CH085_096,
-    {
-      id: "honglou-anim-097",
-      label: "第97回 黛玉焚稿（动态）",
-      text:
-        "生成一幅带纯内联 SVG 动画（使用 SMIL 或内联 CSS @keyframes）的矢量插画，描绘《红楼梦》第九十七回“林黛玉焚稿断痴情”的动态场面：潇湘馆内病弱黛玉靠坐炕上，将诗稿与题诗旧帕投进火盆火苗窜起，紫鹃惊呼伸手欲夺，丫鬟抢出残稿踩灭，孤灯照着凄清。" +
-        "动效要求：1. 炕上炭火盆中通红火舌窜起吞噬诗稿、黑烟与灰烬盘旋升空；2. 窗外潇湘馆修竹在寒风中剧烈摇曳投下颤动竹影；3. 桌头孤灯如豆火苗惨然摇晃。严格遵守合法 XML 规范。",
-    },
+    ...HONGLOU_ANIM_CH097_108,
+    ...HONGLOU_ANIM_CH109_120,
   ],
   source: "https://zh.wikisource.org/wiki/紅樓夢",
   verified: true,
