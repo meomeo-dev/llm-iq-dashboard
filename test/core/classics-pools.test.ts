@@ -16,8 +16,8 @@ const POOLS: Record<string, readonly [string, number]> = {
   "xiyou-anim-v1": ["xiyou-anim", 100],
   "sanguo-v1": ["sanguo", 120],
   "sanguo-anim-v1": ["sanguo-anim", 120],
-  "honglou-v1": ["honglou", 73],
-  "honglou-anim-v1": ["honglou-anim", 73],
+  "honglou-v1": ["honglou", 97],
+  "honglou-anim-v1": ["honglou-anim", 97],
 };
 const CANDIDATE_ID = /^([a-z]+(?:-anim)?)-(\d{3})$/;
 

@@ -16,6 +16,8 @@ import { HONGLOU_ANIM_CH025_036, HONGLOU_CH025_036 } from "./honglou/ch025-036";
 import { HONGLOU_ANIM_CH037_048, HONGLOU_CH037_048 } from "./honglou/ch037-048";
 import { HONGLOU_ANIM_CH049_060, HONGLOU_CH049_060 } from "./honglou/ch049-060";
 import { HONGLOU_ANIM_CH061_072, HONGLOU_CH061_072 } from "./honglou/ch061-072";
+import { HONGLOU_ANIM_CH073_084, HONGLOU_CH073_084 } from "./honglou/ch073-084";
+import { HONGLOU_ANIM_CH085_096, HONGLOU_CH085_096 } from "./honglou/ch085-096";
 
 export const HONGLOU_PROMPT: PromptSpec = {
   id: "honglou-v1",
@@ -29,6 +31,8 @@ export const HONGLOU_PROMPT: PromptSpec = {
     ...HONGLOU_CH037_048,
     ...HONGLOU_CH049_060,
     ...HONGLOU_CH061_072,
+    ...HONGLOU_CH073_084,
+    ...HONGLOU_CH085_096,
     {
       id: "honglou-097",
       label: "第97回 黛玉焚稿",
@@ -64,6 +68,8 @@ export const HONGLOU_ANIM_PROMPT: PromptSpec = {
     ...HONGLOU_ANIM_CH037_048,
     ...HONGLOU_ANIM_CH049_060,
     ...HONGLOU_ANIM_CH061_072,
+    ...HONGLOU_ANIM_CH073_084,
+    ...HONGLOU_ANIM_CH085_096,
     {
       id: "honglou-anim-097",
       label: "第97回 黛玉焚稿（动态）",
