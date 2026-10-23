@@ -7,20 +7,21 @@
 需要 Node 22+ 与 pnpm 10+。
 
 ```bash
-pnpm lint                                   # tsc --noEmit，含 test/
+pnpm lint                                   # tsc --noEmit，含 src/、scripts/、test/
 pnpm test                                   # node:test 跑 test/**/*.test.ts
 pnpm exec tsx --test test/core/budget.test.ts   # 单个测试文件
 pnpm dev --port 3001                        # 开发看板；3000 留给生产看板
 pnpm dashboard:prod                         # 生产看板 :3000，只构建已提交的 HEAD
-PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once   # 冒烟，会真实调用 CLI、消耗配额
-pnpm fingerprint:status                     # 模型指纹本地样本状态；另有 fingerprint:fill / check / self-test / rescore
+pnpm pelican <subcommand>                   # 统一 CLI 总入口（run | fp | sync | preflight | onboard | pair | pricing | prompts | scheduler | runner）
+PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once   # 冒烟（同 pnpm pelican run），会真实调用 CLI、消耗配额
+pnpm fingerprint:status                     # 模型指纹本地样本状态（同 pnpm pelican fp status）；另有 fill / check / self-test / export / import
 pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:check / issue:worktree
 ```
 
 - `pnpm test` 不调用 CLI、不读本机 `data/`、不读宿主机配置；涉及文件系统的用例用临时目录。
   SVG 净化测试依赖 jsdom（`test/support/dom.ts`）。
-- `pnpm run:once`、`pnpm scheduler`、不带 `--dry-run` 的 `pnpm fingerprint:fill` 与 `pnpm fingerprint:check` 会调用真实 CLI，执行前先征得同意。
-- `PELICAN_CONFIG` 覆盖配置路径，`PELICAN_DATA_DIR` 覆盖产物目录。本机配置
+- `pnpm pelican run`（`pnpm run:once`）、`pnpm scheduler`、不带 `--dry-run` 的 `pnpm fingerprint:fill` 与 `pnpm fingerprint:check` 会调用真实 CLI，执行前先征得同意。历史回填命令（`judge:backfill` 与 `fingerprint:rescore`）已停用。
+- `PELICAN_CONFIG`（或全局 `-c, --config`）覆盖配置路径，`PELICAN_DATA_DIR`（或 `--data-dir`）覆盖产物目录。本机配置
   `config/pelican.config.yaml` 不入库，首次加载时由 `pelican.example.yaml` 生成。
 
 ## 架构速览
@@ -30,12 +31,12 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 
 - **进程只经文件协作**：看板（Next.js 15 + React 19）、调度器（`src/bin/scheduler.ts`，croner）、
   `run:once`、`model-fingerprint`、分容器时的 `runner` 互不直接通信，只读写 `data/`（`PELICAN_DATA_DIR`）。
-  执行方写 `data/runs/<runId>/progress.json` 或 `data/model-fingerprint/jobs/<jobId>.json`，看板用 chokidar 监听后经 SSE（`/api/events`）
+  执行方写 `data/runs/<runId>/progress.json` 或 `data/model-fingerprint/jobs/<jobId>.json`（含 `checks/` 与 `samples/`），看板用 chokidar 监听后经 SSE（`/api/events`）
   推送，前端不轮询。停止一轮写 `cancel.json`（指纹作业写 `<jobId>.cancel.json`）；分容器时看板把请求写进 `data/requests/` 交给 runner。
 - **分层依赖**：`src/app` → `src/core` + `src/i18n`（+ `src/capabilities` 的类型与缓存）；`src/app` 不引用
   `src/adapters`，调用 CLI 只经 `src/core`；`src/core` 不依赖 `src/app`。
 - **中英双语国际化**（Sprint M2）：`src/i18n/` 提供 `en`（默认）与 `zh-CN` 双语词条字典、SSR + 客户端零闪烁语言协商（`pelican_locale` Cookie / `localStorage` + `Accept-Language`，不改 URL 路由）以及 SVG/PNG/GIF 导出图本地化。`src/core/prompts/i18n/` 与 `src/i18n/judge-rubric.ts` 在展示层本地化题目标签、黄金标准与评审标准 `G1`–`G5` / `C1`–`C9` 文案；发给 CLI 的提示词 `template`、`candidates[].text`、考场规则、AI 裁判提示词以及 `run.json` / `.judge.json` 的磁盘 schema 原封不动。
-- **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 low 到 max 串行；
+- **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 `low` 到 `ultra` 串行；
   超时优先级 `targets[].timeoutMs` > `timeoutByEffort` > `timeoutByCli` > `defaultTimeoutMs`；
   预算按历史成本预估逐次放行。一次只跑一轮（`findActiveWork` 跨评测轮次、AI 评审与模型指纹作业双向互斥）：手动发起时有轮次或指纹作业在跑直接拒绝；定时到点时有作业在跑则排队
   （只容一轮，合并后续触发），等它结束立即开跑。
@@ -46,13 +47,13 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `ok` / `no-svg` / `error` / `timeout` 分开记录；输出经凭据指纹比对，命中即不落盘。
   `run.harnessGuard`（缺省关）开启后每条提示词末尾另起一段附上直出约束原文（不联网、不跑代码自测、
   不截图自检），题目原文不动，附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布。
-- **提示词**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
-  `src/core/prompt*`，题目数据在 `src/core/prompts/` 与 `src/core/classics/`（四大名著），展示层双语映射在 `src/core/prompts/i18n/`，改动后跑
-  `pnpm validate:prompts`。
+- **提示词与画廊**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
+  `src/core/prompt*`，题目数据在 `src/core/prompts/` 与 `src/core/classics/`（四大名著，不受 `code-length-policy.yaml` 豁免，按分卷拆为 `src/core/classics/<novel>/chNNN-MMM.ts` 控制在 ≤ 500 行），展示层双语映射在 `src/core/prompts/i18n/`，并在 `/prompts`（`src/app/prompts/`，对访客与只读展台开放）提供题库画廊与黄金标准检视。改动题库后跑
+  `pnpm validate:prompts`，且须同步 `test/i18n/i18n-integrity.test.ts` 中的 `EXPECTED_BUILTIN_PROMPTS_SHA256` 与候选总数断言。
 - **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
   `<attemptKey>.judge.json`、帧序联系表 `.sheet.png` 与各类细节联系表 `.sheet.<kind>.png`（同帧号），
   不改 `run.json`；静态层用 jsdom，渲染层用 playwright-core 驱动本机 Chromium（没有则跳过）。
-  `pnpm judge:backfill -- --dry-run` 对本地历史预演。评分标准在 `src/core/judge/schema.ts`（展示层双语映射在 `src/i18n/judge-rubric.ts`），改口径要升
+  评分标准在 `src/core/judge/schema.ts`（展示层双语映射在 `src/i18n/judge-rubric.ts`），改口径要升
   `version`；口径不变、只修解析量测或截帧逻辑时只升 `STATIC_JUDGE_ID` / `RENDER_JUDGE_ID`，不升
   rubric `version`（升了会让已有记录失去当前口径的展示与分项门槛），也不重评已有记录。页面内跑的量测函数（`render-page.ts`）只能引用参数、DOM 与 `PAGE_HELPERS`。
 - **AI 语义层**（ACR-020）：代码层只占 30 分，判「待复核」的作品在整轮定稿后由 `src/core/judge/ai-judge`
@@ -61,10 +62,10 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   只放开读文件）先盲描述、再看首帧给五类部位的像素框由程序重切细节表（ACR-021，失败退回几何推断的表）、
   最后按 C5–C9 打 70 分，转录存 `<attemptKey>.judge-ai.txt`。评审进程中途退出的队列由下一个执行进程启动时
   `resumeInterruptedJudging` 续评（已落盘结论的只补标记），看板在此之前显示「评审中断」。裁判调用真实消耗配额，
-  历史作品不补评、不主动提议补评；`pnpm judge:backfill -- --ai-only` 只在用户明确要求时按轮运行。评审记录去掉联系图与转录后随公开
+  历史作品不补评（`judge:backfill` 已停用）。评审记录去掉联系图与转录后随公开
   `run.json` 的调用发布（`PublicAttempt.judge`），数据仓 validator 同步认这个字段；容器镜像装了
   chromium（`PELICAN_BROWSER_PATH` / `PELICAN_BROWSER_NO_SANDBOX`）给渲染层用。
-- **模型指纹**（ACR-024，缺省关闭，配置页「模型指纹」区块或 `/fingerprint` 控制台）：`src/core/model-fingerprint/` 以面向对象 `Probe` & `PromptCodec` 体系（6 个生成式探针 `uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`，无独立外部 `extract.ts`）驱动零工具直出采样（`request.fingerprint === true`：复用固定空目录 `data/scratch/model-fingerprint` 保持 Prompt Cache 前缀命中，剥离用户级指令与会话落盘），样本集按 `<cli>-<effort>/<model>/<probe>.json` 经文件锁与原子写落盘、读取时实时提取且不锁死哈希或版本号；以 base-2 JSD 相似度（`1 - JSD`）、等容量公共子参照与按 `reqId` 无重叠留出自检标定成对阈值并输出四态判决（`consistent` / `inconsistent` / `inconclusive` / `not-comparable`）；接口与页面仅对配对所有者开放，只读展台模式下隐藏。
+- **模型指纹**（ACR-024，缺省关闭，配置页「模型指纹」区块或 `/fingerprint` 控制台）：`src/core/model-fingerprint/` 以面向对象 `Probe` & `PromptCodec` 体系（6 个生成式探针 `uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`，无独立外部 `extract.ts`）驱动零工具直出采样（`request.fingerprint === true`：复用固定空目录 `data/scratch/model-fingerprint` 保持 Prompt Cache 前缀命中，剥离用户级指令与会话落盘），样本集按 `<cli>-<effort>/<model>/<probe>.json` 经文件锁与原子写落盘、读取时实时提取且不锁死哈希或版本号，支持 ustar `.tar` 样本包导出/导入（`export` / `import` 与 `/api/fingerprint/bundle`）及 Token 用量与 USD 成本追踪；以 base-2 JSD 相似度（`1 - JSD`）、等容量公共子参照与按 `reqId` 无重叠留出自检标定成对阈值并输出四态判决（`consistent` / `inconsistent` / `inconclusive` / `not-comparable`）；接口与页面仅对配对所有者开放，只读展台模式下隐藏。
 - **模型产物不可信**：SVG 在浏览器端净化（`src/app/components/card/`），`/art` 路由以 CSP
   sandbox 返回原图。净化后的作品各自挂进 shadow root（`svg-shadow.ts`），内联样式不外溢；
   按 viewBox 比例定尺寸，画布外的内容不显示。导出缩略图以嵌套 `<svg viewBox>` 按画布裁切
@@ -99,11 +100,12 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
 
 提交前运行：`pnpm lint`、`pnpm test`、`pnpm validate:prompts`、`pnpm build`、
 `pnpm check:length`（文件与函数长度阈值见 `config/code-length-policy.yaml`）、
+`pnpm check:ui`（设计系统 Token、标准断点、禁静态内联样式与跨目录类名归属检查，见 `scripts/check-ui-hygiene.ts`）、
 `pnpm check:secrets`（对已跟踪文件套用与数据仓发布同一套泄漏规则加赋值启发，白名单与禁止入库清单见
 `config/secret-scan-policy.yaml`；假令牌逐文件登记原因，不整目录放行）。
 改动只读部署或远程数据源时，另跑 `pnpm showcase:smoke`。
 
 Git 钩子由 lefthook 管理（`lefthook.yml`，ACR-022）：`pnpm install` 自动装进 `.git/hooks`，同一仓的各
-worktree 共用。pre-commit 并行跑 `check:secrets`、`lint`、`check:length`；pre-push 跑 `validate:prompts`
+worktree 共用。pre-commit 并行跑 `check:secrets`、`lint`、`check:length`、`check:ui`；pre-push 跑 `validate:prompts`
 与 `test`。`build` 与 `showcase:smoke` 不挂钩子。确认误报时用 `LEFTHOOK=0 git commit` 绕过一次，
 不要删钩子；容器构建用 `CI=1 pnpm install` 跳过装钩子。
