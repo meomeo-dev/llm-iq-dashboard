@@ -12,15 +12,27 @@ import {
   HONGLOU_CH013_024_LABELS_EN,
   HONGLOU_CH013_024_STANDARDS_EN,
 } from "./classics-honglou/ch013-024-en";
+import {
+  HONGLOU_CH025_036_LABELS_EN,
+  HONGLOU_CH025_036_STANDARDS_EN,
+} from "./classics-honglou/ch025-036-en";
+import {
+  HONGLOU_CH037_048_LABELS_EN,
+  HONGLOU_CH037_048_STANDARDS_EN,
+} from "./classics-honglou/ch037-048-en";
 
 /** 静态候选 id → 英文标签；动态候选由 localizeCandidateLabel 追加 “(Animated)” */
 export const HONGLOU_LABELS_EN: Readonly<Record<string, string>> = {
   ...HONGLOU_CH001_012_LABELS_EN,
   ...HONGLOU_CH013_024_LABELS_EN,
+  ...HONGLOU_CH025_036_LABELS_EN,
+  ...HONGLOU_CH037_048_LABELS_EN,
 };
 
 /** 静态与动态候选 id → 英文评判标准 */
 export const HONGLOU_STANDARDS_EN: Readonly<Record<string, LocalizedStandardEntry>> = {
   ...HONGLOU_CH001_012_STANDARDS_EN,
   ...HONGLOU_CH013_024_STANDARDS_EN,
+  ...HONGLOU_CH025_036_STANDARDS_EN,
+  ...HONGLOU_CH037_048_STANDARDS_EN,
 };

@@ -1,5 +1,5 @@
 /**
- * 54 道内置题目与 820 条候选的英文标题映射表与双语括号提取器。
+ * 54 道内置题目与 862 条候选的英文标题映射表与双语括号提取器。
  *
  * 注意：此模块处于 src/core/prompts/ 下，仅用于人类可读的 UI 展示，绝不改动题面原文。
  */
@@ -50,9 +50,6 @@ export const CLASSICS_CANDIDATES_EN: Readonly<Record<string, string>> = {
   ...XIYOU_LABELS_EN,
   ...SANGUO_LABELS_EN,
   ...HONGLOU_LABELS_EN,
-  "honglou-027": "Ch. 27 · Daiyu Buries the Fallen Blossoms",
-  "honglou-031": "Ch. 31 · Qingwen Tears the Folding Fans",
-  "honglou-040": "Ch. 40 · Granny Liu Tours Grand View Garden",
   "honglou-050": "Ch. 50 · Baoqin Stands in Snow Holding Red Plum Blossoms",
   "honglou-062": "Ch. 62 · Xiangyun Sleeps Drunk Among Peony Petals",
   "honglou-097": "Ch. 97 · Daiyu Burns Her Poems",
