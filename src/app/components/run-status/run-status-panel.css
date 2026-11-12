@@ -234,6 +234,10 @@
 }
 
 @media (max-width: 640px) {
+  .run-panel-close-btn {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+  }
   .run-calls {
     grid-template-columns: 1fr;
   }

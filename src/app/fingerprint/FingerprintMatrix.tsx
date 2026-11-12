@@ -80,7 +80,8 @@ export function FingerprintMatrix(props: FingerprintMatrixProps) {
       {rows.length === 0 ? (
         <p className="fp-empty-note">{fp.matrix.emptyReferences}</p>
       ) : (
-        <DataTable variant="matrix" wrapClassName="fp-table-wrap" className="fp-matrix-table">
+        <DataTable variant="matrix" wrapClassName="fp-table-wrap" className="fp-matrix-table"
+          scrollLabel={fp.matrix.title}>
           <MatrixTableHead activeProbes={activeProbes} config={config} selfTest={selfTest} canOperate={canOperate} />
           <tbody>
             {rows.map((row) => {

@@ -6,6 +6,7 @@ export interface DataTableProps extends React.TableHTMLAttributes<HTMLTableEleme
   variant?: DataTableVariant;
   stickyFirstColWidth?: string;
   wrapClassName?: string;
+  scrollLabel?: string;
   children?: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export function DataTable({
   variant = "compact",
   stickyFirstColWidth,
   wrapClassName,
+  scrollLabel,
   className,
   children,
   ...rest
@@ -29,7 +31,9 @@ export function DataTable({
     : undefined;
 
   return (
-    <div className={wrapClasses} style={wrapStyle}>
+    <div className={wrapClasses} style={wrapStyle}
+      role={scrollLabel ? "region" : undefined} aria-label={scrollLabel}
+      tabIndex={scrollLabel ? 0 : undefined}>
       <table className={tableClasses} {...rest}>
         {children}
       </table>

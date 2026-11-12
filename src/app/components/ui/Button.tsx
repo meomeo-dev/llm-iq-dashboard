@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 export type ButtonVariant = "default" | "primary" | "danger" | "ghost";
 export type ButtonSize = "sm" | "md";
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ComponentPropsWithRef<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   busy?: boolean;
+  touch?: boolean;
   busyLabel?: React.ReactNode;
 }
 
@@ -31,6 +32,7 @@ export function Button({
   variant = "default",
   size = "md",
   busy = false,
+  touch = false,
   busyLabel,
   type = "button",
   disabled,
@@ -38,11 +40,13 @@ export function Button({
   children,
   ...rest
 }: ButtonProps): React.ReactElement {
-  const classes = buildButtonClasses(variant, size, busy, className);
+  const extraClasses = [touch && "ui-btn-touch", className].filter(Boolean).join(" ");
+  const classes = buildButtonClasses(variant, size, busy, extraClasses);
   const isDisabled = Boolean(disabled || busy);
 
   return (
-    <button type={type} disabled={isDisabled} className={classes} {...rest}>
+    <button type={type} disabled={isDisabled} aria-busy={busy || undefined}
+      className={classes} {...rest}>
       {busyLabel !== undefined ? (
         <span className="ui-btn-stack">
           <span className={busy ? "ui-btn-layer is-hidden" : "ui-btn-layer"}>{children}</span>
@@ -86,12 +90,32 @@ export function ButtonLink({
   );
 }
 
-export interface ConfirmButtonProps extends Omit<ButtonProps, "onClick"> {
+export interface ConfirmButtonProps extends Omit<ButtonProps, "onClick" | "ref"> {
   confirmLabel: React.ReactNode;
   cancelLabel?: React.ReactNode;
   confirmPrompt?: React.ReactNode;
   confirmVariant?: ButtonVariant;
   onConfirm: () => Promise<void> | void;
+}
+
+function useConfirmationFocus() {
+  const [confirming, setConfirming] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  const moveFocus = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    (confirming ? cancel : trigger).current?.focus();
+  }, [confirming]);
+
+  function changeConfirmation(open: boolean): void {
+    moveFocus.current = true;
+    setConfirming(open);
+  }
+
+  return { confirming, setConfirming, trigger, cancel, changeConfirmation };
 }
 
 /**
@@ -106,13 +130,14 @@ export function ConfirmButton({
   variant = "default",
   size = "md",
   busy = false,
+  touch = false,
   busyLabel,
   disabled,
   className,
   children,
   ...rest
 }: ConfirmButtonProps): React.ReactElement {
-  const [confirming, setConfirming] = useState(false);
+  const { confirming, setConfirming, trigger, cancel, changeConfirmation } = useConfirmationFocus();
   const [internalBusy, setInternalBusy] = useState(false);
   const isBusy = busy || internalBusy;
 
@@ -125,7 +150,9 @@ export function ConfirmButton({
         busyLabel={busyLabel}
         disabled={disabled}
         className={className}
-        onClick={() => setConfirming(true)}
+        ref={trigger}
+        touch={touch}
+        onClick={() => changeConfirmation(true)}
         {...rest}
       >
         {children}
@@ -149,6 +176,7 @@ export function ConfirmButton({
       <Button
         variant={confirmVariant}
         size={size}
+        touch={touch}
         busy={isBusy}
         busyLabel={busyLabel}
         disabled={disabled}
@@ -161,8 +189,10 @@ export function ConfirmButton({
       <Button
         variant="default"
         size={size}
+        ref={cancel}
+        touch={touch}
         disabled={isBusy}
-        onClick={() => setConfirming(false)}
+        onClick={() => changeConfirmation(false)}
       >
         {cancelLabel}
       </Button>

@@ -129,10 +129,10 @@ flowchart TD
 全站 CSS `@media` 严格收敛为 **3 档标准断点**（由 `scripts/check-ui-hygiene.ts` 规则 `UI-02` 强制校验）：
 
 1. **Desktop（`@media (max-width: 1200px)` / `(min-width: 1201px)`）**：
-   - 主看板工具栏隐藏次要品牌长标题文字（`.brand-title`），保留完整单行控制区；
+   - 主看板和模型指纹工具栏隐藏品牌长标题（`.brand-title`），工具栏按控制区分两行；
    - 大屏下完整展示双列布局与多列对比网格。
 2. **Tablet（`@media (max-width: 900px)` / `(min-width: 901px)`）**：
-   - 主看板 `.toolbar` 转为上下双行自适应布局，`RunStatus` 面板切换为视口居中模态卡片；
+   - 工具栏继续分两行，时钟隐藏。`RunStatus` 面板切换为视口居中模态卡片；
    - `/config` 左侧固定导航栏（`.config-side-nav`）切换为顶部吸顶横向滚动胶囊条；
    - 时间线面板（`.board-panel`）紧凑化内边距与行标签字阶。
 3. **Mobile（`@media (max-width: 640px)` / `(min-width: 641px)`）**：

@@ -48,7 +48,7 @@ export function PairCodeForm({
         required
       />
       <div className="pair-actions">
-        <Button type="submit" variant="primary" disabled={status.kind === "busy"}>
+        <Button type="submit" variant="primary" touch busy={status.kind === "busy"}>
           {status.kind === "busy" ? (isEn ? "Pairing…" : "配对中…") : isEn ? "Pair" : "配对"}
         </Button>
         {status.kind === "error" && (

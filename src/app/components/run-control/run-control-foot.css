@@ -69,6 +69,7 @@
   }
 
   .run-once-start {
+    min-height: var(--control-height-touch);
     width: 100%;
     padding: 8px;
     font-size: var(--text-lg);

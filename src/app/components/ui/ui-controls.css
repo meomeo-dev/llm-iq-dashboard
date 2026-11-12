@@ -4,6 +4,12 @@
  */
 
 /* 1. Button, ButtonLink & ConfirmButton (.ui-btn*) */
+@media (max-width: 640px) {
+  .ui-btn.ui-btn-touch {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+  }
+}
 .ui-btn {
   display: inline-flex;
   align-items: center;
@@ -32,7 +38,8 @@
 }
 
 .ui-btn:disabled,
-.ui-btn.is-busy {
+.ui-btn.is-busy,
+.ui-input:disabled, .ui-select:disabled, .ui-textarea:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -141,17 +148,14 @@
   font-weight: 500;
 }
 
-.ui-field-hint {
-  color: var(--text-dim);
+.ui-field-hint,
+.ui-field-error {
   font-size: var(--text-xs);
   line-height: 1.4;
 }
 
-.ui-field-error {
-  color: var(--err);
-  font-size: var(--text-xs);
-  line-height: 1.4;
-}
+.ui-field-hint { color: var(--text-dim); }
+.ui-field-error { color: var(--err); }
 
 .ui-input,
 .ui-select,
@@ -189,11 +193,6 @@
 .ui-input:focus-visible, .ui-select:focus-visible, .ui-textarea:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
-}
-
-.ui-input:disabled, .ui-select:disabled, .ui-textarea:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .ui-check-row {

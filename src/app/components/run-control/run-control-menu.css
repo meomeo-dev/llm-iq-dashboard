@@ -254,7 +254,11 @@
     padding: 0;
   }
 
-  .run-once-close { margin: 4px 6px; }
+  .run-once-close {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+    margin: 4px 6px;
+  }
 
   .run-once-head-cell {
     flex: 1;

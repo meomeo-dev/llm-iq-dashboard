@@ -69,9 +69,7 @@
   .brand-title {
     display: none;
   }
-}
 
-@media (max-width: 900px) {
   .toolbar {
     display: flex;
     flex-direction: column;
@@ -137,7 +135,9 @@
   .toolbar-top-row .menu-button,
   .toolbar-top-row .page-group-link,
   .toolbar-top-row .lang-switch,
-  .toolbar-top-row .icon-link {
+  .toolbar-top-row .icon-link,
+  .toolbar-center > .menu > .menu-button,
+  .toolbar .auto-run-switch {
     min-height: var(--control-height-touch);
   }
 

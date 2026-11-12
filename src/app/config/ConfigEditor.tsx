@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/app/components/ui/Button";
 import type { CapabilitySnapshot } from "@/capabilities/types";
 import type { PromptSpec } from "@/core/prompt";
 import type { ProfileCredentialTable } from "@/core/profile-credentials";
@@ -99,12 +100,12 @@ function ConfigEditorActions({
   const isEn = useI18n().locale === "en";
   return (
     <div className="config-actions-bar">
-      <button type="button" className="ui-btn ui-btn-primary" onClick={onSave} disabled={busy}>
+      <Button variant="primary" touch onClick={onSave} disabled={busy}>
         {isEn ? "Save Config" : "保存配置"}
-      </button>
-      <button type="button" className="ui-btn ui-btn-default" onClick={onRunNow} disabled={busy}>
+      </Button>
+      <Button touch onClick={onRunNow} disabled={busy}>
         {isEn ? "Run a Round Now" : "立即跑一轮"}
-      </button>
+      </Button>
       {status.kind !== "idle" && <span className={`status ${status.kind}`}>{status.message}</span>}
     </div>
   );

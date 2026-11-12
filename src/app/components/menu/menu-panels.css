@@ -125,6 +125,12 @@
 }
 
 @media (max-width: 640px) {
+  .filter-panel-close-btn,
+  .day-panel-close-btn {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+  }
+
   .filter-panel-head-bar,
   .day-panel-head-bar {
     display: flex;

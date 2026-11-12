@@ -7,6 +7,8 @@
 }
 
 .fp-matrix-table {
+  --fp-model-width: 200px;
+  --fp-cli-width: 148px;
   width: 100%;
   min-width: 980px;
   border-collapse: separate;
@@ -39,9 +41,9 @@
 .fp-col-model {
   position: sticky;
   left: 0;
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: var(--fp-model-width);
+  min-width: var(--fp-model-width);
+  max-width: var(--fp-model-width);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -57,14 +59,26 @@
 
 .fp-col-cli {
   position: sticky;
-  left: 200px;
-  width: 148px;
-  min-width: 148px;
-  max-width: 148px;
+  left: var(--fp-model-width);
+  width: var(--fp-cli-width);
+  min-width: var(--fp-cli-width);
+  max-width: var(--fp-cli-width);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   box-shadow: var(--shadow-sticky-col);
+}
+
+@media (max-width: 640px) {
+  .fp-matrix-table {
+    --fp-model-width: 104px;
+    --fp-cli-width: 104px;
+  }
+
+  .fp-col-cli code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .fp-col-cli-ver {

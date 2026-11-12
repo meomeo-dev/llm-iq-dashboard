@@ -56,6 +56,7 @@ export function ModelModalHeader({
             <button
               type="button"
               className="modal-standard-pill"
+              aria-expanded={showStandard}
               onClick={onToggleStandard}
               title={isEn ? "Click to toggle benchmark criteria" : "点击展开/收起测评标准"}
             >
@@ -72,6 +73,7 @@ export function ModelModalHeader({
           <button
             type="button"
             className={`modal-standard-btn ${showStandard ? "active" : ""}`}
+            aria-expanded={showStandard}
             onClick={onToggleStandard}
             title={standardBtnTitle}
           >
