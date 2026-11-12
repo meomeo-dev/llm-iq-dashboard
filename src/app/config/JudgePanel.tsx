@@ -21,13 +21,13 @@ export function JudgePanel({
 
   return (
     <div className="stack">
-      <label className="checkbox ui-check-row">
+      <label className="ui-check-row">
         <input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} />
         {isEn
           ? 'Judge prompts that have a rubric (Code layer: static parsing + headless Chromium render metrics, zero API quota; 30 pts total, can only flag "Degraded")'
           : "评审有评分标准的题目（代码层：静态解析 + 无头 Chromium 渲染量测，不花配额；共 30 分，只能判「降智」）"}
       </label>
-      <label className="checkbox ui-check-row">
+      <label className="ui-check-row">
         <input type="checkbox" checked={value.ai.enabled} disabled={!value.enabled} onChange={(e) => patchAi({ enabled: e.target.checked })} />
         {isEn
           ? 'AI semantic layer: after the run finishes, ask a cross-vendor judge CLI to score C5–C9 from contact sheets (70 pts total, required for "Sharp" verdict; consumes judge quota)'

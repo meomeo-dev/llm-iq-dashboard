@@ -52,7 +52,7 @@ export function DataRepoForm({
 
   return (
     <div className="stack">
-      <label className="checkbox ui-check-row">
+      <label className="ui-check-row">
         <input
           type="checkbox"
           checked={enabled}
@@ -94,13 +94,13 @@ export function DataRepoForm({
             : "相对路径按执行进程的工作目录解析；分容器部署时是 runner 容器里的路径。"}
         </span>
       </label>
-      <label className="checkbox ui-check-row">
+      <label className="ui-check-row">
         <input type="checkbox" checked={draft.autoSync} disabled={!enabled} onChange={(e) => set("autoSync", e.target.checked)} />
         {isEn
           ? "Automatically sanitize, export, and commit locally after each run"
           : "每轮评测结束后自动脱敏导出并本地提交"}
       </label>
-      <label className="checkbox ui-check-row">
+      <label className="ui-check-row">
         <input type="checkbox" checked={draft.push} disabled={!enabled} onChange={(e) => set("push", e.target.checked)} />
         {isEn
           ? "Automatically push to remote after export commit (pushing publishes publicly; in Docker deployments, consider leaving this off and confirming in the panel below)"

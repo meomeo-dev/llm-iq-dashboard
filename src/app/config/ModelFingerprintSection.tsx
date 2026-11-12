@@ -79,7 +79,7 @@ export function ModelFingerprintForm({
   return (
     <div className="stack">
       <div className="field-row config-fp-row-between">
-        <label className="checkbox ui-check-row">
+        <label className="ui-check-row">
           <input
             type="checkbox"
             checked={value.enabled}
@@ -97,14 +97,16 @@ export function ModelFingerprintForm({
         <span className="config-fp-sublabel">{fp.configSection.probesLabel}</span>
         <div className="config-fp-probes-grid">
           {PROBE_IDS.map((probeId) => (
-            <label key={probeId} className="checkbox ui-check-row" title={fp.probes[probeId].desc}>
+            <label key={probeId} className="ui-check-row" title={fp.probes[probeId].desc}>
               <input
                 type="checkbox"
                 checked={value.probes.includes(probeId)}
                 disabled={!value.enabled}
                 onChange={(e) => toggleProbe(probeId, e.target.checked)}
               />
-              <code>{probeId}</code> · {fp.probes[probeId].label}
+              <span>
+                <code>{probeId}</code> · {fp.probes[probeId].label}
+              </span>
             </label>
           ))}
         </div>

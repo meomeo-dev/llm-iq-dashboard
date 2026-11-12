@@ -54,7 +54,7 @@ export function ScheduleForm({
 
       {scheduled ? (
         <div className="field-row">
-          <label className="checkbox ui-check-row">
+          <label className="ui-check-row">
             <input
               type="checkbox"
               checked={value.runOnStart}
@@ -91,7 +91,7 @@ function ScheduleModeSelector({
   const isEn = locale === "en";
   return (
     <div className="field-row">
-      <label className="radio ui-check-row">
+      <label className="ui-check-row">
         <input
           type="radio"
           name="schedule-mode"
@@ -100,7 +100,7 @@ function ScheduleModeSelector({
         />
         {isEn ? "None" : "不定时"}
       </label>
-      <label className="radio ui-check-row">
+      <label className="ui-check-row">
         <input
           type="radio"
           name="schedule-mode"
@@ -109,7 +109,7 @@ function ScheduleModeSelector({
         />
         {isEn ? "Cron Expression" : "cron 表达式"}
       </label>
-      <label className="radio ui-check-row">
+      <label className="ui-check-row">
         <input
           type="radio"
           name="schedule-mode"

@@ -16,7 +16,7 @@ export function RotationForm({
     <div className="stack">
       <div className="field-row">
         <span>{isEn ? "Variable Rotation" : "变量轮换"}</span>
-        <label className="ui-check-row radio">
+        <label className="ui-check-row">
           <input
             type="radio"
             name="rotation-period"
@@ -25,7 +25,7 @@ export function RotationForm({
           />
           {isEn ? "Once per day" : "每天一换"}
         </label>
-        <label className="ui-check-row radio">
+        <label className="ui-check-row">
           <input
             type="radio"
             name="rotation-period"

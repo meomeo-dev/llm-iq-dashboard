@@ -16,7 +16,7 @@ export function HarnessGuardForm({
   const isDefault = value.text.trim() === DEFAULT_HARNESS_GUARD_TEXT;
   return (
     <div className="stack">
-      <label className="ui-check-row checkbox">
+      <label className="ui-check-row">
         <input type="checkbox" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} />
         {isEn
           ? "Append harness guard at the end of every prompt (as a separate paragraph; original prompt text and classic-v1 remain verbatim)"

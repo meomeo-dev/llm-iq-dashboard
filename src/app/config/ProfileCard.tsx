@@ -33,7 +33,7 @@ export function ProfileCard(props: ProfileCardProps) {
       <div className="config-profile-head">
         <ProfileNameField name={profile.name} locked={saved} onRename={props.onRename} />
         <span className="profile-cli">{profile.cli}</span>
-        <label className="ui-check-row checkbox">
+        <label className="ui-check-row">
           <input type="checkbox" checked={profile.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />
           {isEn ? "Enabled" : "启用"}
         </label>
