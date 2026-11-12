@@ -58,6 +58,16 @@
 
 ## 预览与维护
 
+鹈鹕 v1 的 [Chameleon 静态目录](../design-system/index.html)包含设计基础、共享组件、
+产品模式、交互演示与 Token 导出。目录由 Chameleon 的 `llm-iq-dashboard` 系统构建，
+同步看板源码中的 Token 和共享组件样式。在本仓库根目录启动静态预览：
+
+```bash
+python3 -m http.server 4173 --bind 127.0.0.1 --directory docs/ui/design-system
+```
+
+打开 [静态目录预览](http://127.0.0.1:4173/)。
+
 启动本地开发看板：
 
 ```bash
