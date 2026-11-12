@@ -31,11 +31,6 @@
   border-color: var(--border-focus);
 }
 
-.ui-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
 .ui-btn:disabled,
 .ui-btn.is-busy {
   opacity: 0.55;
@@ -60,7 +55,7 @@
 .ui-btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 
@@ -78,7 +73,7 @@
 .ui-btn-danger:hover:not(:disabled) {
   background: var(--err);
   border-color: var(--err);
-  color: var(--text-on-solid);
+  color: var(--text-on-danger);
 }
 
 .ui-btn-ghost {
@@ -147,7 +142,7 @@
 }
 
 .ui-field-hint {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: var(--text-xs);
   line-height: 1.4;
 }
@@ -181,16 +176,22 @@
   resize: vertical;
 }
 
-.ui-input:focus,
-.ui-select:focus,
-.ui-textarea:focus {
+.ui-input:focus, .ui-select:focus, .ui-textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-ring);
 }
 
-.ui-input:disabled,
-.ui-select:disabled,
-.ui-textarea:disabled {
+.ui-input[aria-invalid="true"], .ui-select[aria-invalid="true"], .ui-textarea[aria-invalid="true"] {
+  border-color: var(--err);
+}
+
+.ui-btn:focus-visible,
+.ui-input:focus-visible, .ui-select:focus-visible, .ui-textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.ui-input:disabled, .ui-select:disabled, .ui-textarea:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

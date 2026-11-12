@@ -1,0 +1,145 @@
+.ds-page {
+  max-width: 1120px;
+}
+
+.ds-heading {
+  font-size: var(--text-xl);
+}
+
+.ds-nav,
+.ds-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ds-nav {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-nav-link {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+
+.ds-nav-link:hover {
+  color: var(--text);
+  background: var(--surface-hi);
+}
+
+.ds-nav-link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.ds-section {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.ds-section-title,
+.ds-panel-title,
+.ds-description {
+  margin: 0;
+}
+
+.ds-section-title {
+  font-size: var(--text-lg);
+}
+
+.ds-panel-title {
+  font-size: var(--text-md);
+}
+
+.ds-description {
+  color: var(--text-dim);
+}
+
+.ds-swatches,
+.ds-component-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.ds-swatches {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-component-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ds-panel,
+.ds-swatch {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.ds-swatch {
+  gap: var(--space-1);
+}
+
+.ds-chip {
+  display: block;
+  height: var(--space-8);
+  margin-bottom: var(--space-1);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  background: var(--ds-swatch);
+}
+
+.ds-token,
+.ds-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-token {
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
+.ds-type-scale {
+  margin: 0;
+}
+
+.ds-type-row {
+  display: grid;
+  grid-template-columns: minmax(8em, 1fr) 2fr;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-block: var(--space-1);
+  border-top: 1px solid var(--border);
+}
+
+.ds-type-sample {
+  margin: 0;
+  font-size: var(--text-preview-size);
+}
+
+@media (max-width: 640px) {
+  .ds-swatches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ds-component-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ds-swatch {
+    padding: var(--space-2);
+  }
+}

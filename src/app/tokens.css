@@ -7,6 +7,10 @@
  */
 
 :root {
+  /* 基础色只在本文件内使用；组件消费下面的语义角色。 */
+  --palette-ink: #0b0f17;
+  --palette-white: #ffffff;
+
   /* ==========================================================================
    * 1. 色彩系统（Color & Semantic Surface Tokens）
    * 设计准则：90% 深色中性灰面板 + 5% 主题蓝强调 + 5% 单点状态色
@@ -14,14 +18,14 @@
    * --text-faint / --accent / --ok / --warn / --err 与 export-image.ts 的
    * readPalette() 保持严格一致。
    * ========================================================================== */
-  --bg: #0b0f17;
+  --bg: var(--palette-ink);
   --surface: #10161f;
   --surface-hi: #182030;
   --surface-hover: #1f2940;
   --surface-subtle: rgba(148, 163, 184, 0.06);
   --surface-bar: rgba(148, 163, 184, 0.10);
   --surface-bar-hi: rgba(148, 163, 184, 0.18);
-  --canvas-bg: #ffffff;
+  --canvas-bg: var(--palette-white);
   --backdrop-bg: rgba(3, 6, 12, 0.72);
 
   /* 边框层级 */
@@ -34,13 +38,16 @@
   --text: #e6e8ee;
   --text-dim: #9aa2b1;
   --text-faint: #6b7385;
-  --text-on-solid: #ffffff;
+  --text-on-solid: var(--palette-white);
+  --text-on-accent: var(--palette-ink);
+  --text-on-danger: var(--palette-ink);
 
   /* 语义色三元组（主色 + 半透明浅底 -tint + 半透明描边 -border） */
   --accent: #4f8df7;
   --accent-hover: #3b7ce6;
   --accent-tint: rgba(79, 141, 247, 0.14);
   --accent-border: rgba(79, 141, 247, 0.45);
+  --focus-ring: var(--accent);
 
   --ok: #4ade80;
   --ok-tint: rgba(74, 222, 128, 0.12);
