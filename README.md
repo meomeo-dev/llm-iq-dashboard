@@ -2,7 +2,9 @@
 
 > **English** | [简体中文](README.zh-CN.md)
 
-Scheduled benchmark runner and visual observability dashboard that drives `agy`, `codex`, and `claude` command-line agents across models and reasoning efforts on the **Pelican on a Bicycle** SVG benchmark and **54 built-in prompt entries** (30 standalone prompts + 24 rotating candidate suites containing **780 scene candidates**, totaling **810 unique benchmark prompt templates**), presenting results on a 24-hour timeline.
+Run the **Pelican on a Bicycle** SVG benchmark and other prompts with the `agy`, `codex`,
+and `claude` command-line agents. The dashboard compares model outputs across reasoning efforts
+on a 24-hour timeline. Browse the active and archived prompts in the `/prompts` gallery.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -125,7 +127,10 @@ Override paths via `PELICAN_CONFIG` and `PELICAN_DATA_DIR`.
 
 ## Prompts & Rotation
 
-The registry ships with **54 built-in prompt entries** (**30 standalone prompts** + **24 rotating candidate suites** containing **780 scene candidates**, totaling **810 unique benchmark prompt templates**):
+The built-in registry contains **23 active entries** and **31 archived entries**. Its
+**24 rotating suites** span both groups and contain **1,140 candidates**. The 14 frontier
+suites also expose their 140 candidates as individually addressable prompts. The
+[bank index](src/core/prompt/bank/index.ts) lists active and archived entries.
 
 | Prompt ID | Summary |
 | --- | --- |
@@ -134,12 +139,16 @@ The registry ships with **54 built-in prompt entries** (**30 standalone prompts*
 | `animated-pelican-v1` | Animated pelican on a bicycle using pure inline SMIL / CSS keyframes; eligible for automated + AI judging |
 | `animated-armadillo-fishnet-mars-v1` / `animated-lemur-scooter-front-v1` | Extended classic dynamic benchmarks: Armadillo on Mars & Ring-tailed Lemur on a Scooter |
 | `animated-iso-vintage-pc-v1` + 7 more | `2026-09` spatial & isometric hardware group (Vintage PC, Amber CRT, 10s Server Rack, Camera Exploded View, Kinetic Hand, Fish-Cloud Amodal, Island Chest, Tree Reader) |
-| `clock-v1` / `penrose-v1` / `ice-water-v1` | Spatial geometry & physics commonsense: Clock at 3:45, Penrose Triangle, Floating Ice in Water |
-| `four-stroke-engine-v1` + 6 more | Frontier engineering: Four-Stroke Engine, Möbius Strip, Cart-Pole, Isometric Cyber-Cube, Synthwave Drive, Cyber HUD, Black Hole Lensing |
-| `jwst-deployment-v1` + 6 more | Frontier visual science: Quantum Double-Slit, Ferrofluid Spikes, JWST Deployment, Tokamak Plasma, 2nm GAA Nanosheet, CRISPR-Cas9, Pulsar Jet |
-| `fe-*-v1` / `vfx-*-v1` (14 suites) | 140 frontier engineering (AI, Semi, Quantum, Bio, Energy, Aero, Meta, Neuro) & visual effects (Sim, Optics, Geom, SciVis, Motion, Sys) prompts, 10 candidates per suite |
+| `clock-v1` / `penrose-v1` / `ice-water-v1` (archived) | Spatial geometry & physics commonsense: Clock at 3:45, Penrose Triangle, Floating Ice in Water |
+| `four-stroke-engine-v1` + 6 more (archived) | Frontier engineering: Four-Stroke Engine, Möbius Strip, Cart-Pole, Isometric Cyber-Cube, Synthwave Drive, Cyber HUD, Black Hole Lensing |
+| `jwst-deployment-v1` + 6 more (archived) | Frontier visual science: Quantum Double-Slit, Ferrofluid Spikes, JWST Deployment, Tokamak Plasma, 2nm GAA Nanosheet, CRISPR-Cas9, Pulsar Jet |
+| `fe-*-v1` / `vfx-*-v1` (14 archived suites) | 140 frontier engineering (AI, Semi, Quantum, Bio, Energy, Aero, Meta, Neuro) & visual effects (Sim, Optics, Geom, SciVis, Motion, Sys) prompts, 10 candidates per suite |
 | `landmarks-v1` / `landmarks-anim-v1` | 80 miniature world city landmark prompts across 2 suites (40 static + 40 animated scene candidates) |
-| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels across 8 suites (Journey to the West covers all 100 chapters, Romance of the Three Kingdoms and Water Margin all 120 chapters each, and Dream of the Red Chamber 10 iconic chapters; 350 static + 350 animated scene candidates) |
+| `shuihu-v1` / `xiyou-v1` / `sanguo-v1` / `honglou-v1` (+ `-anim-v1`) | Four Classic Chinese Novels across eight suites. Journey to the West covers 100 chapters. Romance of the Three Kingdoms, Water Margin, and Dream of the Red Chamber cover 120 each. Each chapter has one static and one animated candidate (920 total). |
+
+Open `/prompts` to filter the gallery by active or archived status and inspect prompt text,
+candidate variants, and evaluation criteria. The starter configuration explicitly selects
+five archived frontier prompts alongside `classic-v1`.
 
 Candidate-set prompts shuffle and draw one candidate per rotation period (`day` or `run`) without replacement until the deck is exhausted. Full provenance is in [`docs/benchmark-provenance.md`](docs/benchmark-provenance.md).
 
@@ -161,11 +170,10 @@ Disabled by default; enable in `/config` under “Artwork Judging”. For prompt
 Disabled by default; configure in `/config` under “Model Fingerprint” or open `/fingerprint` (owner-only; hidden in read-only / remote showcase mode). Samples 6 high-entropy generative probes (`uuid`, `number`, `seed`, `palette`, `words-en`, `words-zh`) in zero-tool direct-output mode, compares base-2 Jensen–Shannon divergence (`1 - JSD`) over character, bigram, and segment distributions against equal-capacity reference pools, calibrates pairwise thresholds via non-overlapping cross-validation (`fingerprint:self-test`), and issues a 4-state verdict (`consistent` / `inconsistent` / `inconclusive` / `not-comparable`). Local artifacts live in `data/model-fingerprint/` and are never exported to the public data repository.
 
 ```bash
-pnpm fingerprint:status
-pnpm fingerprint:fill -- --dry-run
-pnpm fingerprint:self-test
-pnpm fingerprint:check -- --cli codex --declared gpt-5.5 --dry-run
-pnpm fingerprint:rescore -- <checkId>
+pnpm pelican fp status
+pnpm pelican fp fill --dry-run
+pnpm pelican fp self-test
+pnpm pelican fp check --cli codex --model gpt-5.5 --dry-run
 ```
 
 ## Cost (API-Equivalent)
@@ -191,14 +199,21 @@ See [`docs/data-sync-architecture.md`](docs/data-sync-architecture.md) for the f
 
 ## Design Notes & Development
 
+- Dashboard design specification, component guidance, and Chameleon catalog with interactive
+  examples and design tokens. [UI documentation](docs/ui/README.md)
+- Changes since the last release. [Changelog](CHANGELOG.md)
 - Core architectural trade-offs (capability probing, effort folding, house rules vs. prompt purity, per-call scratch directories, SVG sanitization & Shadow DOM isolation): [`docs/design-notes.md`](docs/design-notes.md)
 - Directory layout, data artifacts, HTTP API reference, adding a new CLI adapter, and test suite: [`docs/development.md`](docs/development.md)
+
+Use `pnpm pelican --help` to list CLI commands and `pnpm pelican help run` for benchmark
+options. The global `--config` and `--data-dir` flags override local paths for one invocation.
 
 ```bash
 pnpm lint               # tsc --noEmit (includes test/)
 pnpm test               # node:test unit tests (isolated from host data/ and CLIs)
 pnpm validate:prompts   # Prompt registry & standard schema validation
 pnpm check:length       # File and function length gate (config/code-length-policy.yaml)
+pnpm check:ui           # UI Tokens, breakpoints, inline styles, and CSS ownership
 pnpm check:secrets      # Tracked file secret scan (config/secret-scan-policy.yaml)
 pnpm build              # Next.js production build check
 pnpm showcase:smoke     # Read-only remote showcase end-to-end smoke check

@@ -2,8 +2,9 @@
 
 > [English](README.md) | **简体中文**
 
-定时调用 `agy` / `codex` / `claude` 三家命令行工具，指定模型与思考强度执行**鹈鹕自行车
-基准**（pelican-on-a-bicycle）及内置 **54 个提示词条目**（30 道独立单题 + 24 套含 **780 个轮换场景候选**的套题，合计 **810 个唯一测试题面**），把历次结果以 24 小时时间线的形式呈现在一个看板上。
+使用 `agy`、`codex` 和 `claude` 命令行工具定时运行**鹈鹕自行车基准**
+（Pelican on a Bicycle）及其他题目，在 24 小时时间线上比较不同模型和思考强度的作品。
+在 `/prompts` 题库画廊浏览在用与归档题目。
 
 ![状态](https://img.shields.io/badge/license-MIT-blue)
 
@@ -170,7 +171,9 @@ docker exec -it llm-iq-runner pnpm pair
 
 ## 提示词
 
-内置题库共 **54 个提示词条目**（**30 道独立单题** + **24 套轮换候选集**，候选集内含 **780 个场景候选**，合计 **810 个唯一测试题面**）：
+内置题库有 **23 个在用条目**和 **31 个归档条目**，两组共包含 **24 套轮换候选集**，
+合计 **1,140 个候选**。14 套前沿候选集的 140 道题也可以按单题 ID 查询。
+在用与归档条目见[题库索引](src/core/prompt/bank/index.ts)。
 
 | 条目 | 说明 |
 | --- | --- |
@@ -179,17 +182,18 @@ docker exec -it llm-iq-runner pnpm pair
 | `animated-pelican-v1` | 动态鹈鹕车：带 SMIL / CSS 动画的鹈鹕骑行，作品落盘后自动评审（见[作品评审](#作品评审)） |
 | `animated-armadillo-fishnet-mars-v1` / `animated-lemur-scooter-front-v1` | 经典基准扩展：动态火星网袜犰狳（四足对角相交步态与曲面网袜）与动态环尾狐猴（正交对称正视与单腿蹬地推车），对标动态鹈鹕车 |
 | `animated-iso-vintage-pc-v1` 等 8 道 | 2026-09 专属分组：等轴测硬件制图（初代 PC、橙屏 CRT、十秒机架、相机爆炸图）、动力学人手关节屈伸，以及前沿空间认知题（鱼跃入云非模态遮挡、海岛宝箱包含拓扑、树下读者复合深度遮挡） |
-| `clock-v1` / `penrose-v1` / `ice-water-v1` | 空间与常识视觉题：3:45 的时钟、彭罗斯三角、半杯浮冰水 |
-| `four-stroke-engine-v1` 等 7 道 | 前沿工程：四冲程发动机、莫比乌斯小车、倒立摆、赛博魔方、合成波赛道、全息 HUD、黑洞引力透镜 |
-| `jwst-deployment-v1` 等 7 道 | 前沿视觉：量子双缝、磁流体尖刺、韦伯望远镜展开、托卡马克、2nm GAA 晶体管、CRISPR-Cas9、脉冲星喷流 |
-| `fe-*-v1` / `vfx-*-v1` 14 组 | 2026 前沿单题 140 道：AI、半导体、量子、生物、能源、航空、超材料、神经 8 个工程领域与模拟、光学、几何、科学可视化、运动、系统 6 个特效领域，每组 10 道候选轮换 |
+| `clock-v1` / `penrose-v1` / `ice-water-v1`（归档） | 空间与常识视觉题：3:45 的时钟、彭罗斯三角、半杯浮冰水 |
+| `four-stroke-engine-v1` 等 7 道（归档） | 前沿工程：四冲程发动机、莫比乌斯小车、倒立摆、赛博魔方、合成波赛道、全息 HUD、黑洞引力透镜 |
+| `jwst-deployment-v1` 等 7 道（归档） | 前沿视觉：量子双缝、磁流体尖刺、韦伯望远镜展开、托卡马克、2nm GAA 晶体管、CRISPR-Cas9、脉冲星喷流 |
+| `fe-*-v1` / `vfx-*-v1` 14 组（归档） | 2026 前沿单题 140 道：AI、半导体、量子、生物、能源、航空、超材料、神经 8 个工程领域与模拟、光学、几何、科学可视化、运动、系统 6 个特效领域，每组 10 道候选轮换 |
 | `landmarks-v1` / `landmarks-anim-v1` | 城市地标微缩景观四十景（静态 40 景 / 动态 40 景，共 80 个候选），候选集轮换 |
 | `shuihu-v1` / `shuihu-anim-v1` | 《水浒传》百二十回本逐回名场面，每回一条（静态 / 动态各 120 条），候选集轮换 |
 | `xiyou-v1` / `xiyou-anim-v1` | 《西游记》通行百回本逐回名场面，每回一条（静态 / 动态各 100 条），候选集轮换 |
 | `sanguo-v1` / `sanguo-anim-v1` | 《三国演义》毛宗岗评本逐回名场面，每回一条（静态 / 动态各 120 条），候选集轮换 |
-| `honglou-v1` / `honglou-anim-v1` | 《红楼梦》十个经典回目的名场面（静态 / 动态），候选集轮换 |
+| `honglou-v1` / `honglou-anim-v1` | 《红楼梦》一百二十回逐回名场面，每回一条（静态 / 动态各 120 条），候选集轮换 |
 
-起步模板启用 `classic-v1` 与五道前沿视觉题；`run.promptIds` 缺省时只跑 `classic-v1`。
+在 `/prompts` 按在用或归档状态筛选，查看题面、候选和评审标准。
+起步模板显式选择 `classic-v1` 和五道归档前沿视觉题。`run.promptIds` 缺省时只跑 `classic-v1`。
 每轮调用数为提示词条数 × 启用的 target 数，在 `run.promptIds` 里增删条目即可调整；
 看板上“跑一次”也可以临时只选其中几条。回目清单与出处见
 [`docs/benchmark-provenance.md`](docs/benchmark-provenance.md)。
@@ -303,11 +307,10 @@ docker exec -it llm-iq-runner pnpm pair
 缺省关闭，配置页“模型指纹”区块配置，或从看板工具栏进入 `/fingerprint`（所有者专属，只读展台模式下隐藏，ACR-024）。以零工具直出模式采集 6 个高熵生成探针（`uuid`、`number`、`seed`、`palette`、`words-en`、`words-zh`），对字符、二元语法与分段分布计算以 2 为底的 Jensen–Shannon 散度（`1 - JSD`），在等容量公共子参照上经无重叠交叉验证自检（`fingerprint:self-test`）标定成对阈值，对声明模型与候选模型给出四态判决（`consistent` / `inconsistent` / `inconclusive` / `not-comparable`）。产物保存在本地 `data/model-fingerprint/`，绝不进入公开数据仓。详见 [`docs/research/model-fingerprint/`](docs/research/model-fingerprint/)。
 
 ```bash
-pnpm fingerprint:status
-pnpm fingerprint:fill -- --dry-run
-pnpm fingerprint:self-test
-pnpm fingerprint:check -- --cli codex --declared gpt-5.5 --dry-run
-pnpm fingerprint:rescore -- <checkId>
+pnpm pelican fp status
+pnpm pelican fp fill --dry-run
+pnpm pelican fp self-test
+pnpm pelican fp check --cli codex --model gpt-5.5 --dry-run
 ```
 
 ## 成本（API 等价）
@@ -417,17 +420,24 @@ CLI 能力探测与强度折叠、考题与考场规则分离、每次调用一�
 
 ## 开发
 
+在[界面设计文档](docs/ui/README.md)查阅鹈鹕看板设计规范、组件用法和 Chameleon 样张。
+近期版本变更见[更新日志](CHANGELOG.md)。
+
+运行 `pnpm pelican --help` 查看统一 CLI 命令，运行 `pnpm pelican help run` 查看单轮评测选项。
+全局参数 `--config` 和 `--data-dir` 可覆盖单次命令使用的本地路径。
+
 ```bash
 pnpm lint               # tsc 类型检查，含 test/
 pnpm test               # node:test 单元测试，不调用 CLI、不读本机 data/
 pnpm validate:prompts   # 题库校验
 pnpm check:length       # 文件与函数长度门禁（config/code-length-policy.yaml）
+pnpm check:ui           # UI Token、断点、行内样式和 CSS 归属检查
 pnpm check:secrets      # 已跟踪文件的密钥扫描（config/secret-scan-policy.yaml）
 ```
 
 提交前另跑 `pnpm build`；改动只读部署或远程数据源时再跑 `pnpm showcase:smoke`。Git 钩子由
-lefthook 管理，`pnpm install` 时自动安装：pre-commit 跑 `check:secrets`、`lint`、`check:length`，
-pre-push 跑 `validate:prompts` 与 `test`。
+lefthook 管理，`pnpm install` 时自动安装。提交前运行 `check:secrets`、`lint`、
+`check:length` 和 `check:ui`，推送前运行 `validate:prompts` 与 `test`。
 
 新增一家 CLI 的步骤、测试范围与测试依赖（jsdom）的选型记录见
 [`docs/development.zh-CN.md`](docs/development.zh-CN.md)。

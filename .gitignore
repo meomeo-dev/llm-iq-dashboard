@@ -28,6 +28,7 @@ llm_iq_dashboard__worktrees/
 .agents/
 .codex/
 .claude/README.md
+.claude/settings.local.json
 .claude/skills/
 .extension-env
 .extension-env.lock
@@ -48,4 +49,9 @@ __pycache__/
 # 本地临时草稿与调研临时记录
 scratch/
 scratch_*.md
+# 正式领域调研报告沿用已有的 scratch_ 文件名
+!/docs/research/domain-reports/scratch_*_report.md
+
+# 本机商业方案和评审记录
+/docs/proposals/*-commercial-*.md
 
