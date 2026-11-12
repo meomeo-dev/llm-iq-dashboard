@@ -80,7 +80,7 @@ s.32.2(1)(b)；澳大利亚版权法 s.65–68。其他国家的全景自由条�
 ## 题面设计
 
 题面采用固定骨架，静态版十三段、动态版在氛围之后多一段【动态】，顺序不变，由
-`src/core/prompts/landmarks.ts` 的 `composeLandmarkPrompt` 统一拼接；每条全文上限静态 2000 字、
+`src/core/prompt/bank/landmarks/index.ts` 的 `composeLandmarkPrompt` 统一拼接；每条全文上限静态 2000 字、
 动态 2400 字：
 
 | 段 | 内容 | 来源 |

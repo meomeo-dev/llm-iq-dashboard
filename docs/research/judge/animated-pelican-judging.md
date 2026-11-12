@@ -7,7 +7,7 @@
 ## 1. 口径
 
 - 评审对象只限 `status = ok` 的调用；`no-svg` / `error` / `timeout` 不评审，沿用原有分类。
-- 标准来自题目自带的 `standard`（[data-classic.ts](../../../src/core/prompt/data-classic.ts)）：
+- 标准来自题目自带的 `standard`（[动态鹈鹕题面](../../../src/core/prompt/bank/benchmarks/pelican/index.ts#L58)）：
   旋转中心、踩踏联动、语法规范三条，拆成可逐项计分的闸门与标准。
 - 闸门（gate）任一不通过：总分 0，判「降智」，不进入 AI 层。
 - 标准（criterion）逐项计分，`maxScore` 之和为 100；总分 ≥ 78 判「智商在线」；及格线只定标签不改分数，调整不升 `version`，展示时按当前及格线重定旧记录的结论。

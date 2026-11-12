@@ -4,7 +4,7 @@
 > **题目全局编号**：`EVAL-2026-Q3Q4-D3-02`  
 > **项目规范标识 (PromptSpec ID)**：`animated-iso-amber-crt-v1`  
 > **题目全称**：动态橙屏 CRT 台式机（Animated Amber CRT Workstation）  
-> **对齐基准模板**：参考 [`ANIMATED_PELICAN_PROMPT`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/core/prompt/data-classic.ts#L90-L116)  
+> **对齐基准模板**：参考 [`ANIMATED_PELICAN_PROMPT`](../../../../src/core/prompt/bank/benchmarks/pelican/index.ts#L58)\
 
 ---
 

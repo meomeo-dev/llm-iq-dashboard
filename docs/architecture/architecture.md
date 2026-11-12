@@ -36,6 +36,7 @@
 | [ACR-023](revisions/ACR-023-data-repo-web-config.md) | 2026-10-03 | 数据仓地址 `dataRepo.repository` 在配置页可改，执行器按地址 clone 本地副本、origin 不一致拒绝同步，GitHub App 以地址为目标仓 | §4 §5 |
 | Sprint M2 | 2026-10-14 | Sprint M2（中英双语全栈国际化改造）：新增 `src/i18n/` 与 `src/core/prompts/i18n/`，对外文档切换为 `.md` 英文主版与 `.zh-CN.md` 中文互链，回填 §1、§3、§7 | §1 §3 §7 |
 | [ACR-024](revisions/ACR-024-model-fingerprint.md) | 2026-10-17 | 模型指纹核验模块：面向对象 `Probe` & `PromptCodec`、以 2 为底 JSD 与配对无重叠自检、三家 CLI 零工具隔离、`fingerprint:*` 命令与 `/fingerprint` 看板 | §1 §2 §3 §4 §5 §6 §7 |
+| [ACR-025](revisions/ACR-025-prompt-bank-layout.md) | 2026-11-12 | 按题组统一内置题面、评判标准和英文展示数据 | §3 §7 |
 
 ## 0. 技术选型总览
 
@@ -153,13 +154,13 @@ GitHub 授权的令牌交换以及模型指纹的补采 / 核验请求（`finger
   倍率只用于信息卡里的折算显示，卡片与统计仍按官价。
 - `src/core`：编排（提示词 × 目标，按 profile × 模型分道并发、道内串行）、强度折叠“不越级加码”、
   提示词登记（经典基准、2026-09 动态题、前沿工程与视觉题、四大名著与城市地标候选集、前沿工程 / 视觉
-  特效 14 个领域套题，共 54 个内置条目与 780 条轮换场景候选，均不可编辑；登记在 `src/core/prompt/`，题目数据在 `src/core/prompts/` 与
-  `src/core/classics/`）、轮换状态、存储与进度、
+  特效 14 个领域套题。题面与英文展示数据按题组存入 `src/core/prompt/bank/`，
+  在用和归档状态由同目录的 `index.ts` 统一登记。归档题可按原 ID 查询）、轮换状态、存储与进度、
   按历史成本预测并逐次放行的预算上限。
 - 考题文本锁定与展示层双语分离（Sprint M2）：发给被测 CLI 的题面原文（`PromptSpec.template`、`candidates[].text`）、
   考场规则（`src/core/house-rules.ts`）与 AI 裁判提示词（`src/core/judge/ai-prompt.ts`）逐字锁定不可按界面语言改动，
   保证历史结果与跨模型评测严格可比；而面向人类读者的展示元数据——题目标签（`label`）、候选场景标签、黄金评判标准
-  （`standard.coreKey` / `groundTruth` / `evaluationCriteria`）、生命周期题龄说明（`src/core/prompts/i18n/`）以及
+  （`standard.coreKey` / `groundTruth` / `evaluationCriteria`）、生命周期题龄说明（`src/core/prompt/i18n/`）以及
   动态鹈鹕车评审标准 `G1`–`G5` 闸门与 `C1`–`C9` 评分项文案（`src/i18n/judge-rubric.ts`）——均在展示层按 `locale`
   动态本地化，不改变 `run.json` 与 `<attemptKey>.judge.json` 的磁盘存储契约。
 - 失败分类：`ok` / `no-svg` / `error` / `timeout` 分开记录。
@@ -308,7 +309,7 @@ llm_iq_dashboard/
 │   ├── app/            ← 看板页面（/、/config、/fingerprint、/view、/pair）与 /api 路由；components/ 按功能分目录
 │   ├── bin/            ← 命令行入口：run-once、scheduler、runner（含 runner-sync）、model-fingerprint、
 │   │                     pair、preflight、onboard、pricing-sync、sync-data、validate-prompts
-│   ├── core/           ← 领域逻辑；judge/ 为作品评审；model-fingerprint/ 为模型指纹核验；prompts/i18n/ 为题目与标准展示层双语映射
+│   ├── core/           ← 领域逻辑；judge/ 为作品评审；model-fingerprint/ 为模型指纹核验；prompt/bank/ 为内置题库，prompt/i18n/ 为展示层本地化
 │   ├── i18n/           ← 中英双语国际化（types.ts、context.tsx、messages/ 字典含 fingerprint.ts、judge-rubric.ts 与 judge-evidence-en.ts 评审标准展示层翻译）
 │   ├── adapters/       ← 三家 CLI 适配器
 │   ├── capabilities/   ← 能力探测与就绪预检

@@ -1,6 +1,6 @@
 # 四大名著候选题考证与撰写规范
 
-本目录存放 `src/core/classics/` 四部名著逐回候选题的考证笔记，并规定题面、评判标准与实测的写法。
+本目录存放 `src/core/prompt/bank/literature/` 四部名著逐回候选题的考证笔记，并规定题面、评判标准与实测的写法。
 每回对应一条静态候选 `<book>-NNN` 与一条动态候选 `<book>-anim-NNN`，两条描绘同一场面。
 
 ## 底本与章回地址
@@ -64,7 +64,8 @@
   JavaScript、XML 解析出错均扣分。
 - `referenceSource`：`<章回地址> · docs/research/classics/<book>/chNNN.md`。
 
-英文标签与英文标准放在 `src/core/prompts/i18n/`，由中文逐条翻译，不含 CJK 字符。
+每部名著的英文标题、静态和动态评判标准与题面同目录存放。
+按对应的 `chNNN-MMM-en.ts` 和 `chNNN-MMM-anim-en.ts` 修改逐回英文展示数据。
 
 ## /tmp 生图实测
 

@@ -106,19 +106,22 @@ phases:
     title: "阶段三：TypeScript 模块与 UX 套题聚合实现 (Code Implementation)"
     goal: "即时将调研报告转化为类型安全的代码模块，实现四大名著式 UX 候选下拉架构"
     files_to_create:
-      - path: "src/core/prompts/<domain-slug>.ts"
+      - path: "src/core/prompt/bank/<engineering-or-visual-effects>/<domain-slug>/index.ts"
         structure:
           - "10 个单题常量声明：<PREFIX>_<NN>_PROMPT: PromptSpec"
           - "1 个单题数组聚合：<PREFIX>_INDIVIDUAL_PROMPTS"
           - "1 个领域聚合套题：<PREFIX>_SUITE_PROMPT (包含 candidates 列表，每个 candidate 对应一题)"
           - "1 个别名导出：<PREFIX>_PROMPTS"
     files_to_update:
-      - path: "src/core/prompts/index.ts"
+      - path: "src/core/prompt/bank/frontier.ts"
         actions:
-          - "导出新模块的所有符号 (export * from './<domain-slug>')"
+          - "导出新模块的所有符号 (export * from './<engineering-or-visual-effects>/<domain-slug>')"
           - "将套题注入 FRONTIER_SUITE_PROMPTS"
           - "将单题展开注入 ALL_FRONTIER_INDIVIDUAL_PROMPTS"
           - "更新 FRONTIER_INDIVIDUAL_PROMPT_MAP 字典"
+      - path: "src/core/prompt/bank/index.ts"
+        actions:
+          - "在在用或归档清单中登记套题"
       - path: "src/app/components/run-control/RunOnceMenu.tsx"
         actions:
           - "确保 groupPrompts 函数中能够识别并归类新领域套题（如 fe- 归入工程组，vfx- 归入视效组）"

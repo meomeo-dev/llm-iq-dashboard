@@ -2,7 +2,7 @@
 
 > **基准目录**：`docs/research/x-viral-ai-evals-2026-sep-oct/final_10_outcome/`  
 > **制定日期**：2026-10-10  
-> **对齐基准模板**：严格参考本项目内置 [`ANIMATED_PELICAN_PROMPT`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/core/prompt/data-classic.ts#L90-L116) 的结构、代码规范与评分设计。  
+> **对齐基准模板**：严格参考本项目内置 [`ANIMATED_PELICAN_PROMPT`](../../../../src/core/prompt/bank/benchmarks/pelican/index.ts#L58) 的结构、代码规范与评分设计。\
 > **核心原则**：**全量 10 道题目全部升级并规范为【动态 SVG 测试 (Dynamic Animated SVG)】**；零外部工具依赖；严格数据安全与知识产权中立。
 
 ---
@@ -26,7 +26,7 @@
 
 ## 二、与本项目标准（动态鹈鹕车）的书写习惯对齐细节
 
-本项目代码库（`src/core/prompt/data-classic.ts`）中收录的 [`ANIMATED_PELICAN_PROMPT`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/core/prompt/data-classic.ts#L90-L116) 代表了本系统对**动态矢量基准**的权威工业级规范。本次构建的 10 道题目完全继承其设计模式：
+本项目代码库（`src/core/prompt/bank/benchmarks/pelican/index.ts`）中收录的 [`ANIMATED_PELICAN_PROMPT`](../../../../src/core/prompt/bank/benchmarks/pelican/index.ts#L58) 代表了本系统对**动态矢量基准**的权威工业级规范。本次构建的 10 道题目完全继承其设计模式：
 
 1. **模板结构三段论**：
    - **首段（任务与声明式声明）**：`"Generate an animated SVG demonstrating/depicting [主题] featuring pure inline SVG animation (using SMIL <animateTransform>/<animate> or inline CSS @keyframes)."`

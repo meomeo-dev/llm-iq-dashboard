@@ -39,7 +39,7 @@ SVG 存成文件、只回一句“已保存到 …”，基准因此取不到作
 
 同理，切换看板的界面语言（`EN` / `中文`）绝不改动发给 CLI 的提示词 `template`、`candidates[].text`、
 `house-rules.ts` 或 `ai-prompt.ts`，也不改动落盘的 `run.json` 与 `.judge.json`；只有面向人类读者的展示层元数据
-（题目标签 `label`、黄金评判标准 `standard`、题龄说明 `src/core/prompts/i18n/` 与评审标准 `G1`–`G5` / `C1`–`C9` 文案 `src/i18n/judge-rubric.ts`）按当前语言切换。
+（题目标签 `label`、黄金评判标准 `standard`、题龄说明 `src/core/prompt/i18n/` 与评审标准 `G1`–`G5` / `C1`–`C9` 文案 `src/i18n/judge-rubric.ts`）按当前语言切换。
 
 ## 每次调用一个干净工作目录
 

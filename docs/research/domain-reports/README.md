@@ -13,4 +13,4 @@
 | [`scratch_vfx5_report.md`](./scratch_vfx5_report.md) | **VFX-5** 物理驱动运动控制、具身动力学与生物解剖 CFX | SLIP 倒立摆步态极限环、Hill 肌肉三元素本构、四足步态弗鲁德数相变、Boids 集群涌现 |
 | [`scratch_vfx6_report.md`](./scratch_vfx6_report.md) | **VFX-6** 实时虚拟制片、深度合成与异构并行图形系统 | 离轴斜透视校正、ACES 2.0 CAM16 色貌色域映射、TAA 亚像素 Halton 抖动与方差裁剪 |
 
-> 注：各题目的正式题面、代码定义与客观黄金标准已固化入 [`src/core/prompts/`](../../../src/core/prompts/)，并由 [`docs/benchmark-provenance.md`](../../benchmark-provenance.md) 进行全局出处溯源维护。
+> 注：各题目的正式题面、代码定义与客观黄金标准已固化入 [`engineering/`](../../../src/core/prompt/bank/engineering/) 与 [`visual-effects/`](../../../src/core/prompt/bank/visual-effects/)，并由 [`docs/benchmark-provenance.md`](../../benchmark-provenance.md) 进行全局出处溯源维护。

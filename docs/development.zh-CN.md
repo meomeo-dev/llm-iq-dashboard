@@ -12,7 +12,8 @@ docs/            基准来源考证、设计要点、部署、数据同步与架
 docker/          镜像定义、构建忽略规则与容器入口、CLI 安装脚本（编排见根目录 compose.yaml）
 scripts/         生产看板启动、长度门、密钥扫描、评审补跑、展台冒烟与本地 issue 脚本
 src/core/        领域逻辑：配置与写回、提示词与变量、编排、调度、存储、SVG 提取、跨作业互斥（active-work.ts）
-src/core/prompts/i18n/ 提示词与评分标准的展示层双语映射（index.ts、labels-en.ts、standards-en.ts 及分域 standards-*-en.ts），不改题面原文与存储契约
+src/core/prompt/bank/ 内置题库，题面、逐题标准与英文展示数据按题组存放
+src/core/prompt/i18n/ 题库展示层本地化与英文数据索引
 src/core/judge/  作品评审：静态解析、渲染量测、AI 裁判与评审记录读写
 src/core/model-fingerprint/ 模型指纹（ACR-024）：面向对象探针体系（probes/）、以 2 为底 JSD 相似度、无重叠自检、四态判决、并发安全样本存储与增量采集
 src/core/sync/   数据仓同步：脱敏导出、台账、发布确认与本地副本核对
@@ -34,6 +35,12 @@ data/runs/       运行产物（已 gitignore）
 data/model-fingerprint/ 模型指纹样本集、归档、核验记录与作业状态（已 gitignore，绝不同步至公开数据仓）
 data/pricing/    价格目录附件缓存（已 gitignore，由 pnpm pricing:sync 下载）
 ```
+
+按题组查找并维护题目。四大名著位于
+[`literature/`](../src/core/prompt/bank/literature/)，每回的静态与动态题面
+同卷存放，对应英文展示数据也位于同一部名著目录。
+在[题库入口](../src/core/prompt/bank/index.ts)的在用或归档清单登记题目。
+归档时移动登记条目，历史记录仍可按原 ID 解析。完成编辑后运行 `pnpm validate:prompts`。
 
 根目录只放 pnpm、TypeScript、Next.js、docker compose、lefthook 按固定位置查找的入口文件，以及
 `README.md`（英文主版）/ `README.zh-CN.md`（简体中文版）、`AGENTS.md`、`CHANGELOG.md`、`handoff.md` 与许可证文件；对外说明文档遵循 `.md`（English primary）⇄ `.zh-CN.md`（Simplified Chinese）双语成对互链约定；`next-env.d.ts` 由 Next.js 生成，不入库。

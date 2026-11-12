@@ -26,7 +26,7 @@ Output format instructions are therefore injected as **House Rules** (`AGENTS.md
 
 Optionally, `run.harnessGuard` (disabled by default) appends a direct-output instruction paragraph after the prompt to suppress web search, code execution, and self-screenshots, recording the appended text in `run.json`'s `harnessGuard` field so bare-model and harness-guarded runs remain explicitly distinguished.
 
-Likewise, switching the dashboard UI language (`EN` / `中文`) never alters the prompt `template`, `candidates[].text`, `house-rules.ts`, or `ai-prompt.ts` sent to CLIs, nor does it alter `run.json` or `.judge.json` on disk; only human-facing display metadata (`label`, `standard`, lifecycle age in `src/core/prompts/i18n/`, and judge rubric `G1`–`G5` / `C1`–`C9` descriptions in `src/i18n/judge-rubric.ts`) are localized at the presentation layer.
+Likewise, switching the dashboard UI language (`EN` / `中文`) never alters the prompt `template`, `candidates[].text`, `house-rules.ts`, or `ai-prompt.ts` sent to CLIs, nor does it alter `run.json` or `.judge.json` on disk; only human-facing display metadata (`label`, `standard`, lifecycle age in `src/core/prompt/i18n/`, and judge rubric `G1`–`G5` / `C1`–`C9` descriptions in `src/i18n/judge-rubric.ts`) are localized at the presentation layer.
 
 ## Clean Per-Call Scratch Directory
 
