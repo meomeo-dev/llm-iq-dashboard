@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ANIMATED_PELICAN_RUBRIC, type DetailKind } from "../../src/core/judge/schema";
 import { BUILTIN_PROMPTS, ARCHIVED_PROMPTS, promptLifecycle } from "../../src/core/prompt";
-import { FRONTIER_INDIVIDUAL_PROMPT_MAP } from "../../src/core/prompts";
+import { FRONTIER_INDIVIDUAL_PROMPT_MAP } from "../../src/core/prompt";
 import {
   localizeCandidateLabel,
   localizeCriterion,

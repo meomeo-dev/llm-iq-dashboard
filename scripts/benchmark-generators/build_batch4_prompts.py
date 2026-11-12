@@ -2,7 +2,7 @@
 """
 build_batch4_prompts.py
 Parses reports for VFX-2, VFX-3, and VFX-4 (30 questions total)
-and generates clean, modular TypeScript PromptSpec files in src/core/prompts/.
+and generates clean, modular TypeScript PromptSpec files in src/core/prompt/bank/.
 """
 
 import os
@@ -83,7 +83,7 @@ def generate_ts_module(filename: str, domain_prefix: str, suite_id: str, suite_l
     out.append(f" * {category_name} 前沿评测题库。")
     out.append(f" * 包含 10 道独立题目规格，以及 1 套领域分组聚合套题（UX 交互与轮换结构对齐四大名著 candidates 规范）。")
     out.append(" */\n")
-    out.append('import type { PromptSpec } from "../prompt";\n')
+    out.append('import type { PromptSpec } from "../../../types";\n')
     
     candidates_list = []
     
@@ -176,9 +176,9 @@ def main():
     vfx3 = parse_items_section("scratch_vfx3_report.md", "VFX-GEOM", "## 二、", r"####\s*【{TARGET}】(.*?)(?=####\s*【{PREFIX}-|\Z|##\s*三)")
     vfx4 = parse_items_section("scratch_vfx4_report.md", "VFX-SCIVIS", "## 第二部分", r"###\s*{TARGET}[:：](.*?)(?=###\s*{PREFIX}-|\Z|##\s*第三)")
     
-    generate_ts_module("src/core/prompts/vfx-optics.ts", "VFX_OPTICS", "vfx-optics-v1", "VFX-2: 波动光学与显式辐射场（十题组）", "VFX-2: 波动光学传播、全光谱渲染与显式辐射场", vfx2)
-    generate_ts_module("src/core/prompts/vfx-geom.ts", "VFX_GEOM", "vfx-geom-v1", "VFX-3: 离散微分几何与拓扑流形（十题组）", "VFX-3: 离散微分几何、神经隐式曲面与动态拓扑流形", vfx3)
-    generate_ts_module("src/core/prompts/vfx-scivis.ts", "VFX_SCIVIS", "vfx-scivis-v1", "VFX-4: 复杂多物理场与科学计算可视化（十题组）", "VFX-4: 复杂多物理场、高维张量场与科学计算可视化", vfx4)
+    generate_ts_module("src/core/prompt/bank/visual-effects/vfx-optics/index.ts", "VFX_OPTICS", "vfx-optics-v1", "VFX-2: 波动光学与显式辐射场（十题组）", "VFX-2: 波动光学传播、全光谱渲染与显式辐射场", vfx2)
+    generate_ts_module("src/core/prompt/bank/visual-effects/vfx-geom/index.ts", "VFX_GEOM", "vfx-geom-v1", "VFX-3: 离散微分几何与拓扑流形（十题组）", "VFX-3: 离散微分几何、神经隐式曲面与动态拓扑流形", vfx3)
+    generate_ts_module("src/core/prompt/bank/visual-effects/vfx-scivis/index.ts", "VFX_SCIVIS", "vfx-scivis-v1", "VFX-4: 复杂多物理场与科学计算可视化（十题组）", "VFX-4: 复杂多物理场、高维张量场与科学计算可视化", vfx4)
 
 if __name__ == "__main__":
     main()

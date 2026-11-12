@@ -12,7 +12,7 @@ import {
   localizeCandidateLabel,
   localizePromptStandard,
   localizePromptSpec,
-} from "@/core/prompts/i18n";
+} from "@/core/prompt/i18n";
 import {
   renderTimelineSvg,
   type Palette,

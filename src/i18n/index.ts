@@ -39,7 +39,7 @@ export {
   localizePromptSpec,
   localizePromptStandard,
   splitParenthesizedLabel,
-} from "../core/prompts/i18n";
+} from "../core/prompt/i18n";
 
 export {
   localizeCriterion,

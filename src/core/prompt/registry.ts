@@ -2,9 +2,8 @@
  * 提示词注册表构建与题目解析
  */
 
-import { BUILTIN_PROMPTS, ARCHIVED_PROMPTS } from "./builtin";
+import { ARCHIVED_PROMPTS, BUILTIN_PROMPTS, FRONTIER_INDIVIDUAL_PROMPT_MAP } from "./bank";
 import type { PromptCandidate, PromptSpec, PromptStandard } from "./types";
-import { FRONTIER_INDIVIDUAL_PROMPT_MAP } from "../prompts";
 import { assertValidPromptSpec } from "../prompt-schema";
 
 const ARCHIVED_PROMPT_MAP: ReadonlyMap<string, PromptSpec> = new Map(

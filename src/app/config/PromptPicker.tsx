@@ -1,5 +1,5 @@
 import type { PromptSpec } from "@/core/prompt";
-import { localizePromptSpec } from "@/core/prompts/i18n";
+import { localizePromptSpec } from "@/core/prompt/i18n";
 import { useI18n } from "@/i18n";
 import {
   togglePromptId,

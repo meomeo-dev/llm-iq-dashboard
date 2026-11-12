@@ -2,7 +2,7 @@
 """
 build_batch5_prompts.py
 Parses reports for VFX-5 (Physics-Based Character Dynamics) and VFX-6 (Virtual Production & Systems)
-and generates clean, modular TypeScript PromptSpec files in src/core/prompts/.
+and generates clean, modular TypeScript PromptSpec files in src/core/prompt/bank/.
 """
 
 import os
@@ -112,7 +112,7 @@ def generate_ts_module(filename: str, domain_prefix: str, suite_id: str, suite_l
     out.append(f" * {category_name} 前沿评测题库。")
     out.append(f" * 包含 10 道独立题目规格，以及 1 套领域分组聚合套题（UX 交互与轮换结构对齐四大名著 candidates 规范）。")
     out.append(" */\n")
-    out.append('import type { PromptSpec } from "../prompt";\n')
+    out.append('import type { PromptSpec } from "../../../types";\n')
     
     candidates_list = []
     
@@ -205,7 +205,7 @@ def main():
     vfx6 = parse_vfx6()
     
     generate_ts_module(
-        "src/core/prompts/vfx-motion.ts",
+        "src/core/prompt/bank/visual-effects/vfx-motion/index.ts",
         "VFX_MOTION",
         "vfx-motion-v1",
         "VFX-5: 物理驱动运动控制与生物解剖CFX（十题组）",
@@ -213,7 +213,7 @@ def main():
         vfx5
     )
     generate_ts_module(
-        "src/core/prompts/vfx-sys.ts",
+        "src/core/prompt/bank/visual-effects/vfx-sys/index.ts",
         "VFX_SYS",
         "vfx-sys-v1",
         "VFX-6: 实时虚拟制片与异构并行图形系统（十题组）",

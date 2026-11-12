@@ -19,6 +19,8 @@ export interface PromptStandard {
   readonly referenceSource?: string | null;
 }
 
+export type LocalizedStandardEntry = Omit<PromptStandard, "referenceSource">;
+
 /** 候选集里的一条：一个回目的名场面 */
 export interface PromptCandidate {
   /** 稳定标识，如 `xiyou-027`（书名拼音 + 三位回数），写入运行记录 */

@@ -2,9 +2,9 @@
 """
 fix_domain_standards.py
 1. Fixes FE-BIO (FE-4): replaces ID placeholders with genuine Chinese domain names in
-   src/core/prompts/fe-bio.ts and docs/benchmark-provenance.md.
+   src/core/prompt/bank/engineering/fe-bio/index.ts and docs/benchmark-provenance.md.
 2. Fixes VFX-OPTICS (VFX-2): populates missing evaluationCriteria in
-   src/core/prompts/vfx-optics.ts and docs/benchmark-provenance.md.
+   src/core/prompt/bank/visual-effects/vfx-optics/index.ts and docs/benchmark-provenance.md.
 """
 
 BIO_NAMES = {
@@ -34,7 +34,7 @@ VFX2_EVALS = {
 }
 
 def fix_fe_bio_ts():
-    path = "src/core/prompts/fe-bio.ts"
+    path = "src/core/prompt/bank/engineering/fe-bio/index.ts"
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -56,10 +56,10 @@ def fix_fe_bio_ts():
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
-    print("Fixed src/core/prompts/fe-bio.ts")
+    print("Fixed src/core/prompt/bank/engineering/fe-bio/index.ts")
 
 def fix_vfx_optics_ts():
-    path = "src/core/prompts/vfx-optics.ts"
+    path = "src/core/prompt/bank/visual-effects/vfx-optics/index.ts"
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -77,7 +77,7 @@ def fix_vfx_optics_ts():
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
-    print("Fixed src/core/prompts/vfx-optics.ts")
+    print("Fixed src/core/prompt/bank/visual-effects/vfx-optics/index.ts")
 
 def fix_provenance_md():
     path = "docs/benchmark-provenance.md"
