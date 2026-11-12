@@ -52,6 +52,14 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .run-dot.running,
+  .run-dot.judging,
+  .run-dot.stopping {
+    animation: none;
+  }
+}
+
 .run-panel.menu-panel {
   display: flex;
   flex-direction: column;

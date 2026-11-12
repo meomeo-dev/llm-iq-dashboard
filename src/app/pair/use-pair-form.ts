@@ -5,10 +5,12 @@ import type { PairFormStatus } from "./PairCodeForm";
 import { extractErrorMessage, formatErrorMessage } from "./pair-form-model";
 
 async function submitPairCode(code: string, returnTo: string, locale: Locale): Promise<string | null> {
-  const res = await actionFetch("/api/pair", {
+  // 配对失败的 401 是表单反馈，应留在当前页面并保留输入。
+  const res = await fetch("/api/pair", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ code }),
+    cache: "no-store",
   });
   const body = (await res.json()) as { error?: string };
   if (!res.ok) return extractErrorMessage(body, locale);

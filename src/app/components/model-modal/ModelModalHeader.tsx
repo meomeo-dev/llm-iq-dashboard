@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 import type { PromptStandard } from "@/core/prompt";
 import { useI18n } from "@/i18n";
 import type { Moment } from "../timeline/moments";
@@ -19,7 +19,6 @@ interface ModelModalHeaderProps {
   actions?: ReactNode;
   showStandard: boolean;
   onToggleStandard: () => void;
-  closeRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 }
 
@@ -33,7 +32,6 @@ export function ModelModalHeader({
   actions,
   showStandard,
   onToggleStandard,
-  closeRef,
   onClose,
 }: ModelModalHeaderProps) {
   const { locale, t } = useI18n();
@@ -82,7 +80,8 @@ export function ModelModalHeader({
             <span className="btn-chevron" aria-hidden="true">{showStandard ? "▴" : "▾"}</span>
           </button>
         )}
-        <button type="button" className="modal-close" aria-label={t.common.actions.close} ref={closeRef} onClick={onClose}>
+        <button type="button" className="modal-close" aria-label={t.common.actions.close}
+          data-overlay-initial-focus onClick={onClose}>
           ×
         </button>
       </div>

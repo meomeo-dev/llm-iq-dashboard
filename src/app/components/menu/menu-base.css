@@ -42,7 +42,7 @@
   padding: 0 6px;
   border-radius: var(--radius-pill);
   background: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
 }
 
 .caret {

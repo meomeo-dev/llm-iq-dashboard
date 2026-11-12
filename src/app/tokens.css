@@ -37,7 +37,7 @@
   /* 文本层级 */
   --text: #e6e8ee;
   --text-dim: #9aa2b1;
-  --text-faint: #6b7385;
+  --text-faint: #8a95aa;
   --text-on-solid: var(--palette-white);
   --text-on-accent: var(--palette-ink);
   --text-on-danger: var(--palette-ink);
@@ -104,6 +104,7 @@
   --control-height-sm: 28px;
   --control-height: 32px;
   --control-height-lg: 36px;
+  --control-height-touch: 44px;
 
   /* ==========================================================================
    * 5. 层级与海拔阴影阶梯（Z-Index & Elevation Scale）

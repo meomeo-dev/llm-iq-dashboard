@@ -57,6 +57,7 @@ function ModalDialogHeader({
         <button
           type="button"
           className="ui-overlay-close"
+          data-overlay-initial-focus
           onClick={onClose}
           aria-label={closeLabel}
           title={closeLabel}
@@ -76,7 +77,7 @@ function ModalDialogHeader({
  */
 export function Modal(props: ModalProps): React.ReactElement | null {
   const { open, onClose, closeLabel = "Close", size = "md", portal = false } = props;
-  useOverlayStack(open, onClose);
+  const panelRef = useOverlayStack<HTMLDivElement>(open, onClose);
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
 
@@ -102,6 +103,8 @@ export function Modal(props: ModalProps): React.ReactElement | null {
       }}
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={dialogClasses}
         style={dialogStyle}
         role="dialog"

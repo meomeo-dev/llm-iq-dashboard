@@ -85,13 +85,18 @@
 }
 
 .prompts-pill:hover,
-.prompts-pill:focus-visible,
-.prompts-chip:hover,
-.prompts-chip:focus-visible {
+.prompts-chip:hover {
   border-color: var(--border-focus);
   color: var(--text);
   background: var(--surface-hi);
-  outline: none;
+}
+
+.prompts-pill:focus-visible,
+.prompts-chip:focus-visible,
+.prompts-card:focus-visible,
+.prompts-scene-chip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .prompts-pill.is-active,
@@ -143,12 +148,10 @@
   transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
-.prompts-card:hover,
-.prompts-card:focus-visible {
+.prompts-card:hover {
   border-color: var(--accent-border);
   background: var(--surface-hi);
   box-shadow: var(--shadow-sm);
-  outline: none;
 }
 
 .prompts-card.is-archived { opacity: 0.78; }
@@ -256,7 +259,7 @@
 }
 
 .prompts-scene-chip:hover,
-.prompts-scene-chip:focus-visible { border-color: var(--accent-border); color: var(--accent); outline: none; }
+.prompts-scene-chip:focus-visible { border-color: var(--accent-border); color: var(--accent); }
 .prompts-scene-id { color: var(--text-faint); font-family: var(--font-mono); }
 .prompts-scene-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 148px; }
 .prompts-scene-more { color: var(--text-faint); font-size: var(--text-2xs); padding: 0 var(--space-1); }

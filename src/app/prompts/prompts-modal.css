@@ -1,6 +1,7 @@
 /* 「测评题目」详情模态窗样式（遵守 check:ui .prompts-modal* 命名前缀规范） */
 
-.prompts-modal-body {
+.prompts-modal-body,
+.prompts-modal-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -90,7 +91,11 @@
   border-color: var(--border-focus);
   color: var(--text);
   background: var(--surface-hi);
-  outline: none;
+}
+
+.prompts-modal-scene-pill:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .prompts-modal-scene-pill.is-active {

@@ -17,6 +17,7 @@ import { useI18n } from "@/i18n";
 import { FingerprintCheckPanel, type CheckFormDraft } from "./FingerprintCheckPanel";
 import { FingerprintCheckTimeline } from "./FingerprintCheckTimeline";
 import { FingerprintMatrix } from "./FingerprintMatrix";
+import { FingerprintViewTabs } from "./FingerprintViewTabs";
 import { FingerprintSampleDrawer } from "./FingerprintSampleDrawer";
 import {
   buildCheckRequestBody, buildFillRequestBody, buildSampleMutationBody, defaultFillProfilesByCli,
@@ -195,23 +196,26 @@ export function FingerprintDashboard({ initialSnapshot, owner = true, readonly =
             onCancelJob={() => void actions.cancelJob()}
           />
           {ctrl.errorMsg && <AlertBanner tone="err" className="fp-job-banner" onDismiss={() => ctrl.setErrorMsg(null)}>{ctrl.errorMsg}</AlertBanner>}
-          {tab === "check" ? (
-            <FingerprintCheckTimeline
-              sortedChecks={sortedChecks} timeZone={timeZone} pickedDay={activeDayKey} onPickDay={setPickedDay}
-              rescoringId={ctrl.rescoringId} hasReadyBaselines={hasReadyBaselines}
-              onRescore={canOperate ? (checkId) => void actions.rescoreCheck(checkId) : undefined}
-              onSwitchToMatrix={() => setTab("matrix")} onOpenRunOnce={canOperate ? () => ctrl.setOpenMenu("runOnce") : undefined}
-            />
-          ) : (
-            <FingerprintMatrix
-              config={snap.modelFingerprint} matrix={snap.matrix} profiles={snap.profiles}
-              fillProfiles={ctrl.fillProfiles} onChangeFillProfile={ctrl.setCliFillProfile}
-              selfTest={snap.selfTest} canOperate={canOperate} busy={isJobRunning} pendingPlan={ctrl.fillTarget?.plan ?? null}
-              onSelectCell={(cell) => void ctrl.loadDrawerCell(cell)}
-              onRequestFillPlan={(opts) => void actions.requestFillPlan(opts)}
-              onConfirmFill={() => void actions.confirmFill()} onCancelPlan={() => ctrl.setFillTarget(null)} onRefresh={ctrl.refreshAll}
-            />
-          )}
+          <section role="tabpanel" id="fingerprint-panel"
+            aria-labelledby={`fingerprint-tab-${tab}`} tabIndex={0}>
+            {tab === "check" ? (
+              <FingerprintCheckTimeline
+                sortedChecks={sortedChecks} timeZone={timeZone} pickedDay={activeDayKey} onPickDay={setPickedDay}
+                rescoringId={ctrl.rescoringId} hasReadyBaselines={hasReadyBaselines}
+                onRescore={canOperate ? (checkId) => void actions.rescoreCheck(checkId) : undefined}
+                onSwitchToMatrix={() => setTab("matrix")} onOpenRunOnce={canOperate ? () => ctrl.setOpenMenu("runOnce") : undefined}
+              />
+            ) : (
+              <FingerprintMatrix
+                config={snap.modelFingerprint} matrix={snap.matrix} profiles={snap.profiles}
+                fillProfiles={ctrl.fillProfiles} onChangeFillProfile={ctrl.setCliFillProfile}
+                selfTest={snap.selfTest} canOperate={canOperate} busy={isJobRunning} pendingPlan={ctrl.fillTarget?.plan ?? null}
+                onSelectCell={(cell) => void ctrl.loadDrawerCell(cell)}
+                onRequestFillPlan={(opts) => void actions.requestFillPlan(opts)}
+                onConfirmFill={() => void actions.confirmFill()} onCancelPlan={() => ctrl.setFillTarget(null)} onRefresh={ctrl.refreshAll}
+              />
+            )}
+          </section>
           {canOperate && ctrl.drawerState && (
             <FingerprintSampleDrawer
               cell={ctrl.drawerState.cell} profiles={snap.profiles}
@@ -266,10 +270,8 @@ function FingerprintWorkspaceToolbar(props: {
             onPickDay={props.onPickDay} open={props.openMenu === "day"}
             onToggle={() => props.onToggleMenu("day")} onClose={props.onCloseMenus}
           />
-          <div className="page-group-nav" role="tablist" aria-label={fp.pageTitle}>
-            <button type="button" role="tab" aria-selected={props.tab === "check"} className={`page-group-link fp-subview-btn${props.tab === "check" ? " is-active" : ""}`} onClick={() => props.onSelectTab("check")}><span>{fp.tabs.check}</span></button>
-            <button type="button" role="tab" aria-selected={props.tab === "matrix"} className={`page-group-link fp-subview-btn${props.tab === "matrix" ? " is-active" : ""}`} onClick={() => props.onSelectTab("matrix")}><span>{fp.tabs.matrix}</span></button>
-          </div>
+          <FingerprintViewTabs active={props.tab} onSelect={props.onSelectTab}
+            label={fp.pageTitle} labels={fp.tabs} />
         </nav>
       }
       centerSlot={

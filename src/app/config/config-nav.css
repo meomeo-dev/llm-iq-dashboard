@@ -65,6 +65,7 @@
 @media (max-width: 900px) {
   .config-page-layout {
     flex-direction: column;
+    align-items: stretch;
     gap: 16px;
   }
 

@@ -54,7 +54,7 @@
 .data-repo-pipeline-step.current .data-repo-pipeline-step-badge {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
 }
 
 .data-repo-pipeline-step-label {
@@ -126,7 +126,7 @@
 }
 
 .data-repo-pipeline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.data-repo-pipeline-btn-primary { background: var(--accent); color: var(--text-on-solid); border-color: var(--accent); }
+.data-repo-pipeline-btn-primary { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
 .data-repo-pipeline-btn-refresh { background: var(--surface); color: var(--text); border-color: var(--border); }
 
 .data-repo-pipeline-btn-secondary {

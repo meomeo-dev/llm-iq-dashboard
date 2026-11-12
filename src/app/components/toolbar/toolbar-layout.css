@@ -85,6 +85,7 @@
 
   .toolbar-top-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     width: 100%;
@@ -99,6 +100,8 @@
   .toolbar .menus {
     order: unset;
     display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
     gap: 4px;
   }
 
@@ -127,6 +130,19 @@
   .toolbar-center > .menu > .menu-button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar-top-row .menu-button,
+  .toolbar-top-row .page-group-link,
+  .toolbar-top-row .lang-switch,
+  .toolbar-top-row .icon-link {
+    min-height: var(--control-height-touch);
+  }
+
+  .toolbar-top-row .icon-link {
+    min-width: var(--control-height-touch);
   }
 }
 

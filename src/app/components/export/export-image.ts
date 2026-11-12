@@ -72,7 +72,7 @@ export function readPalette(): Palette {
     border: read("--border", "#232d3d"),
     text: read("--text", "#e6e8ee"),
     textDim: read("--text-dim", "#9aa2b1"),
-    textFaint: read("--text-faint", "#6b7385"),
+    textFaint: read("--text-faint", "#8a95aa"),
     accent: read("--accent", "#4f8df7"),
     ok: read("--ok", "#4ade80"),
     warn: read("--warn", "#fbbf24"),

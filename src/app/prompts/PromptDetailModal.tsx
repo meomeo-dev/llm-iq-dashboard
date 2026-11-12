@@ -1,61 +1,19 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { ReferenceSourceDisplay } from "@/app/components/ReferenceSourceDisplay";
 import { StandardCriteriaPanel } from "@/app/components/standard/StandardCriteriaPanel";
 import { Modal } from "@/app/components/ui/Modal";
 import { StatusPill } from "@/app/components/ui/StatusPill";
 import { formatText, useI18n } from "@/i18n";
 import { copyTextToClipboard } from "./PromptCard";
+import { PromptModalCandidateSwitcher } from "./PromptModalCandidateSwitcher";
 import { resolveCopyablePromptText, type PromptCatalogItem, type PromptRubricView } from "./prompts-page-model";
 
 export interface PromptDetailModalProps {
   readonly item: PromptCatalogItem | null;
   readonly initialCandidateId?: string | null;
   readonly onClose: () => void;
-}
-
-function PromptModalCandidateSwitcher({
-  item,
-  activeCandidateId,
-  onSelectCandidate,
-}: {
-  readonly item: PromptCatalogItem;
-  readonly activeCandidateId: string | undefined;
-  readonly onSelectCandidate: (candidateId: string) => void;
-}): React.ReactElement | null {
-  const { t } = useI18n();
-  const pp = t.promptsPage;
-  if (item.candidates.length === 0) return null;
-
-  return (
-    <section className="prompts-modal-section">
-      <div className="prompts-modal-section-head">
-        <h3 className="prompts-modal-section-title">
-          {formatText(pp.modalCandidateSectionTitle, { count: item.candidates.length })}
-        </h3>
-        <span className="prompts-modal-hint">{pp.modalCandidatePickerHint}</span>
-      </div>
-      <div className="prompts-modal-scene-grid" role="tablist">
-        {item.candidates.map((cand) => {
-          const isActive = cand.id === activeCandidateId;
-          return (
-            <button
-              key={cand.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`prompts-modal-scene-pill${isActive ? " is-active" : ""}`}
-              onClick={() => onSelectCandidate(cand.id)}
-            >
-              <span className="prompts-modal-scene-id">#{cand.id}</span>
-              <span className="prompts-modal-scene-label">{cand.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
 }
 
 function PromptModalVariablesSection({ item }: { readonly item: PromptCatalogItem }): React.ReactElement | null {
@@ -207,6 +165,18 @@ function PromptModalTextSection({
   );
 }
 
+function PromptModalReferenceSection({ standard }: { standard: PromptCatalogItem["standard"] }) {
+  const { t } = useI18n();
+  return (
+    <section className="prompts-modal-section">
+      <h3 className="prompts-modal-section-title">{t.promptsPage.modalStandardSectionTitle}</h3>
+      {standard ? <StandardCriteriaPanel standard={standard} /> : (
+        <p className="prompts-modal-empty-note">{t.promptsPage.modalNoStandardHint}</p>
+      )}
+    </section>
+  );
+}
+
 export function PromptDetailModal({
   item,
   initialCandidateId,
@@ -218,6 +188,7 @@ export function PromptDetailModal({
     initialCandidateId ?? undefined,
   );
   const [copied, setCopied] = useState(false);
+  const panelId = useId();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -264,21 +235,20 @@ export function PromptDetailModal({
         item={item}
         activeCandidateId={activeCandidate?.id}
         onSelectCandidate={(candId) => { setSelectedCandidateId(candId); setCopied(false); }}
+        panelId={panelId}
       />
-      <PromptModalTextSection
-        item={item}
-        copyText={copyText}
-        activeSceneBadge={activeCandidate ? `#${activeCandidate.id} · ${activeCandidate.label}` : null}
-      />
-      <PromptModalVariablesSection item={item} />
-      <section className="prompts-modal-section">
-        <h3 className="prompts-modal-section-title">{pp.modalStandardSectionTitle}</h3>
-        {activeStandard ? (
-          <StandardCriteriaPanel standard={activeStandard} />
-        ) : (
-          <p className="prompts-modal-empty-note">{pp.modalNoStandardHint}</p>
-        )}
-      </section>
+      <div className="prompts-modal-panel" role={activeCandidate ? "tabpanel" : undefined}
+        id={activeCandidate ? panelId : undefined}
+        aria-labelledby={activeCandidate ? `${panelId}-${activeCandidate.id}` : undefined}
+        tabIndex={activeCandidate ? 0 : undefined}>
+        <PromptModalTextSection
+          item={item}
+          copyText={copyText}
+          activeSceneBadge={activeCandidate ? `#${activeCandidate.id} · ${activeCandidate.label}` : null}
+        />
+        <PromptModalVariablesSection item={item} />
+        <PromptModalReferenceSection standard={activeStandard} />
+      </div>
       <PromptModalRubricSection rubric={item.rubric} />
       <PromptModalLifecycleSection item={item} />
     </Modal>

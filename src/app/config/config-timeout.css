@@ -31,7 +31,7 @@
 
 .btn-preset:hover {
   background: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
 }
 
 .timeout-tier-card {

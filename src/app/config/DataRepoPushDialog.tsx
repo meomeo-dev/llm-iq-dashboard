@@ -26,7 +26,7 @@ export function DataRepoPushDialog({
 }: DataRepoPushDialogProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
-  useOverlayStack(isOpen, () => {
+  const panelRef = useOverlayStack<HTMLDivElement>(isOpen, () => {
     if (!isBusy) onCancel();
   });
   if (!isOpen) return null;
@@ -35,6 +35,8 @@ export function DataRepoPushDialog({
 
   return (
     <div
+      ref={panelRef}
+      tabIndex={-1}
       className="data-repo-dialog-backdrop"
       role="dialog"
       aria-modal="true"
@@ -80,7 +82,8 @@ export function DataRepoPushDialog({
         {disabledReason && <p className="status error data-repo-dialog-disabled-reason">{disabledReason}</p>}
 
         <footer className="data-repo-dialog-actions">
-          <button type="button" className="data-repo-btn-cancel" onClick={onCancel} disabled={isBusy}>
+          <button type="button" className="data-repo-btn-cancel" data-overlay-initial-focus
+            onClick={onCancel} disabled={isBusy}>
             {isEn ? "Cancel" : "取消"}
           </button>
           <button type="button" className="data-repo-btn-confirm" onClick={onConfirm} disabled={!canConfirm || isBusy}>

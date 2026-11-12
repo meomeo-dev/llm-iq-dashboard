@@ -26,7 +26,7 @@
 .run-stop.confirm {
   border-color: var(--err);
   background: var(--err);
-  color: var(--text-on-solid);
+  color: var(--text-on-danger);
 }
 
 .run-stop:disabled,

@@ -36,7 +36,7 @@ export function Drawer({
   bodyClassName,
   children,
 }: DrawerProps): React.ReactElement | null {
-  useOverlayStack(open, onClose);
+  const panelRef = useOverlayStack<HTMLElement>(open, onClose);
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
 
@@ -58,6 +58,8 @@ export function Drawer({
       }}
     >
       <aside
+        ref={panelRef}
+        tabIndex={-1}
         className={drawerClasses}
         role="dialog"
         aria-modal="true"
@@ -77,6 +79,7 @@ export function Drawer({
           <button
             type="button"
             className="ui-overlay-close"
+            data-overlay-initial-focus
             onClick={onClose}
             aria-label={closeLabel}
             title={closeLabel}

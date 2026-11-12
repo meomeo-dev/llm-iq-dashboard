@@ -5,7 +5,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 BASE_URL = "http://127.0.0.1:3001"
-COOKIE_VALUE = "2b11c782a345e661.ggrThIM6GPu9lFGNtc91KGJHJttoj2LGp8bIRuNTNmU"
+COOKIE_VALUE = os.environ["PELICAN_REVIEW_COOKIE"]
 ARTIFACT_DIR = "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee"
 REPORT_PATH = "/Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/ux_coverage_report.json"
 

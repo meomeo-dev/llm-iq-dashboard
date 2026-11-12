@@ -225,7 +225,7 @@
 
 .data-repo-btn-confirm {
   background: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
   border-color: var(--accent);
 }
 
@@ -246,7 +246,7 @@
 .data-repo-github-link { color: var(--accent); font-size: var(--text-base); text-decoration: underline; }
 .data-repo-github-actions { display: flex; align-items: center; gap: 10px; }
 .data-repo-github-card .data-repo-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: var(--text-md); cursor: pointer; }
-.data-repo-btn-primary { background: var(--accent); color: var(--text-on-solid); text-decoration: none; }
+.data-repo-btn-primary { background: var(--accent); color: var(--text-on-accent); text-decoration: none; }
 
 /* 「数据仓设置」表单：地址与路径各占一行，说明放在输入框下方 */
 .data-repo-field { display: flex; flex-direction: column; gap: 6px; }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useMenuDismiss } from "./use-menu-dismiss";
+import { getTabStops, hasActiveOverlay, isInsideActiveOverlay } from "../ui/use-overlay-stack";
 
 export interface MenuProps {
   label: React.ReactNode;
@@ -24,15 +25,33 @@ export interface MenuProps {
 export function Menu(props: MenuProps) {
   const { label, align = "left", badge, panelClassName, buttonClassName, open, onToggle, onClose, children, afterPanel } = props;
   const root = useRef<HTMLDivElement>(null);
-  useMenuDismiss(open, root, onClose);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  useMenuDismiss(open, root, onClose, trigger);
+
+  useEffect(() => {
+    if (open && panel.current && document.activeElement === trigger.current) {
+      getTabStops(panel.current)[0]?.focus({ preventScroll: true });
+    }
+  }, [open]);
 
   return (
-    <div className="menu" ref={root}>
+    <div className="menu" ref={root} onKeyDown={(event) => {
+      if (!open || event.key !== "Escape" || event.defaultPrevented) return;
+      if (hasActiveOverlay() && !isInsideActiveOverlay(root.current)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      trigger.current?.focus({ preventScroll: true });
+    }}>
       <button
+        ref={trigger}
         type="button"
         className={["menu-button", buttonClassName].filter(Boolean).join(" ")}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={onToggle}
       >
         {label}
@@ -42,7 +61,9 @@ export function Menu(props: MenuProps) {
       {open && (
         <>
           <div className="menu-backdrop" onPointerDown={onClose} aria-hidden="true" />
-          <div className={["menu-panel", align === "right" && "align-right", panelClassName].filter(Boolean).join(" ")} role="menu">
+          <div id={panelId} ref={panel}
+            className={["menu-panel", align === "right" && "align-right", panelClassName].filter(Boolean).join(" ")}
+            role="menu">
             {children}
           </div>
           {afterPanel}

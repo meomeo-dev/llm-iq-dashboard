@@ -13,7 +13,7 @@ import { ModelExportMenu } from "./ModelExportMenu";
 import { ModelModalHeader } from "./ModelModalHeader";
 import { ModelStandardPanel } from "./ModelStandardPanel";
 import { ProfileMatrix } from "./ProfileMatrix";
-import { useModalBehavior } from "./use-modal-behavior";
+import { useOverlayStack } from "../ui/use-overlay-stack";
 
 interface ModelModalProps {
   moment: Moment;
@@ -34,7 +34,7 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
   const { locale } = useI18n();
   const isEn = locale === "en";
   const [showStandard, setShowStandard] = useState(false);
-  const closeButton = useModalBehavior(onClose);
+  const panelRef = useOverlayStack<HTMLElement>(true, onClose);
   const { profiles } = useProfiles();
   const cards = folderCell(moment, row, [], efforts, profiles)?.cards ?? [];
   const okCount = cards.filter((card) => card.status === "ok").length;
@@ -42,7 +42,8 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
 
   return (
     <div className="modal-backdrop" onPointerDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="model-modal-title">
+      <section ref={panelRef} tabIndex={-1} className="modal" role="dialog"
+        aria-modal="true" aria-labelledby="model-modal-title">
         <ModelModalHeader
           row={row}
           moment={moment}
@@ -57,7 +58,6 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
           }
           showStandard={showStandard}
           onToggleStandard={() => setShowStandard((prev) => !prev)}
-          closeRef={closeButton}
           onClose={onClose}
         />
         {showStandard && standard && <ModelStandardPanel standard={standard} />}

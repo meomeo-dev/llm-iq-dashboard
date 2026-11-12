@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/i18n";
-import { useModalBehavior } from "../model-modal/use-modal-behavior";
+import { useOverlayStack } from "../ui/use-overlay-stack";
 import type { ProfileChoice } from "./run-once-profiles";
 import { toggled } from "./run-once-selection-utils";
 
@@ -36,11 +36,12 @@ export function RunOnceProfileModal({
 }: RunOnceProfileModalProps) {
   const { locale, t } = useI18n();
   const isEn = locale === "en";
-  const closeButton = useModalBehavior(onCancel);
+  const panelRef = useOverlayStack<HTMLElement>(true, onCancel);
   const pickedCount = choices.filter((choice) => choice.available && picked.has(choice.id)).length;
   return (
     <div className="profile-modal-backdrop" onPointerDown={(event) => event.target === event.currentTarget && onCancel()}>
-      <section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="run-once-profile-title">
+      <section ref={panelRef} tabIndex={-1} className="profile-modal" role="dialog"
+        aria-modal="true" aria-labelledby="run-once-profile-title">
         <header className="profile-modal-head">
           <h2 id="run-once-profile-title">{isEn ? "Select Profiles" : "选择 Profile"}</h2>
           <p className="profile-modal-round" title={round}>
@@ -50,7 +51,7 @@ export function RunOnceProfileModal({
             type="button"
             className="profile-modal-close"
             aria-label={t.common.actions.close}
-            ref={closeButton}
+            data-overlay-initial-focus
             onClick={onCancel}
           >
             ×

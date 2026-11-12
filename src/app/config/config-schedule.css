@@ -105,7 +105,7 @@
 .schedule-toggle-btn.btn-activate {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-on-solid);
+  color: var(--text-on-accent);
 }
 
 .schedule-toggle-btn.btn-activate:hover {

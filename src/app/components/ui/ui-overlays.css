@@ -118,6 +118,18 @@
   color: var(--text);
 }
 
+.ui-overlay-close:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  .ui-overlay-close {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+  }
+}
+
 .ui-modal-body {
   flex: 1 1 auto;
   min-height: 0;
