@@ -15,6 +15,7 @@ export type GroupKey =
   | "四大名著（文学与叙事构图）"
   | "世界地标（微缩景观）"
   | "2026-09"
+  | "2026-10"
   | "自定义提示词";
 
 export interface PromptGroup {
@@ -39,6 +40,17 @@ const SEPTEMBER_2026_PROMPT_IDS: ReadonlySet<string> = new Set([
   "animated-fish-cloud-amodal-v1",
   "animated-island-chest-containment-v1",
   "animated-tree-reader-occlusion-v1",
+]);
+
+const OCTOBER_2026_PROMPT_IDS: ReadonlySet<string> = new Set([
+  "animated-jansen-walker-v1",
+  "animated-jumping-spider-leap-v1",
+  "animated-centipede-wave-gait-v1",
+  "animated-open-differential-v1",
+  "animated-ferris-leveling-v1",
+  "animated-octopus-organ-v1",
+  "animated-peacock-bicycle-v1",
+  "animated-nautilus-spiral-v1",
 ]);
 
 const EXCLUDED_PROMPT_PREFIXES = ["fe-", "vfx-"];
@@ -87,6 +99,7 @@ export function classifyPrompt(p: PromptOption): GroupKey {
   }
   if (p.id.startsWith("landmarks-")) return "世界地标（微缩景观）";
   if (SEPTEMBER_2026_PROMPT_IDS.has(p.id)) return "2026-09";
+  if (OCTOBER_2026_PROMPT_IDS.has(p.id)) return "2026-10";
   return "自定义提示词";
 }
 
@@ -96,6 +109,7 @@ export function groupPrompts(promptList: readonly PromptOption[]): PromptGroup[]
     "四大名著（文学与叙事构图）": [],
     "世界地标（微缩景观）": [],
     "2026-09": [],
+    "2026-10": [],
     "自定义提示词": [],
   };
 

@@ -148,6 +148,8 @@ describe("prompt and judge metadata i18n (M2-03)", () => {
 
     assert.equal(localizePromptGroupLabel("经典基准", "en"), "Classic Benchmarks");
     assert.equal(localizePromptGroupLabel("经典基准", "zh-CN"), "经典基准");
+    assert.equal(localizePromptGroupLabel("2026-10", "en"), "2026-10 Viral Kinematics & Topology");
+    assert.equal(localizePromptGroupLabel("2026-10", "zh-CN"), "2026-10 流行力学与拓扑");
   });
 
   it("localizes G1-G5 gates, C1-C9 criteria, deterministic evidence/reasons, detail subjects, and verdict labels", () => {

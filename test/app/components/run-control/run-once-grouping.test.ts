@@ -34,6 +34,22 @@ describe("run-once-grouping", () => {
       }
     });
 
+    test("2026-10 分组分类", () => {
+      const ids = [
+        "animated-jansen-walker-v1",
+        "animated-jumping-spider-leap-v1",
+        "animated-centipede-wave-gait-v1",
+        "animated-open-differential-v1",
+        "animated-ferris-leveling-v1",
+        "animated-octopus-organ-v1",
+        "animated-peacock-bicycle-v1",
+        "animated-nautilus-spiral-v1",
+      ];
+      for (const id of ids) {
+        assert.equal(classifyPrompt({ id, label: id, defaultSelected: false }), "2026-10");
+      }
+    });
+
     test("四大名著分类", () => {
       assert.equal(classifyPrompt({ id: "shuihu-wusong", label: "武松", defaultSelected: false }), "四大名著（文学与叙事构图）");
       assert.equal(classifyPrompt({ id: "xiyou-wukong", label: "悟空", defaultSelected: false }), "四大名著（文学与叙事构图）");
@@ -93,6 +109,27 @@ describe("run-once-grouping", () => {
         "自定义提示词",
       ]);
       assert.equal(names.indexOf("2026-09"), names.indexOf("世界地标（微缩景观）") + 1);
+    });
+
+    test("全部分组顺序严格保证 2026-10 紧随 2026-09 之后并排在自定义提示词之前", () => {
+      const allPrompts: PromptOption[] = [
+        { id: "custom-abc", label: "自定义", defaultSelected: false },
+        { id: "animated-jansen-walker-v1", label: "简森步行机构", defaultSelected: false },
+        { id: "animated-iso-vintage-pc-v1", label: "复古PC", defaultSelected: false },
+        { id: "landmarks-v1", label: "地标", defaultSelected: false },
+        { id: "classic-v1", label: "经典", defaultSelected: false },
+      ];
+      const groups = groupPrompts(allPrompts);
+      const names = groups.map((g) => g.name);
+      assert.deepEqual(names, [
+        "经典基准",
+        "世界地标（微缩景观）",
+        "2026-09",
+        "2026-10",
+        "自定义提示词",
+      ]);
+      assert.equal(names.indexOf("2026-10"), names.indexOf("2026-09") + 1);
+      assert.equal(names.indexOf("自定义提示词"), names.indexOf("2026-10") + 1);
     });
 
     test("空输入返回空数组", () => {

@@ -33,6 +33,7 @@ const GROUP_LABELS_EN: Readonly<Record<string, string>> = {
   "微观物理与前沿探索": "Micro-Physics & Frontier Science",
   "物理与工程": "Physics & Engineering",
   "2026-09": "2026-09 Viral Spatial & Hardware",
+  "2026-10": "2026-10 Viral Kinematics & Topology",
   "自定义提示词": "Custom Prompts",
   "其他": "Other",
 };
@@ -247,6 +248,10 @@ export function localizePromptSpec(
   };
 }
 
+const GROUP_LABELS_ZH: Readonly<Record<string, string>> = {
+  "2026-10": "2026-10 流行力学与拓扑",
+};
+
 /**
  * 按语种返回题库分组名称。
  */
@@ -254,6 +259,6 @@ export function localizePromptGroupLabel(
   groupKey: string,
   locale: Locale,
 ): string {
-  if (locale === "zh-CN") return groupKey;
+  if (locale === "zh-CN") return GROUP_LABELS_ZH[groupKey] ?? groupKey;
   return GROUP_LABELS_EN[groupKey] ?? groupKey;
 }
