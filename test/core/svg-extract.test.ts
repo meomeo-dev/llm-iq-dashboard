@@ -36,6 +36,39 @@ describe("extractSvg", () => {
     assert.equal(extractSvg("<svg><circle r='1'/>"), null);
     assert.equal(extractSvg("已保存到文件"), null);
   });
+
+  test("前置未闭合截断残片与重试完整作品共存时，正确提取完整作品", () => {
+    const raw = [
+      "```xml",
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
+      "  <path d=\"M 0 0",
+      "```xml",
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
+      '  <circle cx="50" cy="50" r="40" fill="red"/>',
+      "</svg>",
+      "```",
+    ].join("\n");
+    const extracted = extractSvg(raw);
+    assert.ok(extracted);
+    assert.match(extracted.source, /<circle cx="50"/);
+    assert.doesNotMatch(extracted.source, /```/);
+    assert.doesNotMatch(extracted.source, /<path/);
+  });
+
+  test("支持提取包含合法嵌套 <svg> 的外层完整 SVG", () => {
+    const nested = [
+      '<svg id="outer" viewBox="0 0 100 100">',
+      '  <svg id="inner" x="10" y="10" viewBox="0 0 50 50">',
+      '    <circle cx="25" cy="25" r="20"/>',
+      "  </svg>",
+      "</svg>",
+    ].join("\n");
+    const extracted = extractSvg(nested);
+    assert.ok(extracted);
+    assert.match(extracted.source, /id="outer"/);
+    assert.match(extracted.source, /id="inner"/);
+    assert.match(extracted.source, /<\/svg>\s*<\/svg>$/);
+  });
 });
 
 describe("extractSvgFilePath", () => {
