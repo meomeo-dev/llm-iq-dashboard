@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n";
-import { fetchArtSource, localizeArtError } from "./art-source";
+import { fetchArtSource, evictArtCache, localizeArtError } from "./art-source";
+import { sanitizeSvg } from "./svg-sanitize";
 import { SvgFrame } from "./SvgFrame";
 
 /** 作品距视口这么远时开始预取 */
@@ -34,8 +35,19 @@ export function LazySvgFrame({ href, className }: { href: string; className?: st
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
         fetchArtSource(href).then(
-          (source) => !cancelled && setLoaded({ href, source, error: null }),
-          (cause: unknown) => !cancelled && setLoaded({ href, source: null, error: describe(cause) }),
+          (source) => {
+            if (cancelled) return;
+            const { error: sanitizeError } = sanitizeSvg(source);
+            if (sanitizeError !== null) {
+              evictArtCache(href);
+            }
+            setLoaded({ href, source, error: null });
+          },
+          (cause: unknown) => {
+            if (cancelled) return;
+            evictArtCache(href);
+            setLoaded({ href, source: null, error: describe(cause) });
+          },
         );
       },
       { rootMargin: PRELOAD_MARGIN },

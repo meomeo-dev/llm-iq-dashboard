@@ -33,11 +33,11 @@ export async function GET(_request: Request, { params }: RouteContext): Promise<
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Content-Security-Policy": SANDBOX_POLICY,
       "X-Content-Type-Options": "nosniff",
-      // 作品写出后不再改动（过保留期后 404），immutable 让刷新页面时也不回源验证；
-      // remote 模式下为公开数据，改为可公开缓存
+      // 作品写出后不再改动（过保留期后 404），带 ?v= 参数实现变更即时穿透；
+      // remote 模式下为公开数据，改为可公开缓存；本机开发模式支持平滑再验证
       "Cache-Control": isRemoteDataSource()
         ? "public, max-age=86400, immutable"
-        : "private, max-age=86400, immutable",
+        : "private, max-age=3600, stale-while-revalidate=86400",
     },
   });
 }

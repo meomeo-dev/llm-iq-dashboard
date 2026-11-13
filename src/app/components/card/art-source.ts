@@ -10,6 +10,10 @@ const MAX_CACHED = 500;
 
 const cache = new Map<string, Promise<string>>();
 
+export function evictArtCache(href: string): void {
+  cache.delete(href);
+}
+
 export function localizeArtError(error: string, locale: "en" | "zh-CN" = "zh-CN"): string {
   if (locale !== "en") return error;
   if (error === "作品不存在或已按保留期清理") {
@@ -24,7 +28,7 @@ export function fetchArtSource(href: string, locale: "en" | "zh-CN" = "zh-CN"): 
   const cached = cache.get(href);
   if (cached !== undefined) return cached;
 
-  const pending = fetch(href).then(async (response) => {
+  const pending = fetch(href, { cache: "no-cache" }).then(async (response) => {
     if (response.status === 404) {
       throw new Error(localizeArtError("作品不存在或已按保留期清理", locale));
     }
