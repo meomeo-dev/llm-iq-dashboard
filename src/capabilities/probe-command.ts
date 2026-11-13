@@ -5,6 +5,7 @@
 
 import { execFile, type ExecFileException } from "node:child_process";
 import { tmpdir } from "node:os";
+import { cleanCliEnv } from "../core/clean-env";
 
 /**
  * 探测超时。`agy models` 需联网拉取目录，单次约 14 秒、并行时更慢；
@@ -32,7 +33,7 @@ export async function runProbeCommand(
         timeout: PROBE_TIMEOUT_MS,
         maxBuffer: 8 * 1024 * 1024,
         cwd: tmpdir(),
-        env: { ...process.env, NO_COLOR: "1", CI: "1" },
+        env: cleanCliEnv(process.env),
       },
       (cause, stdout, stderr) => {
         // stdout 为空时改用 stderr：agy 的 --help 写在 stderr 且以 0 退出；

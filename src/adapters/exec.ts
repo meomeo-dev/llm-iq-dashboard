@@ -1,6 +1,7 @@
 /** 子进程执行器：运行命令并逐行交出输出，不涉及任何 CLI 的语义 */
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { cleanCliEnv } from "../core/clean-env";
 
 export interface Command {
   /** 可执行文件名，交由 PATH 解析 */
@@ -131,7 +132,7 @@ export function spawnDetached(command: Command, cwd: string, extraEnv: Record<st
     cwd,
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, ...extraEnv, NO_COLOR: "1", CI: "1" },
+    env: cleanCliEnv(process.env, extraEnv),
   });
 }
 
