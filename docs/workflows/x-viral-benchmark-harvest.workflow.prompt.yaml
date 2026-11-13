@@ -1,0 +1,220 @@
+# ==============================================================================
+# X (Twitter) 流行评测题目月度检索、去重与净室工程化落地工作流
+# Monthly X (Twitter) Viral Benchmark Harvesting, Deduplication & Clean-Room SOP
+# ==============================================================================
+
+version: "1.0.0"
+name: "x-viral-benchmark-harvest"
+description: >
+  一套工业级标准化工作流，用于每月常态化回顾上一个月（或指定历史月份）在 X (Twitter)
+  及相关开发者社群中热议的 AI 视觉、动画与几何评测爆款题目。
+  通过 grok 命令行执行不少于 50 轮深层联网检索，实施全库去重与红线过滤，
+  将其重构为纯内联动态矢量 SVG 规范，并完成代码库与溯源台账的闭环收口。
+
+# ------------------------------------------------------------------------------
+# 核心原则与红线纪律 (Core Principles & Strict Disciplines)
+# ------------------------------------------------------------------------------
+principles:
+  grok_deep_search_mandate:
+    title: "Grok 五十轮深度连续检索铁律"
+    rule: >
+      调用系统全局 grok CLI 命令（/opt/homebrew/bin/grok 或 PATH），
+      必须在提示词中下达硬性指令：单次任务必须执行【不少于 50 轮连续深度联网检索与推文深挖】。
+      坚决抵制仅搜索 2~3 次即草草总结的行为。必须深挖推文发布者 Handle、推文原链接、
+      首次发布时间戳、讨论串传播热度、原始测试 Prompt 原文、各大模型失败特征与复现 SVG 片段。
+
+  strict_deduplication:
+    title: "全库拓扑与考点严格去重"
+    rule: >
+      在确定候选题目之前，必须对账现有全库题库（src/core/prompt/bank/index.ts 与
+      docs/benchmark-provenance.md）。严禁录入在几何投影、运动学原理或视觉隐喻上
+      与既有题目高度雷同的重复用例。每一道新题必须贡献不可替代的独立测试维度。
+
+  real_person_forbidden:
+    title: "真实人物永不入库铁律"
+    rule: >
+      题库坚决不收录以真实人物为主体的题目（历史教训：leijun-v1 已彻底移除并双端硬拦截）。
+      任何涉及公众人物肖像、真实姓名或其照片转矢量的网络热点，一律在筛选阶段一票否决淘汰，
+      杜绝肖像权侵权与恶意生成风险。
+
+  trademark_and_skill_neutrality:
+    title: "商业商标中立化与零 Skill 考场独立性"
+    rule: >
+      (1) 剥离任何商业品牌与注册商标（如 Apple Macintosh 中立化为通用 1980 年代工作站，
+      Leica 相机中立化为通用机械旁轴相机）；
+      (2) 剥离对客户端预装外部 Skill（如 /isometric-objects）的任何环境依赖，
+      必须将投影矩阵、色彩规范等全部自包含于提示词模板中，确保在空白考场直出可测。
+
+  pure_inline_dynamic_svg:
+    title: "纯内联动态 SVG 与绝对零脚本"
+    rule: >
+      全量题目统一规范为纯内联 SVG 动画（SMIL 或 CSS @keyframes）。
+      严禁包含任何交互代码（0 <script> 标签，无 JS 事件，无外部资源）。
+      必须设定数学闭合门禁：首尾帧状态逐像素差分 MAE ≡ 0，且周期内有效动量
+      max(MAE) >= 0.015（精密装配爆炸图类 >= 0.020），静态死图直接一票否决。
+
+  four_section_template_architecture:
+    title: "标准四段论提示词模板架构"
+    rule: >
+      所有题目统一对标核心基准规范：
+      第一段：任务与技术声明（纯内联 SMIL/CSS 动画 SVG）；
+      第二段：几何/解剖图元结构与发丝工业制图审美锁定（若适用）；
+      第三段：分步编号动力学与时序规范（自转中心、相位同步、节拍律、无缝循环）；
+      第四段：XML 洁净度与沙箱安全约束（自包含、CDATA 包裹、0 <script>）。
+
+# ------------------------------------------------------------------------------
+# 阶段执行流程 (Workflow Execution Phases)
+# ------------------------------------------------------------------------------
+phases:
+  - id: "phase-1-target-month-and-baseline"
+    title: "阶段一：确定目标月份与全库基线盘点 (Target Month & Baseline)"
+    goal: "锁定回顾时间窗口，抽取全库既有题目标题、ID 与考点特征库作为去重基线"
+    steps:
+      - step: 1
+        name: "解析目标月份"
+        action: "若未显式指定月份，默认提取上一个自然月（格式 YYYY-MM，如 2026-10）；若用户指定则使用指定月份。"
+      - step: 2
+        name: "盘点既有题库"
+        action: "读取 src/core/prompt/bank/index.ts 汇集的 BUILTIN_PROMPTS 与 ARCHIVED_PROMPTS，提取已占用的 prompt ID、核心关键词与考点，生成临时去重词表。"
+
+  - id: "phase-2-grok-search-execution"
+    title: "阶段二：调用 grok 执行 ≥50 轮深层联网检索 (Grok Deep Search)"
+    goal: "在 X (Twitter) 及前沿技术社区中全面捕获目标月份的爆款评测题目"
+    execution:
+      command: >
+        grok -p "<PROMPT_CONTENT>" --always-approve
+      alternative_command: >
+        grok --prompt-file <TEMP_PROMPT_FILE> --always-approve
+      rules:
+        - "严禁添加 --disable-web-search 标志，必须确保联网搜索与网页抓取处于启用状态。"
+        - "Prompt 必须显式要求执行不少于 50 轮检索，覆盖 X 平台关键讨论、引用推文、回复串与作者原帖。"
+    search_dimensions:
+      - "X 平台爆款：大模型生成 SVG、动态矢量图、Prompt 挑战赛、OOD 边缘测试"
+      - "被测前沿模型反应：Claude 3.5/3.7, GPT-4o, o1/o3, Gemini 2.0/3.0 等的生成结果与翻车表现"
+      - "技术图解与硬件：等轴测（Isometric）、复古电脑、精密仪器、爆炸图装配"
+      - "生物与运动学：反常识动物步态、手部/五指屈伸、拟人骑行动力学"
+      - "空间与几何：非模态遮挡（Amodal Occlusion）、包含拓扑、视错觉与深度分层"
+
+  - id: "phase-3-deduplication-and-screening"
+    title: "阶段三：去重对账与红线淘汰 (Deduplication & Hard Gates)"
+    goal: "从海量候选推文中清洗出符合工业级标准的定稿候选集（通常每自然月精选 5~10 题）"
+    gate_checks:
+      gate_1_dedup:
+        name: "全库去重闸门"
+        action: "对照 Phase 1 提取的既有考点，剔除与经典鹈鹕、四大名著、地标、前沿工程已有单题重复的候选方案。"
+      gate_2_real_person:
+        name: "真实人物一票否决"
+        action: "任何涉及真实公众人物肖像或名字的题目（如雷军、马斯克等真人），直接丢弃，不予收录。"
+      gate_3_trademark_strip:
+        name: "专有商标中立化"
+        action: "将具体商业产品（如 Apple Macintosh, Leica M6, ThinkPad）改写为通用工业设计中立表述。"
+      gate_4_skill_strip:
+        name: "脱离客户端 Skill"
+        action: "将任何提示词中依赖外部环境或预装 Skill 的参数，全部内联重写为自包含的提示词要求。"
+
+  - id: "phase-4-clean-room-spec-formulation"
+    title: "阶段四：净室重构与真值设计 (Clean-Room Formulation)"
+    goal: "将筛选后的题目转化为规范的 PromptSpec、PromptStandard 与 Markdown 归档规范"
+    deliverables:
+      - "为每道题分配规范 ID：`animated-<subject>-<modifier>-v1`（统一小写、kebab-case）"
+      - "四段论提示词模板（自包含、纯内联 SMIL/CSS 动画、0 <script>）"
+      - "客观黄金标准 PromptStandard："
+        - "coreKey：核心鉴别维度（不少于 10 字）"
+        - "groundTruth：客观几何公式、物理动力学真值、动量下界（MAE ≡ 0 且 max MAE >= 0.015）"
+        - "evaluationCriteria：Pass/Partial/Fail 三态明确判定规则"
+        - "referenceSource：推文原链接、作者 Handle 与发布时间"
+      - "产出月度研究文档归档：`docs/research/x-viral-ai-evals-<YYYY-MM>/final_<N>_outcome/`"
+
+  - id: "phase-5-code-registration-and-ui"
+    title: "阶段五：代码库注册与看板分组呈现 (Code Registration & UI)"
+    goal: "将新题目接入 TypeScript 题库体系并在看板运行控制面板中正确展示"
+    code_modifications:
+      new_directory:
+        path: "src/core/prompt/bank/benchmarks/<YYYY-MM>/"
+        files:
+          - "index.ts: 导出 PROMPTS_<YYYY_MM> 数组及各个题目的 PromptSpec 常量"
+          - "display-en.ts: 导出各题目的英文展示标准 STANDARDS_<YYYY_MM>_EN"
+      bank_registry:
+        path: "src/core/prompt/bank/index.ts"
+        actions:
+          - "导入并向 BUILTIN_PROMPTS 数组注册本月新增题目"
+      ui_grouping:
+        path: "src/app/components/run-control/run-once-grouping.ts"
+        actions:
+          - "在 GroupKey 联合类型中增加 '<YYYY-MM>'"
+          - "建立 PROMPT_IDS_<YYYY_MM> 常量集合并在 classifyPrompt 中映射"
+          - "在 groupPrompts 分组展示字典中安排合理顺序（如排在前沿视效或上一月度分组之后）"
+      i18n_presentation:
+        path: "src/core/prompt/i18n/"
+        actions:
+          - "在 index.ts 中为 '<YYYY-MM>' 注册中英双语分组名称"
+
+  - id: "phase-6-provenance-ledger"
+    title: "阶段六：出处考证台账登记 (Provenance Ledger)"
+    goal: "在权威考证文档中沉淀不可篡改的学术追踪证据"
+    target_file: "docs/benchmark-provenance.md"
+    actions:
+      - "在第一章总览表中追加新增单题（行序号顺延，登记首发时间与收录时间）"
+      - "建立新的小节（如 §二十八 <YYYY 年 MM 月> X 平台流行评测基准），详细记录每道题的呈现形式、出处推文、核心机制与一票否决标准"
+      - "确保生命周期管理章节编号依次顺延"
+
+  - id: "phase-7-verification-gates"
+    title: "阶段七：全套质量防御门禁与 Git 提交 (Verification Gates)"
+    goal: "确保零回归破坏、零数据泄露与 100% 绿色交付"
+    gates:
+      gate_1_validate_prompts:
+        command: "pnpm validate:prompts"
+        requirement: "全量题目 Schema、客观黄金标准、日期格式校验 100% 通过，0 错误。"
+      gate_2_lint:
+        command: "pnpm lint"
+        requirement: "tsc --noEmit 静态类型检查零错误。"
+      gate_3_unit_test:
+        command: "pnpm test"
+        requirement: "全量单元测试（含看板分组排序单测）全部通过。"
+      gate_4_length:
+        command: "pnpm check:length"
+        requirement: "单文件不超过 500 行，UI 组件不超过 300 行，函数不超过 50 行。"
+      gate_5_secrets:
+        command: "pnpm check:secrets"
+        requirement: "对跟踪文件执行敏感凭据扫描，零密钥泄露。"
+    commit_convention:
+      format: "feat(prompt): register <YYYY-MM> viral benchmark prompts from X"
+
+# ------------------------------------------------------------------------------
+# Grok 提示词指令模板 (Grok Search Prompt Template)
+# ------------------------------------------------------------------------------
+prompt_templates:
+  grok_x_search_mandate:
+    template: |
+      你是一个专门负责前沿 AI 视觉与多模态评测基准挖掘的资深研究专家。
+      本项目为知名开源大模型评测基准平台（MIT 许可，致力于使用纯内联 SVG 动画对大模型进行高难度盲测）。
+
+      【目标时间窗口】
+      重点回顾时间：<TARGET_YEAR_MONTH>（例如 <TARGET_YEAR_MONTH> 整月及邻近两周内）。
+
+      【极其严格的检索硬性纪律】
+      你必须在本次任务中自主执行【不少于 50 轮连续深度联网检索与推文深挖】！
+      坚决禁止只检索 2~3 次就草草总结。你必须：
+      1. 全面检索 X (Twitter / x.com) 平台上的技术推文、引用推文（Quote Tweets）、高赞讨论串（Threads）；
+      2. 交叉验证 Hacker News、Reddit (r/LocalLLaMA, r/MachineLearning) 以及 GitHub 上的相关复现讨论；
+      3. 重点检索关键词：
+         - "SVG benchmark", "pelican riding a bicycle replacement", "LLM SVG animation",
+         - "Claude 3.5 / 3.7 SVG", "GPT-4o SVG fail", "o1 / o3 vector graphics",
+         - "isometric SVG", "amodal completion SVG", "quadrupedal gait SVG", "hairline technical figure",
+         - "prompt challenge", "spatial reasoning in SVG", "viral eval prompt".
+
+      【绝对排除红线（命中直接剔除）】
+      1. 绝对不要包含任何以真实人物为主体的题目（如政要、商业领袖、公众人物真实面孔），一票否决淘汰！
+      2. 排除纯概念炒作但无具体可复现 Prompt 题面的水帖；
+      3. 排除已有高度同质化且已在基准库中的内容（如普通静态小鸟、普通平面五角星等基础低难度几何）。
+
+      【输出交付规范】
+      请在完成不少于 50 轮深层检索后，精选出 5 ~ 10 道最具代表性、高辨识度、具备高难度区分度的网络爆款测试题目，整理输出为结构化报告：
+      每道题目必须包含：
+      1. 题目暂定名称（中英文）与建议规范 ID（如 `animated-<subject>-<action>-v1`）
+      2. 原始推文来源：推文作者 Handle（如 @username）、发布时间、推文原文链接 URL、互动传播热度
+      3. 走红背景与社区讨论焦点：为什么在 X 上引起热议？各家模型（Claude / GPT / Gemini 等）在此题上的典型失败表现是什么？
+      4. 核心考点与鉴别维度（多自由度步态 / 等轴测精密投影 / 深度遮挡完形 / 物理仿真动力学等）
+      5. 建议重构的提示词正文草案（必须为纯内联 SVG 动画，0 <script>，无外部工具依赖）
+      6. 客观真值与判读准则草案（Pass 满分、Partial 及格、Fail 零分一票否决项）
+      7. 附带你执行的 50 轮联网检索的完整关键词与查询轨迹清单。
