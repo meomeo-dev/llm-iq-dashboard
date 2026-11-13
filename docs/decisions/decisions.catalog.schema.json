@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-iq-dashboard.local/catalog/decisions.catalog.schema.json",
+  "title": "llm_iq_dashboard ADR catalog record",
+  "description": "docs/decisions/decisions.catalog.jsonl 里一行一条的 ADR 登记记录。这个文件是唯一真相源——`.claude/skills/adr-curator/scripts/adr.mjs` 读它做校验，不另写一份规则。除 tags 外全部字段从 ADR markdown 派生（表头表 + 正文里的 INC- 引用）；source_hash = sha256(markdown 原文)，改了正文就要重新 register。README.md 的索引表由本台账 + incidents.jsonl 生成（adr.mjs index）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_id",
+    "entity_type",
+    "entity_id",
+    "slug",
+    "title",
+    "title_en",
+    "status",
+    "type",
+    "date",
+    "scope",
+    "tags",
+    "detection",
+    "incident_ids",
+    "supersedes",
+    "superseded_by",
+    "source_path",
+    "source_hash",
+    "registered_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "catalog_id": { "const": "decisions" },
+    "entity_type": { "const": "adr" },
+    "entity_id": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{3}$",
+      "description": "三位补零，一经分配不复用；superseded / deprecated 的原地保留。"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 8,
+      "maxLength": 60,
+      "description": "kebab-case 英文名词短语，说的是「决策是什么」而不是「修了什么」；与文件名一致。"
+    },
+    "title": { "type": "string", "minLength": 4, "maxLength": 120, "description": "H1 里的中文标题。" },
+    "title_en": { "type": "string", "minLength": 4, "maxLength": 120, "description": "H1 括号里的英文标题（Title Case）。" },
+    "status": { "enum": ["proposed", "accepted", "superseded", "deprecated"] },
+    "type": {
+      "enum": ["repeated-failure", "major-decision"],
+      "description": "repeated-failure：同一根因 ≥3 次事故；major-decision：难逆转 + 至少一个被否决的方案。收录判准见 docs/decisions/README.md。"
+    },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 2 },
+      "description": "表头「影响范围」：仓库相对目录或文件（如 src/adapters、config/pelican.config.yaml）。recall 按改动路径 ∩ scope 命中。"
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "description": "kebab-case 英文，≥2 个，人在 register 时给（--tags）。供查重与 find。"
+    },
+    "detection": {
+      "type": "string",
+      "minLength": 4,
+      "description": "表头「检出」里反引号包住的命令。没有检出方式的决策不收录——它守不住。"
+    },
+    "incident_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^INC-[0-9]{4}$" },
+      "description": "正文里引用的事故编号（含 INC-0001 ~ INC-0003 区间写法）。repeated-failure 至少 3 条。"
+    },
+    "supersedes": { "type": ["string", "null"], "pattern": "^ADR-[0-9]{3}$" },
+    "superseded_by": { "type": ["string", "null"], "pattern": "^ADR-[0-9]{3}$" },
+    "source_path": { "type": "string", "pattern": "^docs/decisions/ADR-[0-9]{3}-[a-z0-9]+(-[a-z0-9]+)*\\.md$" },
+    "source_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "registered_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "updated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "repeated-failure" } } },
+      "then": { "properties": { "incident_ids": { "minItems": 3 } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "superseded" } } },
+      "then": { "properties": { "superseded_by": { "type": "string" } } }
+    }
+  ]
+}

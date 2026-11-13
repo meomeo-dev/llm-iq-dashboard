@@ -10,11 +10,14 @@ describe("GET /api/health 健康检查接口", () => {
   const origSource = process.env.PELICAN_DATA_SOURCE;
   const origReadonly = process.env.PELICAN_READONLY;
   const origRepoUrl = process.env.PELICAN_DATA_REPO_URL;
+  const origRunner = process.env.PELICAN_RUNNER;
 
   function restoreEnv() {
     process.env.PELICAN_DATA_SOURCE = origSource;
     process.env.PELICAN_READONLY = origReadonly;
     process.env.PELICAN_DATA_REPO_URL = origRepoUrl;
+    if (origRunner === undefined) delete process.env.PELICAN_RUNNER;
+    else process.env.PELICAN_RUNNER = origRunner;
     _resetDeployModeWarningForTest();
     _resetDataSourceInstancesForTest();
   }
@@ -23,6 +26,7 @@ describe("GET /api/health 健康检查接口", () => {
     try {
       delete process.env.PELICAN_DATA_SOURCE;
       delete process.env.PELICAN_READONLY;
+      delete process.env.PELICAN_RUNNER;
       _resetDeployModeWarningForTest();
       _resetDataSourceInstancesForTest();
 
@@ -30,9 +34,23 @@ describe("GET /api/health 健康检查接口", () => {
       assert.equal(res.status, 200);
       const data = await res.json();
 
-      assert.deepEqual(data.mode, { readonly: false, dataSource: "local" });
+      assert.deepEqual(data.mode, { readonly: false, dataSource: "local", executor: "local" });
       assert.equal(data.dataRepo, null);
       assert.equal(typeof data.version, "string");
+    } finally {
+      restoreEnv();
+    }
+  });
+
+  test("外部执行器与本地数据源可以同时使用", async () => {
+    try {
+      delete process.env.PELICAN_DATA_SOURCE;
+      delete process.env.PELICAN_READONLY;
+      process.env.PELICAN_RUNNER = "external";
+      const res = await GET();
+      assert.deepEqual((await res.json()).mode, {
+        readonly: false, dataSource: "local", executor: "external",
+      });
     } finally {
       restoreEnv();
     }
@@ -51,7 +69,7 @@ describe("GET /api/health 健康检查接口", () => {
       assert.equal(res.status, 200);
       const data = await res.json();
 
-      assert.deepEqual(data.mode, { readonly: true, dataSource: "remote" });
+      assert.deepEqual(data.mode, { readonly: true, dataSource: "remote", executor: "disabled" });
       assert.ok(data.dataRepo !== null);
       assert.equal(data.dataRepo.reachable, false);
       assert.equal(data.dataRepo.schemaVersion, null);

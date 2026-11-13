@@ -10,7 +10,8 @@
   "homepage": "https://github.com/meomeo-dev/llm-iq-dashboard#readme",
   "description": "Scheduled SVG benchmark runner for agy / codex / claude with a 24-hour visual timeline dashboard",
   "scripts": {
-    "dev": "next dev --hostname 127.0.0.1",
+    "dev": "PELICAN_RUNNER=local next dev --hostname 127.0.0.1",
+    "dev:external": "PELICAN_RUNNER=external next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "tsc --noEmit",

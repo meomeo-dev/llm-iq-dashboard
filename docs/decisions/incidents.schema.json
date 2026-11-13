@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://llm-iq-dashboard.local/catalog/incidents.schema.json",
+  "title": "llm_iq_dashboard incident record",
+  "description": "docs/decisions/incidents.jsonl 里一行一次事故。这是 ADR 的上游（证据池）：同一 topic 累计 ≥3 条且未挂 ADR，即为 repeated-failure 候选。由 adr.mjs incident add 写入（校验 ref 真实存在、topic 与既有 topic 不近似）；adr.mjs register 会把 ADR 正文引用的事故反向挂上 adr 字段。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "date", "topic", "summary", "root_cause", "refs", "adr"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "id": { "type": "string", "pattern": "^INC-[0-9]{4}$", "description": "四位补零，一经分配不复用。" },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "topic": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 8,
+      "maxLength": 60,
+      "description": "根因指纹，kebab-case 英文。同一根因必须同一 topic，否则计数失效——先 `adr.mjs incident topics` 看已有的，别新造近义词（脚本会拦相近的）。写根因不写现象。"
+    },
+    "summary": { "type": "string", "minLength": 8, "description": "现象：用户 / 开发者看到了什么（带 runId、target、issue 号或文件名）。" },
+    "root_cause": { "type": "string", "minLength": 8 },
+    "refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": {
+            "enum": ["commit", "doc", "script", "session", "external"],
+            "description": "commit = 本仓提交（add 时 git cat-file 校验）；doc / script = 本仓文件路径（add 时校验存在）；session = 会话记录；external = 本仓之外的证据（上游 CLI 的 issue、发行说明等），ref 里写清来源。"
+          },
+          "ref": { "type": "string", "minLength": 4 }
+        }
+      },
+      "description": "证据指针，至少一条。没有证据指针的事故不入账。"
+    },
+    "adr": { "type": ["string", "null"], "pattern": "^ADR-[0-9]{3}$", "description": "挂在哪份 ADR 上；未立 ADR 时为 null。" }
+  }
+}

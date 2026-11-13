@@ -2,7 +2,8 @@
  * 看板实时状态的浏览器端存储：整页只开一条 EventSource 连 `/api/events`，
  * 执行进度与自动任务状态都从这里读（服务端见 app/api/events）。
  *
- * - 首个订阅者出现时连接，最后一个退订时断开。
+ * - 前台有订阅者时保持连接，页面隐藏或没有订阅者时释放连接。
+ *   回到前台后读取服务端快照，避免后台页面占满浏览器的 HTTP/1.1 连接。
  * - 网络中断由 EventSource 自动重连；服务端拒绝（非 200）时浏览器不重连，由这里
  *   定时重连。重连后服务端先推全量快照，无需补发。
  * - 断线期间保留上一次的状态，看板进程重启时界面不清空。
@@ -20,7 +21,7 @@ const EVENTS_URL = "/api/events";
 const PROGRESS_EVENT = "progress";
 const AUTO_RUN_EVENT = "auto-run";
 const FINGERPRINT_JOB_EVENT = "fingerprint-job";
-const RECONNECT_MS = 5_000;
+const RECONNECT_MS = 2_000;
 
 /** 自动任务状态；服务端读不出来（例如配置文件写坏）时是 error */
 export type LiveAutoRun = AutoRunView | { error: string };
@@ -74,15 +75,27 @@ async function fetchAutoRunFast(): Promise<void> {
   }
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  if (source === null) {
+function syncConnection(): void {
+  if (document.visibilityState === "hidden" || listeners.size === 0) {
+    disconnect();
+  } else if (source === null) {
     connect();
     void fetchAutoRunFast();
   }
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  if (listeners.size === 1) {
+    document.addEventListener("visibilitychange", syncConnection);
+    syncConnection();
+  }
   return () => {
     listeners.delete(listener);
-    if (listeners.size === 0) disconnect();
+    if (listeners.size === 0) {
+      document.removeEventListener("visibilitychange", syncConnection);
+      disconnect();
+    }
   };
 }
 
@@ -103,14 +116,9 @@ function connect(): void {
   });
   next.onerror = () => {
     // CONNECTING 表示浏览器正在自动重连；只有 CLOSED 需要自己再连
-    if (next.readyState !== EventSource.CLOSED) return;
+    if (source !== next || next.readyState !== EventSource.CLOSED) return;
     source = null;
-    reconnectTimer = setTimeout(() => {
-      if (listeners.size > 0 && source === null) {
-        connect();
-        void fetchAutoRunFast();
-      }
-    }, 2000);
+    reconnectTimer = setTimeout(syncConnection, RECONNECT_MS);
   };
   source = next;
 }

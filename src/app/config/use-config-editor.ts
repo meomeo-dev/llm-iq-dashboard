@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n, type Locale } from "@/i18n";
 import { actionFetch } from "../components/action-fetch";
+import { submitRun } from "../components/run-control/run-once-api";
 import {
   type EditableConfig,
   type ConfigEditorStatus,
@@ -22,19 +23,6 @@ async function requestSaveConfig(
     const body = (await response.json()) as { error?: string };
     if (!response.ok) return { ok: false, error: body.error ?? (locale === "en" ? "Save failed" : "保存失败") };
     return { ok: true };
-  } catch (cause) {
-    return { ok: false, error: describeError(cause) };
-  }
-}
-
-async function requestRunNow(locale: Locale): Promise<
-  { ok: true; calls: number } | { ok: false; error: string }
-> {
-  try {
-    const response = await actionFetch("/api/run", { method: "POST" });
-    const body = (await response.json()) as { error?: string; calls?: number };
-    if (!response.ok) return { ok: false, error: body.error ?? (locale === "en" ? "Run failed" : "执行失败") };
-    return { ok: true, calls: body.calls ?? 0 };
   } catch (cause) {
     return { ok: false, error: describeError(cause) };
   }
@@ -64,8 +52,8 @@ export function useConfigEditor(draft: EditableConfig) {
 
   const runNow = async (): Promise<void> => {
     setStatus({ kind: "busy", message: isEn ? "Starting a round…" : "正在发起一轮…" });
-    const result = await requestRunNow(locale);
-    if (!result.ok) {
+    const result = await submitRun(locale);
+    if ("error" in result) {
       setStatus({ kind: "error", message: result.error });
       return;
     }

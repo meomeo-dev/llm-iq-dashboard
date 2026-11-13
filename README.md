@@ -58,6 +58,10 @@ When developing dashboard UI changes, run the dev server on a separate port:
 ```bash
 pnpm dev --port 3001
 ```
+`pnpm dev` runs benchmarks on this machine. To test the external runner integration
+deliberately, use `pnpm dev:external --port 3002`. Check `mode.executor` in
+`/api/health` to see which execution mode the server is using.
+
 
 Start the background scheduler (independent process, decoupled from the web server):
 

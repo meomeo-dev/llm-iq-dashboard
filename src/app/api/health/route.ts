@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { checkDataRepoHealth } from "@/core/data-source";
 import { getDeployMode } from "@/core/deploy-mode";
+import { externalRunner } from "@/core/runner-link";
 import packageJson from "../../../../package.json";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export async function GET(): Promise<NextResponse> {
   const mode = {
     readonly: modeInfo.readonly,
     dataSource: modeInfo.dataSource,
+    executor: modeInfo.readonly ? "disabled" : externalRunner() ? "external" : "local",
   };
 
   let dataRepo = null;

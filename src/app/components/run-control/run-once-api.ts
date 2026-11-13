@@ -2,6 +2,16 @@ import { actionFetch } from "../action-fetch";
 import type { RunOptionsView } from "@/app/api/run/route";
 import type { Locale } from "@/i18n";
 
+// 外部执行器最多等 60 秒。给服务端留出响应时间，同时防止网络排队时一直停在发起中。
+const RUN_SUBMISSION_TIMEOUT_MS = 75_000;
+
+type RunSubmission = {
+  targetIds: string[];
+  promptIds: string[];
+  candidateOverrides?: Record<string, string>;
+  profiles?: string[];
+};
+
 let cachedRunOptions: RunOptionsView | null = null;
 let prefetchPromise: Promise<RunOptionsView | { error: string }> | null = null;
 
@@ -93,28 +103,39 @@ export async function postRun(
   profiles?: readonly string[],
   locale: Locale = "zh-CN",
 ): Promise<{ runId: string; calls: number } | { error: string }> {
+  const payload: RunSubmission = { targetIds, promptIds };
+  if (candidateOverrides && Object.keys(candidateOverrides).length > 0) {
+    payload.candidateOverrides = candidateOverrides;
+  }
+  // 不涉及上游时不带该字段，请求与引入上游之前逐字相同
+  if (profiles !== undefined) payload.profiles = [...profiles];
+  return submitRun(locale, payload);
+}
+
+/** 无 payload 时按保存的配置发起一轮。 */
+export async function submitRun(
+  locale: Locale,
+  payload?: RunSubmission,
+): Promise<{ runId: string; calls: number } | { error: string }> {
   try {
-    const payload: {
-      targetIds: string[];
-      promptIds: string[];
-      candidateOverrides?: Record<string, string>;
-      profiles?: string[];
-    } = { targetIds, promptIds };
-    if (candidateOverrides && Object.keys(candidateOverrides).length > 0) {
-      payload.candidateOverrides = candidateOverrides;
-    }
-    // 不涉及上游时不带该字段，请求与引入上游之前逐字相同
-    if (profiles !== undefined) payload.profiles = [...profiles];
     const response = await actionFetch("/api/run", {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(RUN_SUBMISSION_TIMEOUT_MS),
+      ...(payload !== undefined && {
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      }),
     });
     const body = (await response.json()) as { runId?: string; calls?: number; error?: string };
     return response.ok
       ? { runId: body.runId ?? "", calls: body.calls ?? 0 }
       : { error: localizeRunApiError(body.error ?? "发起失败", locale) };
   } catch (cause) {
+    if (cause instanceof DOMException && cause.name === "TimeoutError") {
+      return { error: locale === "en"
+        ? "No start confirmation received. Check live status before submitting again."
+        : "未收到发起确认，请先查看执行状态，再决定是否重新发起。" };
+    }
     return { error: localizeRunApiError(cause instanceof Error ? cause.message : String(cause), locale) };
   }
 }

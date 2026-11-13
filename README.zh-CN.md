@@ -69,6 +69,9 @@ pnpm dashboard:prod
 ```bash
 pnpm dev --port 3001
 ```
+`pnpm dev` 在本机执行评测。调试外部执行器时使用 `pnpm dev:external --port 3002`。
+通过 `/api/health` 的 `mode.executor` 查看当前执行模式。
+
 
 `next dev` 按需编译并保留调试信息，长时间运行内存会涨到数 GB，不适合当常驻看板用。
 

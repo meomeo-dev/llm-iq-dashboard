@@ -1,0 +1,1 @@
+{"schema_version":"1.0.0","id":"INC-0001","date":"2026-11-12","topic":"background-event-streams-exhaust-browser-connections","summary":"本机开发看板的「跑一次」停在发起中，服务端没有新增轮次或队列请求。","root_cause":"浏览器到看板的六条 HTTP/1.1 长连接在采样期仅收到实时状态心跳。后台页面保留 EventSource 可耗尽同源连接，让提交等待空闲连接。","refs":[{"kind":"commit","ref":"8c5ab61"},{"kind":"doc","ref":"README.zh-CN.md"}],"adr":null}

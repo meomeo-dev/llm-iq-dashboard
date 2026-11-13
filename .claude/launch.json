@@ -25,11 +25,9 @@
     },
     {
       "name": "dashboard-external",
-      "runtimeExecutable": "env",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
-        "PELICAN_RUNNER=external",
-        "pnpm",
-        "dev",
+        "dev:external",
         "--port",
         "3002"
       ],
