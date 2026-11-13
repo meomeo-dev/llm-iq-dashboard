@@ -25,6 +25,7 @@
 <!-- acceptance-index:start -->
 | 工单 / Sprint | 主题 | 结论 | 日期 | commit |
 |---|---|---|---|---|
+| [M3-01](M3-01-register-october-viral-prompts.md) | 核心题库注册：2026-10 题目录入与 TypeScript 模块实现 | 通过 | 2026-11-12 | `2a29880` |
 | [M2-00](M2-00-bilingual-i18n-support.md) | 中英双语全栈国际化改造 | 通过 | 2026-10-14 | `794f1a5` |
 | [M2-01](M2-01-i18n-core-and-locale-context.md) | 双语字典核心底座与全局语言上下文 | 通过 | 2026-10-13 | `25731ea` |
 | [M2-02](M2-02-bilingual-docs-and-readme.md) | 英文主 README 与对外核心文档双语化 | 通过 | 2026-10-13 | `23627eb` |
