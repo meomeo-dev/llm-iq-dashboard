@@ -25,6 +25,7 @@
 <!-- acceptance-index:start -->
 | 工单 / Sprint | 主题 | 结论 | 日期 | commit |
 |---|---|---|---|---|
+| [M3-00](M3-00-viral-prompts-2026-10.md) | 2026年10月流行评测题库注册与看板分组呈现 | 通过 | 2026-11-12 | `b75e53f` |
 | [M3-01](M3-01-register-october-viral-prompts.md) | 核心题库注册：2026-10 题目录入与 TypeScript 模块实现 | 通过 | 2026-11-12 | `2a29880` |
 | [M3-02](M3-02-grouping-october-prompts.md) | 看板运行控制分类与 2026-10 分组呈现 | 通过 | 2026-11-12 | `79e8799` |
 | [M3-03](M3-03-benchmark-provenance-and-acceptance.md) | 基准出处台账更新与全量质量门禁验收 | 通过 | 2026-11-12 | `15675de` |
