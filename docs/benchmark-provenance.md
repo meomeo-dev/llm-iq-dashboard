@@ -1,12 +1,12 @@
 # Benchmark Provenance & Prompt Rationale · 鹈鹕基准与扩展题库来源考证
 
-> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all **54 built-in `PromptSpec` entries** registered in `src/core/prompt.ts` (**30 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **330 unique benchmark prompt templates**; **180 rows** in the §一 master table below where the 14 `fe-*-v1` / `vfx-*-v1` suites are expanded into 140 individual `FE-*` / `VFX-*` candidate rows). Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable, while English and Chinese display labels and evaluation standards are localized at the UI presentation layer (`src/core/prompt/i18n/`).
+> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all **62 built-in `PromptSpec` entries** registered in `src/core/prompt.ts` (**38 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **338 unique benchmark prompt templates**; **188 rows** in the §一 master table below where the 14 `fe-*-v1` / `vfx-*-v1` suites are expanded into 140 individual `FE-*` / `VFX-*` candidate rows). Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable, while English and Chinese display labels and evaluation standards are localized at the UI presentation layer (`src/core/prompt/i18n/`).
 
 ### English Section & Prompt ID Index
 
 | Section | Topic (English / 中文) | Prompt IDs / Candidate Groups |
 | :--- | :--- | :--- |
-| **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 180 rows) | All 54 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
+| **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 188 rows) | All 62 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
 | **§二** | Classic & Upgraded Pelican Series (经典基准与进阶) | `classic-v1`, `upgraded-v2` |
 | **§三** | Four Classic Chinese Novels Suites — Static & Animated (四大名著静态与纯内联动画候选集, 8 suites: Journey to the West 2 × 100 chapters + Romance of the Three Kingdoms 2 × 120 chapters + Water Margin 2 × 120 chapters + 2 × 10 chapters = 700 candidates) | `shuihu-v1`, `shuihu-anim-v1`, `xiyou-v1`, `xiyou-anim-v1`, `sanguo-v1`, `sanguo-anim-v1`, `honglou-v1`, `honglou-anim-v1` |
 | **§四** | World City Landmarks Miniature Dioramas (世界地标微缩景观, 2 suites × 40 landmarks = 80 candidates) | `landmarks-v1`, `landmarks-anim-v1` |
@@ -30,11 +30,12 @@
 | **§二十二** | VFX-5: Physics-Based Locomotion & Biomechanical CFX (`vfx-motion-v1`, 10 candidates) | `VFX-MOTION-01` – `VFX-MOTION-10` |
 | **§二十三** | VFX-6: In-Camera VFX, Deep Compositing & Graphics Systems (`vfx-sys-v1`, 10 candidates) | `VFX-SYS-01` – `VFX-SYS-10` |
 | **§二十四** | Autumn 2026 Community Benchmarks (`2026-09` Isometric Hardware, Kinetic Hand & Spatial Occlusion + Classic Dynamic Extensions, 10 standalone prompts) | `animated-armadillo-fishnet-mars-v1`, `animated-lemur-scooter-front-v1`, `animated-iso-vintage-pc-v1`, `animated-iso-amber-crt-v1`, `animated-iso-server-rack-v1`, `animated-iso-camera-exploded-v1`, `animated-human-hand-kinetic-v1`, `animated-fish-cloud-amodal-v1`, `animated-island-chest-containment-v1`, `animated-tree-reader-occlusion-v1` |
-| **§二十五** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
-| **§二十六** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
-| **§二十七** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
+| **§二十五** | Autumn 2026 October Viral Kinematics & Topology (`2026-10` 机构动力学与拓扑流形, 8 standalone prompts) | `animated-jansen-walker-v1`, `animated-jumping-spider-leap-v1`, `animated-centipede-wave-gait-v1`, `animated-open-differential-v1`, `animated-ferris-leveling-v1`, `animated-octopus-organ-v1`, `animated-peacock-bicycle-v1`, `animated-nautilus-spiral-v1` |
+| **§二十六** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
+| **§二十七** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
+| **§二十八** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
 
-本文档说明 `llm_iq_dashboard` 收录的全部 **54 个内置提示词条目**（`PromptSpec`：**30 道独立单题** + **24 套轮换候选集**，候选集内含 **780 个场景候选**，合计 **810 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **180 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
+本文档说明 `llm_iq_dashboard` 收录的全部 **62 个内置提示词条目**（`PromptSpec`：**38 道独立单题** + **24 套轮换候选集**，候选集内含 **780 个场景候选**，合计 **818 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **188 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
 所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据（支持中英双语切换）。
 
@@ -42,7 +43,7 @@
 
 ## 一、 全量测试题目总览与台账
 
-本基准共内置 **54 个不可变（`immutable: true`）提示词条目**（30 道独立单题 + 24 套含 780 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 180 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
+本基准共内置 **62 个不可变（`immutable: true`）提示词条目**（38 道独立单题 + 24 套含 780 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 188 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
 
 | 序号 | 题目 ID | 题目名称 | 领域分类 | 形式 | 首发时间 (`originDate`) | 收录时间 (`registeredAt`) | 来源权威出处 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -226,6 +227,14 @@
 | 178 | `animated-fish-cloud-amodal-v1` | 鱼跃水入云（非模态遮挡与物理弹道） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
 | 179 | `animated-island-chest-containment-v1` | 岛、棕榈树与宝箱（多层包含拓扑不变性） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
 | 180 | `animated-tree-reader-occlusion-v1` | 树下读书的人（人体骨骼与复合深度遮挡） | 2026-09 | 纯内联动画 | 2026-09 | 2026-10-10 | [EMNLP 2026 Spatial (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/) |
+| 181 | `animated-jansen-walker-v1` | 简森步行机构 (Animated Jansen Walking Linkage) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [@elvar_official (2116192984299344372)](https://x.com/elvar_official/status/2116192984299344372) |
+| 182 | `animated-jumping-spider-leap-v1` | 跳蛛四足交替起跳 (Animated Jumping Spider Leap) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [@elvar_official (2116618736371118544)](https://x.com/elvar_official/status/2116618736371118544) |
+| 183 | `animated-centipede-wave-gait-v1` | 蜈蚣行波步态 (Animated Centipede Wave Gait) | 2026-10 | 纯内联动画 | 2026-11 | 2026-11-12 | [@Koan0x (2116967605294502345)](https://x.com/Koan0x/status/2116967605294502345) |
+| 184 | `animated-open-differential-v1` | 开放差速器过弯 (Animated Open Differential) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [nader0913 open-differential](https://skills.wheresryan.sh/anatomy/community/nader0913/open-differential) |
+| 185 | `animated-ferris-leveling-v1` | 摩天轮吊厢自水平 (Animated Ferris Wheel Self-Leveling) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [YouMind 679](https://youmind.com/prompts/svg-ferris-wheel-mechanical-animation-in-html-679) |
+| 186 | `animated-octopus-organ-v1` | 章鱼操作管风琴 (Animated Octopus Playing Pipe Organ) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [Tom Gally HN #49696402](https://news.ycombinator.com/item?id=49696402) |
+| 187 | `animated-peacock-bicycle-v1` | 孔雀骑车尾屏 (Animated Peacock Riding Bicycle) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [@SahilPanhotra (2114802178212892744)](https://x.com/SahilPanhotra/status/2114802178212892744) |
+| 188 | `animated-nautilus-spiral-v1` | 鹦鹉螺对数螺线 (Animated Nautilus Logarithmic Spiral) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [PyShine Shell Evaluation](https://pyshine.com/Ollama-Local-Models-SVG-Comparison-Nautilus-Shell/) |
 
 ---
 
@@ -1699,7 +1708,110 @@
 
 ---
 
-## 二十五、 题目生命周期与淘汰机制（Lifecycle & Retirement）
+## 二十五、 2026 年 10 月流行 AI 评测基准（2026-10 机构动力学与拓扑流形）
+
+2026 年 10 月至 11 月初期间，AI 生成高质量 SVG 与纯声明式运动学在 X (Twitter) 技术圈、Hacker News 与 GitHub 社区形成了以机构拆解（Teardown）、生物节肢步态行波与齿轮拓扑为代表的新一轮浪潮。本批次 8 道题目均源自真实爆款原帖与开源社区挑战，经 52 轮深度检索与净室重构（Clean-room Formulation），剥离任何专有商标与客户端技能依赖，将 3D/Three.js 或外接工具题目纯化为自包含内联 SVG 动画（0 `<script>`，0 外部依赖）。
+
+### 1. 分组架构设计与考量
+
+- **2026-10 专题独立分组（展示于「2026-09」之后、「自定义提示词」之前）**：
+  - **机构动力学（Kinematics & Multi-Bar Linkage）**：
+    - `animated-jansen-walker-v1`（简森步行机构）：考察 11 杆平面定长连杆、圆圆交点刚性约束与 155° 平地支撑相；
+    - `animated-open-differential-v1`（开放差速器过弯）：考察 30° 等轴测发丝切面、行星伞齿轮自转/公转与转弯时两轮角速度守恒（$\omega_1 + \omega_2 = 2\omega_c$）；
+    - `animated-ferris-leveling-v1`（摩天轮吊厢自水平）：考察轮体定速大公转、4:1 齿轮啮合驱动与吊厢自重/齿轮反向等角自转维持水平。
+  - **生物节肢与多足步态（Biomechanical Gaits & Coordination）**：
+    - `animated-jumping-spider-leap-v1`（跳蛛四足交替起跳）：考察 8 足两组交替慢速爬行、屈肢蓄力下蹲与 0.12s 极速伸直弹道起跳，伴随前中眼（AME）对焦缩瞳；
+    - `animated-centipede-wave-gait-v1`（蜈蚣行波步态）：考察 16 节/32 腿链条、后向变时行波传递（相邻相位差 0.11）与触地足端零滑动；
+    - `animated-peacock-bicycle-v1`（孔雀骑车尾屏）：延续经典自行车骑行动力学，新增 12 个规则眼斑（3×4 矩阵）、骨盆摇摆与滞后尾屏铰链摆动。
+  - **多任务协同与自相似几何（Complex Manipulation & Self-Similar Growth）**：
+    - `animated-octopus-organ-v1`（章鱼操作管风琴）：考察 8 条独立软体腕足在多层手键盘（Manuals）、脚键盘（Pedalboard）与音栓之间的多任务协同触击与按键位移；
+    - `animated-nautilus-spiral-v1`（鹦鹉螺对数螺线）：考察黄金比例对数螺线极坐标方程（$r(\theta) = a e^{b\theta}$，每 1/4 圈增长比 $\phi=1.618$）、12 隔室自相似几何生长与中心水管贯穿。
+
+### 2. 逐题核心机制、黄金真值与一票否决台账
+
+#### 150. 简森步行机构 (`animated-jansen-walker-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[@elvar_official](https://x.com/elvar_official/status/2116192984299344372)（2026-10-30，雪花 ID `2116192984299344372`，Theo Jansen 机构拆解与几何交点解算，点赞 3,970，书签 4,478）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **11 杆平面刚性定长装配**：固定跨距 $a=38$，偏置 $l=7.8$，曲柄 $m=15$，连杆 $b \sim k$ 严格定长（测量杆长伸缩变化率 $< 3\%$）；除曲柄定速定轴旋转外，所有其他铰链点均由两连杆圆圆交点刚性约束确定；
+  - **155° 平地支撑相与反相协调**：足端运动轨迹下沿具有约 140°–170° 曲柄角范围的近似水平平地相（足端触地匀速后移推进）；两腿相位严格差 180°（一腿支撑则另一腿抬升悬空）；
+  - **无缝循环与动量门禁**：首尾闭合（$MAE \equiv 0$），有效动量 $\max(MAE) \ge 0.015$；严格零外部依赖与商标名称。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：出现 `<script>` 标签；连杆明显弹性伸缩或断裂；足端画成椭圆或圆周而缺乏平地相；双腿同相同向摆动；静态死图（$\max(MAE) < 0.015$）或 XML 语法错误。
+
+#### 151. 跳蛛四足交替起跳 (`animated-jumping-spider-leap-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[@elvar_official](https://x.com/elvar_official/status/2116618736371118544)（2026-10-31，雪花 ID `2116618736371118544`，点赞 2,482，书签 2,493）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **八足两组四足交替支撑**：8 条腿严格分为 A 组 (1,3,5,7) 与 B 组 (2,4,6,8)，爬行期两组交替支撑迈进，触地足端水平位移 $< 2\%$ 身长（零滑移）；
+  - **液压蓄力与 0.12s 极速爆发**：下蹲慢相（0.80–1.10s）身体下沉屈膝蓄力，起跳爆发快相（1.10–1.22s，持续约 0.12s）后肢极速伸直弹射，爆发速度显著快于下蹲；前中眼（AME）虹膜在起跳瞬间瞳孔收缩至原直径 40%–60%；
+  - **无缝循环与动量门禁**：首尾闭合（$MAE \equiv 0$），有效动量 $\max(MAE) \ge 0.020$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：腿数不等于 8；8 腿同步如章鱼跳跃；无蓄力下蹲直接平移；伸腿时间超过 0.25s 失去爆发弹射特征；包含 `<script>` 标签或 XML 语法错误。
+
+#### 152. 蜈蚣行波步态 (`animated-centipede-wave-gait-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[@Koan0x](https://x.com/Koan0x/status/2116967605294502345)（2026-11-01，雪花 ID `2116967605294502345`，基于 elvar 拆解方法的行波步态物理仿真）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **16 体节 32 足清晰可数**：身体由 16 个体节链条组成，每节左右一对足，全机共 32 足，各足髋关节与足端分明；
+  - **后向变时行波（Metachronal Wave）**：足对 $k$ 步态相位严格满足 $k \times 0.11$ 周期偏移（容差 0.09–0.13），波峰由头部向尾部单向平滑传递；触地足端零滑动；
+  - **体轴正弦波动协同**：身体中轴呈 S 形基线并叠加尾向行进的横向摆动波，与足端推进节奏锁相；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：腿数不可数或非 32 足；全腿同频同步如梳子开合；行波波向颠倒朝向头部；包含 `<script>` 标签逐帧摆腿或 XML 语法错误。
+
+#### 153. 开放差速器过弯 (`animated-open-differential-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[Anatomy 社区图谱 nader0913 open-differential](https://skills.wheresryan.sh/anatomy/community/nader0913/open-differential)（2026-10-12；对应 @wheresryan22 10 月 10 日首发，点赞 1.8 万，星标 2.6 万）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **30° 等轴测近黑发丝剖视结构**：输入小齿轮、主减速从动齿圈、差速器壳体、十字轴上的两只行星锥齿轮、左右半轴齿轮及外侧双轮层级明确；
+  - **行星齿轮自转与过弯角速度守恒**：弯道工况下外侧轮转弯半径更大、角速度显著快于内侧轮（外快内慢），左右半轴角速度均值等于壳体角速度（$\omega_1 + \omega_2 = 2\omega_c$）；两只行星锥齿轮绕十字轴自转；
+  - **无缝循环与啮合守恒**：齿轮各零件无脱啮漂移，地面弧长外长内短直观对应；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：左右两轮同速旋转（退化为通轴硬连接）；外侧轮转速慢于内侧轮；行星齿轮不自转；散成爆炸图；包含 `<script>` 标签或商业汽车品牌。
+
+#### 154. 摩天轮吊厢自水平 (`animated-ferris-leveling-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[YouMind 679 Prompt](https://youmind.com/prompts/svg-ferris-wheel-mechanical-animation-in-html-679)（2026-10 机械动画高频题目，反向等角公自转与齿轮啮合链）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **A 字支架定速公转与 4:1 驱动齿轮**：主轮顺时针匀速旋转；下方驱动小齿轮逆时针旋转，角速度比严格为 4:1 且齿部保持啮合；
+  - **8 吊厢等分与反向等角自水平**：圆周 45° 均分悬挂 8 个独立吊厢；各吊厢围绕自身枢轴叠加与大轮角速度大小相等、方向相反的反向旋转（$-\omega$），吊厢底板与世界水平线倾角任意时刻 $< 5^\circ$；
+  - **无碰撞与无缝循环**：吊厢绝不穿插辐条与 A 桁架；12 秒无缝闭合（$MAE \equiv 0$），有效动量 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：吊厢随大轮翻转倒置（底板倾斜 $> 20^\circ$）；吊厢不随大轮公转；大小齿轮同向转动；包含 `<script>` 标签或 XML 语法错误。
+
+#### 155. 章鱼操作管风琴 (`animated-octopus-organ-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：Tom Gally 管风琴替代测试题集（2026-09-14 题集首题，2026-10 持续评测；[Hacker News #49696402](https://news.ycombinator.com/item?id=49696402)）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **八腕足清晰守恒与面向乐器**：章鱼端坐琴凳正对管风琴，8 条独立腕足与外套膜解剖连接完整，杜绝腕足中途合并、断裂或悬空；
+  - **手键盘与脚键盘分工演奏**：4 条腕足覆盖手键盘（Manuals）并清晰按压琴键（下沉位移且回弹）；2 条腕足操作下方脚键盘（Pedalboard，脚踏板倾斜下沉），2 条操作控制台两侧音栓；键与踏板动作反相错落；
+  - **对称音管序列与无缝闭合**：排管严格呈现中间高、两侧对称递减的 9 根风管序列；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：任意时刻腕足数不等于 8；章鱼背向或侧向避开琴键；缺少脚踏板；琴键与踏板无位移凹陷；包含 `<script>` 标签或 XML 语法错误。
+
+#### 156. 孔雀骑车尾屏 (`animated-peacock-bicycle-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[@SahilPanhotra](https://x.com/SahilPanhotra/status/2114802178212892744)（2026-10-26，雪花 ID `2114802178212892744`，GPT 6.1 Terra 动态能力持续验证）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **12 眼斑 3×4 规则阵列**：孔雀折叠尾屏上规则排列 12 个可数眼斑花纹（3 行 4 列），动作期间眼斑紧密跟随羽屏、数量恒定守恒；
+  - **双脚锁踏板与骨盆铰链滞后**：孔雀双脚牢固踩在两侧踏板上，曲柄与车轮同周期 1:1 旋转；鸟体骨盆伴随蹬踏左右摇摆，尾屏根部铰链连接于骨盆并产生小角度相位滞后波动态势；
+  - **持续鞍座接触与无缝闭合**：鸟体躯干全程与车座保持接触，不悬空浮游；首尾闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：鸟体漂浮于车身之上；脚不蹬踏板或曲柄停转；眼斑不可数或散乱脱落；尾屏为刚体无滞后摆动；包含 `<script>` 标签或水印文字。
+
+#### 157. 鹦鹉螺对数螺线 (`animated-nautilus-spiral-v1`)
+* **呈现形式**：纯内联动画矢量 SVG（SMIL / CSS @keyframes）
+* **出处**：[PyShine Ollama 本地模型矢量绘图对比](https://pyshine.com/Ollama-Local-Models-SVG-Comparison-Nautilus-Shell/)（2026-08 至 2026-10 几何精度持续基准）
+* **核心机制与黄金基准 (Ground Truth)**：
+  - **黄金对数螺线方程**：螺线满足极坐标公式 $r(\theta) = a e^{b\theta}$，每 1/4 圈（$90^\circ$）半径增长比严格逼近黄金比率 $\phi \approx 1.618$（容差 1.45–1.80）；中心中空，开口朝外；
+  - **12 隔壁自相似几何生长**：全姿态隔壁数恒为 12，各隔壁垂直于螺线切线且间距按相同比例自相似递增；生长动画从 8 隔室平滑生长至 12 隔室，原有隔室半径与几何完全保持静止锁定，仅在生长边缘延伸新隔室，严禁将整个螺壳做刚体旋转替代生长；
+  - **渐变闭合与动量门禁**：生长完毕后通过平滑 crossfade 渐变闭合回 8 隔室形态，首尾数学闭合且 $\max(MAE) \ge 0.015$。
+* **判读准则与一票否决**：
+  - **Fail（一票否决，0 分）**：退化为阿基米德等距螺线或同心圆套圆；中心无空心核；隔壁不可数；以整壳刚体旋转糊弄生长过程；包含 `<script>` 标签或 XML 语法错误。
+
+---
+
+## 二十六、 题目生命周期与淘汰机制（Lifecycle & Retirement）
 
 为了保持基准对新一代前沿大模型尖锐的区分度，本基准建立时间追踪与饱和淘汰机制：
 * **首发时间 (`originDate`)**：题目在社区或学术界首次公开的时间。首发时间过长（如超过 18 个月）的题目，需防范厂商预训练集污染风险；
@@ -1708,7 +1820,7 @@
   1. **饱和归档（Ceiling Retirement）**：若受测模型池中超过 80% 的模型在某道题目上连续多轮获得满分，该题目标记为 `aging`，让出常规轮次的调度配额；
   2. **版本迭代（Generational Progression）**：如 `classic-v1` 迭代至 `upgraded-v2`，高难度动态题与硬核工程题稳定后，老旧基础题仅作为历史连续性锚点保留。
 
-## 二十六、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
+## 二十七、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
 
 为了彻底根除人工肉眼核查漏看属性的问题，本基准在 `src/core/prompt-schema.ts` 建立了严格的数据模型契约（Schema）与确定性校验逻辑（Validator）：
 
@@ -1726,13 +1838,13 @@
   * 套题（Suite）必须具备领域级 `standard`，且前沿套题的所有候选条目（`candidates`）强制必须具备独立的单题特异性 `standard`。
 
 ### 2. 自动化体检与质量门禁（Tooling & CI）
-* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 54 个内置提示词条目、140 道前沿工程/视效单题（合计 194 项）及 22 套带候选特异性标准的套题（900 个候选条目，全部 24 套候选集共 780 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
+* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 62 个内置提示词条目、140 道前沿工程/视效单题（合计 202 项）及 22 套带候选特异性标准的套题（900 个候选条目，全部 24 套候选集共 780 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
 * **测试套件集成**：`test/core/prompt-schema.test.ts` 纳入自动化测试链路（`pnpm test`），包含正向全覆盖与属性缺失、格式错误的负向拦截断言；
 * **配置加载即时校验**：用户通过 `pelican.config.yaml` 或 UI 添加自定义题目时，`config-prompts.ts` 解析 `standard` 并执行 Schema 校验，实现 fail-fast。
 
 ---
 
-## 二十七、 参考资料与上游链接
+## 二十八、 参考资料与上游链接
 
 * [Simon Willison's Pelican Benchmark Canonical Repo](https://github.com/simonw/pelican-bicycle)
 * [Simon Willison's Weblog: pelican-riding-a-bicycle](https://simonwillison.net/tags/pelican-riding-a-bicycle/)
@@ -1742,8 +1854,20 @@
 * [Hacker News: Lemur on Scooter Discussion (#49578488)](https://news.ycombinator.com/item?id=49578488)
 * [Hacker News: Kinetic Hand Benchmark Discussion (#49573027)](https://news.ycombinator.com/item?id=49573027)
 * [EMNLP 2026: Spatial Reasoning and Topological Consistency in Generative Vector Graphics (CC BY 4.0)](https://aclanthology.org/2026.emnlp-main.spatial/)
+* [@elvar_official: Theo Jansen walking linkage teardown on X (Snowflake ID: 2116192984299344372)](https://x.com/elvar_official/status/2116192984299344372)
+* [@elvar_official: Mechanical jumping spider leap on X (Snowflake ID: 2116618736371118544)](https://x.com/elvar_official/status/2116618736371118544)
+* [@Koan0x: Robotic centipede metachronal wave gait on X (Snowflake ID: 2116967605294502345)](https://x.com/Koan0x/status/2116967605294502345)
+* [Anatomy Open Differential Community Figure (nader0913)](https://skills.wheresryan.sh/anatomy/community/nader0913/open-differential)
+* [YouMind 679: Ferris wheel mechanical animation in HTML](https://youmind.com/prompts/svg-ferris-wheel-mechanical-animation-in-html-679)
+* [Tom Gally: Octopus Operating a Pipe Organ (HN #49696402 & gally.net)](https://news.ycombinator.com/item?id=49696402)
+* [@SahilPanhotra: Peacock bicycle animation on X (Snowflake ID: 2114802178212892744)](https://x.com/SahilPanhotra/status/2114802178212892744)
+* [PyShine: Ollama Local Models SVG Comparison (Nautilus Shell)](https://pyshine.com/Ollama-Local-Models-SVG-Comparison-Nautilus-Shell/)
 * [维基文库：水浒传 (120回本)](https://zh.wikisource.org/wiki/水滸傳_(120回本))
 * [维基文库：西游记 (100回本)](https://zh.wikisource.org/wiki/西游记)
+* [维基文库：三国演义 (毛宗岗评本)](https://zh.wikisource.org/wiki/三國演義)
+* [NASA James Webb Space Telescope Observatory Deployment](https://webb.nasa.gov/content/observatory/sunshield.html)
+* [ITER International Thermonuclear Experimental Reactor](https://www.iter.org/mach/tokamak)
+* [RCSB Protein Data Bank (PDB ID: 4OO8)](https://www.rcsb.org/structure/4OO8)
 * [维基文库：三国演义 (毛宗岗评本)](https://zh.wikisource.org/wiki/三國演義)
 * [NASA James Webb Space Telescope Observatory Deployment](https://webb.nasa.gov/content/observatory/sunshield.html)
 * [ITER International Thermonuclear Experimental Reactor](https://www.iter.org/mach/tokamak)
