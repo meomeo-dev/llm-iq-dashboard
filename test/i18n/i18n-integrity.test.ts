@@ -31,7 +31,7 @@ const INTENTIONAL_ZH_SWITCH_KEYS = new Set([
   "common.languageSwitchTitle",
 ]);
 const EXPECTED_BUILTIN_PROMPTS_SHA256 =
-  "aa7e707a7007fde592e82a3a86126597bc296e430cb05ee2467ec561a172122e";
+  "bf12680ee13f84a6f0fb3565aca53eef6ce5207ca047bbf83b4135508c2799af";
 
 function collectLeafEntries(obj: unknown, prefix = ""): Map<string, string> {
   const entries = new Map<string, string>();
@@ -144,8 +144,8 @@ describe("M2-06 full-stack i18n integrity & invariant regression suite", () => {
     }
   });
 
-  it("verifies all 23 BUILTIN_PROMPTS and 1000 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
-    assert.equal(BUILTIN_PROMPTS.length, 23);
+  it("verifies all 31 BUILTIN_PROMPTS and 1000 candidates have CJK-free en metadata and locked SHA-256 prompt templates", () => {
+    assert.equal(BUILTIN_PROMPTS.length, 31);
     const classic = BUILTIN_PROMPTS.find((p) => p.id === "classic-v1");
     assert.ok(classic);
     assert.equal(classic.template, "Generate an SVG of a pelican riding a bicycle");

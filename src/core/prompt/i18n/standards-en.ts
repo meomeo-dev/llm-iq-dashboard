@@ -3,6 +3,7 @@
 import type { LocalizedStandardEntry } from "../types";
 import { PELICAN_STANDARDS_EN } from "../bank/benchmarks/pelican/display-en";
 import { SEPTEMBER_STANDARDS_EN } from "../bank/benchmarks/2026-09/display-en";
+import { OCTOBER_2026_STANDARDS_EN } from "../bank/benchmarks/2026-10/display-en";
 import { FOUNDATIONS_STANDARDS_EN } from "../bank/engineering/foundations/display-en";
 import { ENGINEERING_SINGLE_STANDARDS_EN } from "../bank/engineering/single/display-en";
 import {
@@ -46,6 +47,7 @@ import { VFX_SYS_STANDARDS_EN } from "../bank/visual-effects/vfx-sys/display-en"
 export const STANDARDS_EN: Readonly<Record<string, LocalizedStandardEntry>> = {
   ...PELICAN_STANDARDS_EN,
   ...SEPTEMBER_STANDARDS_EN,
+  ...OCTOBER_2026_STANDARDS_EN,
   ...FOUNDATIONS_STANDARDS_EN,
   ...ENGINEERING_SINGLE_STANDARDS_EN,
   ...FRONTIER_VISUAL_STANDARDS_EN,
