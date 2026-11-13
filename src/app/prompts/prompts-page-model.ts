@@ -156,6 +156,17 @@ const SEPTEMBER_2026_IDS: ReadonlySet<string> = new Set([
   "animated-tree-reader-occlusion-v1",
 ]);
 
+const OCTOBER_2026_IDS: ReadonlySet<string> = new Set([
+  "animated-jansen-walker-v1",
+  "animated-jumping-spider-leap-v1",
+  "animated-centipede-wave-gait-v1",
+  "animated-open-differential-v1",
+  "animated-ferris-leveling-v1",
+  "animated-octopus-organ-v1",
+  "animated-peacock-bicycle-v1",
+  "animated-nautilus-spiral-v1",
+]);
+
 const MICRO_PHYSICS_IDS: ReadonlySet<string> = new Set([
   "quantum-double-slit-v1",
   "ferrofluid-spikes-v1",
@@ -192,6 +203,7 @@ export function classifyPromptGroupKey(id: string, isCustom: boolean): string {
   }
   if (id.startsWith("landmarks-")) return "世界地标（微缩景观）";
   if (SEPTEMBER_2026_IDS.has(id)) return "2026-09";
+  if (OCTOBER_2026_IDS.has(id)) return "2026-10";
   if (id.startsWith("fe-")) return "2026 前沿工程评测 (FE-1 ~ FE-8)";
   if (id.startsWith("vfx-")) return "2026 前沿视觉特效 (VFX)";
   if (MICRO_PHYSICS_IDS.has(id)) return "微观物理与前沿探索";

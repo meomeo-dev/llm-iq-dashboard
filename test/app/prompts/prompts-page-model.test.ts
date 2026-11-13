@@ -98,6 +98,14 @@ describe("prompts-page-model: catalog construction, filtering, stats & verbatim 
     assert.ok(shuihuZh.promptStandard !== null);
     assert.ok(shuihuZh.candidates[0]?.standard !== null);
 
+    const jansenZh = zhCatalog.find((item) => item.id === "animated-jansen-walker-v1");
+    const jansenEn = enCatalog.find((item) => item.id === "animated-jansen-walker-v1");
+    assert.ok(jansenZh && jansenEn);
+    assert.equal(jansenZh.groupKey, "2026-10");
+    assert.equal(jansenZh.groupLabel, "2026-10 流行力学与拓扑");
+    assert.equal(jansenEn.groupKey, "2026-10");
+    assert.equal(jansenEn.groupLabel, "2026-10 Viral Kinematics & Topology");
+
     const customItem = zhCatalog.find((item) => item.id === "custom-gearbox-v1");
     assert.ok(customItem);
     assert.equal(customItem.isCustom, true);
@@ -196,6 +204,18 @@ describe("prompts-page-model: catalog construction, filtering, stats & verbatim 
     });
     assert.equal(classicGroup.length, 5);
 
+    const oct2026Group = filterPromptCatalog(items, {
+      ...DEFAULT_PROMPT_FILTER,
+      groupKey: "2026-10",
+    });
+    assert.equal(oct2026Group.length, 8);
+    assert.ok(oct2026Group.every((item) => item.groupKey === "2026-10"));
+
+    const octStatsGroup = activeStats.groups.find((g) => g.key === "2026-10");
+    assert.ok(octStatsGroup);
+    assert.equal(octStatsGroup.count, 8);
+    assert.equal(octStatsGroup.label, "2026-10 流行力学与拓扑");
+
     const candidateQuery = filterPromptCatalog(items, {
       ...DEFAULT_PROMPT_FILTER,
       query: "shuihu-007 倒拔垂杨柳",
@@ -284,11 +304,13 @@ describe("prompts-page-model: catalog construction, filtering, stats & verbatim 
     assert.ok(zhHtml.includes("复制提示词"));
     assert.ok(zhHtml.includes("Generate an SVG of a pelican riding a bicycle"));
     assert.ok(zhHtml.includes("100 分量表"));
+    assert.ok(zhHtml.includes("2026-10 流行力学与拓扑"));
 
     const enHtml = renderGallery("en");
     assert.ok(enHtml.includes("Benchmark Prompts"));
     assert.ok(enHtml.includes("Copy Prompt"));
     assert.ok(enHtml.includes("100-pt Rubric"));
+    assert.ok(enHtml.includes("2026-10 Viral Kinematics"));
 
     const readonlyHtml = renderGallery("en", { owner: false, readonly: true });
     assert.ok(readonlyHtml.includes("badge-readonly"));
