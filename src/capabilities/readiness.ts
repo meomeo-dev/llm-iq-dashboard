@@ -58,16 +58,32 @@ const GUIDES: Readonly<Record<CliKind, CliGuide>> = {
   },
 };
 
-/** agy 的 OAuth 凭据文件；带 refresh_token 即可在联网时自动续期，无需再登录 */
-const AGY_TOKEN_FILE = join(homedir(), ".gemini", "antigravity-cli", "antigravity-oauth-token");
-
-export async function agyHasRefreshToken(tokenFile: string = AGY_TOKEN_FILE): Promise<boolean> {
-  try {
-    const parsed = JSON.parse(await readFile(tokenFile, "utf8")) as { token?: { refresh_token?: unknown } };
-    return typeof parsed.token?.refresh_token === "string" && parsed.token.refresh_token !== "";
-  } catch {
-    return false;
+/** agy 的 OAuth 凭据文件候选路径（支持单账号与 ANTIGRAVITY_APP_DATA_DIR 多账号） */
+function candidateAgyTokenFiles(): string[] {
+  const candidates: string[] = [];
+  if (process.env.ANTIGRAVITY_APP_DATA_DIR) {
+    candidates.push(join(process.env.ANTIGRAVITY_APP_DATA_DIR, "antigravity-oauth-token"));
   }
+  candidates.push(
+    join(homedir(), ".gemini", "antigravity-cli", "antigravity-oauth-token"),
+    join(homedir(), ".gemini", "antigravity-cli-acc2", "antigravity-oauth-token"),
+  );
+  return candidates;
+}
+
+export async function agyHasRefreshToken(tokenFile?: string): Promise<boolean> {
+  const files = tokenFile !== undefined ? [tokenFile] : candidateAgyTokenFiles();
+  for (const file of files) {
+    try {
+      const parsed = JSON.parse(await readFile(file, "utf8")) as { token?: { refresh_token?: unknown } };
+      if (typeof parsed.token?.refresh_token === "string" && parsed.token.refresh_token !== "") {
+        return true;
+      }
+    } catch {
+      // 检查下一个候选文件
+    }
+  }
+  return false;
 }
 
 /** `claude auth status` 输出 JSON，loggedIn 为布尔值；未登录时同样以 0 退出 */
