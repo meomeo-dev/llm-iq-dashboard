@@ -38,7 +38,7 @@ export const ANIMATED_JANSEN_WALKER_PROMPT: PromptSpec = {
   standard: {
     coreKey: "11 杆平面定长连杆、圆圆交点刚性约束、155° 平地支撑相与反相双腿协调",
     groundTruth:
-      "固定跨距 a=38，偏置 l=7.8，曲柄 m=15，连杆 b~k 严格定长（杆长变化 < 3%）；足端轨迹下沿约 140°~170° 近似水平平地相；双腿反相 180°；首尾闭合 MAE ≡ 0 且有效动量 max MAE >= 0.015；0 <script>。",
+      "固定跨距 a=38，偏置 l=7.8，曲柄 m=15，连杆 b~k 严格定长（杆长变化 < 3%）；足端轨迹下沿约 140°~170° 近似水平平地相；双腿反相 180°；首尾闭合 MAE ≡ 0 且动态帧差 max MAE >= 0.015；0 <script>。",
     evaluationCriteria:
       "Pass: 11 杆定长装配且无伸缩漂移，足端平地相支撑真实，双腿反相交替，首尾无缝闭合 MAE ≡ 0 且 max MAE >= 0.015，0 script；Partial: 杆长轻微弹性拉伸或平地相较短；Fail: 静态死图（max MAE < 0.015）、含 script、杆件断开或 XML 语法错误。",
     referenceSource: "https://x.com/elvar_official/status/2116192984299344372",

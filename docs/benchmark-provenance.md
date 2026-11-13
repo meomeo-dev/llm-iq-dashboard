@@ -30,7 +30,7 @@
 | **§二十二** | VFX-5: Physics-Based Locomotion & Biomechanical CFX (`vfx-motion-v1`, 10 candidates) | `VFX-MOTION-01` – `VFX-MOTION-10` |
 | **§二十三** | VFX-6: In-Camera VFX, Deep Compositing & Graphics Systems (`vfx-sys-v1`, 10 candidates) | `VFX-SYS-01` – `VFX-SYS-10` |
 | **§二十四** | Autumn 2026 Community Benchmarks (`2026-09` Isometric Hardware, Kinetic Hand & Spatial Occlusion + Classic Dynamic Extensions, 10 standalone prompts) | `animated-armadillo-fishnet-mars-v1`, `animated-lemur-scooter-front-v1`, `animated-iso-vintage-pc-v1`, `animated-iso-amber-crt-v1`, `animated-iso-server-rack-v1`, `animated-iso-camera-exploded-v1`, `animated-human-hand-kinetic-v1`, `animated-fish-cloud-amodal-v1`, `animated-island-chest-containment-v1`, `animated-tree-reader-occlusion-v1` |
-| **§二十五** | Autumn 2026 October Viral Kinematics & Topology (`2026-10` 机构动力学与拓扑流形, 8 standalone prompts) | `animated-jansen-walker-v1`, `animated-jumping-spider-leap-v1`, `animated-centipede-wave-gait-v1`, `animated-open-differential-v1`, `animated-ferris-leveling-v1`, `animated-octopus-organ-v1`, `animated-peacock-bicycle-v1`, `animated-nautilus-spiral-v1` |
+| **§二十五** | 2026 年 10 月社区题目 (`2026-10`, 8 standalone prompts) | `animated-jansen-walker-v1`, `animated-jumping-spider-leap-v1`, `animated-centipede-wave-gait-v1`, `animated-open-differential-v1`, `animated-ferris-leveling-v1`, `animated-octopus-organ-v1`, `animated-peacock-bicycle-v1`, `animated-nautilus-spiral-v1` |
 | **§二十六** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
 | **§二十七** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
 | **§二十八** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
@@ -1708,9 +1708,9 @@
 
 ---
 
-## 二十五、 2026 年 10 月流行 AI 评测基准（2026-10 机构动力学与拓扑流形）
+## 二十五、 2026 年 10 月社区评测题目（2026-10）
 
-2026 年 10 月至 11 月初期间，AI 生成高质量 SVG 与纯声明式运动学在 X (Twitter) 技术圈、Hacker News 与 GitHub 社区形成了以机构拆解（Teardown）、生物节肢步态行波与齿轮拓扑为代表的新一轮浪潮。本批次 8 道题目均源自真实爆款原帖与开源社区挑战，经 52 轮深度检索与净室重构（Clean-room Formulation），剥离任何专有商标与客户端技能依赖，将 3D/Three.js 或外接工具题目纯化为自包含内联 SVG 动画（0 `<script>`，0 外部依赖）。
+2026 年 10 月期间，社区中关于大模型生成 SVG 动画的测试用例主要涉及连杆机构、步态动画与齿轮传动等。本批次 8 道题目整理自社区公开讨论与测试用例，统一规范为纯内联 SVG 动画格式（不使用 `<script>` 标签与外部资源）。
 
 ### 1. 分组架构设计与考量
 
@@ -1735,7 +1735,7 @@
 * **核心机制与黄金基准 (Ground Truth)**：
   - **11 杆平面刚性定长装配**：固定跨距 $a=38$，偏置 $l=7.8$，曲柄 $m=15$，连杆 $b \sim k$ 严格定长（测量杆长伸缩变化率 $< 3\%$）；除曲柄定速定轴旋转外，所有其他铰链点均由两连杆圆圆交点刚性约束确定；
   - **155° 平地支撑相与反相协调**：足端运动轨迹下沿具有约 140°–170° 曲柄角范围的近似水平平地相（足端触地匀速后移推进）；两腿相位严格差 180°（一腿支撑则另一腿抬升悬空）；
-  - **无缝循环与动量门禁**：首尾闭合（$MAE \equiv 0$），有效动量 $\max(MAE) \ge 0.015$；严格零外部依赖与商标名称。
+  - **无缝循环与动态变化阈值**：首尾闭合（$MAE \equiv 0$），有效动态变化量 $\max(MAE) \ge 0.015$；严格零外部依赖与商标名称。
 * **判读准则与一票否决**：
   - **Fail（一票否决，0 分）**：出现 `<script>` 标签；连杆明显弹性伸缩或断裂；足端画成椭圆或圆周而缺乏平地相；双腿同相同向摆动；静态死图（$\max(MAE) < 0.015$）或 XML 语法错误。
 
@@ -1745,7 +1745,7 @@
 * **核心机制与黄金基准 (Ground Truth)**：
   - **八足两组四足交替支撑**：8 条腿严格分为 A 组 (1,3,5,7) 与 B 组 (2,4,6,8)，爬行期两组交替支撑迈进，触地足端水平位移 $< 2\%$ 身长（零滑移）；
   - **液压蓄力与 0.12s 极速爆发**：下蹲慢相（0.80–1.10s）身体下沉屈膝蓄力，起跳爆发快相（1.10–1.22s，持续约 0.12s）后肢极速伸直弹射，爆发速度显著快于下蹲；前中眼（AME）虹膜在起跳瞬间瞳孔收缩至原直径 40%–60%；
-  - **无缝循环与动量门禁**：首尾闭合（$MAE \equiv 0$），有效动量 $\max(MAE) \ge 0.020$。
+  - **无缝循环与动态变化阈值**：首尾闭合（$MAE \equiv 0$），有效动态变化量 $\max(MAE) \ge 0.020$。
 * **判读准则与一票否决**：
   - **Fail（一票否决，0 分）**：腿数不等于 8；8 腿同步如章鱼跳跃；无蓄力下蹲直接平移；伸腿时间超过 0.25s 失去爆发弹射特征；包含 `<script>` 标签或 XML 语法错误。
 
@@ -1805,7 +1805,7 @@
 * **核心机制与黄金基准 (Ground Truth)**：
   - **黄金对数螺线方程**：螺线满足极坐标公式 $r(\theta) = a e^{b\theta}$，每 1/4 圈（$90^\circ$）半径增长比严格逼近黄金比率 $\phi \approx 1.618$（容差 1.45–1.80）；中心中空，开口朝外；
   - **12 隔壁自相似几何生长**：全姿态隔壁数恒为 12，各隔壁垂直于螺线切线且间距按相同比例自相似递增；生长动画从 8 隔室平滑生长至 12 隔室，原有隔室半径与几何完全保持静止锁定，仅在生长边缘延伸新隔室，严禁将整个螺壳做刚体旋转替代生长；
-  - **渐变闭合与动量门禁**：生长完毕后通过平滑 crossfade 渐变闭合回 8 隔室形态，首尾数学闭合且 $\max(MAE) \ge 0.015$。
+  - **渐变闭合与动态变化阈值**：生长完毕后通过平滑 crossfade 渐变闭合回 8 隔室形态，首尾数学闭合且 $\max(MAE) \ge 0.015$。
 * **判读准则与一票否决**：
   - **Fail（一票否决，0 分）**：退化为阿基米德等距螺线或同心圆套圆；中心无空心核；隔壁不可数；以整壳刚体旋转糊弄生长过程；包含 `<script>` 标签或 XML 语法错误。
 

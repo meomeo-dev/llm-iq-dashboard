@@ -59,7 +59,7 @@ pnpm check:length
 ## 6. 技术决策
 
 - `GroupKey` 保持原内部键名，国际化由 `localizePromptGroupLabel` 负责，避免影响下游序列化；
-- 在 `i18n/index.ts` 中通过 `GROUP_LABELS_ZH` 映射中文全名（`2026-10 流行力学与拓扑`），英文为 `2026-10 Viral Kinematics & Topology`。
+- 在 `i18n/index.ts` 中设置 2026-10 分组标签，统一显示为 `2026-10`。
 
 ## 7. 已知限制与技术债
 
