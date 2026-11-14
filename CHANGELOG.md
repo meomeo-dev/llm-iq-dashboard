@@ -25,6 +25,15 @@
 
 ### 修复
 
+- 修复时间线执行态展示与结果自动同步缺陷：执行中直接从 SSE `progress` 在时间线泳道与 2×2
+  四宫格内合成 `running` / `queued` 占位并在模态窗卡片呈现在线态；`runner.ts` 改为先排空并落盘
+  `run.json` 再标记 `progress.json` 完成；`live-hub.ts` 补充监听 `run.json` 与 `*.judge.json`
+  并推送 `runs-revision` 事件；前端移除 `router.refresh()` 整页刷新，改由 `useDashboardSync`
+  按 `runs-revision` 变化就地请求 `GET /api/dashboard` 增量更新当前日期窗口数据。
+- 落地代码审查清单（`review/project-code-review/2026-11-13.md`）全部 23 项加固修复：涵盖
+  `SameSite=Lax` / 非对称校验、同步互斥锁与脱敏二次内容校验、SVG 提取标签深度平衡与 DOMPurify
+  缓存失效修复、模型指纹样本写锁与参数校验、`codex app-server` 超时清理、历史时区偏移精准标注，
+  以及看板弹窗/表格/按钮对齐系统设计原语。
 - 本地开发命令固定使用本机执行，外部执行器使用独立开发入口。
   看板切到后台时释放实时连接，提交未收到确认时提示先查看执行状态。
 

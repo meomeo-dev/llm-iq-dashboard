@@ -158,7 +158,7 @@ Candidate-set prompts shuffle and draw one candidate per rotation period (`day` 
 
 ## Dashboard & Visual Exports
 
-- **24-Hour Timeline & Folder Tiles**: Each row represents `cli · model` (with pass-rate tree beneath). Each cell is a 2×2 folder tile showing `low`, `medium`, `high`, and `max` efforts at fixed corners.
+- **24-Hour Timeline & Folder Tiles**: Each row represents `cli · model` (with pass-rate tree beneath). Each cell is a 2×2 folder tile showing `low`, `medium`, `high`, and `max` efforts at fixed corners. Active calls (`running` / `queued`) from `progress.json` populate the 2×2 tiles live during execution, and `GET /api/events` (`runs-revision`) drives in-place `GET /api/dashboard` updates when `run.json` or `*.judge.json` changes without full-page reloads.
 - **Language Switcher (`EN` / `中文`)**: Toggle UI, prompt metadata, judge rubrics, and exported images between English and Simplified Chinese at any time.
 - **Comparison Modal & Full Viewer (`/view/<runId>/<svgFile>`)**: Side-by-side effort and upstream profile comparison, collapsible Ground Truth & Evaluation Criteria, raw sandboxed SVG link, and Judge Drawer with 8-frame contact sheets.
 - **Export (PNG / SVG / GIF)**: Export the full 24h landscape timeline, transposed portrait timeline, or per-model comparison cards (including animated GIFs that preserve per-element animation phase).
