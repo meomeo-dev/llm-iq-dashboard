@@ -59,7 +59,12 @@ export class FetchPool {
     const entry: CacheEntry = { task: Promise.resolve(EMPTY_RESPONSE), expiresAt: Number.POSITIVE_INFINITY };
     entry.task = this.schedule(() => readResponse(execute))
       .then((cached) => {
-        entry.expiresAt = this.now() + ttlMs;
+        if (cached.status >= 400) {
+          entry.expiresAt = 0;
+          if (this.cache.get(url) === entry) this.cache.delete(url);
+        } else {
+          entry.expiresAt = this.now() + ttlMs;
+        }
         return cached;
       })
       .catch((err: unknown) => {

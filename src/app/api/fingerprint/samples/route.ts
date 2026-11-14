@@ -51,12 +51,12 @@ async function executeSampleMutation(params: SamplePatchParams, deviceId: string
   const config = loadConfig(configPath());
   const fpCfg = resolveModelFingerprintConfig(config);
   const catalog = await readCachedCatalog();
-  const targetEffort = resolveFingerprintTarget(config, catalog, params.cli, params.model).requestedEffort;
+  const targetEffort = resolveFingerprintTarget(config, catalog, params.cli, params.model).appliedEffort;
   const primarySet = await readSampleSet(params.cli, targetEffort, params.model, params.probe);
   const existingList = primarySet
     ? [primarySet]
-    : await listAllSampleSets({ cli: params.cli, appliedEffort: fpCfg.effort, model: params.model, probes: [params.probe] });
-  const appliedEffort = existingList[0]?.requestedEffort ?? existingList[0]?.appliedEffort ?? targetEffort;
+    : await listAllSampleSets({ cli: params.cli, appliedEffort: targetEffort, model: params.model, probes: [params.probe] });
+  const appliedEffort = existingList[0]?.appliedEffort ?? targetEffort;
 
   const archivePath = params.reset
     ? await resetSampleSetToArchive({ cli: params.cli, appliedEffort, model: params.model, probe: params.probe })

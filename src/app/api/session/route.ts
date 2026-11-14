@@ -18,7 +18,9 @@ export interface SessionView {
 }
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const owner = await verifySession(readCookie(request.headers, SESSION_COOKIE));
+  const owner = await verifySession(readCookie(request.headers, SESSION_COOKIE), new Date(), {
+    allowRotate: true,
+  });
   if (owner === null) {
     const anonymous: SessionView = { owner: false, device: null, devices: [] };
     return NextResponse.json(anonymous);

@@ -70,7 +70,7 @@ export function parseSvgModel(source: string): ParseResult {
       root,
       viewBox: parseViewBox(root.getAttribute("viewBox")),
       animations: collectAnimations(root),
-      hasScript: root.querySelector("script") !== null,
+      hasScript: hasInlineScriptVector(root),
       hasForeignObject: root.querySelector("foreignObject") !== null,
       hasRasterImage: root.querySelector("image") !== null,
       externalRefs: collectExternalRefs(root),
@@ -420,27 +420,36 @@ function cssLength(token: string, root: Element, axis: "width" | "height"): numb
 }
 
 function safeMatches(el: Element, selector: string): boolean {
-  try {
-    return selector !== "" && el.matches(selector);
-  } catch {
-    return false;
-  }
+  try { return selector !== "" && el.matches(selector); } catch { return false; }
 }
 
 function safeQuery(root: Element, selector: string): Element[] {
   if (!selector) return [];
-  try {
-    return [...root.querySelectorAll(selector)];
-  } catch {
-    return [];
+  try { return [...root.querySelectorAll(selector)]; } catch { return []; }
+}
+
+function hasInlineScriptVector(root: Element): boolean {
+  if (root.querySelector("script") !== null) return true;
+  for (const el of [root, ...root.querySelectorAll("*")]) {
+    for (const attr of el.getAttributeNames()) {
+      if (attr.toLowerCase().startsWith("on") || /^(?:javascript|vbscript):/i.test(el.getAttribute(attr)?.trim() ?? "")) {
+        return true;
+      }
+    }
   }
+  return false;
 }
 
 function collectExternalRefs(root: Element): string[] {
   const refs: string[] = [];
   for (const el of root.querySelectorAll("[href], [xlink\\:href], [src]")) {
-    const value = el.getAttribute("href") ?? el.getAttribute("xlink:href") ?? el.getAttribute("src") ?? "";
-    if (/^(https?:)?\/\//i.test(value.trim())) refs.push(value.trim());
+    const value = (el.getAttribute("href") ?? el.getAttribute("xlink:href") ?? el.getAttribute("src") ?? "").trim();
+    if (/^(https?:)?\/\//i.test(value)) refs.push(value);
+  }
+  const css = [...root.querySelectorAll("style")].map((s) => s.textContent ?? "")
+    .concat([root, ...root.querySelectorAll("[style]")].map((el) => el.getAttribute("style") ?? "")).join("\n");
+  for (const m of css.matchAll(/(?:url\(\s*|@import\s+(?:url\(\s*)?)['"]?((?:https?:)?\/\/[^'");\s]+)['"]?\s*\)?/gi)) {
+    if (m[1]) refs.push(m[1]);
   }
   return refs;
 }

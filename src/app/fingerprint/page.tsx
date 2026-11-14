@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { listProfileOptions } from "@/app/api/run/run-options";
 import { findActiveWork } from "@/core/active-work";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
@@ -35,7 +36,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function FingerprintPage() {
   const readonly = isReadonly();
+  if (readonly) redirect("/");
   const owner = (await verifySession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
+  if (!owner) redirect("/pair?next=%2Ffingerprint");
   const canOperate = owner && !readonly;
 
   const config = loadConfig(configPath());

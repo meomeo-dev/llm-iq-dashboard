@@ -343,10 +343,13 @@ function countBadge(cell: FolderCell, slot: string, x: number, y: number, palett
 export function healthColor(moment: Moment, palette: Palette): string {
   const health = momentHealth(moment);
   if (health === "ok") return palette.ok;
+  if (health === "running") return palette.accent;
   return health === "partial" ? palette.warn : palette.err;
 }
 
 function statusColor(card: DashboardCard, palette: Palette): string {
+  if (card.liveState === "running") return palette.accent;
+  if (card.liveState === "queued") return palette.textFaint;
   if (card.status === "ok") return palette.ok;
   return card.status === "no-svg" ? palette.warn : palette.err;
 }

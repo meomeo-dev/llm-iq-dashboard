@@ -12,6 +12,7 @@ import { openSessionPool } from "../../adapters/index";
 import { createKeyedSemaphores, mapWithConcurrency } from "../concurrency";
 import type { AppConfig } from "../config";
 import { isJudging, progressAlive, readProgress, reopenProgressTracker, type JudgeProgressReporter } from "../progress";
+import { postRunSync } from "../run/post-sync";
 import { createSerialWriter } from "../serial-writes";
 import { loadRun } from "../store";
 import type { RunRecord } from "../types";
@@ -19,7 +20,7 @@ import { aiEligible, judgeKey, judgeWithAi, type JudgeSlots } from "./ai-judge";
 import { attemptKeyOf, loadJudgement } from "./judge-store";
 import type { Judgement } from "./schema";
 
-interface QueueItem {
+export interface QueueItem {
   attemptKey: string;
   targetId: string;
   promptId: string;
@@ -28,14 +29,30 @@ interface QueueItem {
 
 type Logger = (line: string) => void;
 
+/**
+ * 在 progress.finish() 落盘前预计算待 AI 评审队列并写入 progress.judging，
+ * 避免 finishedAt 写入与 judging.start 之间出现进度真空窗口。
+ */
+export async function prepareAiJudgingQueue(
+  config: AppConfig, record: RunRecord, progress?: JudgeProgressReporter,
+): Promise<QueueItem[]> {
+  if (!config.judge.enabled || !config.judge.ai.enabled) return [];
+  const queue = await eligibleQueue(record);
+  if (queue.length === 0) return [];
+  progress?.start(queue.map(({ attemptKey, targetId, promptId }) => ({ attemptKey, targetId, promptId })));
+  return queue;
+}
+
 export async function judgeRoundWithAi(
-  config: AppConfig, record: RunRecord, log: Logger, progress?: JudgeProgressReporter,
+  config: AppConfig, record: RunRecord, log: Logger, progress?: JudgeProgressReporter, precomputedQueue?: readonly QueueItem[],
 ): Promise<void> {
   if (!config.judge.enabled || !config.judge.ai.enabled) return;
-  const queue = await eligibleQueue(record);
+  const queue = precomputedQueue ?? (await eligibleQueue(record));
   if (queue.length === 0) return;
   const prompts = new Map(record.prompts.map((p) => [p.promptId, p.text]));
-  progress?.start(queue.map(({ attemptKey, targetId, promptId }) => ({ attemptKey, targetId, promptId })));
+  if (precomputedQueue === undefined) {
+    progress?.start(queue.map(({ attemptKey, targetId, promptId }) => ({ attemptKey, targetId, promptId })));
+  }
   const judged = await judgeQueue(config, queue, prompts, log, progress);
   await progress?.finish();
   log(`[${record.runId}] AI 层评审 ${judged}/${queue.length} 幅`);
@@ -129,6 +146,7 @@ export async function resumeInterruptedJudging(config: AppConfig, runId: string,
   if (queue.length > 0) judged += await judgeQueue(config, queue, prompts, log, tracker.judging);
   await tracker.judging.finish();
   log(`[${runId}] 续评 ${judged}/${pending.length} 幅`);
+  await postRunSync(config, runId, log);
 }
 
 /** 本轮里通过全部闸门、仍待复核且有联系表的作品，按调用顺序 */

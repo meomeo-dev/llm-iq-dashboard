@@ -12,11 +12,19 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { buildPushEnv, readGithubConnection } from "../github-auth";
 import { dataRoot } from "../paths";
+import { acquireDataRepoSyncLock } from "./data-repo-action-lock";
+import { prepareCheckout } from "./sync-scope";
 import {
+  assertRepoClean,
+  getAheadCommits,
+  getPushTarget,
   getUpstream,
   gitExec,
   isCommitInUpstream,
+  pushCurrentBranch,
+  verifyUpstreamContains,
 } from "./data-repo-git";
 import {
   loadSyncLedger,
@@ -26,10 +34,20 @@ import {
 
 export interface ConfirmPublishedOptions {
   repoPath: string;
+  repository?: string | null;
   dataDir?: string;
   runIds?: readonly string[];
   dryRun?: boolean;
+  skipLock?: boolean;
   log?: (message: string) => void;
+}
+
+export interface PushConfirmedOptions {
+  repoPath: string;
+  repository?: string | null;
+  dataDir?: string;
+  confirmedAheadCommits?: readonly string[];
+  skipLock?: boolean;
 }
 
 export interface ConfirmPublishedReport {
@@ -117,28 +135,99 @@ export async function confirmPublished(
   const dryRun = options.dryRun === true;
   const repoPath = options.repoPath;
   const dataDirPath = options.dataDir ?? dataRoot();
-
-  const upstream = await prepareUpstream(repoPath);
-  const ledger = await loadSyncLedger(dataDirPath);
-  const confirmed = await findContainedRuns(
-    repoPath,
-    ledger,
-    upstream,
-    options.runIds,
-  );
-
-  if (!dryRun && confirmed.length > 0) {
-    await markPublishedInLedger(ledger, confirmed, dataDirPath);
+  const lock = options.skipLock ? null : await acquireDataRepoSyncLock(dataDirPath);
+  if (lock !== null && !lock.acquired) {
+    throw new Error(lock.reason ?? "已有一个数据仓动作正在执行");
   }
 
-  return {
-    success: true,
-    dryRun,
-    upstream,
-    confirmed,
-    ledgerTransitions: {
-      published: confirmed,
-    },
-  };
+  try {
+    await prepareCheckout({
+      repoPath,
+      repository: options.repository ?? null,
+      log: options.log,
+    });
+    const upstream = await prepareUpstream(repoPath);
+    const ledger = await loadSyncLedger(dataDirPath);
+    const confirmed = await findContainedRuns(
+      repoPath,
+      ledger,
+      upstream,
+      options.runIds,
+    );
+
+    if (!dryRun && confirmed.length > 0) {
+      await markPublishedInLedger(ledger, confirmed, dataDirPath);
+    }
+
+    return {
+      success: true,
+      dryRun,
+      upstream,
+      confirmed,
+      ledgerTransitions: {
+        published: confirmed,
+      },
+    };
+  } finally {
+    await lock?.release();
+  }
+}
+
+async function executeConfirmedPush(
+  repoPath: string,
+  confirmedAheadCommits?: readonly string[],
+): Promise<void> {
+  await assertRepoClean(repoPath);
+  const currentAhead = await getAheadCommits(repoPath);
+  if (confirmedAheadCommits !== undefined) {
+    const matched =
+      currentAhead.length === confirmedAheadCommits.length &&
+      currentAhead.every((sha, idx) => sha === confirmedAheadCommits[idx]);
+    if (!matched) {
+      throw new Error("待推送提交清单已发生变化，请刷新面板后重新确认");
+    }
+  }
+  if (currentAhead.length === 0) {
+    throw new Error("没有待推送的本地提交，请先执行导出后再推送");
+  }
+
+  const conn = await readGithubConnection();
+  const target = conn.state === "connected" ? await getPushTarget(repoPath) : undefined;
+  const pushEnv = target ? await buildPushEnv(target.pushUrl) : undefined;
+  await pushCurrentBranch(repoPath, pushEnv, target);
+
+  const latestSha = currentAhead[0]!;
+  const contained = await verifyUpstreamContains(repoPath, latestSha, target?.upstreamBranch, pushEnv);
+  if (!contained) {
+    throw new Error(`推送后远程分支未包含提交 (${latestSha})，推送校验失败`);
+  }
+}
+
+/**
+ * 仅将已确认的本地领先提交推送到上游并执行发布确认，绝不在此步骤顺带导出或创建新提交。
+ */
+export async function pushConfirmedCommits(
+  options: PushConfirmedOptions,
+): Promise<ConfirmPublishedReport> {
+  const repoPath = options.repoPath;
+  const dataDirPath = options.dataDir ?? dataRoot();
+  const lock = options.skipLock ? null : await acquireDataRepoSyncLock(dataDirPath);
+  if (lock !== null && !lock.acquired) {
+    throw new Error(lock.reason ?? "已有一个数据仓动作正在执行");
+  }
+
+  try {
+    await prepareCheckout({ repoPath, repository: options.repository ?? null });
+    await executeConfirmedPush(repoPath, options.confirmedAheadCommits);
+    return await confirmPublished({
+      repoPath,
+      repository: options.repository,
+      dataDir: dataDirPath,
+      dryRun: false,
+      skipLock: true,
+    });
+  } finally {
+    await lock?.release();
+  }
 }
 

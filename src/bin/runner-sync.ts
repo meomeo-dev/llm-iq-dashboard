@@ -221,7 +221,7 @@ async function doRunnerPushAndVerify(
     }
   }
 
-  return confirmPublished({ repoPath, dryRun: false });
+  return confirmPublished({ repoPath, dryRun: false, skipLock: true });
 }
 
 async function recordSyncFailure(
@@ -296,7 +296,7 @@ async function performRunnerSync(
   let report: SyncActionReport | null = null;
   let error: string | null = null;
   try {
-    report = await performSyncAction(action, full);
+    report = await performSyncAction(action, full, undefined, { skipLock: true });
   } catch (cause) {
     ok = false;
     error = describe(cause);

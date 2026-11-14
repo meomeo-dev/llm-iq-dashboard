@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ANIMATED_PELICAN_RUBRIC } from "@/core/judge/schema";
 import { judgeStatic } from "@/core/judge/static-judge";
+import { sanitizeSvgForRender } from "@/core/judge/render-judge";
 import { attemptKeyOf } from "@/core/judge/judge-store";
 
 const subject = {
@@ -47,6 +48,20 @@ describe("judgeStatic 闸门", () => {
     assert.equal(judge(withScript).gates.find((g) => g.id === "G3")?.passed, false);
     const withRef = GOOD.replace("</svg>", '<image href="https://x/y.png"/></svg>');
     assert.match(judge(withRef).gates.find((g) => g.id === "G3")?.evidence ?? "", /外部引用/);
+    const withOnload = GOOD.replace("<svg ", '<svg onload="alert(1)" ');
+    assert.equal(judge(withOnload).gates.find((g) => g.id === "G3")?.passed, false);
+    const withCssImport = GOOD.replace("</svg>", "<style>@import url('https://evil.example/a.css');</style></svg>");
+    assert.equal(judge(withCssImport).gates.find((g) => g.id === "G3")?.passed, false);
+  });
+
+  test("sanitizeSvgForRender 剥离 script、foreignObject、on* 事件与外链", () => {
+    const dirty = `<svg xmlns="http://www.w3.org/2000/svg" onload="evil()"><script>alert(1)</script><foreignObject><div>x</div></foreignObject><image href="https://evil.example/a.png"/><circle r="5" onclick="bad()"/></svg>`;
+    const clean = sanitizeSvgForRender(dirty);
+    assert.doesNotMatch(clean, /<script/i);
+    assert.doesNotMatch(clean, /<foreignObject/i);
+    assert.doesNotMatch(clean, /onload|onclick/i);
+    assert.doesNotMatch(clean, /https:\/\/evil\.example/i);
+    assert.match(clean, /<circle r="5"\/>/);
   });
 });
 

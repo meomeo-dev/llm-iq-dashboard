@@ -16,9 +16,11 @@ import {
   dayPartition,
   runDirPath,
   type Redaction,
+  type RunSummary,
 } from "../data-repo/contract";
 import type { ProfileConfig } from "../config/profiles";
 import type { LeakGuard } from "../leak-guard";
+import { acquireDataRepoSyncLock } from "./data-repo-action-lock";
 import {
   assertGitUserConfigured,
   assertRepoClean,
@@ -34,21 +36,20 @@ import {
   type ExportOptions,
   type ReadyExportResult,
 } from "./export-run";
-import { isContentIdentical } from "./sync-content-check";
+import { isContentIdentical, isJudgeOnlyUpgrade } from "./sync-content-check";
 import { updateRepoIndices, writeAllExportedRuns } from "./sync-writer";
 import {
   loadSyncLedger,
   saveSyncLedger,
   type SyncLedger,
 } from "./sync-ledger";
-import {
-  recordSkippedRejected,
-  recordSkippedPlain,
-} from "./ledger-skip";
+import { recordSkippedRejected, recordSkippedPlain } from "./ledger-skip";
 export {
   confirmPublished,
+  pushConfirmedCommits,
   type ConfirmPublishedOptions,
   type ConfirmPublishedReport,
+  type PushConfirmedOptions,
 } from "./confirm-published";
 import { effectiveSelection, isDiscarded } from "./ledger-decisions";
 import { exportOptionsFor, resolveSyncContext, type SyncContext } from "./sync-scope";
@@ -62,15 +63,13 @@ export interface SyncOptions {
   runIds?: readonly string[];
   dryRun?: boolean;
   push?: boolean;
+  skipLock?: boolean;
   leakGuard?: LeakGuard;
-  /**
-   * 配置里登记的 profile：其公开视图随记录发布，其 key 文件纳入泄漏指纹。
-   * 缺省为空——所有 profile 调用都扣下，指纹只含三家 CLI 的登录凭据
-   */
+  /** 配置里登记的 profile：其公开视图随记录发布，其 key 文件纳入泄漏指纹 */
   profiles?: readonly ProfileConfig[];
   /** 允许发布的题目 id；缺省或 null 为全部 */
   publishPrompts?: readonly string[] | null;
-  /** 按轮次的导出子集（attemptKey）；只对尚未导出的轮次生效，已导出的沿用台账，见 effectiveSelection */
+  /** 按轮次的导出子集（attemptKey）；只对尚未导出的轮次生效，已导出的沿用台账 */
   attemptSelection?: Readonly<Record<string, readonly string[]>>;
   log?: (message: string) => void;
 }
@@ -162,7 +161,7 @@ async function backfillIdempotentLedger(
   newlyExported.push(runId);
 }
 
-/** 处理已有目录的幂等与冲突检查 */
+/** 处理已有目录的幂等与冲突检查；若仅是未发布轮次的 AI 评审结论补齐则允许就地更新 */
 async function checkExistingTargetDir(
   repoPath: string,
   runId: string,
@@ -172,24 +171,20 @@ async function checkExistingTargetDir(
   ledger: SyncLedger,
   newlyExportedRunIds: string[],
   report: SyncReport,
-): Promise<void> {
+): Promise<boolean> {
   const targetDir = join(repoPath, relativeRunDir);
-  const identical = await isContentIdentical(targetDir, res);
-  if (identical) {
+  if (await isContentIdentical(targetDir, res)) {
     report.skipped.push({ runId, reason: "idempotent" });
     if (!dryRun) {
-      await backfillIdempotentLedger(
-        repoPath,
-        runId,
-        relativeRunDir,
-        res,
-        ledger,
-        newlyExportedRunIds,
-      );
+      await backfillIdempotentLedger(repoPath, runId, relativeRunDir, res, ledger, newlyExportedRunIds);
     }
-  } else {
-    report.conflicts.push(runId);
+    return false;
   }
+  if (ledger[runId]?.status !== "published" && (await isJudgeOnlyUpgrade(targetDir, res))) {
+    return true;
+  }
+  report.conflicts.push(runId);
+  return false;
 }
 
 /** 评估单个候选轮次：导出、脱敏、幂等与冲突判定 */
@@ -208,18 +203,14 @@ async function evaluateSingleCandidate(
     report.skipped.push({ runId, reason: res.reason });
     // 不可发布题目与空轮次都记入台账，否则会一直算作待导出
     if (!dryRun && (res.reason === "unpublishable-prompt" || res.reason === "empty")) {
-      if (recordSkippedPlain(ledger, runId, res.reason)) {
-        newlySkippedRunIds.push(runId);
-      }
+      if (recordSkippedPlain(ledger, runId, res.reason)) newlySkippedRunIds.push(runId);
     }
     return {};
   }
   if (res.status === "rejected") {
     report.rejected.push({ runId, reasons: res.reasons });
-    if (!dryRun) {
-      if (recordSkippedRejected(ledger, runId, res.reasons)) {
-        newlySkippedRunIds.push(runId);
-      }
+    if (!dryRun && recordSkippedRejected(ledger, runId, res.reasons)) {
+      newlySkippedRunIds.push(runId);
     }
     return {};
   }
@@ -229,17 +220,10 @@ async function evaluateSingleCandidate(
     return {};
   }
   if (existsSync(join(repoPath, relativeRunDir))) {
-    await checkExistingTargetDir(
-      repoPath,
-      runId,
-      relativeRunDir,
-      res,
-      dryRun,
-      ledger,
-      newlyExportedRunIds,
-      report,
+    const upgradeInPlace = await checkExistingTargetDir(
+      repoPath, runId, relativeRunDir, res, dryRun, ledger, newlyExportedRunIds, report,
     );
-    return { redactions: res.redactions };
+    return upgradeInPlace ? { ready: res, redactions: res.redactions } : { redactions: res.redactions };
   }
   return { ready: res, redactions: res.redactions };
 }
@@ -315,15 +299,22 @@ async function publishContainedRuns(
 async function commitAndRecordExported(
   repoPath: string,
   readyToExport: readonly ReadyExportResult[],
+  affectedDates: ReadonlyMap<string, RunSummary[]>,
   ledger: SyncLedger,
   dataDirPath: string,
   newlyExportedRunIds: string[],
 ): Promise<string | null> {
   let commitSha: string | null = null;
   if (readyToExport.length > 0) {
+    const managedPaths = [
+      "index.json",
+      ...[...affectedDates.keys()].map((d) => `runs/${d.replaceAll("-", "/")}/index.json`),
+      ...readyToExport.map((r) => runDirPath(r.runId)).filter((p): p is string => p !== null),
+    ];
     commitSha = await commitSync(
       repoPath,
       readyToExport.map((r) => r.runId),
+      managedPaths,
     );
     const nowIso = new Date().toISOString();
     for (const item of readyToExport) {
@@ -344,9 +335,6 @@ async function commitAndRecordExported(
   return commitSha;
 }
 
-/**
- * 执行数据仓同步流水线。
- */
 function createInitialReport(dryRun: boolean): SyncReport {
   return {
     success: true,
@@ -389,21 +377,18 @@ async function persistExportedData(
   dataDirPath: string,
   newlyExportedRunIds: string[],
 ): Promise<{ exportedRunIds: string[]; commitSha: string | null }> {
-  const { exportedRunIds, affectedDates } = await writeAllExportedRuns(
-    repoPath,
-    readyToExport,
-  );
+  const { exportedRunIds, affectedDates } = await writeAllExportedRuns(repoPath, readyToExport);
   await updateRepoIndices(repoPath, affectedDates);
   const commitSha = await commitAndRecordExported(
     repoPath,
     readyToExport,
+    affectedDates,
     ledger,
     dataDirPath,
     newlyExportedRunIds,
   );
   return { exportedRunIds, commitSha };
 }
-
 
 /** 持久化产物、更新台账并在必要时执行推送 */
 async function finalizeSyncData(
@@ -416,11 +401,7 @@ async function finalizeSyncData(
   report: SyncReport,
 ): Promise<void> {
   const { exportedRunIds, commitSha } = await persistExportedData(
-    ctx.repoPath,
-    readyToExport,
-    ledger,
-    ctx.dataDirPath,
-    newlyExportedRunIds,
+    ctx.repoPath, readyToExport, ledger, ctx.dataDirPath, newlyExportedRunIds,
   );
   report.exported = exportedRunIds;
   report.commit = commitSha;
@@ -434,10 +415,7 @@ async function finalizeSyncData(
   }
 }
 
-/**
- * 执行数据仓同步流水线。
- */
-export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
+async function runSyncPipeline(options: SyncOptions): Promise<SyncReport> {
   const ctx = await resolveSyncContext(options);
   const report = createInitialReport(ctx.dryRun);
   await preparePreflight(ctx.repoPath, ctx.dryRun, ctx.push);
@@ -455,14 +433,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
   };
 
   const { readyToExport, allRedactions } = await evaluateCandidates(
-    candidateIds,
-    ctx.repoPath,
-    exportOpts,
-    ctx.dryRun,
-    ledger,
-    newlyExportedRunIds,
-    newlySkippedRunIds,
-    report,
+    candidateIds, ctx.repoPath, exportOpts, ctx.dryRun, ledger, newlyExportedRunIds, newlySkippedRunIds, report,
   );
   report.redactions = allRedactions;
 
@@ -472,13 +443,7 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
   }
 
   await finalizeSyncData(
-    ctx,
-    readyToExport,
-    ledger,
-    newlyExportedRunIds,
-    newlySkippedRunIds,
-    newlyPublishedRunIds,
-    report,
+    ctx, readyToExport, ledger, newlyExportedRunIds, newlySkippedRunIds, newlyPublishedRunIds, report,
   );
 
   report.ledgerTransitions = {
@@ -486,5 +451,20 @@ export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
     published: newlyPublishedRunIds,
   };
   return report;
+}
+
+/**
+ * 执行数据仓同步流水线（默认自动获取跨进程同步互斥锁）。
+ */
+export async function syncDataRepo(options: SyncOptions): Promise<SyncReport> {
+  const lock = options.skipLock ? null : await acquireDataRepoSyncLock(options.dataDir);
+  if (lock !== null && !lock.acquired) {
+    throw new Error(lock.reason ?? "已有一个数据仓动作正在执行");
+  }
+  try {
+    return await runSyncPipeline(options);
+  } finally {
+    await lock?.release();
+  }
 }
 

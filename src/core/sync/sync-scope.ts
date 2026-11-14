@@ -36,7 +36,9 @@ export interface SyncContext {
 }
 
 /** 配置了仓地址时先把本地副本准备好；origin 对不上或目录不是 git 仓就中止，不往错的仓里写 */
-async function prepareCheckout(options: SyncOptions): Promise<void> {
+export async function prepareCheckout(
+  options: Pick<SyncOptions, "repoPath" | "repository" | "log">,
+): Promise<void> {
   if (!options.repository) return;
   const outcome = await ensureDataRepoCheckout(
     { path: options.repoPath, repository: options.repository },

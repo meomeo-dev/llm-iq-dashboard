@@ -227,10 +227,15 @@ function frameSvg(input: ResultSetExport, card: DashboardCard, x: number, y: num
     if (input.artMode === "blank") return white;
     return white + artImageSvg(art, inner);
   }
-  const redacted = card.status === "ok";
-  const status = redacted ? (locale === "en" ? "Redacted, unpublished" : "已脱敏，未发布") : statusText(card.status, locale);
+  const redacted = card.status === "ok" && card.svgFile === null;
+  const missingArt = card.status === "ok" && card.svgFile !== null;
+  const status = redacted
+    ? (locale === "en" ? "Redacted, unpublished" : "已脱敏，未发布")
+    : missingArt
+      ? (locale === "en" ? "Artwork unavailable" : "作品加载失败")
+      : statusText(card.status, locale);
   const reason = localizeCardError(card.error, card.status, locale) ?? status;
-  const color = card.status === "no-svg" ? palette.warn : card.status === "ok" ? palette.textDim : palette.err;
+  const color = card.status === "no-svg" || missingArt ? palette.warn : redacted ? palette.textDim : palette.err;
   const lines = wrap(reason, CARD_WIDTH - 40, 12, 5);
   const startY = y + FRAME_HEIGHT / 2 - (lines.length * 17) / 2 - 4;
   return (

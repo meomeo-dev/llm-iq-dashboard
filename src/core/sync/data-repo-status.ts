@@ -12,6 +12,7 @@ import { parse as parseYaml } from "yaml";
 import type { AppConfig } from "../config";
 import { isReadonly } from "../deploy-mode";
 import { configPath as defaultAppConfigPath, dataRoot } from "../paths";
+import { isJudging, type RunProgress } from "../progress";
 import { requestRunnerDataRepoStatus } from "../requests";
 import { runIdTime } from "../store";
 import { externalRunner } from "../runner-link";
@@ -68,7 +69,7 @@ export async function saveLastAction(
 ): Promise<void> {
   const target = lastActionPath(customDataDir);
   await mkdir(dirname(target), { recursive: true });
-  const staging = `${target}.staging`;
+  const staging = `${target}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.staging`;
   await writeFile(staging, `${JSON.stringify(result, null, 2)}\n`, "utf8");
   await rename(staging, target);
 }
@@ -234,6 +235,16 @@ function summarizePendingRun(runId: string, run: LocalRunShape): PendingRun {
   return { runId, promptIds, attempts: attempts.length, ok, profiles, items };
 }
 
+async function isRunProgressUnfinished(runDir: string): Promise<boolean> {
+  try {
+    const raw = await readFile(join(runDir, "progress.json"), "utf8");
+    const progress = JSON.parse(raw) as RunProgress;
+    return progress.finishedAt === null || isJudging(progress);
+  } catch {
+    return false;
+  }
+}
+
 async function checkSingleRunDir(
   runDir: string,
   runId: string,
@@ -244,7 +255,7 @@ async function checkSingleRunDir(
   try {
     const text = await readFile(runJsonPath, "utf8");
     const run = JSON.parse(text) as LocalRunShape;
-    if (run.inProgress === true) {
+    if (run.inProgress === true || (await isRunProgressUnfinished(runDir))) {
       return { pending: null, state: classifyUnfinished(runId, now) };
     }
     const pending = rawLedger[runId] === undefined ? summarizePendingRun(runId, run) : null;

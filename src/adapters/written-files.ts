@@ -3,25 +3,45 @@
  * 内容是否为 SVG 由编排层判断。
  */
 
-import { readFile, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
+import { isAbsolute, relative, resolve } from "node:path";
 import type { WrittenFile } from "./types";
 
 /** 正常作品在几十 KB 量级 */
 const MAX_WRITTEN_FILE_BYTES = 2 * 1024 * 1024;
 
+function isWithinDir(targetPath: string, rootDir: string): boolean {
+  const rel = relative(rootDir, targetPath);
+  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+async function isAllowedPath(resolvedPath: string, allowedDirs?: string | readonly string[]): Promise<boolean> {
+  if (allowedDirs === undefined) return true;
+  const dirs = typeof allowedDirs === "string" ? [allowedDirs] : allowedDirs;
+  for (const dir of dirs) {
+    const resolvedDir = await realpath(dir).catch(() => resolve(dir));
+    if (isWithinDir(resolvedPath, resolvedDir)) return true;
+  }
+  return false;
+}
+
 /**
  * @param modifiedSince 只接受此刻之后修改过的文件；模型常复用固定文件名，
  *   需排除更早调用留下的旧作。
+ * @param allowedDirs 限定允许读取的目录（经 realpath 解析符号链接后比对），防止路径穿越或软链读取宿主机任意文件。
  */
 export async function readWrittenFile(
   path: string,
   modifiedSince?: Date,
+  allowedDirs?: string | readonly string[],
 ): Promise<WrittenFile | null> {
   try {
-    const info = await stat(path);
-    if (info.size > MAX_WRITTEN_FILE_BYTES) return null;
+    const resolvedPath = await realpath(path);
+    if (!(await isAllowedPath(resolvedPath, allowedDirs))) return null;
+    const info = await stat(resolvedPath);
+    if (!info.isFile() || info.size > MAX_WRITTEN_FILE_BYTES) return null;
     if (modifiedSince !== undefined && info.mtimeMs < modifiedSince.getTime()) return null;
-    return { path, content: await readFile(path, "utf8") };
+    return { path: resolvedPath, content: await readFile(resolvedPath, "utf8") };
   } catch {
     return null;
   }

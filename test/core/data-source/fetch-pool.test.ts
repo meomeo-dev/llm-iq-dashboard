@@ -61,3 +61,20 @@ test("请求失败不留缓存，下一次重试；缺省时效为 60 秒", asyn
   await pool.fetch("u", execute);
   assert.equal(calls, 3);
 });
+
+test("HTTP 4xx/5xx 响应不进入缓存，下一次调用立即重试", async () => {
+  const clock = makeClock();
+  const pool = new FetchPool({ now: clock.now });
+  let calls = 0;
+  const execute = async () => {
+    calls += 1;
+    if (calls === 1) return new Response("bad gateway", { status: 502 });
+    return new Response("recovered", { status: 200 });
+  };
+  const first = await pool.fetch("u", execute, 60_000);
+  assert.equal(first.status, 502);
+  const second = await pool.fetch("u", execute, 60_000);
+  assert.equal(second.status, 200);
+  assert.equal(await second.text(), "recovered");
+  assert.equal(calls, 2);
+});

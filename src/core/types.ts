@@ -186,4 +186,6 @@ export interface DashboardCard extends Attempt {
   judge: Judgement | null;
   /** AI 层裁判的用量与 API 等价成本（ACR-020），读取时计算；没经 AI 层时为 null */
   judgeCost: JudgeCost | null;
+  /** 仅用于前端实时合成进行中/排队中格子占位，绝不落盘 */
+  liveState?: "queued" | "running";
 }

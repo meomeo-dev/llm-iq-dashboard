@@ -1,17 +1,12 @@
 import { cookies, headers } from "next/headers";
 import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
-import { listRunStarts, loadCardsBetween, getRemoteNotice } from "@/core/data-source";
+import { getRemoteNotice } from "@/core/data-source";
 import { getDeployMode } from "@/core/deploy-mode";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, resolveLocale, type Locale } from "@/i18n";
 import { CliStatusBanner } from "./components/cli-status/CliStatusBanner";
 import { Dashboard } from "./components/Dashboard";
-import {
-  buildPromptStandards,
-  cardWindow,
-  localizeRemoteNotice,
-  readDashboardSettings,
-  sortNewestFirst,
-} from "./components/dashboard/dashboard-page-data";
+import { localizeRemoteNotice } from "./components/dashboard/dashboard-page-data";
+import { loadDashboardWindow } from "./components/dashboard/dashboard-window";
 
 /** 产物由其他进程写入，每次请求都重读，禁止构建期静态化 */
 export const dynamic = "force-dynamic";
@@ -41,17 +36,10 @@ export default async function Page({ searchParams }: PageProps) {
   const owner = (await verifySession((await cookies()).get(SESSION_COOKIE)?.value)) !== null;
   const isShowcase = readonly || dataSource === "remote";
   const dayKey = typeof day === "string" ? day : null;
-  const runStarts = await listRunStarts();
-  // 只读或远程展台下，未显式指定日期时默认按最新轮次所在日期拉取卡片，确保访客首屏不为空
-  const effectiveDayKey =
-    dayKey ?? (isShowcase && runStarts.length > 0 ? runStarts[0]?.slice(0, 10) ?? null : null);
-  const range = cardWindow(effectiveDayKey, new Date());
-  const cards = sortNewestFirst(await loadCardsBetween(range.from, range.to));
+  const { cards, runStarts, scheduleTimeZone, promptLabels, promptStandards, profiles, runsRevision } =
+    await loadDashboardWindow(dayKey);
 
   const remoteNotice = getRemoteNotice();
-  const { prompts, scheduleTimeZone, profiles } = readDashboardSettings();
-  const promptLabels = Object.fromEntries(prompts.map((spec) => [spec.id, spec.label]));
-  const promptStandards = buildPromptStandards(prompts, cards);
 
   return (
     <div className="page">
@@ -78,6 +66,7 @@ export default async function Page({ searchParams }: PageProps) {
         promptStandards={promptStandards}
         scheduleTimeZone={scheduleTimeZone}
         profiles={profiles}
+        initialRunsRevision={runsRevision}
       />
     </div>
   );

@@ -14,7 +14,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { AppConfig } from "../config";
 import { runDir } from "../paths";
-import { isJudging, type RunProgress } from "../progress";
+import { isJudging, progressAlive, type RunProgress } from "../progress";
 import { listRunIds, saveRun, writeJsonAtomic } from "../store";
 import type { RunRecord } from "../types";
 import { postRunSync } from "./post-sync";
@@ -64,6 +64,10 @@ async function holdsOnlyProgress(runId: string): Promise<boolean> {
 }
 
 async function recoverOne(runId: string, config: AppConfig, log: Logger, report: RecoveryReport): Promise<void> {
+  const progress = await readJson<RunProgress>(runId, PROGRESS_FILE);
+  if (progress !== null && (await progressAlive(progress))) {
+    return;
+  }
   const record = await readJson<RunRecord>(runId, RUN_FILE);
   if (record === null) {
     if (await holdsOnlyProgress(runId)) {
@@ -74,7 +78,6 @@ async function recoverOne(runId: string, config: AppConfig, log: Logger, report:
     return;
   }
   if (record.inProgress !== true) {
-    const progress = await readJson<RunProgress>(runId, PROGRESS_FILE);
     if (progress !== null && isJudging(progress)) report.judgingInterrupted.push(runId);
     return;
   }

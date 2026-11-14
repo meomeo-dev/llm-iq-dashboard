@@ -32,11 +32,16 @@ export function resolveOpenCell(
   };
 }
 
-/** 汇总所选日期的轮次数、作品数与成功率（四舍五入百分比） */
+/** 汇总所选日期的轮次数、已完成作品数与成功率（四舍五入百分比）；进行中的实时占位不计入已完成统计 */
 export function summarize(cards: readonly DashboardCard[]): { runs: number; works: number; rate: number } {
   const runs = new Set(cards.map((card) => card.runId)).size;
-  const ok = cards.filter((card) => card.status === "ok").length;
-  return { runs, works: cards.length, rate: cards.length === 0 ? 0 : Math.round((ok / cards.length) * 100) };
+  const completed = cards.filter((card) => card.liveState === undefined);
+  const ok = completed.filter((card) => card.status === "ok").length;
+  return {
+    runs,
+    works: completed.length,
+    rate: completed.length === 0 ? 0 : Math.round((ok / completed.length) * 100),
+  };
 }
 
 /** 解析所选格子的客观黄金标准；优先匹配 candidate 级特异性标准 */

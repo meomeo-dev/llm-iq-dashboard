@@ -7,12 +7,13 @@
  */
 
 import type { ProfileLaunch } from "../adapters/index";
+import { acquireExecutionLock, describeActiveWorkConflict } from "./active-work";
 import type { AppConfig } from "./config";
 import { readProfileKey } from "./profile-credentials";
 import { createProgressTracker, type ProgressTracker } from "./progress";
 import { createSerialWriter, type SerialWriter } from "./serial-writes";
 import { watchCancel, type CancelWatch } from "./run-cancel";
-import { saveRun } from "./store";
+import { allocateRunDir, saveRun } from "./store";
 import type { Attempt, CliKind, RunRecord } from "./types";
 import { buildConfigLeakGuard, type LeakGuard } from "./leak-guard";
 import { describeProgress, laneIdentity, type LaneItem } from "./run-plan";
@@ -20,7 +21,7 @@ import type { RenderedPrompt } from "./variables";
 import { discardScratch } from "./scratch-cleanup";
 import { closeJudgeBrowser } from "./judge/browser";
 import { createAttemptJudge } from "./judge/judge-attempt";
-import { judgeRoundWithAi } from "./judge/ai-round";
+import { judgeRoundWithAi, prepareAiJudgingQueue } from "./judge/ai-round";
 import { executeLanes, type LaneHooks } from "./run/execute-lanes";
 import { postRunSync } from "./run/post-sync";
 import {
@@ -139,8 +140,9 @@ function buildLaneHooks(
       log(`[${runId}] ${attempt.targetId} @${job.prompt.promptId} → ${attempt.status} (${attempt.durationMs}ms)`);
       if (callBlocker(blockers, job.target) === undefined) budget?.settle(attempt.targetId, costOf(attempt));
       slots[index] = attempt;
-      progress.markDone(lane, call, attempt);
+      // 先写 run.json 再标 progress.json 完成，确保看板看到完成时结果已落盘
       writer.enqueue(() => saveRun(snapshot(true)));
+      progress.markDone(lane, call, attempt);
     },
     onCancelled: (lane, call) => progress.markCancelled(lane, call),
   };
@@ -167,7 +169,7 @@ async function initRunProgressTracking(
     describeProgress(runId, trigger, startedAt, concurrency, lanes),
     writer,
   );
-  await writer.drain();
+  await writer.drainOrThrow();
   onStarted?.(runId);
   return { writer, progress };
 }
@@ -200,14 +202,24 @@ function createRunSnapshot(
 async function finishRunRecord(
   snapshot: (inProgress: boolean) => RunRecord,
   progress: ProgressTracker,
+  writer: SerialWriter,
   runId: string,
   config: AppConfig,
+  cancelled: boolean,
   log: Logger,
 ): Promise<RunRecord> {
-  await progress.finish();
   const record = snapshot(false);
+  const aiQueue = cancelled ? [] : await prepareAiJudgingQueue(config, record, progress.judging);
+  // 先排空进行中的写入并落盘终态 run.json，再标 progress.json 结束
+  await writer.drainOrThrow();
   await saveRun(record);
+  await progress.finish();
   await discardScratch(runId);
+  const outcome = cancelled ? "已停止" : "完成";
+  log(`[${runId}] ${outcome}，成功 ${countOk(record.attempts)}/${record.attempts.length}`);
+  if (!cancelled && aiQueue.length > 0) {
+    await judgeRoundWithAi(config, record, log, progress.judging, aiQueue);
+  }
   await postRunSync(config, runId, log);
   return record;
 }
@@ -221,51 +233,52 @@ function harnessGuardOf(config: AppConfig, runId: string, log: Logger): string |
 
 export async function executeRun(config: AppConfig, options: ExecuteOptions): Promise<RunRecord> {
   const log = options.log ?? (() => {});
-  const startedAt = new Date();
-  const runId = formatRunId(startedAt);
-  const budget = await openBudget(config.budget, startedAt);
-
-  await prepareRunStorage(config, runId, startedAt, log);
-  const { prompts, jobs, lanes } = await prepareRunPlan(config, startedAt, options, log);
-
-  log(
-    `[${runId}] 开始，${prompts.length} 条提示词 × ${config.targets.length} 个目标 = ${jobs.length} 次调用，` +
-      `${lanes.length} 个模型分道，同时最多 ${config.run.profileConcurrency} 个 profile、` +
-      `每个 profile 最多 ${config.run.concurrency} 道`,
-  );
-
-  const slots = new Array<Attempt | undefined>(jobs.length);
-  const state: RunState = {};
-  const harnessGuard = harnessGuardOf(config, runId, log);
-  const snapshot = (inProgress: boolean): RunRecord =>
-    createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state, harnessGuard);
-
-  const { writer, progress } = await initRunProgressTracking(
-    runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
-  );
-
-  const profiles = await prepareProfileLaunches(config, lanes, log);
-  const blockers: CallBlockers = { ...(await preflight(lanes, log)), profile: profiles.blockers };
-  const leakGuard = await setupLeakGuard(runId, config, log);
-  const cancel = setupCancelWatch(runId, log, progress, state);
+  const initialAt = new Date();
+  const lock = await acquireExecutionLock({ kind: "run", runId: formatRunId(initialAt), trigger: options.trigger });
+  if (!lock.acquired) throw new Error(describeActiveWorkConflict(lock.conflict));
 
   try {
-    const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
-    const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
-    const judge = createAttemptJudge(config.judge.enabled, log);
-    const round = { runId, signal: cancel.signal, leakGuard, judge, harnessGuard, profileLaunches: profiles.launches };
-    await executeLanes(lanes, limits, round, hooks);
-  } finally {
-    cancel.stop();
-    await closeJudgeBrowser();
-  }
+    const budget = await openBudget(config.budget, initialAt);
+    const { runId, startedAt } = await allocateRunDir(initialAt, formatRunId);
+    await prepareRunStorage(config, runId, startedAt, log);
+    const { prompts, jobs, lanes } = await prepareRunPlan(config, startedAt, options, log);
 
-  const record = await finishRunRecord(snapshot, progress, runId, config, log);
-  const outcome = state.cancelledAt !== undefined ? "已停止" : "完成";
-  log(`[${runId}] ${outcome}，成功 ${countOk(record.attempts)}/${record.attempts.length}`);
-  // AI 层在轮次记录定稿之后串行跑，不与基准调用重叠；被停止的轮次不评
-  if (state.cancelledAt === undefined) await judgeRoundWithAi(config, record, log, progress.judging);
-  return record;
+    log(
+      `[${runId}] 开始，${prompts.length} 条提示词 × ${config.targets.length} 个目标 = ${jobs.length} 次调用，` +
+        `${lanes.length} 个模型分道，同时最多 ${config.run.profileConcurrency} 个 profile、` +
+        `每个 profile 最多 ${config.run.concurrency} 道`,
+    );
+
+    const slots = new Array<Attempt | undefined>(jobs.length);
+    const state: RunState = {};
+    const harnessGuard = harnessGuardOf(config, runId, log);
+    const snapshot = (inProgress: boolean): RunRecord =>
+      createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state, harnessGuard);
+
+    const { writer, progress } = await initRunProgressTracking(
+      runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
+    );
+
+    const profiles = await prepareProfileLaunches(config, lanes, log);
+    const blockers: CallBlockers = { ...(await preflight(lanes, log)), profile: profiles.blockers };
+    const leakGuard = await setupLeakGuard(runId, config, log);
+    const cancel = setupCancelWatch(runId, log, progress, state);
+
+    try {
+      const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
+      const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
+      const judge = createAttemptJudge(config.judge.enabled, log);
+      const round = { runId, signal: cancel.signal, leakGuard, judge, harnessGuard, profileLaunches: profiles.launches };
+      await executeLanes(lanes, limits, round, hooks);
+    } finally {
+      cancel.stop();
+      await closeJudgeBrowser();
+    }
+
+    return await finishRunRecord(snapshot, progress, writer, runId, config, state.cancelledAt !== undefined, log);
+  } finally {
+    await lock.release();
+  }
 }
 
 function countOk(attempts: readonly Attempt[]): number {

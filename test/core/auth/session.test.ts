@@ -59,4 +59,14 @@ describe("issueSession / verifySession", () => {
     const dump = JSON.stringify(await listDevices());
     assert.equal(dump.includes(token), false);
   });
+
+  test("allowRotate 为 false（或省略 now 与 allowRotate）时不触发凭据轮换，避免无 Set-Cookie 响应使旧凭据过期", async () => {
+    const { cookie } = await issueSession("只读校验", NOW);
+    const noRotate = await verifySession(cookie, at(2 * DAY_MS), { allowRotate: false });
+    assert.ok(noRotate);
+    assert.equal(noRotate.rotatedCookie, null);
+    // 超过 60 秒宽限期后原 cookie 依然有效
+    const stillValid = await verifySession(cookie, at(2 * DAY_MS + 120_000), { allowRotate: false });
+    assert.ok(stillValid);
+  });
 });

@@ -106,3 +106,17 @@ test("artImageSvg：知道 viewBox 尺寸时外套同比例的 <svg>，<image> �
     '<image href="data:x" x="10" y="20" width="280" height="205" preserveAspectRatio="xMidYMid meet"/>',
   );
 });
+
+test("缩略图缺失与脱敏未发布区分：有 svgFile 但无缩略图显示作品加载失败，svgFile 为 null 显示脱敏未发布", () => {
+  const missingThumbCard = card("medium", undefined, "ok");
+  const redactedCard = { ...card("xhigh", undefined, "ok"), svgFile: null } as DashboardCard;
+  const { svg } = renderResultSetSvg(
+    input({
+      cards: [missingThumbCard, redactedCard],
+      columns: [{ name: "default", label: "登录态", color: null }],
+      thumbnails: new Map(),
+    }),
+  );
+  assert.match(svg, /作品加载失败/);
+  assert.match(svg, /已脱敏，未发布/);
+});

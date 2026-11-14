@@ -39,6 +39,8 @@ export interface DashboardProps {
   scheduleTimeZone: string | null;
   /** 配置里的上游 profile 公开视图；缺省为空，页面不出现任何上游元素 */
   profiles?: readonly ProfileView[];
+  /** 首屏 SSR 对应的本地轮次产物修订号，供客户端收到 SSE 变化后按需增量拉取 */
+  initialRunsRevision?: string;
 }
 
 /**
@@ -48,21 +50,21 @@ export interface DashboardProps {
  */
 export function Dashboard(props: DashboardProps) {
   const state = useDashboardViewState(props);
-  const { data, timeZone } = state;
+  const { data, synced, timeZone } = state;
 
   if (!data.ready || data.todayKey === null || data.dayKey === null || timeZone === null) {
     return <div className="workspace" />;
   }
 
   return (
-    <ProfilesProvider value={{ profiles: props.profiles ?? [], owner: props.owner }}>
+    <ProfilesProvider value={{ profiles: synced.profiles, owner: props.owner }}>
       <div className="workspace">
         <DashboardToolbar
           owner={props.owner}
           readonly={state.readonly}
           remote={state.remote}
           cards={state.dayCards}
-          promptLabels={props.promptLabels}
+          promptLabels={synced.promptLabels}
           days={data.days}
           dayKey={data.dayKey}
           todayKey={data.todayKey}
@@ -81,7 +83,7 @@ export function Dashboard(props: DashboardProps) {
           dayKey={data.dayKey}
           timeZone={timeZone}
           hidden={state.hidden}
-          runStarts={props.runStarts}
+          runStarts={synced.runStarts}
           dayMomentsCount={data.dayMoments.length}
           days={data.days}
           todayKey={data.todayKey}
@@ -94,7 +96,7 @@ export function Dashboard(props: DashboardProps) {
           visible={data.visible}
           efforts={data.efforts}
           timeZone={timeZone}
-          promptStandards={props.promptStandards}
+          promptStandards={synced.promptStandards}
           onClose={() => state.setOpenCell(null)}
         />
       </div>

@@ -21,6 +21,7 @@ const EVENTS_URL = "/api/events";
 const PROGRESS_EVENT = "progress";
 const AUTO_RUN_EVENT = "auto-run";
 const FINGERPRINT_JOB_EVENT = "fingerprint-job";
+const RUNS_REVISION_EVENT = "runs-revision";
 const RECONNECT_MS = 2_000;
 
 /** 自动任务状态；服务端读不出来（例如配置文件写坏）时是 error */
@@ -32,9 +33,16 @@ interface LiveState {
   autoRun: LiveAutoRun | null;
   /** 收到首份快照之前为 undefined；无活跃作业时为 null */
   fingerprintJob: FingerprintJobView | null | undefined;
+  /** 最近轮次落盘产物修订标记；尚未连上 SSE 时为 null */
+  runsRevision: string | null;
 }
 
-const INITIAL: LiveState = { progress: null, autoRun: null, fingerprintJob: undefined };
+const INITIAL: LiveState = {
+  progress: null,
+  autoRun: null,
+  fingerprintJob: undefined,
+  runsRevision: null,
+};
 
 let state: LiveState = INITIAL;
 const listeners = new Set<() => void>();
@@ -54,6 +62,10 @@ export function useLiveAutoRun(): LiveAutoRun | null {
 /** 当前活跃的模型指纹作业；无活跃作业时为 null，尚未连上 SSE 时为 undefined */
 export function useLiveFingerprintJob(): FingerprintJobView | null | undefined {
   return useSyncExternalStore(subscribe, () => state.fingerprintJob, () => INITIAL.fingerprintJob);
+}
+
+export function useLiveRunsRevision(): string | null {
+  return useSyncExternalStore(subscribe, () => state.runsRevision, () => INITIAL.runsRevision);
 }
 
 /** 切换开关后先用 PUT 响应更新本地状态，随后到达的推送照常覆盖 */
@@ -114,6 +126,9 @@ function connect(): void {
   next.addEventListener(FINGERPRINT_JOB_EVENT, (event) => {
     update({ fingerprintJob: parse<FingerprintJobView | null>(event) });
   });
+  next.addEventListener(RUNS_REVISION_EVENT, (event) => {
+    update({ runsRevision: parse<string>(event) });
+  });
   next.onerror = () => {
     // CONNECTING 表示浏览器正在自动重连；只有 CLOSED 需要自己再连
     if (source !== next || next.readyState !== EventSource.CLOSED) return;
@@ -127,6 +142,13 @@ function disconnect(): void {
   clearTimeout(reconnectTimer);
   source?.close();
   source = null;
+}
+
+/** 仅用于单测在挂载前后清理全局 SSE 状态，避免测试间串味 */
+export function resetLiveStoreForTests(): void {
+  disconnect();
+  state = INITIAL;
+  listeners.clear();
 }
 
 function parse<T>(event: Event): T {

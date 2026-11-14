@@ -12,6 +12,7 @@ import { loadConfig, type AppConfig } from "@/core/config";
 import { configPath } from "@/core/paths";
 import {
   enqueueRequest,
+  expirePendingRequest,
   requestRunnerDataRepoStatus,
   waitForRequest,
 } from "@/core/requests";
@@ -65,6 +66,9 @@ async function startViaRunner(
     });
     return NextResponse.json(result);
   }
+  if (settled?.state !== "failed") {
+    await expirePendingRequest(queued.id, "执行器未响应：确认 runner 容器正在运行").catch(() => {});
+  }
   const error =
     settled?.state === "failed"
       ? (settled.result?.error ?? "执行器处理失败")
@@ -84,7 +88,7 @@ async function executeLocalSync(
   let error: string | null = null;
 
   try {
-    report = await performSyncAction(action, config);
+    report = await performSyncAction(action, config, undefined, { skipLock: true });
   } catch (cause) {
     ok = false;
     error = cause instanceof Error ? cause.message : String(cause);
@@ -109,6 +113,20 @@ async function executeLocalSync(
     detail: `${mode} ${ok ? "成功" : (error ?? "失败")}`,
   });
   return NextResponse.json(result);
+}
+
+async function checkLocalPushPreconditions(
+  repoPath: string,
+  actionRequest: SyncActionRequest,
+): Promise<string | null> {
+  const currentAhead = await getAheadCommits(repoPath);
+  if (!isAheadCommitsMatch(currentAhead, actionRequest.confirmation?.aheadCommits)) {
+    return "待推送提交清单已发生变化，请刷新面板后重新确认";
+  }
+  if (currentAhead.length === 0) {
+    return "没有待推送的本地提交，请先执行导出后再推送";
+  }
+  return null;
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -145,12 +163,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     if (actionRequest.mode === "push") {
-      const currentAhead = await getAheadCommits(full.dataRepo.path);
-      if (!isAheadCommitsMatch(currentAhead, actionRequest.confirmation?.aheadCommits)) {
-        return NextResponse.json({
-          error: "待推送提交清单已发生变化，请刷新面板后重新确认",
-        }, { status: 409 });
-      }
+      const localPushErr = await checkLocalPushPreconditions(full.dataRepo.path, actionRequest);
+      if (localPushErr) return NextResponse.json({ error: localPushErr }, { status: 409 });
     }
 
     return await executeLocalSync(full, actionRequest, who);

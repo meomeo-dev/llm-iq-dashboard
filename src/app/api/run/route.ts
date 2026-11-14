@@ -22,7 +22,7 @@ import { configPath } from "@/core/paths";
 import { findActiveRun } from "@/core/progress";
 import { readCredentialStatus } from "@/core/profile-credentials";
 import { listPrompts } from "@/core/prompt";
-import { enqueueRequest, waitForRequest } from "@/core/requests";
+import { enqueueRequest, expirePendingRequest, waitForRequest } from "@/core/requests";
 import { narrowConfig, scheduledRound, type RunSelection } from "@/core/run-selection";
 import { executeRun } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
@@ -160,17 +160,26 @@ async function startViaRunner(
 ): Promise<NextResponse> {
   const queued = await enqueueRequest("run", selection);
   const settled = await waitForRequest(queued.id, RUNNER_START_TIMEOUT_MS);
-  if (settled?.state === "done" && settled.result?.runId !== undefined) {
-    const { runId, calls } = settled.result;
+  const finalState =
+    settled?.state === "done" || settled?.state === "failed"
+      ? settled
+      : await expirePendingRequest(queued.id, "执行器未响应：确认 runner 容器在运行（docker compose ps）");
+  if (finalState?.state === "done" && finalState.result?.runId !== undefined) {
+    const { runId, calls } = finalState.result;
     await audit({ action: "run", outcome: "ok", deviceId: who.deviceId, ip: who.ip, detail: `${runId} ${calls ?? 0} 次调用` });
     return NextResponse.json({ started: true, runId, calls: calls ?? 0 }, { status: 202 });
   }
+  if (finalState?.state === "claimed") {
+    await audit({ action: "run", outcome: "ok", deviceId: who.deviceId, ip: who.ip, detail: `请求 ${queued.id} 已被执行器认领，后台启动中` });
+    return NextResponse.json({ started: false, claimed: true, requestId: queued.id }, { status: 202 });
+  }
+  const rejected = settled?.state === "failed";
   const error =
-    settled?.state === "failed"
+    rejected
       ? (settled.result?.error ?? "执行器拒绝了请求")
       : "执行器未响应：确认 runner 容器在运行（docker compose ps）";
   await audit({ action: "run", outcome: "error", deviceId: who.deviceId, ip: who.ip, detail: error });
-  return NextResponse.json({ error }, { status: settled?.state === "failed" ? 409 : 503 });
+  return NextResponse.json({ error }, { status: rejected ? 409 : 503 });
 }
 
 async function startLocalRun(

@@ -18,14 +18,17 @@ describe("isWatchedPath", () => {
     assert.equal(isWatchedPath("runs", OLDEST_WATCHED), true);
   });
 
-  test("放行较新轮次目录与其中的 progress.json", () => {
+  test("放行较新轮次目录与其中的 progress.json / run.json / *.judge.json", () => {
     assert.equal(isWatchedPath(`runs/${RECENT_RUN}`, OLDEST_WATCHED), true);
     assert.equal(isWatchedPath(`runs/${RECENT_RUN}/progress.json`, OLDEST_WATCHED), true);
+    assert.equal(isWatchedPath(`runs/${RECENT_RUN}/run.json`, OLDEST_WATCHED), true);
+    assert.equal(isWatchedPath(`runs/${RECENT_RUN}/codex-a.judge.json`, OLDEST_WATCHED), true);
   });
 
-  test("忽略卡片产物、临时目录与其它顶层文件", () => {
+  test("忽略卡片产物、临时文件与其它顶层文件", () => {
     assert.equal(isWatchedPath(`runs/${RECENT_RUN}/codex-a.svg`, OLDEST_WATCHED), false);
-    assert.equal(isWatchedPath(`runs/${RECENT_RUN}/run.json`, OLDEST_WATCHED), false);
+    assert.equal(isWatchedPath(`runs/${RECENT_RUN}/codex-a.judge-ai.txt`, OLDEST_WATCHED), false);
+    assert.equal(isWatchedPath(`runs/${RECENT_RUN}/run.json.1.2.abcd.staging`, OLDEST_WATCHED), false);
     assert.equal(isWatchedPath("scratch", OLDEST_WATCHED), false);
     assert.equal(isWatchedPath("variable-state.json", OLDEST_WATCHED), false);
   });

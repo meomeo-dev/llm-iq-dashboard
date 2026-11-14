@@ -33,6 +33,14 @@
   color: var(--accent);
 }
 
+.status-text.status-running {
+  color: var(--accent);
+}
+
+.status-text.status-queued {
+  color: var(--text-dim);
+}
+
 /* 单独查看大图的两个入口：点作品本身，或页脚右端的链接 */
 .card-frame-link {
   display: block;

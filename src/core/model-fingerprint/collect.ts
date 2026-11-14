@@ -1,6 +1,6 @@
 /** 模型指纹并发采集与批量核验编排器（collect.ts）：支持多目标单作业编排、按模型分道并发与道内跨探针并发。 */
 import type { CapabilitySnapshot } from "../../capabilities/types";
-import { describeActiveWorkConflict, findActiveWork } from "../active-work";
+import { acquireExecutionLock, describeActiveWorkConflict } from "../active-work";
 import { resolveModelFingerprintConfig, type AppConfig, type ModelFingerprintConfig } from "../config";
 import type { Logger } from "../runner";
 import { DEFAULT_PROFILE, type CliKind } from "../types";
@@ -9,7 +9,7 @@ import {
   invokeSingleProbeCall, openTrackedJobEnv, resolveFillTargetProfile, resolveFingerprintTarget, runWithConcurrencyLimit,
   type CallExecutionEnv, type CollectDeps, type ResolvedFingerprintTarget, type SessionConcurrencyGate,
 } from "./collect-core";
-import type { PlannedProbeLaneItem } from "./job";
+import { formatFingerprintJobId, type PlannedProbeLaneItem } from "./job";
 import {
   planReferenceFill, planVerificationCheck, resolveFillTargets, resolveSelectedProbes,
   type ProbeGapSummary, type VerificationCheckPlan,
@@ -76,6 +76,17 @@ export interface ExecuteCheckOptions extends ExecuteCheckTarget {
   log?: Logger;
 }
 
+async function loadSampleSetsForTargetEfforts(
+  config: AppConfig,
+  catalog: CapabilitySnapshot | null,
+): Promise<ProbeSampleSet[]> {
+  const allSets = await listAllSampleSets();
+  return allSets.filter((set) => {
+    const resolved = resolveFingerprintTarget(config, catalog, set.cli, set.model);
+    return set.appliedEffort === resolved.appliedEffort;
+  });
+}
+
 async function applyDiskMutationsForFill(
   config: AppConfig, fpCfg: ModelFingerprintConfig, catalog: CapabilitySnapshot | null, options: ExecuteFillOptions,
 ): Promise<void> {
@@ -84,14 +95,14 @@ async function applyDiskMutationsForFill(
     throw new Error("--reset 必须同时显式指定 --cli <cli>、--model <model> 与 --probes <probe,...>");
   }
   const selectedProbes = resolveSelectedProbes(options.probes, fpCfg.probes);
-  const existingMap = buildSampleSetsByKeyMap(await listAllSampleSets({ appliedEffort: fpCfg.effort }));
+  const existingMap = buildSampleSetsByKeyMap(await loadSampleSetsForTargetEfforts(config, catalog));
   const targets = resolveFillTargets(fpCfg.references, existingMap, options.cli, options.model);
   for (const target of targets) {
-    const { requestedEffort } = resolveFingerprintTarget(config, catalog, target.cli, target.model);
+    const { appliedEffort } = resolveFingerprintTarget(config, catalog, target.cli, target.model);
     for (const probe of selectedProbes) {
-      if (options.reset === true) await resetSampleSetToArchive({ cli: target.cli, appliedEffort: requestedEffort, model: target.model, probe });
+      if (options.reset === true) await resetSampleSetToArchive({ cli: target.cli, appliedEffort, model: target.model, probe });
       if ((options.exclude?.length ?? 0) > 0 || (options.include?.length ?? 0) > 0) {
-        await mutateSampleSetFlags({ cli: target.cli, appliedEffort: requestedEffort, model: target.model, probe, exclude: options.exclude, include: options.include });
+        await mutateSampleSetFlags({ cli: target.cli, appliedEffort, model: target.model, probe, exclude: options.exclude, include: options.include });
       }
     }
   }
@@ -139,26 +150,31 @@ export async function executeFingerprintFill(
   config: AppConfig, options: ExecuteFillOptions, customDeps?: Partial<CollectDeps>,
 ): Promise<ExecuteFillResult> {
   const deps: CollectDeps = { ...DEFAULT_DEPS, ...customDeps };
-  const active = await findActiveWork();
-  if (active !== null) throw new Error(describeActiveWorkConflict(active));
+  const lockId = options.jobId ?? formatFingerprintJobId();
+  const lock = await acquireExecutionLock({ kind: "fingerprint", runId: lockId });
+  if (!lock.acquired) throw new Error(describeActiveWorkConflict(lock.conflict));
 
-  const fpCfg = resolveModelFingerprintConfig(config);
-  const catalog = await deps.loadCapabilityCatalog();
-  await applyDiskMutationsForFill(config, fpCfg, catalog, options);
+  try {
+    const fpCfg = resolveModelFingerprintConfig(config);
+    const catalog = await deps.loadCapabilityCatalog();
+    await applyDiskMutationsForFill(config, fpCfg, catalog, options);
 
-  const plan = planReferenceFill({
-    configuredReferences: fpCfg.references,
-    sampleSets: buildSampleSetsByKeyMap(await listAllSampleSets({ appliedEffort: fpCfg.effort })),
-    cliFilter: options.cli, modelFilter: options.model, requestedProbes: options.probes, configuredProbes: fpCfg.probes,
-    samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
-    valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
-    maxCallsFactor: fpCfg.maxCallsFactor, countLimit: options.count, overrides: fpCfg.modelPrompts,
-  });
+    const plan = planReferenceFill({
+      configuredReferences: fpCfg.references,
+      sampleSets: buildSampleSetsByKeyMap(await loadSampleSetsForTargetEfforts(config, catalog)),
+      cliFilter: options.cli, modelFilter: options.model, requestedProbes: options.probes, configuredProbes: fpCfg.probes,
+      samplesPerProbe: fpCfg.samplesPerProbe, samplesByProbe: fpCfg.samplesByProbe,
+      valuesPerCheck: fpCfg.valuesPerCheck, valuesPerCheckByProbe: fpCfg.valuesPerCheckByProbe,
+      maxCallsFactor: fpCfg.maxCallsFactor, countLimit: options.count, overrides: fpCfg.modelPrompts,
+    });
 
-  if (options.count === 0 || plan.pendingItems.length === 0) {
-    return { jobId: null, callsExecuted: 0, failedCalls: 0, cancelled: false, items: [] };
+    if (options.count === 0 || plan.pendingItems.length === 0) {
+      return { jobId: null, callsExecuted: 0, failedCalls: 0, cancelled: false, items: [] };
+    }
+    return await runFillJobExecution(config, fpCfg, catalog, deps, options, plan.pendingItems, plan.totalEstimatedCalls);
+  } finally {
+    await lock.release();
   }
-  return runFillJobExecution(config, fpCfg, catalog, deps, options, plan.pendingItems, plan.totalEstimatedCalls);
 }
 
 async function runFillJobExecution(
@@ -300,12 +316,12 @@ function normalizeCheckTargets(options: ExecuteCheckOptions): ExecuteCheckTarget
 async function prepareCheckBatch(
   config: AppConfig, fpCfg: ModelFingerprintConfig, catalog: CapabilitySnapshot | null, targets: readonly ExecuteCheckTarget[],
 ): Promise<PreparedCheckTarget[]> {
-  const allSets = await listAllSampleSets({ appliedEffort: fpCfg.effort });
+  const allSets = await listAllSampleSets();
   const prepared: PreparedCheckTarget[] = [];
   for (const input of targets) {
     const profile = input.profile?.trim() ? input.profile.trim() : DEFAULT_PROFILE;
     const targetInfo = resolveFingerprintTarget(config, catalog, input.cli, input.model, profile);
-    const cliSets = allSets.filter((s) => s.cli === input.cli);
+    const cliSets = allSets.filter((s) => s.cli === input.cli && s.appliedEffort === targetInfo.appliedEffort);
     const sampleSetsByModel = buildSampleSetsByModelMap(cliSets);
     const plan = planVerificationCheck({
       cli: input.cli, declaredModel: input.model, sampleSetsByModel,
@@ -354,7 +370,7 @@ async function finalizeAndSaveCheckRecord(params: {
   const checkId = await resolveUniqueCheckId(input.cli, profile, now, targetInfo.target.model, includeModelInId);
   const record: FingerprintCheckRecord = {
     checkId, createdAt: now.toISOString(), cli: input.cli, profile,
-    environment: formatEnvironmentId(input.cli, targetInfo.requestedEffort),
+    environment: formatEnvironmentId(input.cli, targetInfo.appliedEffort),
     declaredModel: targetInfo.target.model, requestedEffort: targetInfo.requestedEffort,
     appliedEffort: targetInfo.appliedEffort, effortHonored: targetInfo.effortHonored,
     cliVersion: env.cliVersions.get(input.cli) ?? `${input.cli} unknown`,
@@ -380,45 +396,50 @@ export async function executeFingerprintCheckBatch(
   config: AppConfig, options: ExecuteCheckOptions, customDeps?: Partial<CollectDeps>,
 ): Promise<FingerprintCheckRecord[]> {
   const deps: CollectDeps = { ...DEFAULT_DEPS, ...customDeps };
-  const active = await findActiveWork();
-  if (active !== null) throw new Error(describeActiveWorkConflict(active));
-
-  const fpCfg = resolveModelFingerprintConfig(config);
-  const catalog = await deps.loadCapabilityCatalog();
-  const preparedList = await prepareCheckBatch(config, fpCfg, catalog, normalizeCheckTargets(options));
-  const plannedItems = buildCheckPlannedItems(preparedList);
-  const totalEstimatedCalls = preparedList.reduce((sum, item) => sum + item.plan.totalEstimatedCalls, 0);
-  const laneLimit = Math.min(Math.max(1, config.run.concurrency), Math.max(1, preparedList.length));
-  const batchNow = new Date();
-
-  const { tracker, cancelWatch, env } = await openTrackedJobEnv({
-    config, deps, targets: preparedList.map((item) => ({ cli: item.input.cli, profile: item.profile })),
-    allowDisabled: true, jobId: options.jobId, kind: "check",
-    totalEstimatedCalls, laneLimit, plannedItems, onStarted: options.onStarted,
-  });
+  const lockId = options.jobId ?? formatFingerprintJobId();
+  const lock = await acquireExecutionLock({ kind: "fingerprint", runId: lockId });
+  if (!lock.acquired) throw new Error(describeActiveWorkConflict(lock.conflict));
 
   try {
-    const maybeRecords = await runWithConcurrencyLimit(preparedList, laneLimit, async (prepared) => {
-      if (cancelWatch.signal.aborted) return null;
-      const probesToRun = prepared.plan.executableProbes.map((p) => p.probe);
-      const collected = await collectCheckProbes(fpCfg, env, prepared.targetInfo, prepared.profile, probesToRun);
-      if (cancelWatch.signal.aborted && collected.validProbes.length < probesToRun.length) return null;
-      const record = await finalizeAndSaveCheckRecord({
-        prepared, env, fpCfg, collected, includeModelInId: preparedList.length > 1, now: batchNow,
-      });
-      await tracker.recordCheckResult(record.checkId);
-      return record;
+    const fpCfg = resolveModelFingerprintConfig(config);
+    const catalog = await deps.loadCapabilityCatalog();
+    const preparedList = await prepareCheckBatch(config, fpCfg, catalog, normalizeCheckTargets(options));
+    const plannedItems = buildCheckPlannedItems(preparedList);
+    const totalEstimatedCalls = preparedList.reduce((sum, item) => sum + item.plan.totalEstimatedCalls, 0);
+    const laneLimit = Math.min(Math.max(1, config.run.concurrency), Math.max(1, preparedList.length));
+    const batchNow = new Date();
+
+    const { tracker, cancelWatch, env } = await openTrackedJobEnv({
+      config, deps, targets: preparedList.map((item) => ({ cli: item.input.cli, profile: item.profile })),
+      allowDisabled: true, jobId: options.jobId, kind: "check",
+      totalEstimatedCalls, laneLimit, plannedItems, onStarted: options.onStarted,
     });
-    const records = maybeRecords.filter((r): r is FingerprintCheckRecord => r !== null);
-    const checkIds = records.map((r) => r.checkId);
-    await tracker.finish({ checkId: checkIds[checkIds.length - 1] ?? null, checkIds });
-    return records;
-  } catch (cause) {
-    await tracker.finish({ error: cause instanceof Error ? cause.message : String(cause) });
-    throw cause;
+
+    try {
+      const maybeRecords = await runWithConcurrencyLimit(preparedList, laneLimit, async (prepared) => {
+        if (cancelWatch.signal.aborted) return null;
+        const probesToRun = prepared.plan.executableProbes.map((p) => p.probe);
+        const collected = await collectCheckProbes(fpCfg, env, prepared.targetInfo, prepared.profile, probesToRun);
+        if (cancelWatch.signal.aborted && collected.validProbes.length < probesToRun.length) return null;
+        const record = await finalizeAndSaveCheckRecord({
+          prepared, env, fpCfg, collected, includeModelInId: preparedList.length > 1, now: batchNow,
+        });
+        await tracker.recordCheckResult(record.checkId);
+        return record;
+      });
+      const records = maybeRecords.filter((r): r is FingerprintCheckRecord => r !== null);
+      const checkIds = records.map((r) => r.checkId);
+      await tracker.finish({ checkId: checkIds[checkIds.length - 1] ?? null, checkIds });
+      return records;
+    } catch (cause) {
+      await tracker.finish({ error: cause instanceof Error ? cause.message : String(cause) });
+      throw cause;
+    } finally {
+      cancelWatch.stop();
+      await env.sessions.closeAll();
+    }
   } finally {
-    cancelWatch.stop();
-    await env.sessions.closeAll();
+    await lock.release();
   }
 }
 

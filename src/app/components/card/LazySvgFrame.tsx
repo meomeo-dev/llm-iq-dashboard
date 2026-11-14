@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n";
 import { fetchArtSource, evictArtCache, localizeArtError } from "./art-source";
-import { sanitizeSvg } from "./svg-sanitize";
 import { SvgFrame } from "./SvgFrame";
 
 /** 作品距视口这么远时开始预取 */
@@ -37,10 +36,6 @@ export function LazySvgFrame({ href, className }: { href: string; className?: st
         fetchArtSource(href).then(
           (source) => {
             if (cancelled) return;
-            const { error: sanitizeError } = sanitizeSvg(source);
-            if (sanitizeError !== null) {
-              evictArtCache(href);
-            }
             setLoaded({ href, source, error: null });
           },
           (cause: unknown) => {
@@ -59,7 +54,15 @@ export function LazySvgFrame({ href, className }: { href: string; className?: st
     };
   }, [href]);
 
-  if (current?.source != null) return <SvgFrame source={current.source} className={className} />;
+  if (current?.source != null) {
+    return (
+      <SvgFrame
+        source={current.source}
+        className={className}
+        onSanitizeError={() => evictArtCache(href)}
+      />
+    );
+  }
   const classes = ["frame", className].filter(Boolean).join(" ");
   if (current?.error != null) {
     return (

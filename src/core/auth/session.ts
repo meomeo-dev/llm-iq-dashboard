@@ -45,16 +45,27 @@ export async function issueSession(deviceName: string, now: Date = new Date()): 
   return { cookie: `${device.id}.${token}`, device };
 }
 
+export interface VerifySessionOptions {
+  /** 是否允许在达到轮换点时换发新凭据；仅在能写回 Set-Cookie 的接口（如 GET /api/session）开启 */
+  allowRotate?: boolean;
+}
+
 /**
  * 校验 cookie 值：设备存在、凭据匹配（当前值或宽限期内的旧值）、未过期。
- * 通过后更新最近使用时刻；到轮换点时换发新凭据。
+ * 通过后更新最近使用时刻；仅在 allowRotate 开启且到达轮换点时换发新凭据。
  */
-export async function verifySession(cookie: string | null | undefined, now: Date = new Date()): Promise<OwnerSession | null> {
+export async function verifySession(
+  cookie: string | null | undefined,
+  now?: Date,
+  options?: VerifySessionOptions,
+): Promise<OwnerSession | null> {
   if (isReadonly()) return null;
+  const effectiveNow = now ?? new Date();
+  const allowRotate = options?.allowRotate ?? (now !== undefined);
   const parsed = parseCookie(cookie);
   if (parsed === null) return null;
   const device = await findDevice(parsed.deviceId);
-  if (device === null || isExpired(device, now)) return null;
+  if (device === null || isExpired(device, effectiveNow)) return null;
 
   const key = await loadServerKey();
   const presented = hmacOf(key, parsed.token);
@@ -62,15 +73,15 @@ export async function verifySession(cookie: string | null | undefined, now: Date
   const matchesPrevious =
     device.previousHmac !== null &&
     device.previousValidUntil !== null &&
-    Date.parse(device.previousValidUntil) > now.getTime() &&
+    Date.parse(device.previousValidUntil) > effectiveNow.getTime() &&
     digestsEqual(device.previousHmac, presented);
   if (!matchesCurrent && !matchesPrevious) return null;
 
-  const at = now.toISOString();
-  // 拿旧值来的请求不触发轮换，避免两枚新凭据互相顶掉
-  const due = matchesCurrent && now.getTime() - Date.parse(device.rotatedAt) >= ROTATE_AFTER_MS;
+  const at = effectiveNow.toISOString();
+  // 拿旧值来的请求不触发轮换，非写回 Set-Cookie 的接口也不触发轮换
+  const due = allowRotate && matchesCurrent && effectiveNow.getTime() - Date.parse(device.rotatedAt) >= ROTATE_AFTER_MS;
   if (!due) {
-    if (now.getTime() - Date.parse(device.lastSeenAt) >= 60_000) {
+    if (effectiveNow.getTime() - Date.parse(device.lastSeenAt) >= 60_000) {
       await updateDevice(device.id, { lastSeenAt: at });
     }
     return { deviceId: device.id, deviceName: device.name, rotatedCookie: null };
@@ -79,7 +90,7 @@ export async function verifySession(cookie: string | null | undefined, now: Date
   await updateDevice(device.id, {
     tokenHmac: hmacOf(key, token),
     previousHmac: device.tokenHmac,
-    previousValidUntil: new Date(now.getTime() + ROTATION_GRACE_MS).toISOString(),
+    previousValidUntil: new Date(effectiveNow.getTime() + ROTATION_GRACE_MS).toISOString(),
     rotatedAt: at,
     lastSeenAt: at,
   });

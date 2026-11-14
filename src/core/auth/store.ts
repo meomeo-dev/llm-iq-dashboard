@@ -6,13 +6,71 @@
  */
 
 import { randomBytes, timingSafeEqual, createHmac } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { dataRoot } from "../paths";
 import { isReadonly } from "../deploy-mode";
 
 const SERVER_KEY_FILE = "server.key";
 const SERVER_KEY_BYTES = 32;
+const authLockChains = new Map<string, Promise<void>>();
+const FILE_LOCK_STALE_MS = 10_000;
+
+/**
+ * 串行化同一 auth JSON 文件（devices.json / pairing.json）的读—改—写操作（进程内队列 + 跨进程锁文件）。
+ */
+export async function withAuthFileLock<T>(filename: string, fn: () => Promise<T>): Promise<T> {
+  const target = resolve(join(dataRoot(), filename));
+  const previous = authLockChains.get(target) ?? Promise.resolve();
+  let releaseInProcess!: () => void;
+  const current = new Promise<void>((res) => {
+    releaseInProcess = res;
+  });
+  const chained = previous.then(() => current);
+  authLockChains.set(target, chained);
+
+  await previous;
+  const releaseFile = await acquireCrossProcessLock(`${target}.lock`);
+  try {
+    return await fn();
+  } finally {
+    await releaseFile();
+    releaseInProcess();
+    if (authLockChains.get(target) === chained) authLockChains.delete(target);
+  }
+}
+
+async function acquireCrossProcessLock(lockPath: string): Promise<() => Promise<void>> {
+  await mkdir(dataRoot(), { recursive: true }).catch(() => {});
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  for (let i = 0; i < 40; i += 1) {
+    try {
+      await writeFile(lockPath, JSON.stringify({ ts: Date.now(), token }), { encoding: "utf8", flag: "wx" });
+      return async () => {
+        try {
+          const raw = await readFile(lockPath, "utf8");
+          const parsed = JSON.parse(raw) as { token?: string };
+          if (parsed.token === token) await unlink(lockPath);
+        } catch {}
+      };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") break;
+      try {
+        const raw = await readFile(lockPath, "utf8");
+        const parsed = JSON.parse(raw) as { ts?: number };
+        if (typeof parsed.ts === "number" && Date.now() - parsed.ts >= FILE_LOCK_STALE_MS) {
+          await unlink(lockPath).catch(() => {});
+          continue;
+        }
+      } catch {
+        await unlink(lockPath).catch(() => {});
+        continue;
+      }
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+  return async () => {};
+}
 
 export async function readJsonFile(filename: string): Promise<unknown> {
   try {

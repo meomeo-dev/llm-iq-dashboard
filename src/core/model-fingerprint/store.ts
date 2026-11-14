@@ -106,8 +106,7 @@ export async function readSampleSet(
 }
 
 export async function saveSampleSet(sampleSet: ProbeSampleSet): Promise<string> {
-  const envEffort = sampleSet.requestedEffort ?? sampleSet.appliedEffort;
-  const filePath = sampleSetFilePath(sampleSet.cli, envEffort, sampleSet.model, sampleSet.probe);
+  const filePath = sampleSetFilePath(sampleSet.cli, sampleSet.appliedEffort, sampleSet.model, sampleSet.probe);
   await withProbeFileLock(filePath, async () => {
     await writeJsonPathAtomic(filePath, sampleSet);
   });
@@ -125,12 +124,13 @@ export async function appendSampleAttempt(
   },
   attempt: ProbeAttempt,
 ): Promise<ProbeSampleSet> {
-  const filePath = sampleSetFilePath(meta.cli, meta.requestedEffort, meta.model, meta.probe);
+  const filePath = sampleSetFilePath(meta.cli, meta.appliedEffort, meta.model, meta.probe);
   return withProbeFileLock(filePath, async () => {
     const existing = await readSampleSetAt(filePath);
     const updated: ProbeSampleSet = existing
       ? {
           ...existing,
+          environment: formatEnvironmentId(meta.cli, meta.appliedEffort),
           requestedEffort: meta.requestedEffort,
           appliedEffort: meta.appliedEffort,
           effortHonored: meta.effortHonored,
@@ -139,7 +139,7 @@ export async function appendSampleAttempt(
       : {
           probe: meta.probe,
           cli: meta.cli,
-          environment: formatEnvironmentId(meta.cli, meta.requestedEffort),
+          environment: formatEnvironmentId(meta.cli, meta.appliedEffort),
           model: meta.model,
           requestedEffort: meta.requestedEffort,
           appliedEffort: meta.appliedEffort,
@@ -223,7 +223,7 @@ export async function listAllSampleSets(filter?: {
         if (filter?.cli !== undefined && set.cli !== filter.cli) continue;
         if (
           filter?.appliedEffort !== undefined &&
-          (set.requestedEffort ?? set.appliedEffort) !== filter.appliedEffort
+          set.appliedEffort !== filter.appliedEffort
         ) {
           continue;
         }
@@ -444,10 +444,10 @@ async function loadRescoreReferenceSets(
   fpCfg: ModelFingerprintConfig,
   record: FingerprintCheckRecord,
 ): Promise<ProbeSampleSet[]> {
-  const envEffort = record.requestedEffort ?? record.appliedEffort;
+  const envEffort = record.appliedEffort;
   const currentSets = await listAllSampleSets({ cli: record.cli, appliedEffort: envEffort });
   const effortByModel = new Map<string, EffortLevel>();
-  for (const set of currentSets) effortByModel.set(set.model, set.requestedEffort ?? set.appliedEffort);
+  for (const set of currentSets) effortByModel.set(set.model, set.appliedEffort);
   effortByModel.set(record.declaredModel, envEffort);
 
   const models = new Set<string>([

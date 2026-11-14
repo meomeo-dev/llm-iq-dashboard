@@ -21,6 +21,7 @@ import {
   completeRequest,
   failRequest,
   pruneRequests,
+  readRequest,
   type RunnerRequest,
 } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
@@ -143,19 +144,40 @@ let handling = false;
 async function pollRequests(): Promise<void> {
   if (handling) return;
   handling = true;
+  let claimed: RunnerRequest | null = null;
   try {
-    const request = await claimNextRequest();
-    if (request === null) return;
-    log(`认领请求 ${request.id}（${request.kind}）`);
-    await handle(request);
+    claimed = await claimNextRequest();
+    if (claimed === null) return;
+    log(`认领请求 ${claimed.id}（${claimed.kind}）`);
+    await handle(claimed);
   } catch (cause) {
-    log(`处理请求失败：${describe(cause)}`);
+    const msg = describe(cause);
+    log(`处理请求失败：${msg}`);
+    if (claimed !== null) {
+      await failRequest(claimed.id, msg).catch((err: unknown) => {
+        log(`回写请求失败状态出错 (${claimed?.id})：${describe(err)}`);
+      });
+    }
   } finally {
     handling = false;
   }
 }
 
 export async function handle(request: RunnerRequest): Promise<void> {
+  try {
+    await dispatchRequest(request);
+    const after = await readRequest(request.id);
+    if (after?.state === "claimed") {
+      await failRequest(request.id, "执行器处理未进入终态");
+    }
+  } catch (cause) {
+    const msg = describe(cause);
+    log(`处理请求 ${request.id}（${request.kind}）出错：${msg}`);
+    await failRequest(request.id, msg).catch(() => {});
+  }
+}
+
+async function dispatchRequest(request: RunnerRequest): Promise<void> {
   const full = loadConfig(configPath());
   switch (request.kind) {
     case "check-readiness":
@@ -263,11 +285,11 @@ async function startRun(request: RunnerRequest, full: AppConfig): Promise<void> 
       log,
       onStarted: (runId) => {
         answered = true;
-        void completeRequest(request.id, { runId, calls }).then(resolve);
+        void completeRequest(request.id, { runId, calls }).finally(resolve);
       },
     }).catch((cause: unknown) => {
       log(`手动执行失败：${describe(cause)}`);
-      if (!answered) void failRequest(request.id, describe(cause)).then(resolve);
+      if (!answered) void failRequest(request.id, describe(cause)).finally(resolve);
     });
   });
 }

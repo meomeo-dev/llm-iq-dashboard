@@ -5,17 +5,26 @@ import type { PromptStandard } from "@/core/prompt";
 import type { DashboardCard } from "@/core/types";
 import { localizePromptStandard, useI18n } from "@/i18n";
 import { useLiveProgress } from "../components/live-state/live-store";
-import { pendingJudgeState } from "../components/run-status/run-phase";
+import { pendingJudgeState, type PendingJudgeState } from "../components/run-status/run-phase";
 import { StandardCriteriaPanel } from "../components/standard/StandardCriteriaPanel";
 import { JudgeDrawer } from "./JudgeDrawer";
 
 interface ArtViewerFootProps {
   card: DashboardCard;
   standard?: PromptStandard | null;
+  onRefresh?: () => void;
+}
+
+/** 待复核作品从排队/评审中进入完成态（null）时触发刷新以拉取落盘的最终评分 */
+export function shouldRefreshViewerJudge(
+  prev: PendingJudgeState | null,
+  next: PendingJudgeState | null,
+): boolean {
+  return (prev === "queued" || prev === "running") && next === null;
 }
 
 /** 单件作品查看页底部抽屉：原始提示词与客观标准判定规则 */
-export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
+export function ArtViewerFoot({ card, standard, onRefresh }: ArtViewerFootProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
   const progress = useLiveProgress();
@@ -23,6 +32,14 @@ export function ArtViewerFoot({ card, standard }: ArtViewerFootProps) {
     card.judge?.total.verdict === "pending"
       ? pendingJudgeState(progress, card.runId, card.judge.subject.attemptKey, Date.now())
       : null;
+  const prevLiveRef = React.useRef<PendingJudgeState | null>(liveState);
+  React.useEffect(() => {
+    if (shouldRefreshViewerJudge(prevLiveRef.current, liveState)) {
+      if (onRefresh) onRefresh();
+      else if (typeof window !== "undefined") window.location.reload();
+    }
+    prevLiveRef.current = liveState;
+  }, [liveState, onRefresh]);
   const candidate = card.bindings["回目"] || card.bindings["candidate"];
   const stdId = candidate ?? card.promptId;
   const localizedStd = localizePromptStandard(stdId, standard, locale);

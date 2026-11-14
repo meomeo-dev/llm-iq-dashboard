@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import type { AppConfig } from "@/core/config";
+import { processStartMark } from "@/core/process-identity";
 import { recoverInterruptedRuns } from "@/core/run/recover-interrupted";
 
 const ENV_DATA_DIR = "PELICAN_DATA_DIR";
@@ -133,5 +134,25 @@ describe("recoverInterruptedRuns", () => {
   it("再次启动时已收尾的轮次不再处理，评审没收尾的仍待续评", async () => {
     const report = await recoverInterruptedRuns(config(), () => undefined);
     assert.deepEqual(report, { finalized: [], discarded: [], judgingInterrupted: ["20260926T070000Z"] });
+  });
+
+  it("正在存活进程中运行的轮次（progressAlive 为 true）不会被误删或强行收尾", async () => {
+    const liveRunId = "20260926T080000Z";
+    await writeRunDir(liveRunId, {
+      "progress.json": {
+        runId: liveRunId,
+        pid: process.pid,
+        pidStart: processStartMark(process.pid),
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+        cancelledAt: null,
+        lanes: [{ calls: [{ state: "running" }] }],
+      },
+    });
+    const report = await recoverInterruptedRuns(config(), () => undefined);
+    assert.equal(report.discarded.includes(liveRunId), false);
+    assert.equal(report.finalized.includes(liveRunId), false);
+    const dirs = await readdir(join(dataDir, "runs"));
+    assert.equal(dirs.includes(liveRunId), true);
   });
 });

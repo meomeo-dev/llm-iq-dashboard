@@ -35,9 +35,19 @@ export async function closeJudgeBrowser(): Promise<void> {
   }
 }
 
+const HARDENING_ARGS = [
+  "--disable-extensions",
+  "--disable-background-networking",
+  "--disable-sync",
+  "--disable-translate",
+  "--mute-audio",
+  "--no-first-run",
+];
+
 async function launch(): Promise<Browser> {
   const explicit = process.env[ENV_BROWSER_PATH]?.trim();
-  const args = process.env[ENV_NO_SANDBOX] === "1" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+  const sandboxArgs = process.env[ENV_NO_SANDBOX] === "1" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+  const args = [...HARDENING_ARGS, ...sandboxArgs];
   if (explicit) return chromium.launch({ executablePath: explicit, args });
   const attempts: Array<() => Promise<Browser>> = [
     () => chromium.launch({ channel: "chrome", args }),

@@ -9,7 +9,7 @@ import { randomInt } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { dataRoot } from "../paths";
-import { digestsEqual, hmacOf, loadServerKey, readJsonFile, writeJsonFile } from "./store";
+import { digestsEqual, hmacOf, loadServerKey, readJsonFile, withAuthFileLock, writeJsonFile } from "./store";
 
 const PAIRING_FILE = "pairing.json";
 export const PAIRING_TTL_MS = 10 * 60 * 1000;
@@ -33,42 +33,52 @@ export type PairingOutcome =
 
 /** 打开新窗口并返回明文配对码；旧窗口直接作废 */
 export async function openPairingWindow(deviceName: string, now: Date = new Date()): Promise<string> {
-  const code = generateCode();
-  const key = await loadServerKey();
-  const window: PairingWindow = {
-    codeHmac: hmacOf(key, normalizeCode(code)),
-    deviceName,
-    openedAt: now.toISOString(),
-    expiresAt: new Date(now.getTime() + PAIRING_TTL_MS).toISOString(),
-    failures: 0,
-  };
-  await writeJsonFile(PAIRING_FILE, window);
-  return code;
+  return withAuthFileLock(PAIRING_FILE, async () => {
+    const code = generateCode();
+    const key = await loadServerKey();
+    const window: PairingWindow = {
+      codeHmac: hmacOf(key, normalizeCode(code)),
+      deviceName,
+      openedAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + PAIRING_TTL_MS).toISOString(),
+      failures: 0,
+    };
+    await writeJsonFile(PAIRING_FILE, window);
+    return code;
+  });
 }
 
 /** 用配对码兑换：成功即关窗；错误累计到上限也关窗 */
 export async function redeemPairingCode(input: string, now: Date = new Date()): Promise<PairingOutcome> {
-  const window = await readPairingWindow();
-  if (window === null) return { ok: false, reason: "no-window" };
-  if (Date.parse(window.expiresAt) <= now.getTime()) {
-    await closePairingWindow();
-    return { ok: false, reason: "expired" };
-  }
-  const key = await loadServerKey();
-  if (digestsEqual(window.codeHmac, hmacOf(key, normalizeCode(input)))) {
-    await closePairingWindow();
-    return { ok: true, deviceName: window.deviceName };
-  }
-  const failures = window.failures + 1;
-  if (failures >= PAIRING_MAX_FAILURES) {
-    await closePairingWindow();
-    return { ok: false, reason: "locked" };
-  }
-  await writeJsonFile(PAIRING_FILE, { ...window, failures });
-  return { ok: false, reason: "mismatch" };
+  return withAuthFileLock(PAIRING_FILE, async () => {
+    const window = await readPairingWindow();
+    if (window === null) return { ok: false, reason: "no-window" };
+    if (Date.parse(window.expiresAt) <= now.getTime()) {
+      await unlinkPairingFile();
+      return { ok: false, reason: "expired" };
+    }
+    const key = await loadServerKey();
+    if (digestsEqual(window.codeHmac, hmacOf(key, normalizeCode(input)))) {
+      await unlinkPairingFile();
+      return { ok: true, deviceName: window.deviceName };
+    }
+    const failures = window.failures + 1;
+    if (failures >= PAIRING_MAX_FAILURES) {
+      await unlinkPairingFile();
+      return { ok: false, reason: "locked" };
+    }
+    await writeJsonFile(PAIRING_FILE, { ...window, failures });
+    return { ok: false, reason: "mismatch" };
+  });
 }
 
 export async function closePairingWindow(): Promise<void> {
+  await withAuthFileLock(PAIRING_FILE, async () => {
+    await unlinkPairingFile();
+  });
+}
+
+async function unlinkPairingFile(): Promise<void> {
   await unlink(join(dataRoot(), PAIRING_FILE)).catch(() => {});
 }
 

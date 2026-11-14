@@ -90,3 +90,29 @@
   letter-spacing: 0.04em;
   color: var(--accent);
 }
+
+.frame-live {
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--text-dim);
+  font-size: var(--text-base);
+  text-align: center;
+}
+
+.frame-live p {
+  margin: 0;
+}
+
+.live-status {
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.live-queued .live-status {
+  color: var(--text-dim);
+}

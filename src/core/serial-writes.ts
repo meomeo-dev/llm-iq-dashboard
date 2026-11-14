@@ -8,16 +8,30 @@ export interface SerialWriter {
   enqueue: (task: () => Promise<void>) => void;
   /** 等排队中的写入全部完成 */
   drain: () => Promise<void>;
+  /** 等排队中的写入全部完成，若其间发生过写入失败则抛出首个错误（用于首帧进度文件落盘门禁） */
+  drainOrThrow: () => Promise<void>;
 }
 
 export function createSerialWriter(log: (message: string) => void): SerialWriter {
   let chain = Promise.resolve();
+  let firstError: unknown = null;
   return {
     enqueue(task) {
       chain = chain
         .then(task)
-        .catch((cause: unknown) => log(`落盘失败：${cause instanceof Error ? cause.message : cause}`));
+        .catch((cause: unknown) => {
+          if (firstError === null) firstError = cause;
+          log(`落盘失败：${cause instanceof Error ? cause.message : cause}`);
+        });
     },
     drain: () => chain,
+    drainOrThrow: async () => {
+      await chain;
+      if (firstError !== null) {
+        const err = firstError;
+        firstError = null;
+        throw err;
+      }
+    },
   };
 }

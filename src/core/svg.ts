@@ -8,6 +8,7 @@ import { JSDOM } from "jsdom";
 const OPEN_TAG = "<svg";
 const CLOSE_TAG = "</svg>";
 const XMLNS = "http://www.w3.org/2000/svg";
+const XLINK_NS = "http://www.w3.org/1999/xlink";
 
 let cachedDomParser: DOMParser | null = null;
 
@@ -74,58 +75,80 @@ export function extractSvg(output: string): ExtractedSvg | null {
   const validCandidates = normalizedCandidates.filter(
     (c) => !c.includes("```") && isWellFormedSvgXml(c),
   );
+  if (validCandidates.length === 0) return null;
 
-  let best: string;
-  if (validCandidates.length > 0) {
-    best = validCandidates.reduce((prev, curr) => (curr.length > prev.length ? curr : prev));
-  } else {
-    const cleanCandidates = normalizedCandidates.filter((c) => !c.includes("```"));
-    const pool = cleanCandidates.length > 0 ? cleanCandidates : normalizedCandidates;
-    best = pool.reduce((prev, curr) => (curr.length > prev.length ? curr : prev));
-  }
-
+  const best = validCandidates.reduce((prev, curr) => (curr.length > prev.length ? curr : prev));
   return { source: best, bytes: Buffer.byteLength(best, "utf8") };
+}
+
+function scanTagEnd(output: string, tagStart: number): { endIndex: number; selfClosing: boolean } {
+  let i = tagStart + 1;
+  while (i < output.length) {
+    const ch = output[i]!;
+    if (ch === '"' || ch === "'") {
+      const nextQuote = output.indexOf(ch, i + 1);
+      const nextNewline = output.indexOf("\n", i + 1);
+      if (nextQuote !== -1 && (nextNewline === -1 || nextQuote < nextNewline)) {
+        i = nextQuote + 1;
+        continue;
+      }
+    }
+    if (ch === ">") {
+      const before = output.slice(tagStart + 1, i).trimEnd();
+      return { endIndex: i, selfClosing: before.endsWith("/") };
+    }
+    if (ch === "<") return { endIndex: -1, selfClosing: false };
+    i += 1;
+  }
+  return { endIndex: -1, selfClosing: false };
 }
 
 /**
  * 寻找与 startPos 处的 <svg 深度匹配的 </svg> 闭合标签位置。
- * 跨过注视与 CDATA，并在深度降为 0 时返回闭合索引；未正常闭合则返回 -1。
+ * 跨过注释、CDATA、单行引号属性值与自闭合 <svg ... />，深度降为 0 时返回闭合索引。
  */
 function findMatchingClose(output: string, startPos: number): number {
   let depth = 0;
   let pos = startPos;
 
   while (pos < output.length) {
-    if (output.startsWith("<!--", pos)) {
-      const end = output.indexOf("-->", pos);
-      if (end !== -1) {
-        pos = end + 3;
-        continue;
-      }
-    }
-    if (output.startsWith("<![CDATA[", pos)) {
-      const end = output.indexOf("]]>", pos);
-      if (end !== -1) {
-        pos = end + 3;
-        continue;
-      }
-    }
+    const lt = output.indexOf("<", pos);
+    if (lt === -1) return -1;
 
-    const nextOpen = output.indexOf(OPEN_TAG, pos);
-    const nextClose = output.indexOf(CLOSE_TAG, pos);
-    if (nextClose === -1) return -1;
-
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      const nextChar = output[nextOpen + OPEN_TAG.length];
-      if (nextChar !== undefined && isTagBoundary(nextChar)) {
-        depth += 1;
-      }
-      pos = nextOpen + OPEN_TAG.length;
-    } else {
+    if (output.startsWith("<!--", lt)) {
+      const end = output.indexOf("-->", lt + 4);
+      if (end === -1) return -1;
+      pos = end + 3;
+      continue;
+    }
+    if (output.startsWith("<![CDATA[", lt)) {
+      const end = output.indexOf("]]>", lt + 9);
+      if (end === -1) return -1;
+      pos = end + 3;
+      continue;
+    }
+    if (output.startsWith(CLOSE_TAG, lt)) {
       depth -= 1;
-      if (depth === 0) return nextClose;
-      pos = nextClose + CLOSE_TAG.length;
+      if (depth === 0) return lt;
+      pos = lt + CLOSE_TAG.length;
+      continue;
     }
+    if (output.startsWith(OPEN_TAG, lt)) {
+      const nextChar = output[lt + OPEN_TAG.length];
+      if (nextChar !== undefined && isTagBoundary(nextChar)) {
+        const tag = scanTagEnd(output, lt);
+        if (tag.endIndex === -1) return -1;
+        if (!tag.selfClosing) {
+          depth += 1;
+        } else if (depth === 0) {
+          return -1;
+        }
+        pos = tag.endIndex + 1;
+        continue;
+      }
+    }
+    const otherTag = scanTagEnd(output, lt);
+    pos = otherTag.endIndex !== -1 ? otherTag.endIndex + 1 : lt + 1;
   }
 
   return -1;
@@ -160,10 +183,16 @@ function isTagBoundary(ch: string): boolean {
 
 /** 补上缺失的 xmlns：内联 HTML 可以省略，独立的 .svg 文件缺了它无法被查看器打开 */
 function ensureNamespace(svg: string): string {
-  if (svg.includes("xmlns=")) return svg;
   const headEnd = svg.indexOf(">");
   if (headEnd === -1) return svg;
-  return `${svg.slice(0, headEnd)} xmlns="${XMLNS}"${svg.slice(headEnd)}`;
+  let head = svg.slice(0, headEnd);
+  if (!head.includes("xmlns=")) {
+    head = `${head} xmlns="${XMLNS}"`;
+  }
+  if (svg.includes("xlink:") && !head.includes("xmlns:xlink=")) {
+    head = `${head} xmlns:xlink="${XLINK_NS}"`;
+  }
+  return `${head}${svg.slice(headEnd)}`;
 }
 
 /** 补上缺失的 CDATA：模型在 <style> 中常写裸 & 或 <，独立 .svg 文件缺了 CDATA 无法被严格 XML 查看器打开 */

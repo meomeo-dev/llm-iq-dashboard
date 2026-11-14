@@ -26,6 +26,7 @@ import { attemptKeyOf, judgeFileName } from "../judge/judge-store";
 import type { Judgement } from "../judge/schema";
 import type { LeakGuard } from "../leak-guard";
 import { runDir } from "../paths";
+import { isJudging, type RunProgress } from "../progress";
 import type { ProfileView } from "../profile-view";
 import { usageFromTranscript } from "../../pricing/usage";
 import type { Attempt, RunRecord } from "../types";
@@ -194,6 +195,16 @@ async function resolveUsage(
   return null;
 }
 
+async function isRunStillActiveOrJudging(dir: string): Promise<boolean> {
+  try {
+    const raw = await readFile(join(dir, "progress.json"), "utf8");
+    const progress = JSON.parse(raw) as RunProgress;
+    return progress.finishedAt === null || isJudging(progress);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 导出单个运行轮次。
  */
@@ -218,7 +229,7 @@ async function loadRunRecord(
   }
 
   const localRun = normalizeLegacyRun(parsed);
-  if (localRun.inProgress) {
+  if (localRun.inProgress || (await isRunStillActiveOrJudging(dir))) {
     return { status: "skipped", runId, reason: "incomplete" };
   }
   // 一次调用都没完成的轮次（如刚开始就被取消）没有可发布的内容

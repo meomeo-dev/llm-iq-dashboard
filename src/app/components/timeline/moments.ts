@@ -48,7 +48,7 @@ function toMoment(runId: string, runCards: DashboardCard[], timeZone: string): M
     fraction: zonedDayFraction(at, timeZone),
     clock: formatZonedClock(at, timeZone),
     cards: runCards,
-    okCount: runCards.filter((card) => card.status === "ok").length,
+    okCount: runCards.filter((card) => card.status === "ok" && card.liveState === undefined).length,
   };
 }
 
@@ -70,11 +70,16 @@ export function listDays(runStarts: readonly string[], timeZone: string): DayOpt
 /** 只保留满足条件的卡片，并重算成功数 */
 export function filterMoment(moment: Moment, keep: (card: DashboardCard) => boolean): Moment {
   const cards = moment.cards.filter(keep);
-  return { ...moment, cards, okCount: cards.filter((card) => card.status === "ok").length };
+  return {
+    ...moment,
+    cards,
+    okCount: cards.filter((card) => card.status === "ok" && card.liveState === undefined).length,
+  };
 }
 
-/** 成功比例决定时间线标记的语义色 */
-export function momentHealth(moment: Moment): "ok" | "partial" | "failed" {
+/** 成功比例决定时间线标记的语义色；仍有进行中/排队中调用时显示运行态 */
+export function momentHealth(moment: Moment): "ok" | "partial" | "failed" | "running" {
+  if (moment.cards.some((card) => card.liveState !== undefined)) return "running";
   const total = moment.totalCount ?? moment.cards.length;
   if (moment.okCount === total) return "ok";
   return moment.okCount === 0 ? "failed" : "partial";

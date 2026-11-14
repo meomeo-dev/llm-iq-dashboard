@@ -67,7 +67,11 @@ async function runTurn(
   return { timedOut };
 }
 
-async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<AgentReply> {
+export function isRpcTimeoutError(cause: unknown): boolean {
+  return cause instanceof Error && (cause as Error & { timedOut?: boolean }).timedOut === true;
+}
+
+export async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<AgentReply> {
   const { target, effortAdjustable, timeoutMs } = request;
   if (target.extraArgs.length > 0) {
     return failedReply(
@@ -78,7 +82,13 @@ async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<
 
   const deadline = Date.now() + timeoutMs;
   const remaining = () => Math.max(deadline - Date.now(), 1);
-  const threadId = await startThread(server, request, remaining());
+  let threadId: string;
+  try {
+    threadId = await startThread(server, request, remaining());
+  } catch (cause) {
+    if (isRpcTimeoutError(cause)) return timedOutReply(effortAdjustable);
+    throw cause;
+  }
   const watch = watchThread(server, threadId);
 
   try {
@@ -93,6 +103,19 @@ async function askCodex(server: CodexAppServer, request: AgentRequest): Promise<
       notes: watch.state.notes,
       effortHonored: effortAdjustable,
     };
+  } catch (cause) {
+    if (isRpcTimeoutError(cause)) {
+      return {
+        text: watch.state.texts.join("\n\n"),
+        writtenFiles: [],
+        transcript: watch.transcript.join("\n"),
+        timedOut: true,
+        error: null,
+        notes: watch.state.notes,
+        effortHonored: effortAdjustable,
+      };
+    }
+    throw cause;
   } finally {
     watch.unsubscribe();
   }
@@ -213,6 +236,18 @@ async function settlesWithin(promise: Promise<void>, timeoutMs: number, signal?:
   clearTimeout(timer);
   if (onAbort !== undefined) signal?.removeEventListener("abort", onAbort);
   return settled;
+}
+
+function timedOutReply(effortHonored: boolean): AgentReply {
+  return {
+    text: "",
+    writtenFiles: [],
+    transcript: "",
+    timedOut: true,
+    error: null,
+    notes: [],
+    effortHonored,
+  };
 }
 
 function failedReply(error: string, effortHonored: boolean): AgentReply {

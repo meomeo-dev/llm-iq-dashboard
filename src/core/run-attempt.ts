@@ -50,6 +50,7 @@ async function processAttemptReply(
   runId: string,
   artifactId: string,
   startedAt: Date,
+  workdir: string,
   context: AttemptContext,
 ): Promise<Attempt> {
   const { leakGuard } = context;
@@ -58,8 +59,12 @@ async function processAttemptReply(
     return buildAttempt(job, startedAt, { status: "error", error: LEAK_BLOCKED, effortHonored: reply.effortHonored, usage });
   }
 
+  const svg = await findSvg(reply, startedAt, workdir);
+  if (svg !== null && leakGuard.size > 0 && leakGuard.hits(svg.source)) {
+    return buildAttempt(job, startedAt, { status: "error", error: LEAK_BLOCKED, effortHonored: reply.effortHonored, usage });
+  }
+
   const rawFile = await writeArtifact(runId, `${artifactId}.txt`, reply.transcript);
-  const svg = await findSvg(reply);
 
   if (svg !== null) {
     const svgFile = await writeArtifact(runId, `${artifactId}.svg`, svg.source);
@@ -103,7 +108,7 @@ export async function runAttempt(job: Job, context: AttemptContext): Promise<Att
       timeoutMs: target.timeoutMs,
       signal,
     });
-    return await processAttemptReply(job, reply, runId, artifactId, startedAt, context);
+    return await processAttemptReply(job, reply, runId, artifactId, startedAt, workdir, context);
   } catch (cause) {
     return buildAttempt(job, startedAt, {
       status: "error",
@@ -146,7 +151,11 @@ function classifyFailure(
  * → 回答里给出的 `file://…/*.svg` 路径。文件内容同样经 extractSvg 校验，
  * 须含成对的 <svg>…</svg> 才算作品。
  */
-async function findSvg(reply: AgentReply): Promise<ExtractedSvg | null> {
+async function findSvg(
+  reply: AgentReply,
+  startedAt?: Date,
+  workdir?: string,
+): Promise<ExtractedSvg | null> {
   const inline = extractSvg(reply.text);
   if (inline !== null) return inline;
 
@@ -157,7 +166,7 @@ async function findSvg(reply: AgentReply): Promise<ExtractedSvg | null> {
 
   const linkedPath = extractSvgFilePath(reply.text);
   if (linkedPath === null) return null;
-  const linked = await readWrittenFile(linkedPath);
+  const linked = await readWrittenFile(linkedPath, startedAt, workdir);
   return linked === null ? null : extractSvg(linked.content);
 }
 

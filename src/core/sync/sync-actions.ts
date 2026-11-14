@@ -4,7 +4,11 @@
  */
 
 import type { AppConfig } from "../config";
-import { confirmPublished, type ConfirmPublishedReport } from "./confirm-published";
+import {
+  confirmPublished,
+  pushConfirmedCommits,
+  type ConfirmPublishedReport,
+} from "./confirm-published";
 import type { SyncActionRequest } from "./data-repo-panel-types";
 import { discardRuns, restoreRuns, type LedgerDecisionReport } from "./ledger-decisions";
 import { syncDataRepo, type SyncReport } from "./sync-orchestrator";
@@ -16,6 +20,7 @@ export async function performSyncAction(
   action: SyncActionRequest,
   config: AppConfig,
   dataDir?: string,
+  options?: { skipLock?: boolean },
 ): Promise<SyncActionReport> {
   const { mode, runIds = [] } = action;
   if (mode === "discard") return discardRuns(runIds, dataDir);
@@ -25,9 +30,24 @@ export async function performSyncAction(
     dataDir,
     runIds: action.runIds,
     attemptSelection: action.attempts,
+    skipLock: options?.skipLock,
   };
   if (mode === "dry-run") return syncDataRepo({ ...scope, dryRun: true });
   if (mode === "export") return syncDataRepo({ ...scope, dryRun: false, push: false });
-  if (mode === "confirm") return confirmPublished({ repoPath: scope.repoPath, dryRun: false });
-  return syncDataRepo({ ...scope, dryRun: false, push: true });
+  if (mode === "confirm") {
+    return confirmPublished({
+      repoPath: scope.repoPath,
+      repository: scope.repository,
+      dataDir,
+      dryRun: false,
+      skipLock: options?.skipLock,
+    });
+  }
+  return pushConfirmedCommits({
+    repoPath: scope.repoPath,
+    repository: scope.repository,
+    dataDir,
+    confirmedAheadCommits: action.confirmation?.aheadCommits,
+    skipLock: options?.skipLock,
+  });
 }

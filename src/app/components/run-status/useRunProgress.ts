@@ -1,36 +1,31 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
 import type { ProgressView } from "@/core/progress";
 import { useLiveProgress } from "../live-state/live-store";
 
 /**
- * 执行进度（经 /api/events 推送）。已完成调用数变化时刷新整页数据，新结果随即
- * 出现在矩阵中。
+ * 执行进度（经 /api/events 推送）。不再触发整页 router.refresh()，矩阵结果的
+ * 增量拉取由 useDashboardSync 按 runsRevision 事件单独驱动。
  */
 export function useRunProgress(): ProgressView[] | null {
-  const router = useRouter();
-  const runs = useLiveProgress();
-  const lastDone = useRef<number | null>(null);
-
-  const done = runs === null ? null : countDone(runs);
-  useEffect(() => {
-    if (done === null) return;
-    if (lastDone.current !== null && lastDone.current !== done) router.refresh();
-    lastDone.current = done;
-  }, [done, router]);
-
-  return runs;
+  return useLiveProgress();
 }
 
-/** 已完成调用数加已结束轮次数与已评审作品数，使轮次收尾（写终稿）与 AI 层出分也触发刷新 */
-function countDone(runs: readonly ProgressView[]): number {
-  let total = 0;
-  for (const run of runs) {
-    if (run.finishedAt !== null) total += 1;
-    for (const lane of run.lanes) total += lane.calls.filter((call) => call.state === "done").length;
-    for (const item of run.judging?.items ?? []) if (item.state === "done" || item.state === "failed") total += 1;
-  }
-  return total;
+/** 编码每轮完成态、已完成调用集合与 AI 评审完成态的复合签名，任意状态跃迁均触发刷新 */
+export function progressDoneSignature(runs: readonly ProgressView[]): string {
+  return runs
+    .map((run) => {
+      const doneCalls = run.lanes
+        .flatMap((lane) => lane.calls)
+        .filter((call) => call.state === "done")
+        .map((call) => `${call.targetId}/${call.promptId}`)
+        .join(",");
+      const doneJudges = (run.judging?.items ?? [])
+        .filter((item) => item.state === "done" || item.state === "failed")
+        .map((item) => `${item.attemptKey}:${item.state}`)
+        .join(",");
+      const judgeFinished = run.judging?.finishedAt ?? "";
+      return `${run.runId}:${run.finishedAt ?? ""}:${run.cancelledAt ?? ""}:${doneCalls}:${doneJudges}:${judgeFinished}`;
+    })
+    .join("|");
 }

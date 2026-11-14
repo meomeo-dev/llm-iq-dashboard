@@ -4,7 +4,7 @@
  * 凭据每 24 小时轮换一次；轮换后旧值保留一小段宽限期，让同时在飞的请求不至于失败。
  */
 
-import { readJsonFile, writeJsonFile } from "./store";
+import { readJsonFile, withAuthFileLock, writeJsonFile } from "./store";
 
 const DEVICES_FILE = "devices.json";
 
@@ -32,33 +32,41 @@ export async function findDevice(id: string): Promise<DeviceRecord | null> {
 }
 
 export async function addDevice(device: DeviceRecord): Promise<void> {
-  const devices = await listDevices();
-  await saveDevices([...devices.filter((existing) => existing.id !== device.id), device]);
+  await withAuthFileLock(DEVICES_FILE, async () => {
+    const devices = await listDevices();
+    await saveDevices([...devices.filter((existing) => existing.id !== device.id), device]);
+  });
 }
 
 /** 更新一条记录；设备已被吊销时不再写回 */
 export async function updateDevice(id: string, patch: Partial<DeviceRecord>): Promise<DeviceRecord | null> {
-  const devices = await listDevices();
-  const index = devices.findIndex((device) => device.id === id);
-  if (index < 0) return null;
-  const updated = { ...devices[index], ...patch } as DeviceRecord;
-  devices[index] = updated;
-  await saveDevices(devices);
-  return updated;
+  return withAuthFileLock(DEVICES_FILE, async () => {
+    const devices = await listDevices();
+    const index = devices.findIndex((device) => device.id === id);
+    if (index < 0) return null;
+    const updated = { ...devices[index], ...patch } as DeviceRecord;
+    devices[index] = updated;
+    await saveDevices(devices);
+    return updated;
+  });
 }
 
 export async function revokeDevice(id: string): Promise<boolean> {
-  const devices = await listDevices();
-  const remaining = devices.filter((device) => device.id !== id);
-  if (remaining.length === devices.length) return false;
-  await saveDevices(remaining);
-  return true;
+  return withAuthFileLock(DEVICES_FILE, async () => {
+    const devices = await listDevices();
+    const remaining = devices.filter((device) => device.id !== id);
+    if (remaining.length === devices.length) return false;
+    await saveDevices(remaining);
+    return true;
+  });
 }
 
 export async function revokeAllDevices(): Promise<number> {
-  const count = (await listDevices()).length;
-  await saveDevices([]);
-  return count;
+  return withAuthFileLock(DEVICES_FILE, async () => {
+    const count = (await listDevices()).length;
+    await saveDevices([]);
+    return count;
+  });
 }
 
 async function saveDevices(devices: DeviceRecord[]): Promise<void> {

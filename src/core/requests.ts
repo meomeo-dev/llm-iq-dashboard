@@ -11,6 +11,7 @@ import { mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/pro
 import { join } from "node:path";
 import { readCachedCatalog } from "../capabilities/catalog";
 import type { CapabilitySnapshot } from "../capabilities/types";
+import { withAuthFileLock } from "./auth/store";
 import type { ProbeId } from "./model-fingerprint/types";
 import { dataRoot } from "./paths";
 import type { RunSelection } from "./run-selection";
@@ -24,9 +25,12 @@ import type {
 } from "./sync/data-repo-panel-types";
 
 const REQUESTS_DIR = "requests";
+const REQUESTS_LOCK_NAME = "requests.lock";
 const POLL_MS = 250;
 /** 处理完的请求文件保留这么久，便于排查 */
 const KEEP_FINISHED_MS = 60 * 60 * 1000;
+/** 请求默认有效期：超过后仍处于 pending 的请求在认领时自动作废，防止迟到认领产生幽灵任务 */
+export const DEFAULT_REQUEST_TTL_MS = 2 * 60 * 1000;
 
 export type RequestKind =
   | "run"
@@ -71,6 +75,8 @@ export interface RunnerRequest {
   kind: RequestKind;
   state: RequestState;
   requestedAt: string;
+  /** pending 请求的有效期；超过该时刻仍未被认领则在认领时自动置为 failed */
+  expiresAt?: string | null;
   claimedAt: string | null;
   finishedAt: string | null;
   /** kind 为 run 时的范围；null 表示按配置跑整轮 */
@@ -155,6 +161,7 @@ export async function requestRunnerProfileCredential(
   const req = await enqueueRequest("profile-credential", { profileCredential: action });
   const settled = await waitForRequest(req.id, timeoutMs);
   if (settled?.state === "done") return { ok: true };
+  await expirePendingRequest(req.id, "执行器未响应，API key 未保存").catch(() => {});
   await scrubProfileKey(req.id).catch(() => {});
   return { ok: false, error: settled?.result?.error ?? "执行器未响应，API key 未保存" };
 }
@@ -173,10 +180,12 @@ export async function requestRunnerProfileModels(
 }
 
 async function scrubProfileKey(id: string): Promise<void> {
-  const current = await readRequest(id);
-  if (current?.profileCredential?.apiKey) {
-    await save({ ...current, profileCredential: { ...current.profileCredential, apiKey: null } });
-  }
+  await withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    const current = await readRequest(id);
+    if (current?.profileCredential?.apiKey) {
+      await save(scrubSecretsOf(current));
+    }
+  });
 }
 
 /** 让执行器代办 GitHub App 授权动作；超时或失败返回错误描述 */
@@ -201,6 +210,7 @@ export async function requestRunnerGithubAction(
       disconnectResult: settled.result?.githubDisconnectResult,
     };
   }
+  await expirePendingRequest(req.id, "执行器未响应 GitHub 授权请求").catch(() => {});
   if (code) {
     await clearRequestCode(req.id).catch(() => {});
   }
@@ -222,13 +232,14 @@ export interface EnqueuePayload {
   profileTarget?: { cli: CliKind; name: string } | null;
   fingerprintFill?: FingerprintFillRequestPayload | null;
   fingerprintCheck?: FingerprintCheckRequestPayload | null;
+  ttlMs?: number | null;
 }
 
 function normalizePayload(payload: RunSelection | EnqueuePayload | null): Required<EnqueuePayload> {
   if (payload === null) {
     return {
       selection: null, syncAction: null, githubAction: null,
-      profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null,
+      profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null, ttlMs: null,
     };
   }
   if (
@@ -238,6 +249,7 @@ function normalizePayload(payload: RunSelection | EnqueuePayload | null): Requir
     "profileTarget" in payload ||
     "fingerprintFill" in payload ||
     "fingerprintCheck" in payload ||
+    "ttlMs" in payload ||
     ("selection" in payload && payload.selection !== undefined)
   ) {
     const p = payload as EnqueuePayload;
@@ -249,11 +261,12 @@ function normalizePayload(payload: RunSelection | EnqueuePayload | null): Requir
       profileTarget: p.profileTarget ?? null,
       fingerprintFill: p.fingerprintFill ?? null,
       fingerprintCheck: p.fingerprintCheck ?? null,
+      ttlMs: p.ttlMs ?? null,
     };
   }
   return {
     selection: payload as RunSelection, syncAction: null, githubAction: null,
-    profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null,
+    profileCredential: null, profileTarget: null, fingerprintFill: null, fingerprintCheck: null, ttlMs: null,
   };
 }
 
@@ -263,11 +276,13 @@ export async function enqueueRequest(
   now: Date = new Date(),
 ): Promise<RunnerRequest> {
   const norm = normalizePayload(payload);
+  const ttlMs = norm.ttlMs ?? DEFAULT_REQUEST_TTL_MS;
   const request: RunnerRequest = {
     id: `${now.toISOString().replace(/[-:.]/g, "")}-${randomBytes(4).toString("hex")}`,
     kind,
     state: "pending",
     requestedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
     claimedAt: null,
     finishedAt: null,
     selection: norm.selection,
@@ -279,8 +294,8 @@ export async function enqueueRequest(
     ...(norm.fingerprintCheck !== null ? { fingerprintCheck: norm.fingerprintCheck } : {}),
     result: null,
   };
-  await mkdir(requestsDir(), { recursive: true });
-  await save(request);
+  await mkdir(requestsDir(), { recursive: true, mode: 0o700 });
+  await withAuthFileLock(REQUESTS_LOCK_NAME, () => save(request));
   return request;
 }
 
@@ -304,14 +319,64 @@ export async function waitForRequest(id: string, timeoutMs: number): Promise<Run
   return latest;
 }
 
-/** 执行器：认领最早的 pending 请求；没有则 null */
+function scrubSecretsOf(request: RunnerRequest): RunnerRequest {
+  const githubAction = request.githubAction ? { ...request.githubAction, code: null } : undefined;
+  const profileCredential = request.profileCredential
+    ? { ...request.profileCredential, apiKey: null }
+    : undefined;
+  return {
+    ...request,
+    ...(githubAction !== undefined ? { githubAction } : {}),
+    ...(profileCredential !== undefined ? { profileCredential } : {}),
+  };
+}
+
+/** 执行器：认领最早的未过期 pending 请求；已过期的 pending 请求自动标为 failed */
 export async function claimNextRequest(now: Date = new Date()): Promise<RunnerRequest | null> {
-  const pending = (await listRequests()).filter((request) => request.state === "pending");
-  const next = pending.sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))[0];
-  if (next === undefined) return null;
-  const claimed: RunnerRequest = { ...next, state: "claimed", claimedAt: now.toISOString() };
-  await save(claimed);
-  return claimed;
+  return withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    const pending = (await listRequests())
+      .filter((request) => request.state === "pending")
+      .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt));
+    for (const candidate of pending) {
+      if (candidate.expiresAt != null && Date.parse(candidate.expiresAt) <= now.getTime()) {
+        await save({
+          ...scrubSecretsOf(candidate),
+          state: "failed",
+          finishedAt: now.toISOString(),
+          result: { error: "请求已过期，未在有效期内被执行器认领" },
+        });
+        continue;
+      }
+      const claimed: RunnerRequest = { ...candidate, state: "claimed", claimedAt: now.toISOString() };
+      await save(claimed);
+      return claimed;
+    }
+    return null;
+  });
+}
+
+/**
+ * 若请求仍处于 pending 状态，则原子将其置为 failed 并抹除敏感字段；
+ * 若请求已被执行器认领（claimed）或已进入终态（done / failed），则保留原状态并返回当前记录。
+ */
+export async function expirePendingRequest(
+  id: string,
+  error: string = "等待执行器响应超时，请求已取消",
+  now: Date = new Date(),
+): Promise<RunnerRequest | null> {
+  return withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    const current = await readRequest(id);
+    if (current === null) return null;
+    if (current.state !== "pending") return current;
+    const expired: RunnerRequest = {
+      ...scrubSecretsOf(current),
+      state: "failed",
+      finishedAt: now.toISOString(),
+      result: { error },
+    };
+    await save(expired);
+    return expired;
+  });
 }
 
 export async function completeRequest(id: string, result: NonNullable<RunnerRequest["result"]>, now: Date = new Date()): Promise<void> {
@@ -322,8 +387,9 @@ export async function failRequest(id: string, error: string, now: Date = new Dat
   await settle(id, "failed", { error }, now);
 }
 
-/** 删除处理完超过一小时的请求文件 */
+/** 删除处理完超过一小时的请求文件，并顺带抹除滞留请求中的敏感凭据 */
 export async function pruneRequests(now: Date = new Date()): Promise<number> {
+  await cleanStaleGithubRequestCodes(now).catch(() => {});
   let removed = 0;
   for (const request of await listRequests()) {
     if (request.finishedAt === null || now.getTime() - Date.parse(request.finishedAt) < KEEP_FINISHED_MS) continue;
@@ -355,68 +421,62 @@ async function settle(
   result: NonNullable<RunnerRequest["result"]>,
   now: Date,
 ): Promise<void> {
-  const current = await readRequest(id);
-  if (current === null) return;
-  const githubAction = current.githubAction
-    ? { ...current.githubAction, code: null }
-    : undefined;
-  const profileCredential = current.profileCredential
-    ? { ...current.profileCredential, apiKey: null }
-    : undefined;
-  await save({
-    ...current,
-    state,
-    finishedAt: now.toISOString(),
-    result,
-    ...(githubAction !== undefined ? { githubAction } : {}),
-    ...(profileCredential !== undefined ? { profileCredential } : {}),
+  await withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    const current = await readRequest(id);
+    if (current === null) return;
+    await save({
+      ...scrubSecretsOf(current),
+      state,
+      finishedAt: now.toISOString(),
+      result,
+    });
   });
 }
 
-/**
- * 抹除请求中的授权码 (code)
- */
+/** 抹除请求中的授权码 (code) */
 export async function clearRequestCode(id: string): Promise<void> {
-  const current = await readRequest(id);
-  if (current?.githubAction?.code) {
-    await save({
-      ...current,
-      githubAction: { ...current.githubAction, code: null },
-    });
-  }
+  await withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    const current = await readRequest(id);
+    if (current?.githubAction?.code) {
+      await save(scrubSecretsOf(current));
+    }
+  });
 }
 
 const STALE_GITHUB_REQUEST_MS = 60 * 60 * 1000;
+const STALE_CREDENTIAL_REQUEST_MS = 5 * 60 * 1000;
 
-/**
- * 清理超过 1 小时的未完成 github-* 请求中的 code
- */
+/** 清理滞留请求中的一次性授权码 (githubAction.code) 与 API key (profileCredential.apiKey) */
 export async function cleanStaleGithubRequestCodes(
   now: Date = new Date(),
 ): Promise<number> {
-  let cleaned = 0;
-  for (const request of await listRequests()) {
-    if (
-      request.kind.startsWith("github-") &&
-      request.githubAction?.code &&
-      (request.state === "pending" || request.state === "claimed") &&
-      now.getTime() - Date.parse(request.requestedAt) >= STALE_GITHUB_REQUEST_MS
-    ) {
-      await save({
-        ...request,
-        githubAction: { ...request.githubAction, code: null },
-      });
-      cleaned += 1;
+  return withAuthFileLock(REQUESTS_LOCK_NAME, async () => {
+    let cleaned = 0;
+    for (const request of await listRequests()) {
+      const ageMs = now.getTime() - Date.parse(request.requestedAt);
+      const staleGithub =
+        request.kind.startsWith("github-") &&
+        Boolean(request.githubAction?.code) &&
+        (request.state === "pending" || request.state === "claimed") &&
+        ageMs >= STALE_GITHUB_REQUEST_MS;
+      const staleProfileKey =
+        Boolean(request.profileCredential?.apiKey) &&
+        (request.state === "pending" || request.state === "claimed") &&
+        ageMs >= STALE_CREDENTIAL_REQUEST_MS;
+      if (staleGithub || staleProfileKey) {
+        await save(scrubSecretsOf(request));
+        cleaned += 1;
+      }
     }
-  }
-  return cleaned;
+    return cleaned;
+  });
 }
 
-/** 写临时文件再原子替换：看板随时可能在读 */
+/** 写 0600 临时文件再原子替换：看板随时可能在读 */
 async function save(request: RunnerRequest): Promise<void> {
   const target = join(requestsDir(), `${request.id}.json`);
-  const staging = `${target}.staging`;
-  await writeFile(staging, `${JSON.stringify(request, null, 2)}\n`, "utf8");
+  const staging = `${target}.${process.pid}.${Date.now()}.${randomBytes(3).toString("hex")}.staging`;
+  await writeFile(staging, `${JSON.stringify(request, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   await rename(staging, target);
 }
 

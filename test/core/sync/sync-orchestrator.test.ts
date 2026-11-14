@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { syncDataRepo } from "@/core/sync/sync-orchestrator";
+import { pushConfirmedCommits } from "@/core/sync/confirm-published";
 import {
   loadSyncLedger,
   syncLedgerPath,
@@ -408,5 +409,29 @@ describe("sync-orchestrator 同步流水线编排", () => {
     assert.ok(!existsSync(join(repoDir, "runs")));
     // 验证无台账文件
     assert.ok(!existsSync(syncLedgerPath(dataDir)));
+  });
+
+  it("pushConfirmedCommits: 仅推送已确认的本地提交并更新台账，不夹带新落盘但未导出的轮次", async () => {
+    const run1 = "20260927T021708Z";
+    const run2 = "20260927T031708Z";
+    await mkdir(join(runsDir, run1), { recursive: true });
+    await writeFile(join(runsDir, run1, "run.json"), JSON.stringify(createSampleRun(run1)));
+    await writeFile(join(runsDir, run1, "test.svg"), '<svg viewBox="0 0 10 10"><rect/></svg>');
+
+    // 先仅导出 run1（不推送）
+    await syncDataRepo({ repoPath: repoDir, dataDir, push: false });
+
+    // 导出后、推送前本地新产出 run2
+    await mkdir(join(runsDir, run2), { recursive: true });
+    await writeFile(join(runsDir, run2, "run.json"), JSON.stringify(createSampleRun(run2)));
+    await writeFile(join(runsDir, run2, "test.svg"), '<svg viewBox="0 0 10 10"><circle r="4"/></svg>');
+
+    // 执行确认推送：只推 run1 的已存在提交，不导出 run2
+    const report = await pushConfirmedCommits({ repoPath: repoDir, dataDir });
+    assert.deepEqual(report.confirmed, [run1]);
+    assert.ok(!existsSync(join(repoDir, "runs/2026/09/27", run2)));
+    const ledger = await loadSyncLedger(dataDir);
+    assert.equal(ledger[run1]?.status, "published");
+    assert.equal(ledger[run2], undefined);
   });
 });

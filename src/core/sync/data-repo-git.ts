@@ -11,15 +11,12 @@
 
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-
 const LONG_TIMEOUT_MS = 120_000;
 const SHORT_TIMEOUT_MS = 30_000;
-
-
-
 export interface GitExecOptions {
   timeoutMs?: number;
   gitArgs?: string[];
@@ -151,16 +148,22 @@ export async function fetchAndFastForward(repoDir: string): Promise<void> {
 }
 
 /**
- * 暂存已导出的数据并创建提交。
- * 若无变更则返回 null。
+ * 暂存已导出的数据并创建提交。优先只暂存指定受管路径（runs/ 与 index.json），避免把其他临时文件一并提交。
+ * 若无已暂存变更则返回 null。
  */
 export async function commitSync(
   repoDir: string,
   runIds: readonly string[],
+  paths?: readonly string[],
 ): Promise<string | null> {
-  await gitExec(repoDir, ["add", "-A"]);
-  const status = await gitExec(repoDir, ["status", "--porcelain"]);
-  if (status.trim() === "") {
+  const managed =
+    paths && paths.length > 0
+      ? [...paths]
+      : ["index.json", "runs"].filter((p) => existsSync(join(repoDir, p)));
+  const addArgs = managed.length > 0 ? ["add", "-A", "--", ...managed] : ["add", "-A"];
+  await gitExec(repoDir, addArgs);
+  const staged = await gitExec(repoDir, ["diff", "--cached", "--name-only"]);
+  if (staged.trim() === "") {
     return null;
   }
 
@@ -279,45 +282,24 @@ export async function isCommitInUpstream(
     if (detected !== null) {
       upstream = detected;
     } else {
-      const currentBranch = (
-        await gitExec(repoDir, ["rev-parse", "--abbrev-ref", "HEAD"])
-      ).trim();
+      const currentBranch = (await gitExec(repoDir, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
       upstream = `origin/${currentBranch}`;
     }
   }
-
   try {
-    await gitExec(repoDir, [
-      "merge-base",
-      "--is-ancestor",
-      commitSha,
-      upstream,
-    ]);
+    await gitExec(repoDir, ["merge-base", "--is-ancestor", commitSha, upstream]);
     return true;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes("超时")) {
-      throw error;
-    }
+    if (msg.includes("超时")) throw error;
     return false;
   }
 }
 
-/**
- * 获取最近一次修改指定目录的提交 SHA。
- */
-export async function getDirectoryLatestCommit(
-  repoDir: string,
-  relativeDirPath: string,
-): Promise<string | null> {
+/** 获取最近一次修改指定目录的提交 SHA */
+export async function getDirectoryLatestCommit(repoDir: string, relativeDirPath: string): Promise<string | null> {
   try {
-    const stdout = await gitExec(repoDir, [
-      "log",
-      "-1",
-      "--format=%H",
-      "--",
-      relativeDirPath,
-    ]);
+    const stdout = await gitExec(repoDir, ["log", "-1", "--format=%H", "--", relativeDirPath]);
     const trimmed = stdout.trim();
     return trimmed.length > 0 ? trimmed : null;
   } catch {
@@ -325,25 +307,16 @@ export async function getDirectoryLatestCommit(
   }
 }
 
-/**
- * 推送并验证远程分支已包含本次提交（向下兼容包装）。
- */
-export async function pushAndVerify(
-  repoDir: string,
-  commitSha: string,
-): Promise<void> {
+/** 推送并验证远程分支已包含本次提交（向下兼容包装） */
+export async function pushAndVerify(repoDir: string, commitSha: string): Promise<void> {
   await pushCurrentBranch(repoDir);
   const included = await isCommitInUpstream(repoDir, commitSha);
   if (!included) {
-    throw new Error(
-      `推送后远程分支未包含指定提交 (${commitSha})，推送校验失败`,
-    );
+    throw new Error(`推送后远程分支未包含指定提交 (${commitSha})，推送校验失败`);
   }
 }
 
-/**
- * 检查指定目录是否为有效的 Git 仓库。
- */
+/** 检查指定目录是否为有效的 Git 仓库 */
 export async function isGitRepository(repoDir: string): Promise<boolean> {
   if (!existsSync(repoDir)) return false;
   try {
@@ -354,9 +327,7 @@ export async function isGitRepository(repoDir: string): Promise<boolean> {
   }
 }
 
-/**
- * 获取当前所在分支名称；detached HEAD 或无分支时返回 null。
- */
+/** 获取当前所在分支名称；detached HEAD 或无分支时返回 null */
 export async function getCurrentBranch(repoDir: string): Promise<string | null> {
   try {
     const stdout = await gitExec(repoDir, ["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -367,9 +338,7 @@ export async function getCurrentBranch(repoDir: string): Promise<string | null> 
   }
 }
 
-/**
- * 检查当前工作区是否干净（无未暂存、暂存或未跟踪文件）。
- */
+/** 检查当前工作区是否干净（无未暂存、暂存或未跟踪文件） */
 export async function isWorkingTreeClean(repoDir: string): Promise<boolean> {
   try {
     const stdout = await gitExec(repoDir, ["status", "--porcelain"]);
@@ -379,20 +348,10 @@ export async function isWorkingTreeClean(repoDir: string): Promise<boolean> {
   }
 }
 
-/**
- * 获取本地分支相对于上游的 ahead / behind 提交数。
- * 无上游或执行失败时返回 null。
- */
-export async function getAheadBehind(
-  repoDir: string,
-): Promise<{ ahead: number; behind: number } | null> {
+/** 获取本地分支相对于上游的 ahead / behind 提交数；无上游或执行失败时返回 null */
+export async function getAheadBehind(repoDir: string): Promise<{ ahead: number; behind: number } | null> {
   try {
-    const stdout = await gitExec(repoDir, [
-      "rev-list",
-      "--left-right",
-      "--count",
-      "@{u}...HEAD",
-    ]);
+    const stdout = await gitExec(repoDir, ["rev-list", "--left-right", "--count", "@{u}...HEAD"]);
     const parts = stdout.trim().split(/\s+/);
     const behindStr = parts[0];
     const aheadStr = parts[1];
@@ -410,17 +369,10 @@ export async function getAheadBehind(
   }
 }
 
-/**
- * 获取本地领先上游的提交短哈希列表，新的在前。
- * 无上游或无领先提交时返回空数组。
- */
+/** 获取本地领先上游的提交短哈希列表，新的在前；无上游或无领先提交时返回空数组 */
 export async function getAheadCommits(repoDir: string): Promise<string[]> {
   try {
-    const stdout = await gitExec(repoDir, [
-      "rev-list",
-      "--abbrev-commit",
-      "@{u}..HEAD",
-    ]);
+    const stdout = await gitExec(repoDir, ["rev-list", "--abbrev-commit", "@{u}..HEAD"]);
     const trimmed = stdout.trim();
     if (trimmed === "") return [];
     return trimmed.split("\n").map((line) => line.trim()).filter(Boolean);

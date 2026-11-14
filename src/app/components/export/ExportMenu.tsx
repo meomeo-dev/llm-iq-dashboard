@@ -7,7 +7,7 @@ import { Menu } from "../menu/Menu";
 import { useProfiles } from "../profile/profiles-context";
 import type { Moment } from "../timeline/moments";
 import type { NowMark } from "../timeline/TimelineAxis";
-import { formatDayLabel, formatZonedDateTime, offsetLabel } from "../timeline/zoned-time";
+import { dayOffsetLabel, formatDayLabel, formatZonedDateTime } from "../timeline/zoned-time";
 import { buildThumbnails, downloadPng, downloadSvg, localizeExportError, readPalette } from "./export-image";
 import { renderTimelinePortraitSvg } from "./timeline-portrait-svg";
 import { renderTimelineSvg, type TimelineExport } from "./timeline-svg";
@@ -101,13 +101,13 @@ async function buildInput(
   const subtitle = isEn
     ? [
         `${formatDayLabel(dayKey, locale)} (${dayKey})`,
-        `${timeZone} ${offsetLabel(new Date(), timeZone)}`,
+        `${timeZone} ${dayOffsetLabel(dayKey, timeZone)}`,
         `${moments.length} runs · ${results} results${filtered ? " (filtered)" : ""}`,
         `Exported at ${formatZonedDateTime(new Date(), timeZone)}`,
       ].join(" · ")
     : [
         `${formatDayLabel(dayKey)}（${dayKey}）`,
-        `${timeZone} ${offsetLabel(new Date(), timeZone)}`,
+        `${timeZone} ${dayOffsetLabel(dayKey, timeZone)}`,
         `${moments.length} 轮 · ${results} 个结果${filtered ? "（已按筛选）" : ""}`,
         `导出于 ${formatZonedDateTime(new Date(), timeZone)}`,
       ].join(" · ");

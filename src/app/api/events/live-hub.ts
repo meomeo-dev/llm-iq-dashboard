@@ -18,11 +18,13 @@ import { describeAutoRun, type AutoRunView } from "@/core/auto-run";
 import { findActiveFingerprintJob, type FingerprintJobView } from "@/core/model-fingerprint/job";
 import { configPath, dataRoot, fingerprintJobsRoot, fingerprintRoot, runsRoot } from "@/core/paths";
 import { listProgressViews, type ProgressView } from "@/core/progress";
+import { computeRunsRevision } from "@/core/runs-revision";
 import { listRunIds } from "@/core/store";
 
 export const PROGRESS_EVENT = "progress";
 export const AUTO_RUN_EVENT = "auto-run";
 export const FINGERPRINT_JOB_EVENT = "fingerprint-job";
+export const RUNS_REVISION_EVENT = "runs-revision";
 
 /** 一次写入往往连着几个文件事件（临时文件 + 原子替换），合并成一次重算 */
 const DEBOUNCE_MS = 150;
@@ -32,6 +34,8 @@ const WATCHED_RECENT_RUNS = 3;
 /** data/ 顶层里与看板状态有关的文件 */
 const TOP_LEVEL_FILES = new Set(["auto-run.json", "scheduler.json"]);
 const PROGRESS_FILE = "progress.json";
+const RUN_FILE = "run.json";
+const JUDGE_SUFFIX = ".judge.json";
 
 export interface LiveSnapshot {
   progress: ProgressView[];
@@ -39,15 +43,24 @@ export interface LiveSnapshot {
   autoRun: AutoRunView | null;
   /** 当前活跃的模型指纹作业；无活跃作业时为 null */
   fingerprintJob: FingerprintJobView | null;
+  /** 最近轮次落盘产物（run.json / *.judge.json）与轮次集合的轻量修订签名 */
+  runsRevision: string;
 }
 
 interface LiveHub {
+  /** 所有者频道：推送完整进度与模型指纹作业状态 */
   channel: Channel;
+  /** 公开访客频道：剥离带 jobKind 的指纹伪进度，不推送指纹作业详情 */
+  publicChannel: Channel;
   latest: LiveSnapshot | null;
   watcher: FSWatcher | null;
   debounceTimer: ReturnType<typeof setTimeout> | undefined;
   livenessTimer: ReturnType<typeof setInterval> | undefined;
   nextRunTimer: ReturnType<typeof setTimeout> | undefined;
+}
+
+export function publicProgressOf(progress: readonly ProgressView[]): ProgressView[] {
+  return progress.filter((r) => !r.jobKind);
 }
 
 const HUB_KEY = Symbol.for("pelican.liveHub");
@@ -64,15 +77,20 @@ export function liveHub(): LiveHub {
 
   const hub: LiveHub = {
     channel: createChannel(),
+    publicChannel: createChannel(),
     latest: null,
     watcher: null,
     debounceTimer: undefined,
     livenessTimer: undefined,
     nextRunTimer: undefined,
   };
-  hub.channel.on("session-deregistered", () => {
-    if (hub.channel.sessionCount === 0) stopWatching(hub);
-  });
+  const onDeregister = () => {
+    if (hub.channel.sessionCount === 0 && hub.publicChannel.sessionCount === 0) {
+      stopWatching(hub);
+    }
+  };
+  hub.channel.on("session-deregistered", onDeregister);
+  hub.publicChannel.on("session-deregistered", onDeregister);
   holder[HUB_KEY] = hub;
   return hub;
 }
@@ -118,8 +136,9 @@ function stopWatching(hub: LiveHub): void {
 }
 
 /**
- * 只放行影响看板状态的路径：data/ 根目录、顶层运行态文件、runs/ 及其 progress.json、
- * model-fingerprint/jobs/<jobId>.json、配置文件；samples/、archive/、checks/、.cancel.json、.staging 忽略。
+ * 只放行影响看板状态的路径：data/ 根目录、顶层运行态文件、runs/ 及其 progress.json /
+ * run.json / *.judge.json、model-fingerprint/jobs/<jobId>.json、配置文件；
+ * 作品文件、日志、samples/、archive/、checks/、.cancel.json、.staging 一律忽略。
  */
 function isIgnored(path: string, oldestWatched: string): boolean {
   if (
@@ -146,7 +165,7 @@ function isIgnored(path: string, oldestWatched: string): boolean {
   if (underRuns.startsWith("..")) return true;
   const [runId, file] = underRuns.split(sep);
   if (runId === undefined || runId < oldestWatched) return true;
-  return file !== undefined && file !== PROGRESS_FILE;
+  return file !== undefined && file !== PROGRESS_FILE && file !== RUN_FILE && !file.endsWith(JUDGE_SUFFIX);
 }
 
 function scheduleRefresh(hub: LiveHub): void {
@@ -162,12 +181,22 @@ async function refresh(hub: LiveHub): Promise<void> {
   if (JSON.stringify(previous?.progress) !== JSON.stringify(next.progress)) {
     hub.channel.broadcast(next.progress, PROGRESS_EVENT);
   }
+  const prevPublicProgress = previous ? publicProgressOf(previous.progress) : null;
+  const nextPublicProgress = publicProgressOf(next.progress);
+  if (JSON.stringify(prevPublicProgress) !== JSON.stringify(nextPublicProgress)) {
+    hub.publicChannel.broadcast(nextPublicProgress, PROGRESS_EVENT);
+  }
   if (JSON.stringify(previous?.autoRun) !== JSON.stringify(next.autoRun)) {
     hub.channel.broadcast(next.autoRun, AUTO_RUN_EVENT);
+    hub.publicChannel.broadcast(next.autoRun, AUTO_RUN_EVENT);
     armNextRunTimer(hub);
   }
   if (JSON.stringify(previous?.fingerprintJob) !== JSON.stringify(next.fingerprintJob)) {
     hub.channel.broadcast(next.fingerprintJob, FINGERPRINT_JOB_EVENT);
+  }
+  if (previous?.runsRevision !== next.runsRevision) {
+    hub.channel.broadcast(next.runsRevision, RUNS_REVISION_EVENT);
+    hub.publicChannel.broadcast(next.runsRevision, RUNS_REVISION_EVENT);
   }
 }
 
@@ -181,15 +210,16 @@ function armNextRunTimer(hub: LiveHub): void {
 }
 
 async function computeSnapshot(): Promise<LiveSnapshot> {
-  const [progress, fingerprintJob] = await Promise.all([
+  const [progress, fingerprintJob, runsRevision] = await Promise.all([
     listProgressViews(),
     findActiveFingerprintJob(),
+    computeRunsRevision(),
   ]);
   try {
-    return { progress, autoRun: await describeAutoRun(), fingerprintJob };
+    return { progress, autoRun: await describeAutoRun(), fingerprintJob, runsRevision };
   } catch (cause) {
     console.error(`读取自动任务状态失败：${describe(cause)}`);
-    return { progress, autoRun: null, fingerprintJob };
+    return { progress, autoRun: null, fingerprintJob, runsRevision };
   }
 }
 

@@ -5,7 +5,7 @@
 
 import { rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Page } from "playwright-core";
+import type { Browser, BrowserContext, Page } from "playwright-core";
 import { acquireJudgeBrowser } from "./browser";
 import { runDir } from "../paths";
 import { composeContactSheet, detailPlans, FRAME_SIZE, type DetailPlan } from "./contact-sheet";
@@ -30,19 +30,45 @@ export interface RenderJudgeInput {
 
 export type RenderOutcome = { ok: true; judgement: Judgement } | { ok: false; reason: string };
 
+export function sanitizeSvgForRender(source: string): string {
+  return source
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<script\b[^>]*\/>/gi, "")
+    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(
+      /\s+(?:xlink:)?href\s*=\s*(?:"(?:https?:|\/\/|javascript:|vbscript:)[^"]*"|'(?:https?:|\/\/|javascript:|vbscript:)[^']*')/gi,
+      "",
+    );
+}
+
+async function openIsolatedSvgContext(browser: Browser, size: number): Promise<BrowserContext> {
+  const context = await browser.newContext({
+    viewport: { width: size, height: size },
+    deviceScaleFactor: 1,
+    javaScriptEnabled: true,
+  });
+  await context.route("**/*", (route) => {
+    const url = route.request().url();
+    if (url.startsWith("data:")) return route.continue();
+    return route.abort("blockedbyclient");
+  });
+  return context;
+}
+
 export async function renderJudge(input: RenderJudgeInput): Promise<RenderOutcome> {
   const parsed = parseSvgModel(input.source);
   if (!parsed.ok) return { ok: false, reason: parsed.error };
   const handle = await acquireJudgeBrowser();
   if (!handle.ok) return { ok: false, reason: handle.reason };
   const started = Date.now();
-  const context = await handle.browser.newContext({ viewport: { width: FRAME_SIZE, height: FRAME_SIZE }, deviceScaleFactor: 1 });
+  const context = await openIsolatedSvgContext(handle.browser, FRAME_SIZE);
   try {
     const page = await context.newPage();
     const parts = identifyParts(parsed.model);
     const tracks = buildTracks(parts, parsed.model);
     const periodMs = periodOf(parts);
-    const { measured, plans } = await captureFrames(page, input.source, tracks, periodMs);
+    const { measured, plans } = await captureFrames(page, sanitizeSvgForRender(input.source), tracks, periodMs);
     const { runId, attemptKey } = input.judgement.subject;
     const frames = measured.frames;
     const file = await saveContactSheet(runId, `${attemptKey}.sheet.png`,
@@ -79,10 +105,11 @@ export interface LocateFrame {
 export async function captureLocateFrame(source: string, size: number): Promise<{ ok: true; frame: LocateFrame } | { ok: false; reason: string }> {
   const handle = await acquireJudgeBrowser();
   if (!handle.ok) return { ok: false, reason: handle.reason };
-  const context = await handle.browser.newContext({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
+  const context = await openIsolatedSvgContext(handle.browser, size);
   try {
     const page = await context.newPage();
-    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`, { waitUntil: "load" });
+    const safeSource = sanitizeSvgForRender(source);
+    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeSource)}`, { waitUntil: "load" });
     const stage = await evaluatePage(page, prepareStage, size);
     await evaluatePage(page, seekTo, 0);
     const matrix = await evaluatePage(page, rootScreenMatrix, undefined);
@@ -104,10 +131,11 @@ export async function recaptureDetails(
   if (!sheet) return { ok: false, reason: "没有帧序表" };
   const handle = await acquireJudgeBrowser();
   if (!handle.ok) return { ok: false, reason: handle.reason };
-  const context = await handle.browser.newContext({ viewport: { width: FRAME_SIZE, height: FRAME_SIZE }, deviceScaleFactor: 1 });
+  const context = await openIsolatedSvgContext(handle.browser, FRAME_SIZE);
   try {
     const page = await context.newPage();
-    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`, { waitUntil: "load" });
+    const safeSource = sanitizeSvgForRender(source);
+    await page.goto(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(safeSource)}`, { waitUntil: "load" });
     const stage = await evaluatePage(page, prepareStage, FRAME_SIZE);
     const frames: Buffer[][] = [];
     for (const timeMs of sheet.sampleTimesMs) {

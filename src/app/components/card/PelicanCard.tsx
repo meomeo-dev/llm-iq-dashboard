@@ -30,13 +30,16 @@ import {
  */
 export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone: string }) {
   const { locale } = useI18n();
-  const art = rawSvgHref(card);
-  const isRedacted = card.status === "ok" && card.svgFile === null;
+  const isLive = card.liveState !== undefined;
+  const art = isLive ? null : rawSvgHref(card);
+  const isRedacted = !isLive && card.status === "ok" && card.svgFile === null;
   return (
     <article className="card">
       <CardHeader card={card} timeZone={timeZone} locale={locale} />
 
-      {art !== null ? (
+      {isLive ? (
+        <LiveFrame liveState={card.liveState!} locale={locale} />
+      ) : art !== null ? (
         <ArtFrame card={card} art={art} locale={locale} />
       ) : isRedacted ? (
         <RedactedFrame card={card} locale={locale} />
@@ -44,7 +47,7 @@ export function PelicanCard({ card, timeZone }: { card: DashboardCard; timeZone:
         <FailureFrame card={card} locale={locale} />
       )}
 
-      <CardFooter card={card} isRedacted={isRedacted} locale={locale} />
+      <CardFooter card={card} isLive={isLive} isRedacted={isRedacted} locale={locale} />
     </article>
   );
 }
@@ -77,21 +80,30 @@ function CardHeader({ card, timeZone, locale }: { card: DashboardCard; timeZone:
 
 function CardFooter({
   card,
+  isLive,
   isRedacted,
   locale,
 }: {
   card: DashboardCard;
+  isLive: boolean;
   isRedacted: boolean;
   locale: Locale;
 }) {
-  const href = viewHref(card);
+  const href = isLive ? null : viewHref(card);
   const isEn = locale === "en";
   const redactedLabel = isEn ? "Redacted (Unpublished)" : "已脱敏，未发布";
+  const liveLabel =
+    card.liveState === "queued" ? (isEn ? "Queued" : "排队中") : isEn ? "Running" : "执行中";
+  const statusClass = isLive
+    ? `status-${card.liveState}`
+    : isRedacted
+      ? "status-redacted"
+      : `status-${card.status}`;
   return (
     <footer>
       <div className="footer-row">
-        <span className={`status-text ${isRedacted ? "status-redacted" : `status-${card.status}`}`}>
-          {isRedacted ? redactedLabel : statusText(card.status, locale)}
+        <span className={`status-text ${statusClass}`}>
+          {isLive ? liveLabel : isRedacted ? redactedLabel : statusText(card.status, locale)}
         </span>
         {card.judge != null && (
           <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} locale={locale} />
@@ -109,7 +121,11 @@ function CardFooter({
         )}
       </div>
       <div className="footer-row">
-        <span>{isEn ? `Time ${formatDuration(card.durationMs)}` : `耗时 ${formatDuration(card.durationMs)}`}</span>
+        <span>
+          {isLive
+            ? isEn ? "Time —" : "耗时 —"
+            : isEn ? `Time ${formatDuration(card.durationMs)}` : `耗时 ${formatDuration(card.durationMs)}`}
+        </span>
         <span className="card-cost" title={costTitle(card, locale)}>
           {card.profile !== undefined && (isEn ? "List " : "官价 ")}
           {formatCost(card.cost)}
@@ -138,10 +154,34 @@ function JudgeTag({
   judgeCost: DashboardCard["judgeCost"];
   locale: Locale;
 }) {
-  const live =
-    judge.total.verdict === "pending"
-      ? pendingJudgeState(useLiveProgress(), card.runId, judge.subject.attemptKey, Date.now())
-      : null;
+  if (judge.total.verdict === "pending") {
+    return <PendingJudgeTag card={card} judge={judge} judgeCost={judgeCost} locale={locale} />;
+  }
+  return (
+    <JudgeStatusBadge
+      judge={judge}
+      judgeCost={judgeCost}
+      liveState={null}
+      locale={locale}
+      withTooltip
+      className="judge-tag"
+    />
+  );
+}
+
+function PendingJudgeTag({
+  card,
+  judge,
+  judgeCost,
+  locale,
+}: {
+  card: DashboardCard;
+  judge: NonNullable<DashboardCard["judge"]>;
+  judgeCost: DashboardCard["judgeCost"];
+  locale: Locale;
+}) {
+  const progress = useLiveProgress();
+  const live = pendingJudgeState(progress, card.runId, judge.subject.attemptKey, Date.now());
   return (
     <JudgeStatusBadge
       judge={judge}
@@ -235,6 +275,18 @@ function RedactedFrame({ card, locale }: { card: DashboardCard; locale: Locale }
     <div className="frame card-frame frame-redacted" title={reason}>
       <span className="redacted-status">{fallback}</span>
       <p>{reason}</p>
+    </div>
+  );
+}
+
+function LiveFrame({ liveState, locale }: { liveState: "queued" | "running"; locale: Locale }) {
+  const isEn = locale === "en";
+  const label =
+    liveState === "running" ? (isEn ? "Generating SVG…" : "模型生成中…") : isEn ? "Queued in lane…" : "道内排队等待…";
+  return (
+    <div className={`frame card-frame frame-live live-${liveState}`}>
+      <span className="live-status">{liveState === "running" ? (isEn ? "Running" : "执行中") : isEn ? "Queued" : "排队中"}</span>
+      <p>{label}</p>
     </div>
   );
 }

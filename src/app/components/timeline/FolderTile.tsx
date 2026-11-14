@@ -30,9 +30,10 @@ interface FolderTileProps {
 export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
   const { locale } = useI18n();
   const isEn = locale === "en";
-  const okCount = cell.cards.filter((card) => card.status === "ok").length;
+  const okCount = cell.cards.filter((card) => card.status === "ok" && card.liveState === undefined).length;
+  const hasLive = cell.cards.some((card) => card.liveState !== undefined);
   const summary = cell.cards
-    .map((card) => `${card.effort}${isEn ? ": " : "："}${card.status}`)
+    .map((card) => `${card.effort}${isEn ? ": " : "："}${card.liveState ?? card.status}`)
     .join(isEn ? ", " : "，");
   const ariaLabel = isEn
     ? `${row.cli} ${row.model}, ${summary}. Click to inspect all efforts`
@@ -44,7 +45,7 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
   return (
     <button
       type="button"
-      className="folder"
+      className={hasLive ? "folder folder-live" : "folder"}
       style={{ left: x }}
       aria-label={ariaLabel}
       title={titleText}
@@ -70,10 +71,11 @@ export function FolderTile({ row, cell, slots, x, onOpen }: FolderTileProps) {
         }
         const count = slotCount(cell, slot);
         const marks = slotMarks(cell, slot);
+        const dotStatus = card.liveState ?? card.status;
         return (
           <span key={slot} className="folder-slot">
             <Thumb card={card} />
-            <span className={`folder-status status-dot status-${card.status}`} />
+            <span className={`folder-status status-dot status-${dotStatus}`} />
             {count > 1 && (
               <span className="folder-count" title={isEn ? `${count} profiles` : `${count} 个上游`}>
                 ×{count}

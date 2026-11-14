@@ -5,14 +5,21 @@
  */
 
 import { NextResponse } from "next/server";
+import { readCookie } from "@/core/auth/guard";
+import { SESSION_COOKIE, verifySession } from "@/core/auth/session";
+import { isReadonly, isRemoteDataSource } from "@/core/deploy-mode";
 import { listProgressViews } from "@/core/progress";
-import { isRemoteDataSource } from "@/core/deploy-mode";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
   if (isRemoteDataSource()) {
     return NextResponse.json({ runs: [] });
   }
-  return NextResponse.json({ runs: await listProgressViews() });
+  const cookie = request?.headers ? readCookie(request.headers, SESSION_COOKIE) : null;
+  const owner = isReadonly() ? null : await verifySession(cookie);
+  const runs = await listProgressViews();
+  return NextResponse.json({
+    runs: owner !== null ? runs : runs.filter((r) => !r.jobKind),
+  });
 }

@@ -105,7 +105,9 @@ export class CodexAppServer {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`codex app-server 的 ${method} 在 ${timeoutMs}ms 内未响应`));
+        const err = new Error(`codex app-server 的 ${method} 在 ${timeoutMs}ms 内未响应`);
+        (err as Error & { timedOut?: boolean }).timedOut = true;
+        reject(err);
       }, timeoutMs);
 
       this.pending.set(id, {

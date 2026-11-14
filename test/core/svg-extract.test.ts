@@ -69,6 +69,23 @@ describe("extractSvg", () => {
     assert.match(extracted.source, /id="inner"/);
     assert.match(extracted.source, /<\/svg>\s*<\/svg>$/);
   });
+
+  test("所有候选 XML 均非法时返回 null，不回退为损坏 SVG", () => {
+    assert.equal(extractSvg("<svg><g><circle r='5'></svg>"), null);
+  });
+
+  test("正确跳过属性值中的 <svg 字面量与自闭合 <svg/>，并为 xlink: 自动补齐命名空间", () => {
+    const raw = [
+      '<svg viewBox="0 0 100 100" data-note="contains <svg> literal">',
+      '  <svg width="10" height="10"/>',
+      '  <use xlink:href="#icon"/>',
+      "</svg>",
+    ].join("\n");
+    const extracted = extractSvg(raw);
+    assert.ok(extracted);
+    assert.match(extracted.source, /xmlns:xlink="http:\/\/www\.w3\.org\/1999\/xlink"/);
+    assert.match(extracted.source, /<use xlink:href="#icon"\/>/);
+  });
 });
 
 describe("extractSvgFilePath", () => {

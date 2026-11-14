@@ -37,7 +37,7 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
   const panelRef = useOverlayStack<HTMLElement>(true, onClose);
   const { profiles } = useProfiles();
   const cards = folderCell(moment, row, [], efforts, profiles)?.cards ?? [];
-  const okCount = cards.filter((card) => card.status === "ok").length;
+  const okCount = cards.filter((card) => card.status === "ok" && card.liveState === undefined).length;
   const upstreams = orderProfileNames(cards.map(upstreamOf), profiles);
 
   return (

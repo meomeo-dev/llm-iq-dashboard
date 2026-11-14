@@ -32,6 +32,7 @@ export function rowPassRate(promptId: string, cards: readonly DashboardCard[]): 
 }
 
 function countPass(cards: readonly DashboardCard[]): PassCount {
-  const online = cards.filter((card) => card.judge?.total.verdict === "online").length;
-  return { online, total: cards.length };
+  const completed = cards.filter((card) => card.liveState === undefined);
+  const online = completed.filter((card) => card.judge?.total.verdict === "online").length;
+  return { online, total: completed.length };
 }

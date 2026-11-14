@@ -30,7 +30,6 @@ ENV CLAUDE_CODE_VERSION=2.1.283 \
     PATH=/opt/clis/bin:/opt/clis/npm/bin:$PATH \
     PELICAN_CONFIG=/app/data/pelican.config.yaml \
     PELICAN_BROWSER_PATH=/usr/bin/chromium \
-    PELICAN_BROWSER_NO_SANDBOX=1 \
     PELICAN_COMMAND_PREFIX="docker exec -it llm-iq-runner" \
     CLAUDE_CONFIG_DIR=/home/node/.claude \
     DISABLE_AUTOUPDATER=1 \

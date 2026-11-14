@@ -144,6 +144,21 @@ export function offsetLabel(date: Date, timeZone: string): string {
   return name.replace("GMT", "UTC").replace("-", "−");
 }
 
+/** 指定日历日（YYYY-MM-DD）在目标时区的偏移展示；跨夏令时切换日时返回 “UTC−5 → UTC−4” */
+export function dayOffsetLabel(dayKey: string, timeZone: string): string {
+  const baseMs = Date.parse(`${dayKey}T00:00:00Z`);
+  if (!Number.isFinite(baseMs)) return offsetLabel(new Date(), timeZone);
+  const offsets: string[] = [];
+  for (let h = -14; h <= 38; h += 1) {
+    const sample = new Date(baseMs + h * 3_600_000);
+    if (zonedDayKey(sample, timeZone) !== dayKey) continue;
+    const label = offsetLabel(sample, timeZone);
+    if (offsets[offsets.length - 1] !== label) offsets.push(label);
+  }
+  if (offsets.length === 0) return offsetLabel(new Date(baseMs), timeZone);
+  return offsets.length === 1 ? offsets[0]! : `${offsets[0]!} → ${offsets[offsets.length - 1]!}`;
+}
+
 /** 日期键的显示文字，如 “09/24 周四”；按 UTC 解析与格式化，星期不受本机时区影响 */
 export function formatDayLabel(dayKey: string, locale: Locale = "zh-CN"): string {
   const date = new Date(`${dayKey}T00:00:00Z`);

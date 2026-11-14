@@ -25,6 +25,26 @@ export async function ensureRunDir(runId: string): Promise<string> {
   return dir;
 }
 
+/** 原子创建不冲突的轮次目录，同秒冲突时顺延 1 秒 */
+export async function allocateRunDir(
+  initialAt: Date,
+  formatId: (at: Date) => string,
+): Promise<{ runId: string; startedAt: Date }> {
+  await mkdir(runsRoot(), { recursive: true });
+  let candidateAt = initialAt;
+  for (let step = 0; step < 3600; step += 1) {
+    const candidateId = formatId(candidateAt);
+    try {
+      await mkdir(runDir(candidateId), { recursive: false });
+      return { runId: candidateId, startedAt: candidateAt };
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== "EEXIST") throw err;
+      candidateAt = new Date(candidateAt.getTime() + 1000);
+    }
+  }
+  throw new Error("无法分配唯一的 runId 目录");
+}
+
 /** 写入一件产物，返回相对 run 目录的文件名，供 run.json 引用 */
 export async function writeArtifact(
   runId: string,
@@ -51,9 +71,7 @@ export async function writeJsonPathAtomic(filePath: string, value: unknown): Pro
 /** 写临时文件再原子替换，看板在轮次进行中读取时不会读到写了一半的文件 */
 export async function writeJsonAtomic(runId: string, filename: string, value: unknown): Promise<void> {
   await ensureRunDir(runId);
-  const staging = `${filename}.staging`;
-  await writeArtifact(runId, staging, `${JSON.stringify(value, null, 2)}\n`);
-  await rename(join(runDir(runId), staging), join(runDir(runId), filename));
+  await writeJsonPathAtomic(join(runDir(runId), filename), value);
 }
 
 /** 按 runId 倒序列出运行记录。runId 定长且由 UTC 时刻派生，字典序即时间序 */

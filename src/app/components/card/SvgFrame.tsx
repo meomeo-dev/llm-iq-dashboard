@@ -15,9 +15,19 @@ import { mountInShadow } from "./svg-shadow";
  * 非浏览器消费者也取不到原样标记。作品挂在框的 shadow root 里，样式不外溢，
  * 超出 viewBox 的部分被裁掉（见 svg-shadow.ts）。
  */
-export function SvgFrame({ source, className }: { source: string; className?: string }) {
+export function SvgFrame({
+  source,
+  className,
+  onSanitizeError,
+}: {
+  source: string;
+  className?: string;
+  onSanitizeError?: () => void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const onErrorRef = useRef(onSanitizeError);
+  onErrorRef.current = onSanitizeError;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -26,6 +36,7 @@ export function SvgFrame({ source, className }: { source: string; className?: st
     const { element, error: failure } = sanitizeSvg(source);
     host.shadowRoot?.replaceChildren();
     setError(failure);
+    if (failure !== null) onErrorRef.current?.();
     if (element === null) return;
     // id 隔离须在挂载前完成：进入文档后重名 id 会互相抢引用
     return mountInShadow(host, fitToFrame(scopeSvgIds(element)));

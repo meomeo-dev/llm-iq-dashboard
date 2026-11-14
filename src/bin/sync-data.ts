@@ -248,8 +248,10 @@ function resolveSyncScope(
 ): SyncScope | null {
   const repoPath = explicitPath ?? config?.dataRepo?.path;
   if (!repoPath) return null;
+  const useConfigRepo = explicitPath === undefined || explicitPath === config?.dataRepo?.path;
   return {
     repoPath,
+    repository: useConfigRepo ? (config?.dataRepo?.repository ?? null) : null,
     profiles: config?.profiles ?? [],
     publishPrompts: config?.dataRepo?.publishPrompts ?? null,
   };
@@ -257,21 +259,22 @@ function resolveSyncScope(
 
 /** 执行发布确认子流程 */
 async function handleConfirmCli(
-  repoPath: string,
+  scope: SyncScope,
   parsed: ParsedArgs,
   out: (msg: string) => void,
   err: (msg: string) => void,
 ): Promise<number> {
   try {
     const report = await confirmPublished({
-      repoPath,
+      repoPath: scope.repoPath,
+      repository: scope.repository,
       runIds: parsed.runIds.length > 0 ? parsed.runIds : undefined,
       dryRun: parsed.dryRun,
     });
     if (parsed.json) {
       out(JSON.stringify(report, null, 2));
     } else {
-      out(formatHumanConfirmReport(report, repoPath));
+      out(formatHumanConfirmReport(report, scope.repoPath));
     }
     return 0;
   } catch (error) {
@@ -339,11 +342,11 @@ export async function runSyncCli(
     err("错误：未指定 --repo 且配置文件中未配置 dataRepo.path");
     return 1;
   }
-  if (!existsSync(scope.repoPath)) {
+  if (!existsSync(scope.repoPath) && !scope.repository) {
     err(`错误：目标数据仓路径不存在：${scope.repoPath}`);
     return 1;
   }
-  if (parsed.confirmPublished) return handleConfirmCli(scope.repoPath, parsed, out, err);
+  if (parsed.confirmPublished) return handleConfirmCli(scope, parsed, out, err);
   if (parsed.push && !parsed.dryRun) {
     const ok = await confirmOrAbort(`确认将同步结果推送至公开数据仓远端（${scope.repoPath}）吗？`, {
       yes: parsed.yes,
