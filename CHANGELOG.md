@@ -7,6 +7,16 @@
 
 ### 新增
 
+- 新增 `2026-11-h1` 动态评测题组（20 道纯内联动态 SVG 单题：`animated-pendulum-wave-reunion-v1`
+  至 `animated-sailboat-wake-waves-v1`），覆盖周期波与莫尔干涉、磁偶极与天体共振轨道、机械连杆/飞球调速/星形发动机主副连杆、流体颈缩对流、CSS 抛物线弹跳与图标光学网格、公寓门扇开合拓扑、极光峡湾与星夜骑行、双足机甲运动学与等轴测冲击波 HUD、桁架塔分段吊装、维也纳钢琴击弦机、针织线圈泊松收缩、等轴测分层调音台及帆船开尔文尾迹；在用内置题目扩充至 51 道（连同 31 道归档题共 82 个内置条目，含 140 道前沿单题映射），同步补齐中英双语展示文案、黄金标准与 `docs/benchmark-provenance.md` 来源考证。
+- 支持同轮次（`runId`）原地重跑失败项与补跑中断未完成项（`src/core/run/retry.ts`，设计方案见
+  `docs/architecture/in-place-run-retry-plan.md`）：锁定并复用原轮次 `run.json` 的 `prompts`
+  （含随机抽样绑定的候选项）与 `harnessGuard`，重跑前自动清理对应调用的旧产物文件（`cleanAttemptArtifacts`）
+  并预填既有成功记录；CLI `pnpm pelican run`（`pnpm run:once`）新增 `--retry <runId>` 与
+  `--include-no-svg` 参数（支持搭配 `--target`、`--prompt` 与 `--dry-run`）；`POST /api/run`
+  支持 `retryRunId` 与 `includeNoSvg`；看板为已配对所有者提供单张失败卡片页脚「↻ 重试」、四宫格模态窗头部
+  「↻ 重试失败项（N）」与顶部执行状态面板三处原地重试入口，并在 `mergeLiveProgress` 中实时叠加
+  `running` / `queued` 在线态。
 - 题库画廊 `/prompts` 向访客和只读展台开放，支持按在用或归档状态筛选，并查看题面、候选及评审标准。
 - 四大名著的静态与动态套题覆盖全部回目，共 920 个候选，提供中英展示文案和逐候选评审标准。
   题库校验覆盖 24 套轮换候选集的 1,140 个候选。

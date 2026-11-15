@@ -26,6 +26,7 @@ import {
 } from "../core/requests";
 import { narrowConfig, scheduledRound } from "../core/run-selection";
 import { recoverInterruptedRuns } from "../core/run/recover-interrupted";
+import { executeRunRetry, planRunRetry } from "../core/run/retry";
 import { executeRun } from "../core/runner";
 import { HEARTBEAT_INTERVAL_MS, writeHeartbeat } from "../core/runner-link";
 import { startScheduler } from "../core/scheduler";
@@ -264,8 +265,16 @@ async function startFingerprintCheck(request: RunnerRequest, full: AppConfig): P
 
 async function startRun(request: RunnerRequest, full: AppConfig): Promise<void> {
   let config: AppConfig;
+  let calls = 0;
   try {
-    config = request.selection === null ? scheduledRound(full) : narrowConfig(full, request.selection);
+    if (request.selection?.retryRunId) {
+      const planned = await planRunRetry(full, request.selection);
+      config = full;
+      calls = planned.jobs.length;
+    } else {
+      config = request.selection === null ? scheduledRound(full) : narrowConfig(full, request.selection);
+      calls = config.targets.length * config.run.promptIds.length;
+    }
   } catch (cause) {
     await failRequest(request.id, describe(cause));
     return;
@@ -275,19 +284,22 @@ async function startRun(request: RunnerRequest, full: AppConfig): Promise<void> 
     await failRequest(request.id, describeActiveWorkConflict(active));
     return;
   }
-  const calls = config.targets.length * config.run.promptIds.length;
   // 进度文件写好即答复看板；整轮在后台跑完，开跑前抛错才算失败
   await new Promise<void>((resolve) => {
     let answered = false;
-    executeRun(config, {
-      trigger: "manual",
-      candidateOverrides: request.selection?.candidateOverrides,
-      log,
-      onStarted: (runId) => {
-        answered = true;
-        void completeRequest(request.id, { runId, calls }).finally(resolve);
-      },
-    }).catch((cause: unknown) => {
+    const onStarted = (runId: string) => {
+      answered = true;
+      void completeRequest(request.id, { runId, calls }).finally(resolve);
+    };
+    const task = request.selection?.retryRunId
+      ? executeRunRetry(config, request.selection, { trigger: "manual", log, onStarted })
+      : executeRun(config, {
+          trigger: "manual",
+          candidateOverrides: request.selection?.candidateOverrides,
+          log,
+          onStarted,
+        });
+    task.catch((cause: unknown) => {
       log(`手动执行失败：${describe(cause)}`);
       if (!answered) void failRequest(request.id, describe(cause)).finally(resolve);
     });

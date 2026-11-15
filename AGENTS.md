@@ -14,6 +14,7 @@ pnpm dev --port 3001                        # 开发看板；3000 留给生产�
 pnpm dashboard:prod                         # 生产看板 :3000，只构建已提交的 HEAD
 pnpm pelican <subcommand>                   # 统一 CLI 总入口（run | fp | sync | preflight | onboard | pair | pricing | prompts | scheduler | runner）
 PELICAN_CONFIG=config/smoke.config.yaml pnpm run:once   # 冒烟（同 pnpm pelican run），会真实调用 CLI、消耗配额
+pnpm pelican run --retry <runId> --dry-run  # 预演对指定轮次原地重跑失败/未完成项（去掉 --dry-run 真实调用 CLI，可加 --include-no-svg）
 pnpm fingerprint:status                     # 模型指纹本地样本状态（同 pnpm pelican fp status）；另有 fill / check / self-test / export / import
 pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:check / issue:worktree
 ```
@@ -34,14 +35,14 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   执行方在每次调用落盘与轮次收尾时先排空写入并保存 `run.json` 再更新 `data/runs/<runId>/progress.json`；
   看板用 chokidar 监听 `progress.json`、`run.json`、`*.judge.json` 与 `data/model-fingerprint/jobs/<jobId>.json`
   并经 SSE（`/api/events`）推送 `progress` 与 `runs-revision`。前端不定时轮询、也不调用 `router.refresh()` 整页刷新：
-  `useDashboardSync` 结合 `mergeLiveProgress` 将活跃调用实时合成为四宫格 `liveState`（`running`/`queued`），并在 `runs-revision`
+  `useDashboardSync` 结合 `mergeLiveProgress` 将活跃调用实时合成为四宫格 `liveState`（`running`/`queued`，含同轮次原地重跑时对旧失败卡片的实时覆盖），并在 `runs-revision`
   变化时按当前日期窗口就地请求 `GET /api/dashboard` 增量更新。停止一轮写 `cancel.json`（指纹作业写 `<jobId>.cancel.json`）；分容器时看板把请求写进 `data/requests/` 交给 runner。
 - **分层依赖**：`src/app` → `src/core` + `src/i18n`（+ `src/capabilities` 的类型与缓存）；`src/app` 不引用
   `src/adapters`，调用 CLI 只经 `src/core`；`src/core` 不依赖 `src/app`。
 - **中英双语国际化**（Sprint M2）：`src/i18n/` 提供 `en`（默认）与 `zh-CN` 双语词条字典、SSR + 客户端零闪烁语言协商（`pelican_locale` Cookie / `localStorage` + `Accept-Language`，不改 URL 路由）以及 SVG/PNG/GIF 导出图本地化。`src/core/prompt/i18n/` 与 `src/i18n/judge-rubric.ts` 在展示层本地化题目标签、黄金标准与评审标准 `G1`–`G5` / `C1`–`C9` 文案；发给 CLI 的提示词 `template`、`candidates[].text`、考场规则、AI 裁判提示词以及 `run.json` / `.judge.json` 的磁盘 schema 原封不动。
 - **编排**：提示词 × 目标（CLI × 模型 × 思考强度），按模型分道并发、道内从 `low` 到 `ultra` 串行；
   超时优先级 `targets[].timeoutMs` > `timeoutByEffort` > `timeoutByCli` > `defaultTimeoutMs`；
-  预算按历史成本预估逐次放行。一次只跑一轮（`findActiveWork` 跨评测轮次、AI 评审与模型指纹作业双向互斥）：手动发起时有轮次或指纹作业在跑直接拒绝；定时到点时有作业在跑则排队
+  预算按历史成本预估逐次放行。`src/core/run/retry.ts`（`planRunRetry` / `executeRunRetry`）支持同轮次（`runId`）原地重跑失败项（`error` / `timeout`，可选 `no-svg`）或中断未完成项，复用原轮锁定的 `prompts` 与 `harnessGuard`，预填既有成功记录并在重跑前经 `cleanAttemptArtifacts` 与 `clearCancel` 清理旧产物。一次只跑一轮（`findActiveWork` 跨评测轮次、AI 评审与模型指纹作业双向互斥）：手动发起时有轮次或指纹作业在跑直接拒绝；定时到点时有作业在跑则排队
   （只容一轮，合并后续触发），等它结束立即开跑。
 - **适配器**：`src/adapters/` 每家 CLI 一个，实现 `AgentAdapter`（codex 用长驻 `codex app-server`）。
   新增一家需同时改 `src/adapters/index.ts`、`src/core/types.ts` 的 `CLI_KINDS` 与
@@ -51,7 +52,7 @@ pnpm issue:new -- --type feat "标题"         # 本地 issue；另有 issue:che
   `run.harnessGuard`（缺省关）开启后每条提示词末尾另起一段附上直出约束原文（不联网、不跑代码自测、
   不截图自检），题目原文不动，附加原文记进 `run.json` 的 `harnessGuard` 并随公开记录发布。
 - **提示词与画廊**：`classic-v1` 是 Simon Willison 原文，逐字锁定不可改；题库登记在
-  `src/core/prompt*`，题目数据与逐题英文展示在 `src/core/prompt/bank/`（含 `literature/{xiyou,sanguo,shuihu,honglou}`，按分卷 `chNNN-MMM.ts` 控制在 ≤ 500 行），展示层双语映射在 `src/core/prompt/i18n/`，并在 `/prompts`（`src/app/prompts/`，对访客与只读展台开放）提供题库画廊与黄金标准检视。改动题库后跑
+  `src/core/prompt*`，题目数据与逐题英文展示在 `src/core/prompt/bank/`（含 `benchmarks/{pelican,2026-09,2026-10,2026-11-h1}` 共 51 道在用内置题、31 道归档题及 `literature/{xiyou,sanguo,shuihu,honglou}`，按分卷 `chNNN-MMM.ts` 控制在 ≤ 500 行），展示层双语映射在 `src/core/prompt/i18n/`，并在 `/prompts`（`src/app/prompts/`，对访客与只读展台开放）提供题库画廊与黄金标准检视。改动题库后跑
   `pnpm validate:prompts`，且须同步 `test/i18n/i18n-integrity.test.ts` 中的 `EXPECTED_BUILTIN_PROMPTS_SHA256` 与候选总数断言。
 - **作品评审**（ACR-019，缺省关闭，配置页「作品评审」区块开）：有评分标准的题目在 `ok` 落盘后由 `src/core/judge` 打分，写独立的
   `<attemptKey>.judge.json`、帧序联系表 `.sheet.png` 与各类细节联系表 `.sheet.<kind>.png`（同帧号），

@@ -5,6 +5,7 @@ import type { ProgressView } from "@/core/progress";
 import { useI18n, type Locale } from "@/i18n";
 import { formatUsd } from "../card/card-format";
 import { Menu } from "../menu/Menu";
+import { RetryRunButton } from "../run-control/RetryRunButton";
 import { StopRunButton } from "../run-control/StopRunButton";
 import { formatZonedClock } from "../timeline/zoned-time";
 import {
@@ -231,6 +232,11 @@ function RunSection({
       {owner && isActivePhase(phase) && (
         <div className="run-actions">
           <StopRunButton runId={run.runId} stopping={phase === "stopping"} />
+        </div>
+      )}
+      {owner && !isActivePhase(phase) && !run.jobKind && counts.total > counts.ok && (
+        <div className="run-actions">
+          <RetryRunButton runId={run.runId} count={counts.total - counts.ok} />
         </div>
       )}
       <RunSectionWarnings run={run} phase={phase} cancelledCount={counts.cancelled} locale={locale} />

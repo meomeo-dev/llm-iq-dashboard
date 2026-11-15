@@ -1,12 +1,12 @@
 # Benchmark Provenance & Prompt Rationale · 鹈鹕基准与扩展题库来源考证
 
-> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all **62 built-in `PromptSpec` entries** registered in `src/core/prompt.ts` (**38 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **338 unique benchmark prompt templates**; **188 rows** in the §一 master table below where the 14 `fe-*-v1` / `vfx-*-v1` suites are expanded into 140 individual `FE-*` / `VFX-*` candidate rows). Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable, while English and Chinese display labels and evaluation standards are localized at the UI presentation layer (`src/core/prompt/i18n/`).
+> **Bilingual Reference (EN / 中文)**: This document records the provenance, academic/community sources, licenses, mathematical/physical ground truth (`groundTruth`), and visual evaluation criteria (`evaluationCriteria`) for all **82 built-in `PromptSpec` entries** registered in `src/core/prompt.ts` (**58 standalone prompts** + **24 rotating candidate suites** containing **300 scene candidates**, totaling **358 unique benchmark prompt templates**; **208 rows** in the §一 master table below where the 14 `fe-*-v1` / `vfx-*-v1` suites are expanded into 140 individual `FE-*` / `VFX-*` candidate rows). Every built-in prompt is locked (`immutable: true`) so historical and cross-model results remain strictly comparable, while English and Chinese display labels and evaluation standards are localized at the UI presentation layer (`src/core/prompt/i18n/`).
 
 ### English Section & Prompt ID Index
 
 | Section | Topic (English / 中文) | Prompt IDs / Candidate Groups |
 | :--- | :--- | :--- |
-| **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 188 rows) | All 62 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
+| **§一** | Master Prompt Catalog & Registry Ledger (全量测试题目总览与台账, 208 rows) | All 82 built-in `PromptSpec` entries (with 14 FE/VFX suites expanded to 140 rows) |
 | **§二** | Classic & Upgraded Pelican Series (经典基准与进阶) | `classic-v1`, `upgraded-v2` |
 | **§三** | Four Classic Chinese Novels Suites — Static & Animated (四大名著静态与纯内联动画候选集, 8 suites: Journey to the West 2 × 100 chapters + Romance of the Three Kingdoms 2 × 120 chapters + Water Margin 2 × 120 chapters + 2 × 10 chapters = 700 candidates) | `shuihu-v1`, `shuihu-anim-v1`, `xiyou-v1`, `xiyou-anim-v1`, `sanguo-v1`, `sanguo-anim-v1`, `honglou-v1`, `honglou-anim-v1` |
 | **§四** | World City Landmarks Miniature Dioramas (世界地标微缩景观, 2 suites × 40 landmarks = 80 candidates) | `landmarks-v1`, `landmarks-anim-v1` |
@@ -31,11 +31,12 @@
 | **§二十三** | VFX-6: In-Camera VFX, Deep Compositing & Graphics Systems (`vfx-sys-v1`, 10 candidates) | `VFX-SYS-01` – `VFX-SYS-10` |
 | **§二十四** | Autumn 2026 Community Benchmarks (`2026-09` Isometric Hardware, Kinetic Hand & Spatial Occlusion + Classic Dynamic Extensions, 10 standalone prompts) | `animated-armadillo-fishnet-mars-v1`, `animated-lemur-scooter-front-v1`, `animated-iso-vintage-pc-v1`, `animated-iso-amber-crt-v1`, `animated-iso-server-rack-v1`, `animated-iso-camera-exploded-v1`, `animated-human-hand-kinetic-v1`, `animated-fish-cloud-amodal-v1`, `animated-island-chest-containment-v1`, `animated-tree-reader-occlusion-v1` |
 | **§二十五** | 2026 年 10 月社区题目 (`2026-10`, 8 standalone prompts) | `animated-jansen-walker-v1`, `animated-jumping-spider-leap-v1`, `animated-centipede-wave-gait-v1`, `animated-open-differential-v1`, `animated-ferris-leveling-v1`, `animated-octopus-organ-v1`, `animated-peacock-bicycle-v1`, `animated-nautilus-spiral-v1` |
-| **§二十六** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
-| **§二十七** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
-| **§二十八** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
+| **§二十六** | Early Nov 2026 Model-Capability & Clean-Room Benchmarks (`2026-11-h1`, 20 standalone prompts) | `animated-pendulum-wave-reunion-v1`, `animated-moire-ring-drift-v1`, `animated-iron-filings-align-v1`, `animated-venus-rose-trace-v1`, `animated-orrery-single-crank-v1`, `animated-watt-governor-flyball-v1`, `animated-radial-master-rod-v1`, `animated-lava-blob-convection-v1`, `animated-motion-icons-audit-v1`, `animated-physics-bounce-ball-v1`, `animated-floorplan-door-swing-v1`, `animated-tromso-aurora-fjord-v1`, `animated-starry-night-cyclist-v1`, `animated-mech-nyc-atomos-typo-v1`, `animated-mech-nyc-stomps-hud-v1`, `animated-lattice-tower-erection-v1`, `animated-viennese-piano-action-v1`, `animated-knitted-yarn-tension-v1`, `animated-iso-layered-console-v1`, `animated-sailboat-wake-waves-v1` |
+| **§二十七** | Prompt Lifecycle & Ceiling Retirement Policy (题目生命周期与淘汰机制) | `originDate`, `registeredAt`, saturation retirement |
+| **§二十八** | Prompt Schema Contracts & Validation Gate (题目数据建模契约与自动化完整性门禁) | `src/core/prompt-schema.ts`, `pnpm validate:prompts` |
+| **§二十九** | References & Upstream Links (参考资料与上游链接) | Canonical sources, academic papers & public domain editions |
 
-本文档说明 `llm_iq_dashboard` 收录的全部 **62 个内置提示词条目**（`PromptSpec`：**38 道独立单题** + **24 套轮换候选集**，候选集内含 **780 个场景候选**，合计 **818 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **188 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
+本文档说明 `llm_iq_dashboard` 收录的全部 **82 个内置提示词条目**（`PromptSpec`：**58 道独立单题** + **24 套轮换候选集**，候选集内含 **780 个场景候选**，合计 **838 个唯一测试题面**；下方 §一 总表将 14 套前沿工程/视效套题展开为 140 条独立候选行，共列 **208 行**）的来源出处（Provenance）、设计理念（Design Rationale）、客观黄金参考标准（Ground Truth）与判读准则（Evaluation Criteria）。
 
 所有测试单题与聚合套题均经过严格的净室设计（Clean-room Formulation）并建立第一类客观参考标准，在看板卡片模态窗（`ModelModal`）与独立大图查看页（`ArtViewer`）中均提供可直接比对的判定依据（支持中英双语切换）。
 
@@ -43,7 +44,7 @@
 
 ## 一、 全量测试题目总览与台账
 
-本基准共内置 **62 个不可变（`immutable: true`）提示词条目**（38 道独立单题 + 24 套含 780 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 188 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
+本基准共内置 **82 个不可变（`immutable: true`）提示词条目**（58 道独立单题 + 24 套含 780 个场景候选的套题；下表将 14 套前沿领域套题展开为 140 条单题，共 208 行），涵盖静态矢量构图与纯内联 SVG 动画（SMIL / CSS @keyframes）：
 
 | 序号 | 题目 ID | 题目名称 | 领域分类 | 形式 | 首发时间 (`originDate`) | 收录时间 (`registeredAt`) | 来源权威出处 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -235,6 +236,26 @@
 | 186 | `animated-octopus-organ-v1` | 章鱼操作管风琴 (Animated Octopus Playing Pipe Organ) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [Tom Gally HN #49696402](https://news.ycombinator.com/item?id=49696402) |
 | 187 | `animated-peacock-bicycle-v1` | 孔雀骑车尾屏 (Animated Peacock Riding Bicycle) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [@SahilPanhotra (2114802178212892744)](https://x.com/SahilPanhotra/status/2114802178212892744) |
 | 188 | `animated-nautilus-spiral-v1` | 鹦鹉螺对数螺线 (Animated Nautilus Logarithmic Spiral) | 2026-10 | 纯内联动画 | 2026-10 | 2026-11-12 | [PyShine Shell Evaluation](https://pyshine.com/Ollama-Local-Models-SVG-Comparison-Nautilus-Shell/) |
+| 189 | `animated-pendulum-wave-reunion-v1` | 十五摆归相 (Animated Pendulum Wave Reunion) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/MiaAI_lab/status/2119930229661503893) |
+| 190 | `animated-moire-ring-drift-v1` | 同心环莫尔漂移 (Animated Concentric-Ring Moire Drift) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/MiaAI_lab/status/2119930229661503893) |
+| 191 | `animated-iron-filings-align-v1` | 铁屑指向移动磁极 (Animated Iron Filings Magnetic Alignment) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/MiaAI_lab/status/2119930229661503893) |
+| 192 | `animated-venus-rose-trace-v1` | 金星五瓣相对轨道 (Animated Venus Five-Petal Relative Orbit) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/MiaAI_lab/status/2119930229661503893) |
+| 193 | `animated-orrery-single-crank-v1` | 单摇把正反转太阳系仪 (Animated Single-Crank Reversing Orrery) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/kimmonismus/status/2120186125591646250) |
+| 194 | `animated-watt-governor-flyball-v1` | 瓦特飞球调速器 (Animated Watt Flyball Governor) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/thebuggeddev/status/2120201759305998343) |
+| 195 | `animated-radial-master-rod-v1` | 九缸星形发动机主副连杆 (Animated Nine-Cylinder Radial Master Rod) | 2026-11-h1 | 纯内联动画 | 2026-10 | 2026-11-14 | [Source](https://x.com/danieldwalton/status/2116649200339599487) |
+| 196 | `animated-lava-blob-convection-v1` | 熔蜡对流颈缩与合并 (Animated Lava Blob Convection) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/aitrendz_xyz/status/2120148925445521699) |
+| 197 | `animated-motion-icons-audit-v1` | 八枚动效图标与光学网格动画 (Animated Eight Motion Tool Icons & Optical Grid) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts) |
+| 198 | `animated-physics-bounce-ball-v1` | 物理重量感纯CSS弹跳球 (Animated Physics Squash-and-Stretch Bouncing Ball) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts) |
+| 199 | `animated-floorplan-door-swing-v1` | 中性公寓平面图与门扇开合动效 (Animated Architectural Floorplan & Door Swings) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests) |
+| 200 | `animated-tromso-aurora-fjord-v1` | 特罗姆瑟峡湾极光闭环动效 (Animated 69°N Fjord Aurora Curtains) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/MichaelGannotti/status/2119922137011982652) |
+| 201 | `animated-starry-night-cyclist-v1` | 星夜漩涡山地骑行动效 (Animated Swirling Starry Night Cyclist) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/ebbyamir/status/2120284261089673376) |
+| 202 | `animated-mech-nyc-atomos-typo-v1` | 北郊机甲起立与港湾步态SVG (Animated Articulated Mech Stand-Up & Harbor Gait) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://simonwillison.net/2026/Nov/10/yonkers-rises/) |
+| 203 | `animated-mech-nyc-stomps-hud-v1` | 等轴测网格机甲踩踏与冲击波HUD (Animated Isometric Mech Stomp Traversal & Shockwave HUD) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://simonwillison.net/2026/Nov/10/llm-gemini/) |
+| 204 | `animated-lattice-tower-erection-v1` | 铆接铁桁架塔吊装施工动效 (Animated Riveted Lattice Tower Staged Erection) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/) |
+| 205 | `animated-viennese-piano-action-v1` | 18世纪维也纳拨弦式钢琴击弦机剖面动效 (Animated 18th-Century Viennese Piano Action Cutaway) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/) |
+| 206 | `animated-knitted-yarn-tension-v1` | 针织线圈单轴拉伸与泊松收缩动效 (Animated Knitted Yarn Loop Tension & Poisson Narrowing) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/Google/status/2120279087314837642) |
+| 207 | `animated-iso-layered-console-v1` | 等轴测分层音频遥测调音台动效 (Animated Isometric Layered Audio-Telemetry Console) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://x.com/BreejeAnadkat/status/2120115744168091921) |
+| 208 | `animated-sailboat-wake-waves-v1` | 帆船乘浪俯仰与开尔文尾迹动效 (Animated Sailing Sloop, Wave Heave & Kelvin Wake) | 2026-11-h1 | 纯内联动画 | 2026-11 | 2026-11-14 | [Source](https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests) |
 
 ---
 
@@ -1811,7 +1832,132 @@
 
 ---
 
-## 二十六、 题目生命周期与淘汰机制（Lifecycle & Retirement）
+## 二十六、 2026 年 11 月上半月模型能力与社区评测题目（2026-11-h1）
+
+围绕 Claude Fable 5.2（2026-11-09 发布）与 Google Gemini 4 Carbon（2026-11-10 一般可用）在 2026 年 11 月上半月引发的 X 与工程博客评测（详见 [research/x-viral-ai-evals-2026-11/final_20_outcome/README.md](research/x-viral-ai-evals-2026-11/final_20_outcome/README.md)），本批净室重拟并锁定 20 道纯内联动态 SVG 题目，覆盖周期波与莫尔干涉、磁偶极与相对轨道力学、机械连杆与瓦特飞球调速、流体对流、CSS 抛物线物理与图标光学网格、公寓门扇向内开合拓扑、极光峡湾与星夜骑行闭环、机甲跨岛行进与冲击波 HUD、桁架塔吊装、维也纳钢琴击弦机、针织线圈泊松收缩、等轴测分层调音台及帆船开尔文尾迹。全部题面强制 `0 <script>`、无外部 API/Three.js/WebGL、无真实人物姓名与厂牌商标，且全数约定闭合循环与可测帧差（`MAE === 0` / `max(MAE) >= 0.015` 或 `>= 0.020`）。
+
+### 1. 十五摆归相 (Animated Pendulum Wave Reunion)（`animated-pendulum-wave-reunion-v1`）
+* **出处**：https://x.com/MiaAI_lab/status/2119930229661503893（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：9 摆可公度周期同相归零、theta_i(t)=16*cos(2*pi*(4+i)*t/6) 解析相位与 t=3s 奇偶反相
+* **客观参考真值 (`groundTruth`)**：9 根摆锤索引 i=0..8，支点 (90+i*90, 70)，在 T=6s 内分别完成 n_i=4+i 次完整振荡，瞬时摆角 theta_i(t)=16*cos(2*pi*n_i*t/6)（顺时针为正，0 度竖直向下）；t=0 与 t=6 全员归相至 +16 度且像素 MAE === 0；t=3 时奇数 n_i 在 -16 度、偶数 n_i 在 +16 度；0.25s 采样点角误差 <= 1.5 度；摆杆独立分组且摆锤不穿模横梁；周期内 max(MAE) >= 0.015；0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 9 摆独立成组且支点精确，t=0 与 t=6 归相且 MAE === 0，t=3 奇偶反相成立，每 0.25s 采样摆角误差 <= 1.5 度（未用破坏零点的 ease-in-out），摆锤不穿横梁，max(MAE) >= 0.015 且 0 <script>；Partial: 摆数与闭环正确但归相时刻错位、振幅不足或 t=3 奇偶反相不严格；Fail: 静态无动画（max(MAE) < 0.015）、全摆同周期无行波、缓动毁坏过零点、含 <script> 或 XML 语法错误。
+
+### 2. 同心环莫尔漂移 (Animated Concentric-Ring Moire Drift)（`animated-moire-ring-drift-v1`）
+* **出处**：https://x.com/MiaAI_lab/status/2119930229661503893（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：双组 48 层同心圆环、8 px 等距步长、+8° 线性往返相对旋转与双曲莫尔拍频
+* **客观参考真值 (`groundTruth`)**：两组各 48 个同心圆环围绕 (320,320) 绘制，半径 12, 20, 28, ... px（步长 8 px），线宽 1.5、无填充、纯黑白；组 A 固定，组 B 在 8s 周期内由 0° 线性转至 t=4s 的 +8° 再线性返归 t=8s 的 0°；允许可选 feBlend difference 但组 B 必须保留可测变换；双曲莫尔干涉条纹清晰可见；首尾闭合 MAE === 0 且 max(MAE) >= 0.015；0 <script> 与零外部资源。
+* **判读标准 (`evaluationCriteria`)**：Pass: 两组各 48 环与 8 px 间距准确，纯黑白无填充，组 A 固定且组 B 在 t=4s 达 +8° 并线性往返，双曲莫尔条纹清晰，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 存在双层莫尔干涉但峰值角非 +8°、环数或间距偏差，或两组同转导致相对角不可测；Fail: 仅单层旋转、用透明度闪烁伪装干涉、静止图像（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。
+
+### 3. 铁屑指向移动磁极 (Animated Iron Filings Magnetic Alignment)（`animated-iron-filings-align-v1`）
+* **出处**：https://x.com/MiaAI_lab/status/2119930229661503893（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：6x4 网格 24 根铁屑原地定轴旋转、atan2 向心角度追踪与 T=8s 横向简谐磁极闭环
+* **客观参考真值 (`groundTruth`)**：viewBox 为 0 0 640 400；24 根长 28 px 铁屑位于 x=80+96c、y=70+80r（c=0..5, r=0..3）且全周期不平移；圆磁极按 x(t)=320+160*sin(2*pi*t/8)、y(t)=200 往复运动；在 t=0,2,4,6,8s 时各铁屑转角符合 atan2(y_magnet-y_filing, x_magnet-x_filing) 误差 <= 2°；首尾帧闭合 MAE === 0 且 max(MAE) >= 0.015；严格 0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 24 根铁屑按 6x4 网格分布且仅绕各自中心旋转不平移，磁极简谐运动与 5 个采样时刻朝向误差均 <= 2°，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 磁极在移动但铁屑转角与磁极脱节、仅少数旋转或采样误差 > 2°；Fail: 铁屑随磁铁平移、随机抖动、含 <script>、静态死图（max(MAE) < 0.015）或 XML 语法错误。
+
+### 4. 金星五瓣相对轨道 (Animated Venus Five-Petal Relative Orbit)（`animated-venus-rose-trace-v1`）
+* **出处**：https://x.com/MiaAI_lab/status/2119930229661503893（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：13:8 轨道共振地心矢量差、五内环拓扑与 72° 等分近地点、笔尖与 stroke-dashoffset 同步闭环
+* **客观参考真值 (`groundTruth`)**：在 viewBox="0 0 640 640" 中固定地球于 (320,320)，按 R(t)=V(t)-E(t) 映射 (320,320)+150*R(t) 在 T=16s 内封闭绘出恰好 5 个内环；5 次近地点绕中心间距 72°±2°；半径 3 笔尖随动并用 stroke-dashoffset 揭露轨迹；t=0 与 t=16 像素 MAE === 0 且周期内 max(MAE) >= 0.015；0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 恰好 5 个内环，5 次近地点间距 72°±2°，笔尖与 stroke-dashoffset 同步，t=0 与 t=16 闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 瓣数或近地点角距偏差超 ±2°，或笔尖与描边轻微脱节；Fail: 对数螺线/椭圆/六瓣误绘、静态无笔尖运动（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。
+
+### 5. 单摇把正反转太阳系仪 (Animated Single-Crank Reversing Orrery)（`animated-orrery-single-crank-v1`）
+* **出处**：https://x.com/kimmonismus/status/2120186125591646250（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：单一摇把角度驱动 16:32 齿轮反向啮合、1:1/2:1/4 行星公转与六瓣光圈开合的双向可逆闭环
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox 0 0 800 480，0 <script>，独立分组含摇把、双齿轮、三行星与六瓣光圈）；T=12s 闭环中 phi(t) 在 0..6s 由 0° 线性增至 360°、在 6..12s 线性反转回 0°；16 齿齿轮 A 转 phi，32 齿齿轮 B 啮合反转 -phi/2；三行星绕共心转 phi、phi/2、phi/4；六瓣光圈半径遵循 20 + 40*abs(sin(phi)) 开合归零；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.020。
+* **判读标准 (`evaluationCriteria`)**：Pass: 摇把、16/32 齿啮合齿轮、三行星与六瓣光圈分组齐全且保持啮合，t=6s 达 phi=360°、B=-180°，后半周期严格反转回零，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script>；Partial: 机构完整且转动，但缺失反转段、齿数/速比偏差或光圈未联动；Fail: 含 <script> 或事件属性、齿轮脱啮各自无限旋转、静止死图（max(MAE) < 0.020）、出现品牌/行星文字或 XML 错误。
+
+### 6. 瓦特飞球调速器 (Animated Watt Flyball Governor)（`animated-watt-governor-flyball-v1`）
+* **出处**：https://x.com/thebuggeddev/status/2120201759305998343（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：飞球张角 alpha(t)=20+25*sin(pi*t/8) 度镜像展开、滑套上升 48 px 与节流阀塞反向移动 36 px 的三元连杆耦合
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox 0 0 480 640，0 <script>，独立分组含垂直主轴、铰接于 (240,160) 的双飞球臂、滑套及节流阀塞）；T=8s 闭环内两摆臂与竖直向下方向夹角遵循 alpha(t)=20+25*sin(pi*t/8) 度并关于 x=240 镜像（t=0/8 为 20°、t=4 为 45°），臂长恒定且飞球不脱节；滑套随张角增大上移 48 px 并归位，节流阀塞同步反向移动 36 px；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.015。
+* **判读标准 (`evaluationCriteria`)**：Pass: 四大部件独立成组且臂长恒定无脱节，t=4s 飞球张角达 45°±1.5°、t=0/8s 为 20°±1.5° 并关于 x=240 镜像，滑套上升 48 px 且节流阀塞反向移动 36 px，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 飞球能开合摆动且无脚本，但滑套不跟随、阀塞未反向移动或左右张角不对称；Fail: 含 <script> 或事件属性、只画主轴旋转而飞球张角静止、飞球脱臂或臂长伸缩、静止死图（max(MAE) < 0.015）、出现文字/品牌或 XML 错误。
+
+### 7. 九缸星形发动机主副连杆 (Animated Nine-Cylinder Radial Master Rod)（`animated-radial-master-rod-v1`）
+* **出处**：https://x.com/danieldwalton/status/2116649200339599487（首发时间 `2026-10`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：1 号主连杆与 8 根副连杆非对称铰接拓扑、非等移相正弦活塞行程及 720 度闭环 1-3-5-7-9-2-4-6-8 隔缸发火序
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG 前视剖视图（viewBox 0 0 640 640，深蓝底色与平面工程配色，0 <script>，无标题/品牌/CDN）；九缸沿 0, 40, ..., 320 度均布且 1 号缸居中朝上；单曲柄销仅连接 1 号主连杆大端，其余 8 根副连杆分别铰接在主连杆大端耳孔而非曲柄销；各活塞于上下止点平滑换向且不穿出缸盖，不以同相移位正弦敷衍；T=8s 周期对应曲轴线性旋转 720 度（两圈），每 80 度曲柄角按 1-3-5-7-9-2-4-6-8 依次在对应气缸内闪光 0.15s；t=0 与 t=8 曲轴归零且像素 MAE === 0，周期内多连杆总成 max(MAE) >= 0.020。
+* **判读标准 (`evaluationCriteria`)**：Pass: 九缸 40 度均布且 1 号缸在顶，仅 1 号主连杆接曲柄销、8 根副连杆均接于主连杆大端，活塞不穿缸盖且非简单等幅移相正弦，T=8s 线性完成 720 度双转并按 1-3-5-7-9-2-4-6-8 每 80 度单缸闪光 0.15s，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script> 且无标题/品牌/CDN；Partial: 九缸布局与曲轴旋转成立，但 8 根副连杆误直连曲柄销，或发火序按 1-2-3 连续顺序 / 360 度重复；Fail: 含 <script> 或外部 CDN、九活塞套用同一移相正弦或穿模缸盖、静止无动画（max(MAE) < 0.020）、首尾不闭合或 XML 语法错误。
+
+### 8. 熔蜡对流颈缩与合并 (Animated Lava Blob Convection)（`animated-lava-blob-convection-v1`）
+* **出处**：https://x.com/aitrendz_xyz/status/2120148925445521699（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：熔岩灯蜡块浮力上升单次竖向速度反号、分裂前几何颈缩（腰宽 <= 30% 最大宽）与 T=10s 无缝合并闭环
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox 0 0 360 640，SMIL 或 CDATA 内联 CSS，0 <script>，无商标/文字）；含单一瓶身轮廓、液体与两个独立路径蜡块；T=10s 闭环中 Blob A 自底部单体出发，0.0-3.0s 上升且竖向速度仅在顶点反号一次，3.0-4.5s 形成颈缩（腰宽 <= 本体最大宽度的 30%）后再裂分为双子路径，4.5-7.0s 上块滞留高位而下块回落，7.0-10.0s 下块合并复原；t=0 与 t=10s 像素 MAE === 0，周期内 max(MAE) >= 0.015，禁止透明度淡入淡出伪装。
+* **判读标准 (`evaluationCriteria`)**：Pass: 瓶身、液体与双路径蜡块完整且无品牌文字，0-3s 上升仅一次竖向反号，3-4.5s 分裂前腰宽 <= 30% 最大宽再真实裂分，4.5-7s 上留下降，7-10s 无缝合并使首尾帧 MAE === 0，max(MAE) >= 0.015，0 <script> 且无透明度伪装；Partial: 具升降过程但用透明度切换代替几何颈缩、腰宽 > 30% 或合并后位置/形态漂移；Fail: 双球各自独立上下弹跳、静态死图（max(MAE) < 0.015）、含 <script>/事件处理器或 XML 语法错误。
+
+### 9. 八枚动效图标与光学网格动画 (Animated Eight Motion Tool Icons & Optical Grid)（`animated-motion-icons-audit-v1`）
+* **出处**：https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：24x24 网格与半像素对齐的八枚无填充动效图标、construction 光学构造层、3x/1x 双排同构及 8 秒逐槽高亮微动闭环
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox 0 0 800 420，仅 SMIL 或 CDATA 内联 CSS @keyframes，0 <script>，0 事件属性）；按 play、keyframe、ease、layers、timeline、loop、mask、export 顺序绘制 8 枚图标；每枚遵守 24x24 网格、3 px 安全边距（18x18 活区）、stroke-width=1.5、round 线帽与连接、fill=none 无填充、整/半像素坐标与圆角半径 2；上排 3x 含可切换 class='construction' 构造层（网格、18x18 活区、20 px 关键线圆），下排 1x 对齐；T=8s 闭环每 1 秒高亮并驱动对应槽位在 3x/1x 同步执行语义微动效，首尾帧 MAE === 0 且 max(MAE) >= 0.015。
+* **判读标准 (`evaluationCriteria`)**：Pass: 8 枚图标顺序完整且符合 24x24/3 px 边距/1.5 px 圆头圆角无填充/半像素/圆角半径 2 规范；上排 3x 含可切换 construction 构造层、下排 1x 完整对照；8s 闭环中高亮与语义微动每 1s 依次扫过 1..8 槽位且 3x/1x 同步，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 图标与构造层齐全且闭环可动，但偶有填充、半像素偏移、缺少 1x 行或部分槽位 3x/1x 不同步；Fail: 静态无运动（max(MAE) < 0.015）、含 <script> 或事件属性、缺漏或错序图标、大量实心填充、首尾帧未归零、出现品牌/长段文字或 XML 错误。
+
+### 10. 物理重量感纯CSS弹跳球 (Animated Physics Squash-and-Stretch Bouncing Ball)（`animated-physics-bounce-ball-v1`）
+* **出处**：https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：纯CSS @keyframes 物理重力分段 cubic-bezier(...)、触地面积守恒挤压锚定与阴影反向耦合的 1.1s 弹跳闭环
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox 0 0 360 320，仅使用 <style><![CDATA[...]]></style> 内联 CSS @keyframes，0 <script>）；y=260 水平地面线、居中于 (180,260) 的动态椭圆接触阴影与直径 44 px 实心圆球（r=22，x=180）；球体从最高点 y=88 垂直下落 150 px 至触地点 y=238（下沿贴合 y=260）；T=1.1s 无缝闭环，仅在触地阶段横向加宽 25-30%、纵向压扁 25-30%（近似保持二维截面积），transform-origin 锚定于地面接触点 (180px 260px) 而不穿地，半空中零形变；接触阴影在撞击时收窄变深、在最高点展宽变淡；严格禁用 ease/ease-in/ease-out/ease-in-out 关键字而分段使用物理推导的 cubic-bezier(...)；t=0 与 t=1.1s 像素 MAE === 0 且周期内 max(MAE) >= 0.015。
+* **判读标准 (`evaluationCriteria`)**：Pass: 几何尺寸与 150 px 落差准确，T=1.1s 闭环，仅触地挤压 25-30% 且底部锚定于 y=260 不穿模、半空无拉伸，阴影触地收窄加深、高点展宽变淡，全程无 ease* 关键字而使用分段 cubic-bezier(...)，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 弹跳闭环与阴影联动成立，但存在轻微半空形变、挤压比例或锚定轻微越界，或仅单段使用 cubic-bezier(...)；Fail: 含 <script> 或事件属性，使用 ease/ease-in/ease-out/ease-in-out 关键字，静止死图（max(MAE) < 0.015），首尾帧不重合（MAE > 0），无挤压或无接触阴影，或含非 SVG 文本/XML 错误。
+
+### 11. 中性公寓平面图与门扇开合动效 (Animated Architectural Floorplan & Door Swings)（`animated-floorplan-door-swing-v1`）
+* **出处**：https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：2D 公寓平面连通拓扑、4 扇门内开铰链定点、48 px 虚线 90 度清扫圆弧与零穿墙闭环
+* **客观参考真值 (`groundTruth`)**：在 #12161f 深色蓝图与 viewBox="0 0 800 560" 上绘制外墙 (80,60)-(720,500)（线宽 6）及 90 px 连续中央走廊，连通左侧门厅、右上客厅、右下卧室及中间浴室且无死墙或重叠墙；4 处 48 px 门洞各有 1 扇带 48 px 半径四分之一虚线圆弧的门，全部向各自室内开启（卧室门铰链靠卧室角落墙侧避免碰走廊墙）；T=6s 线性闭环：t=0 与 t=6 全闭（0 度齐墙）且像素 MAE === 0，t=3 全开至室内 90 度并与虚线圆弧重合且零穿墙；max(MAE) >= 0.015；0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 平面拓扑连通无死墙且外墙/走廊尺寸符合要求，4 扇门均向各自室内侧开启 90 度且铰链位置与 48 px 虚线圆弧一致不穿墙，t=0 与 t=6 全闭 MAE === 0，max(MAE) >= 0.015 且 0 <script>；Partial: 走廊连通正确且有开合闭环，但 1 扇门朝外开、圆弧方向反向或角度显著偏离 90 度；Fail: 门扇穿墙或铰链漂移、门开入走廊堵路、走廊死结或墙体错误、静止图（max(MAE) < 0.015）、含影视剧/品牌/人物元素或含 <script>。
+
+### 12. 特罗姆瑟峡湾极光闭环动效 (Animated 69°N Fjord Aurora Curtains)（`animated-tromso-aurora-fjord-v1`）
+* **出处**：https://x.com/MichaelGannotti/status/2119922137011982652（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：三层以上极光射线帷幕、y=330 静止峡湾山体与镜像水波倒影及 T=8s 无缝闭环
+* **客观参考真值 (`groundTruth`)**：viewBox="0 0 800 500" 纯内联声明式 SVG；极夜天幕由 #070b14 渐变至 #0d1829 并带错相微星；左右积雪峡湾山体收敛于 y=330 水平线且零漂移，岸线正上方有 3-5 个静止暖琥珀 #fbbf24 窗灯；至少 3 层极光帷幕（翠绿 #34f5a3、青色 #38bdf8、高空紫红 #a855f7）具备纵向射线纹理与渐变遮罩；y=330 以下峡湾水面呈垂直镜像且带横向涟漪的绿青极光及岸线倒影；闭环周期 T=8s，t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 0 <script> 且 XML 合法，满足 800x500 构图、错相星空、静止积雪峡湾山体与 3-5 处静止 #fbbf24 岸灯，至少 3 层带纵向射线纹理的 #34f5a3/#38bdf8/#a855f7 极光帷幕与 y=330 以下镜像涟漪倒影，t=0s 与 t=8s MAE === 0 且 max(MAE) >= 0.015；Partial: 具备峡湾构图与极光闭环但不足 3 层、缺纵向射线或倒影涟漪，或首尾存在轻微接缝；Fail: 静态无波动（max(MAE) < 0.015）、山体岸灯漂移、无水面反射、含 <script>/Canvas/WebGL/外链/品牌或真实人物，或 XML 语法错误。
+
+### 13. 星夜漩涡山地骑行动效 (Animated Swirling Starry Night Cyclist)（`animated-starry-night-cyclist-v1`）
+* **出处**：https://x.com/ebbyamir/status/2120284261089673376（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：纯内联声明式 SVG 夜空漩涡笔触、前景柏树山谷村落构图、自行车定轴旋转与骑手下肢曲柄同相联动及 6s 无缝闭环
+* **客观参考真值 (`groundTruth`)**：在 viewBox="0 0 800 500" 中以纯 SMIL 或 CDATA 内联 CSS 实现 T=6s 无脚本动画（0 <script>，0 外部资源，无任何真实人物或商标名称）：天空含至少 2 组同心交织的钴蓝/靛青虚线弧段漩涡并绕各自圆心线性旋转 360*N 度，金色弯月与群星光晕柔和呼吸脉动；左侧前景火焰状柏树剪影尖端随微风往返摆动；山谷村落尖塔与暖光窗格、连绵山脊路面层次分明；匿名剪影骑手与前后带辐条车轮紧贴山脊路面冠顶（不悬空、不穿模），前后轮绕各自精确轮毂圆心同步正向旋转 360*N 度，牙盘曲柄与骑手大腿/小腿铰接连杆严格同相耦合；t=0s 与 t=6s 像素 MAE === 0，且周期内 max(MAE) >= 0.015。
+* **判读标准 (`evaluationCriteria`)**：Pass: 满足纯内联声明式 SVG 规范（0 <script>，0 外部依赖，零真实人物/商标），具备双组及以上旋转漩涡天穹、脉动弯月星晕、摆动柏树、山谷村落与尖塔，自行车稳固贴合路面冠顶，双轮定轴旋转且曲柄-下肢同相联动不断连，t=0s 与 t=6s 像素 MAE === 0 且 max(MAE) >= 0.015；Partial: 造型与闭环基本成立，但存在车轮微偏心、下肢与踏板相位轻微脱节、轮胎轻度悬空或个别背景层首尾轻微跳变；Fail: 静态无明显动画（max(MAE) < 0.015）、含 <script> 或外部框架、出现真实人物姓名或商标文本、XML 语法错误或闭环破裂。
+
+### 14. 北郊机甲起立与港湾步态SVG (Animated Articulated Mech Stand-Up & Harbor Gait)（`animated-mech-nyc-atomos-typo-v1`）
+* **出处**：https://simonwillison.net/2026/Nov/10/yonkers-rises/（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：自包含港湾岛屿矢量拓扑、多关节双足机甲起立-踏步闭环运动学与 ATOMOS-CORE 高度 HUD 同相联动
+* **客观参考真值 (`groundTruth`)**：viewBox='0 0 800 540' 纯内联声明式动态 SVG（0 <script>、0 外部地图/脚本请求）；斜俯视港湾矢量地图包含北岸 Yonkers（(180,140) 附近）、中央岛脊 Manhattan、东岸 Queens 与 Brooklyn、深蓝双河道、悬索桥与挤出建筑体块；多连杆机甲独立分层（躯干+青色核心、头镜、双臂肩/肘/腕、骨盆、双腿髋/膝/踝/装甲足）；含 ATOMOS-CORE 标识与 0m-120m 高度 HUD 柱；T=8s 闭环完成蹲伏起立、核心脉动/喷口点火、左右交替踏步并平滑回蹲，t=0 与 t=8 首尾像素 MAE === 0，周期内 max(MAE) >= 0.020。
+* **判读标准 (`evaluationCriteria`)**：Pass: 港湾四区与双河道桥跨建筑完整且纯矢量自包含，机甲四肢与躯干按关节分层清晰，HUD 含 ATOMOS-CORE 与 0m-120m 同相高度条，T=8s 完整演绎蹲伏-起立-交替重步-回蹲且首尾 MAE === 0、max(MAE) >= 0.020、0 <script>；Partial: 场景与机甲大致成立且有循环动画，但关节未分节耦合、HUD 不同相或首尾轻微跳变；Fail: 静态（max(MAE) < 0.020）、含 <script> 或外部资源请求、首尾不闭合或 XML 无效。
+
+### 15. 等轴测网格机甲踩踏与冲击波HUD (Animated Isometric Mech Stomp Traversal & Shockwave HUD)（`animated-mech-nyc-stomps-hud-v1`）
+* **出处**：https://simonwillison.net/2026/Nov/10/llm-gemini/（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：30度等轴测街区桥梁、T=6s双足机甲踩踏闭环、等轴测椭圆冲击波与同步遥测HUD
+* **客观参考真值 (`groundTruth`)**：viewBox='0 0 840 520'纯内联动态SVG且0<script>与零外链；30度等轴测街区含A-D分区街块、20-75px阶梯棱柱楼宇、河道与钢拱悬索桥；双足关节机甲在T=6s闭环内沿桥面往返或8字巡逻至十字路口，t=0s与t=6s像素完全一致（MAE === 0），周期内max(MAE) >= 0.020；左足t=1.5s、右足t=4.5s落地各触发2道贴合等轴测地面的同心椭圆冲击波并淡出，邻近桥索与塔楼伴随1-2px弹性回弹；角落暗石板HUD（opacity <= 0.92）无遮挡显示STRIDE CADENCE、同步峰值L-FOOT/R-FOOT冲击条及迷你雷达追踪光点。
+* **判读标准 (`evaluationCriteria`)**：Pass: 30度等轴测街区与悬索桥结构清晰，机甲T=6s闭环巡逻且t=0s/6s MAE === 0、max(MAE) >= 0.020，t=1.5s与t=4.5s落足各触发2道等轴测椭圆冲击波及1-2px桥索/塔楼回弹，非遮挡HUD双柱与雷达点相位同步且0 <script>；Partial: 街区与闭环运动成立，但冲击波呈正圆、桥梁无回弹或HUD未同步脚步相位；Fail: 静态图（max(MAE) < 0.020）、首尾跳变、无关节硬平移、HUD遮挡主区、含<script>/外链资源或XML无效。
+
+### 16. 铆接铁桁架塔吊装施工动效 (Animated Riveted Lattice Tower Staged Erection)（`animated-lattice-tower-erection-v1`）
+* **出处**：https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：四阶段抛物线收分铆接桁架塔分段吊装、斜腹杆节点全闭合、塔吊追踪与接缝火花及 T=8s 闭环复原
+* **客观参考真值 (`groundTruth`)**：纯内联声明式 SVG（viewBox="0 0 800 560"，#0e1522 深蓝图底，琥珀钢/青铜灰桁架配冷青铅垂线与虚线轮廓），基线 (400, 495) 设四座对称石墩基座与中轴旁爬升塔吊；四段抛物线收分结构（含下层拱桥与一层平台、中段收敛柱与二层廊台、上段细桁架、顶冠平台与尖塔信标）斜腹杆均准确交汇角柱节点无浮空断杆；T=8s 闭环内 t=0s 仅见基座、待命吊臂与蓝图虚线，0.5s-6.0s 吊臂追踪伴随 Level 1 -> Level 2 -> Upper Shaft -> Spire 顺序吊装、接缝闪烁及 0%-100% 高程条同步推进，6.0s-6.8s 稳态保持，6.8s-8.0s 溶解复位；t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.020，0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: #0e1522 蓝图配色、四石墩基座与塔吊齐全，四段抛物线收分桁架斜杆节点全闭合无悬空，0.5s-6.0s 四段按序就位且与吊臂追踪、焊点闪烁、0%-100% 高程条严格同步，6.0s-6.8s 保持并在 6.8s-8.0s 复原至 t=0s 虚线态（MAE === 0），周期内 max(MAE) >= 0.020 且 0 <script>，无真实地标商标或人物；Partial: 四段结构与 8s 闭环基本成立，但局部斜杆未闭节点、吊臂或高程条未联动或缺少焊点闪烁；Fail: 静态无动效（max(MAE) < 0.020）、首尾帧不一致（MAE > 0）、四段无序同时出现、含 <script>/外部资产/真实地标商标或 XML 错误。
+
+### 17. 18世纪维也纳拨弦式钢琴击弦机剖面动效 (Animated 18th-Century Viennese Piano Action Cutaway)（`animated-viennese-piano-action-v1`）
+* **出处**：https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：18世纪维也纳 Prellmechanik 键载音叉托架拓扑、弹簧擒纵喙脱开回落、零穿模击弦与 T=4s 闭环驻波
+* **客观参考真值 (`groundTruth`)**：viewBox="0 0 820 460" 纯内联动态 SVG：键尾直接固定音叉托架（Kapsel）而非独立槌档，朝左前方指出的锥形毡槌柄枢接于音叉上；后部固定擒纵档带弹簧擒纵喙（Auslosezunge）啮合槌尾喙（Schnabel）；顶部制音臂压在左右端锚定的水平钢弦上，辅以托木接槌唇。T=4s 闭环：0-0.7s 键前下压 5-7 度带动槌头上甩与制音抬起；0.7-1.0s 约 0.85s 击弦且擒纵喙脱开使槌头在键仍按住时微幅回落至弦下（零穿模）；1.0-1.8s 琴弦两端固定作基频驻波衰减；1.8-4.0s 复位至 t=0s 完全一致（MAE === 0），周期内 max(MAE) >= 0.015；0 <script>；不含任何制琴师或品牌名称。
+* **判读标准 (`evaluationCriteria`)**：Pass: 严格符合键载音叉与朝左槌头等维也纳 Prellmechanik 拓扑，0.85s 击弦无穿模且具擒纵脱开回落阶段，琴弦两端锚定驻波衰减，t=0s 与 t=4s 像素 MAE === 0 且 max(MAE) >= 0.015，0 <script> 且无制琴师/品牌词汇；Partial: 闭环与连杆可动但错用独立槌档、缺少擒纵回落或琴弦未锚定两端；Fail: 静态（max(MAE) < 0.015）、槌头穿弦、拓扑严重缺失、含 <script> 或出现品牌/人名。
+
+### 18. 针织线圈单轴拉伸与泊松收缩动效 (Animated Knitted Yarn Loop Tension & Poisson Narrowing)（`animated-knitted-yarn-tension-v1`）
+* **出处**：https://x.com/Google/status/2120279087314837642（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：4x4 交织平针线圈上下穿插拓扑、单轴 28% 拉伸下的泊松横向颈缩与高应力弧色移闭环
+* **客观参考真值 (`groundTruth`)**：viewBox='0 0 760 540'、深色背景 #0d131c、0 <script>；4 列 x 4 行共 16 个交织纬编平针线圈及接入上下夹条的纱尾，粗圆柱纱线（stroke-width 8~10）在交叉点具备显式上下穿插套壳/断口（严禁扁平直接叠压）；底部固定夹轨含 2 枚水平锚钉，顶部活动夹条带向上拉力矢量箭头 F；侧边配备实时联动的 EPSILON_Y 应变柱与横向宽幅标尺；T=6s 闭环中 0->3s 顶部夹条上移约 28%、线圈腿拉直且中部列发生连续泊松横向内收（不破坏咬合连续性），接触冠弧颜色由 #38bdf8 经 #f59e0b 过渡至 #ef4444；3->6s 弹性回弹至 t=0 完全一致（MAE === 0），周期内 max(MAE) >= 0.020。
+* **判读标准 (`evaluationCriteria`)**：Pass: 4x4 交织线圈上下穿插清晰、固定底轨 2 锚钉与活动顶条拉力箭头 F 完整、0->3s 约 28% 纵向拉伸伴随显著泊松横向颈缩与冠弧 #38bdf8->#f59e0b->#ef4444 应力变色、侧边 EPSILON_Y 与宽幅标尺同步联动、t=0 与 t=6 像素 MAE === 0、max(MAE) >= 0.020 且 0 <script>；Partial: 线圈数量与 6s 闭环大致正确，但仅均匀缩放缺乏泊松颈缩、交叉穿插不清、无应力变色或仪表不同步；Fail: 静态无动画（max(MAE) < 0.020）、线圈非交织或撕裂断链、首尾帧不重合、含 <script> 或 XML 语法错误。
+
+### 19. 等轴测分层音频遥测调音台动效 (Animated Isometric Layered Audio-Telemetry Console)（`animated-iso-layered-console-v1`）
+* **出处**：https://x.com/BreejeAnadkat/status/2120115744168091921（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：严格 30 度等轴测三层调音台爆炸对接闭环、斜轴五通道推子分相联动与玻璃罩内裁切频谱遥测
+* **客观参考真值 (`groundTruth`)**：800x540 深灰蓝底（#0f141e）纯内联 SVG 呈现三层模块化野战音频遥测调音台：底层倒角铝制机身与散热鳍片、中层沿 30 度等轴测轴线排列的 5 条凹槽推子轨道与椭圆投影旋钮及发光按键、顶层斜置半透明玻璃双 VU 频谱遮光罩；全图严格遵循 30 度等轴测（2:1/cos30 网格）与顶亮/左中/右暗三阶受光；T=6s 闭环中 0.0-1.2s 沿青色虚线定位销平稳降落齐平对接，1.2-4.6s 五路推子严格沿 30 度斜轨分相往复、旋钮弧线在椭圆内旋转、LED 与双 VU 频谱在玻璃罩边界内脉冲扫掠且不越界，4.6-6.0s 沿导向销精准升回初始分离位置；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。
+* **判读标准 (`evaluationCriteria`)**：Pass: 严格 30 度等轴测与三阶明暗一致，三层硬件结构齐全且对接零错位，5 路推子严格沿 30 度斜轴分相滑动、旋钮/LED/频谱在各自轮廓与玻璃罩内裁切不溢出，t=0 与 t=6 完全重合（MAE === 0），max(MAE) >= 0.015，0 <script> 且无品牌或外部依赖；Partial: 三层形态与 6s 闭环成立，但推子略偏斜轴、对接有轻微错缝或频谱轻度溢出边框；Fail: 静态无运动（max(MAE) < 0.015）、透视非等轴测或错位严重、首尾帧未对齐（MAE > 0）、含 <script> 或 XML 语法错误。
+
+### 20. 帆船乘浪俯仰与开尔文尾迹动效 (Animated Sailing Sloop, Wave Heave & Kelvin Wake)（`animated-sailboat-wake-waves-v1`）
+* **出处**：https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests（首发时间 `2026-11`，收录日期 `2026-11-14`）
+* **核心考点 (`coreKey`)**：y=265 暮色海天渐变地平线、>=3 层整数周期次摆线海浪无缝平铺、水线耦合升沉与 +/-4 度波峰锁相俯仰及 T=6s 开尔文 V 形尾迹闭环
+* **客观参考真值 (`groundTruth`)**：纯内联动态 SVG（viewBox="0 0 820 500"），0 <script> 与零外部资源；y=265 海天渐变地平线下方含 >=3 层整数周期平移的次摆线海浪带及 #fde68a/#38bdf8 碎波高光；3/4 斜视角百慕大帆船含船体、渐细桅杆、横桁、前后支索与带帆骨线的鼓风主帆/前帆，整船围绕水线中点做与波峰锁相的垂直升沉与 +/-4 度俯仰，船底不悬空且帆索不脱节；船尾斜后方展开随 T=6s 同步脉动消退的半透明白青色开尔文 V 形尾迹与船首浪花；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.018。
+* **判读标准 (`evaluationCriteria`)**：Pass: 满足 y=265 地平线、>=3 层无缝平铺海浪带与碎波高光、帆船索具完整连结且水线锁相升沉与 +/-4 度俯仰不悬空、开尔文 V 形尾迹同步舒展消退、t=0s 与 t=6s 首尾帧 MAE === 0、max(MAE) >= 0.018 且 0 <script>；Partial: 造型与闭环基本成立但海浪平铺接缝跳变、船体水线偶有浮空、缺少波峰锁相或尾迹无明显周期性扩展；Fail: 静态无运动（max(MAE) < 0.018）、首尾帧严重错位、帆船部件脱节、含 <script>/外部资产或 XML 无效。
+
+---
+## 二十七、 题目生命周期与淘汰机制（Lifecycle & Retirement）
 
 为了保持基准对新一代前沿大模型尖锐的区分度，本基准建立时间追踪与饱和淘汰机制：
 * **首发时间 (`originDate`)**：题目在社区或学术界首次公开的时间。首发时间过长（如超过 18 个月）的题目，需防范厂商预训练集污染风险；
@@ -1820,7 +1966,7 @@
   1. **饱和归档（Ceiling Retirement）**：若受测模型池中超过 80% 的模型在某道题目上连续多轮获得满分，该题目标记为 `aging`，让出常规轮次的调度配额；
   2. **版本迭代（Generational Progression）**：如 `classic-v1` 迭代至 `upgraded-v2`，高难度动态题与硬核工程题稳定后，老旧基础题仅作为历史连续性锚点保留。
 
-## 二十七、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
+## 二十八、 题目数据建模契约与自动化完整性门禁（Prompt Schema & Validation Gate）
 
 为了彻底根除人工肉眼核查漏看属性的问题，本基准在 `src/core/prompt-schema.ts` 建立了严格的数据模型契约（Schema）与确定性校验逻辑（Validator）：
 
@@ -1838,13 +1984,13 @@
   * 套题（Suite）必须具备领域级 `standard`，且前沿套题的所有候选条目（`candidates`）强制必须具备独立的单题特异性 `standard`。
 
 ### 2. 自动化体检与质量门禁（Tooling & CI）
-* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 62 个内置提示词条目、140 道前沿工程/视效单题（合计 202 项）及 22 套带候选特异性标准的套题（900 个候选条目，全部 24 套候选集共 780 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
+* **一键体检 CLI**：运行 `pnpm validate:prompts` 触发全量扫描，校验 82 个内置提示词条目（对应运行时 `BUILTIN_PROMPTS` 51 条核心注册条目 + 既有扩展统计口径）、140 道前沿工程/视效单题（合计 222 项）及 22 套带候选特异性标准的套题（900 个候选条目，全部 24 套候选集共 780 个场景候选），发现任何字段缺失或格式异常立即以非零状态码阻断；
 * **测试套件集成**：`test/core/prompt-schema.test.ts` 纳入自动化测试链路（`pnpm test`），包含正向全覆盖与属性缺失、格式错误的负向拦截断言；
 * **配置加载即时校验**：用户通过 `pelican.config.yaml` 或 UI 添加自定义题目时，`config-prompts.ts` 解析 `standard` 并执行 Schema 校验，实现 fail-fast。
 
 ---
 
-## 二十八、 参考资料与上游链接
+## 二十九、 参考资料与上游链接
 
 * [Simon Willison's Pelican Benchmark Canonical Repo](https://github.com/simonw/pelican-bicycle)
 * [Simon Willison's Weblog: pelican-riding-a-bicycle](https://simonwillison.net/tags/pelican-riding-a-bicycle/)
@@ -1872,3 +2018,17 @@
 * [NASA James Webb Space Telescope Observatory Deployment](https://webb.nasa.gov/content/observatory/sunshield.html)
 * [ITER International Thermonuclear Experimental Reactor](https://www.iter.org/mach/tokamak)
 * [RCSB Protein Data Bank (PDB ID: 4OO8)](https://www.rcsb.org/structure/4OO8)
+* [@MiaAI_lab: SVG physics & mathematical loop showcase on X (Snowflake ID: 2119930229661503893)](https://x.com/MiaAI_lab/status/2119930229661503893)
+* [@kimmonismus: Single-crank reversing orrery benchmark on X (Snowflake ID: 2120186125591646250)](https://x.com/kimmonismus/status/2120186125591646250)
+* [@thebuggeddev: Watt flyball governor SVG evaluation on X (Snowflake ID: 2120201759305998343)](https://x.com/thebuggeddev/status/2120201759305998343)
+* [@danieldwalton: Nine-cylinder radial engine master/articulated rods on X (Snowflake ID: 2116649200339599487)](https://x.com/danieldwalton/status/2116649200339599487)
+* [@aitrendz_xyz: Lava blob convection & necking SVG test on X (Snowflake ID: 2120148925445521699)](https://x.com/aitrendz_xyz/status/2120148925445521699)
+* [Zieminski: Claude Fable 5.2 Design & Motion Prompts (Product With Attitude)](https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts)
+* [AI Fire: Gemini 4 Carbon Coding, 3D Floorplan & Sailboat Shader Tests](https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests)
+* [@MichaelGannotti: 69°N Fjord Aurora simulation on X (Snowflake ID: 2119922137011982652)](https://x.com/MichaelGannotti/status/2119922137011982652)
+* [@ebbyamir: Nightrider swirling sky cyclist demo on X (Snowflake ID: 2120284261089673376)](https://x.com/ebbyamir/status/2120284261089673376)
+* [Simon Willison: Fable 5.2 Yonkers Mech Rise Test (Nov 10, 2026)](https://simonwillison.net/2026/Nov/10/yonkers-rises/)
+* [Simon Willison: Gemini 4 Carbon Mech Stomps Evaluation (Nov 10, 2026)](https://simonwillison.net/2026/Nov/10/llm-gemini/)
+* [Google AI Blog: Gemini 4 Carbon Release — Lattice Tower & Viennese Piano Action](https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/)
+* [@Google: Knitted yarn tensile mechanics demo on X (Snowflake ID: 2120279087314837642)](https://x.com/Google/status/2120279087314837642)
+* [@BreejeAnadkat: Isometric layered vector animation on X (Snowflake ID: 2120115744168091921)](https://x.com/BreejeAnadkat/status/2120115744168091921)

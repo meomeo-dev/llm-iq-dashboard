@@ -8,7 +8,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { access, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { attemptKeyOf, loadJudgement } from "./judge/judge-store";
 import { withCurrentRules } from "./judge/schema";
@@ -255,4 +255,31 @@ async function readSvg(runId: string, attempt: Attempt): Promise<string | null> 
 /** 展示用的评审记录按当前及格线重定结论；没有记录时仍是 null */
 function withJudgeThreshold(judgement: Awaited<ReturnType<typeof loadJudgement>>): Awaited<ReturnType<typeof loadJudgement>> {
   return judgement === null ? null : withCurrentRules(judgement);
+}
+
+/** 原地重跑单个调用前清理其遗留的 .svg / .txt / .judge.json / .sheet*.png 等产物 */
+export async function cleanAttemptArtifacts(
+  runId: string,
+  targetId: string,
+  promptId: string,
+  prevAttempt?: Pick<Attempt, "svgFile" | "rawFile">,
+): Promise<void> {
+  const dir = runDir(runId);
+  const prefixes = new Set<string>([`${targetId}__${promptId}.`]);
+  if (prevAttempt?.svgFile) prefixes.add(`${attemptKeyOf(prevAttempt.svgFile)}.`);
+  const exactFiles = new Set<string>(
+    [prevAttempt?.svgFile, prevAttempt?.rawFile].filter((f): f is string => Boolean(f)),
+  );
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (name === RUN_FILE || name === "progress.json" || name === "cancel.json") continue;
+    const matched = exactFiles.has(name) || [...prefixes].some((prefix) => name.startsWith(prefix));
+    if (!matched) continue;
+    await unlink(join(dir, name)).catch(() => undefined);
+  }
 }

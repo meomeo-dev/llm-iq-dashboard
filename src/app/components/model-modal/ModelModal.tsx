@@ -6,6 +6,7 @@ import type { PromptStandard } from "@/core/prompt";
 import { useI18n } from "@/i18n";
 import { PelicanCard } from "../card/PelicanCard";
 import { useProfiles } from "../profile/profiles-context";
+import { RetryRunButton } from "../run-control/RetryRunButton";
 import { folderCell, upstreamOf } from "../timeline/effort-slots";
 import type { Moment } from "../timeline/moments";
 import type { Row } from "../timeline/rows";
@@ -35,9 +36,11 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
   const isEn = locale === "en";
   const [showStandard, setShowStandard] = useState(false);
   const panelRef = useOverlayStack<HTMLElement>(true, onClose);
-  const { profiles } = useProfiles();
+  const { profiles, owner } = useProfiles();
   const cards = folderCell(moment, row, [], efforts, profiles)?.cards ?? [];
   const okCount = cards.filter((card) => card.status === "ok" && card.liveState === undefined).length;
+  const failedCards = cards.filter((card) => card.liveState === undefined && card.status !== "ok");
+  const retryRunId = failedCards[0]?.runId;
   const upstreams = orderProfileNames(cards.map(upstreamOf), profiles);
 
   return (
@@ -53,7 +56,18 @@ export function ModelModal({ moment, row, efforts, timeZone, standard, onClose }
           upstreamCount={upstreams.length}
           actions={
             cards.length > 0 && (
-              <ModelExportMenu moment={moment} row={row} cards={cards} upstreams={upstreams} efforts={efforts} timeZone={timeZone} />
+              <>
+                {owner && retryRunId !== undefined && (
+                  <RetryRunButton
+                    runId={retryRunId}
+                    count={failedCards.length}
+                    targetIds={[...new Set(failedCards.map((card) => card.targetId))]}
+                    promptIds={[...new Set(failedCards.map((card) => card.promptId))]}
+                    includeNoSvg
+                  />
+                )}
+                <ModelExportMenu moment={moment} row={row} cards={cards} upstreams={upstreams} efforts={efforts} timeZone={timeZone} />
+              </>
             )
           }
           showStandard={showStandard}

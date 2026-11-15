@@ -1,4 +1,5 @@
 import type { RunOptionsView } from "@/app/api/run/route";
+import { BENCHMARK_2026_11_H1_IDS } from "@/core/prompt/bank/benchmarks/2026-11-h1/ids";
 
 export type Target = RunOptionsView["targets"][number];
 export type PromptOption = RunOptionsView["prompts"][number];
@@ -16,6 +17,7 @@ export type GroupKey =
   | "世界地标（微缩景观）"
   | "2026-09"
   | "2026-10"
+  | "2026-11-h1"
   | "自定义提示词";
 
 export interface PromptGroup {
@@ -87,6 +89,8 @@ export function isPromptExcludedFromDisplay(id: string): boolean {
   return EXCLUDED_PROMPT_PREFIXES.some((prefix) => id.startsWith(prefix));
 }
 
+const NOVEMBER_2026_H1_PROMPT_IDS: ReadonlySet<string> = new Set(BENCHMARK_2026_11_H1_IDS);
+
 export function classifyPrompt(p: PromptOption): GroupKey {
   if (CLASSIC_PROMPT_IDS.has(p.id)) return "经典基准";
   if (
@@ -100,6 +104,7 @@ export function classifyPrompt(p: PromptOption): GroupKey {
   if (p.id.startsWith("landmarks-")) return "世界地标（微缩景观）";
   if (SEPTEMBER_2026_PROMPT_IDS.has(p.id)) return "2026-09";
   if (OCTOBER_2026_PROMPT_IDS.has(p.id)) return "2026-10";
+  if (NOVEMBER_2026_H1_PROMPT_IDS.has(p.id)) return "2026-11-h1";
   return "自定义提示词";
 }
 
@@ -110,6 +115,7 @@ export function groupPrompts(promptList: readonly PromptOption[]): PromptGroup[]
     "世界地标（微缩景观）": [],
     "2026-09": [],
     "2026-10": [],
+    "2026-11-h1": [],
     "自定义提示词": [],
   };
 

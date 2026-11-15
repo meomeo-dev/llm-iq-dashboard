@@ -27,6 +27,10 @@ export interface RunSelection {
    * 目标 id）；缺省时 `targetIds` 就是要跑的目标 id，与引入上游之前相同。
    */
   profiles?: readonly string[];
+  /** 原地重跑指定轮次 ID（如 20260419T120000Z）；指定后复用该轮锁定的 prompts 与 harnessGuard */
+  retryRunId?: string;
+  /** 原地重跑时是否把 status === "no-svg" 的调用也纳入重跑（单卡重跑或显式勾选时为 true） */
+  includeNoSvg?: boolean;
 }
 
 /** 目标所属的 profile 是否可调用；默认 profile 总是可调用 */

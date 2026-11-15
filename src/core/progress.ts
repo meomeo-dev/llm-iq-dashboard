@@ -8,7 +8,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fingerprintJobToProgressView, listRecentFingerprintJobs } from "./model-fingerprint/job";
-import { runDir } from "./paths";
+import { dataRoot, runDir } from "./paths";
 import { isProcessAlive, processStartMark } from "./process-identity";
 import { externalRunner, heartbeatCovers, readFreshHeartbeat, type RunnerHeartbeat } from "./runner-link";
 import type { SerialWriter } from "./serial-writes";
@@ -248,9 +248,21 @@ export function createProgressTracker(
   return buildProgressTrackerActions(progress, writer);
 }
 
-/** 最近几轮的进度，新的在前；没有进度文件的轮次跳过 */
+async function readLockedRunId(): Promise<string | null> {
+  try {
+    const raw = await readFile(join(dataRoot(), "active-execution.lock"), "utf8");
+    const parsed = JSON.parse(raw) as { kind?: string; runId?: string };
+    return parsed.kind === "run" && typeof parsed.runId === "string" ? parsed.runId : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 最近几轮的进度，新的在前；没有进度文件的轮次跳过（若较早轮次正在原地重跑则一并纳入） */
 export async function listRecentProgress(limit: number): Promise<RunProgress[]> {
   const ids = (await listRunIds()).slice(0, limit);
+  const lockedId = await readLockedRunId();
+  if (lockedId !== null && !ids.includes(lockedId)) ids.unshift(lockedId);
   const found: RunProgress[] = [];
   for (const id of ids) {
     const progress = await readProgress(id);
@@ -275,7 +287,7 @@ export async function listProgressViews(limit: number = RECENT_PROGRESS_RUNS): P
   }));
   const jobViews = fpJobs.map(fingerprintJobToProgressView);
   return [...runViews, ...jobViews]
-    .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+    .sort((a, b) => Number(b.alive) - Number(a.alive) || Date.parse(b.startedAt) - Date.parse(a.startedAt))
     .slice(0, limit);
 }
 

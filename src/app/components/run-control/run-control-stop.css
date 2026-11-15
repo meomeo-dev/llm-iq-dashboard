@@ -39,3 +39,37 @@
   color: var(--err);
   font-size: var(--text-sm);
 }
+
+/* ---------- 原地重试失败项 ---------- */
+
+.run-retry-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-retry {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.run-retry:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.run-retry:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.run-retry-error {
+  color: var(--err);
+  font-size: var(--text-sm);
+}

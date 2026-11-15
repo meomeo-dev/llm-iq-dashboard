@@ -24,6 +24,7 @@ import { readCredentialStatus } from "@/core/profile-credentials";
 import { listPrompts } from "@/core/prompt";
 import { enqueueRequest, expirePendingRequest, waitForRequest } from "@/core/requests";
 import { narrowConfig, scheduledRound, type RunSelection } from "@/core/run-selection";
+import { executeRunRetry, planRunRetry } from "@/core/run/retry";
 import { executeRun } from "@/core/runner";
 import { externalRunner } from "@/core/runner-link";
 import {
@@ -127,7 +128,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const full = loadConfig(configPath());
     selection = parseRunRequestBody(await request.text());
-    config = selection === null ? scheduledRound(full) : narrowConfig(full, selection);
+    if (selection?.retryRunId) {
+      await planRunRetry(full, selection);
+      config = full;
+    } else {
+      config = selection === null ? scheduledRound(full) : narrowConfig(full, selection);
+    }
   } catch (cause) {
     return NextResponse.json({ error: describe(cause) }, { status: 400 });
   }
@@ -188,10 +194,19 @@ async function startLocalRun(
 ): Promise<NextResponse> {
   // 进度文件写好后才返回 202，前端随即读取进度时必能读到这一轮；开跑前抛错返回 500
   const started = new Promise<string>((resolve, reject) => {
-    void executeRun(config, {
-      trigger: "manual", candidateOverrides: selection?.candidateOverrides,
-      log: (message) => console.log(message), onStarted: resolve,
-    })
+    const task = selection?.retryRunId
+      ? executeRunRetry(config, selection, {
+          trigger: "manual",
+          log: (message) => console.log(message),
+          onStarted: resolve,
+        })
+      : executeRun(config, {
+          trigger: "manual",
+          candidateOverrides: selection?.candidateOverrides,
+          log: (message) => console.log(message),
+          onStarted: resolve,
+        });
+    void task
       .catch((cause: unknown) => {
         console.error(`手动执行失败：${describe(cause)}`);
         reject(cause);

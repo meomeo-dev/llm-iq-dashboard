@@ -39,10 +39,11 @@ pnpm preflight
 `pnpm preflight` checks Node version, configuration, installation and login status of all three CLIs, pricing catalog availability, and estimated cost per round based on historical usage. If a CLI used by your config is missing or signed out, it prints the exact install/login command and exits non-zero.
 `pnpm onboard` interactively walks through logging in each CLI and re-verifies readiness immediately afterward. Remove unused CLIs from `targets` in your configuration. Clicking “Dismiss” on the dashboard banner only hides the banner in the current browser without changing configuration.
 
-Run a single round to verify the execution pipeline on your machine:
+Run a single round to verify the execution pipeline on your machine (or retry failed / incomplete calls in an existing round in place):
 
 ```bash
 pnpm run:once
+pnpm pelican run --retry <runId> --dry-run
 ```
 
 Start the production dashboard (<http://localhost:3000>, suited for long-running display):
@@ -131,7 +132,7 @@ Override paths via `PELICAN_CONFIG` and `PELICAN_DATA_DIR`.
 
 ## Prompts & Rotation
 
-The built-in registry contains **23 active entries** and **31 archived entries**. Its
+The built-in registry contains **51 active entries** and **31 archived entries**. Its
 **24 rotating suites** span both groups and contain **1,140 candidates**. The 14 frontier
 suites also expose their 140 candidates as individually addressable prompts. The
 [bank index](src/core/prompt/bank/index.ts) lists active and archived entries.
@@ -143,6 +144,8 @@ suites also expose their 140 candidates as individually addressable prompts. The
 | `animated-pelican-v1` | Animated pelican on a bicycle using pure inline SMIL / CSS keyframes; eligible for automated + AI judging |
 | `animated-armadillo-fishnet-mars-v1` / `animated-lemur-scooter-front-v1` | Extended classic dynamic benchmarks: Armadillo on Mars & Ring-tailed Lemur on a Scooter |
 | `animated-iso-vintage-pc-v1` + 7 more | `2026-09` spatial & isometric hardware group (Vintage PC, Amber CRT, 10s Server Rack, Camera Exploded View, Kinetic Hand, Fish-Cloud Amodal, Island Chest, Tree Reader) |
+| `animated-jansen-walker-v1` + 7 more | `2026-10` mechanical linkages & locomotion group (Jansen Walker, Jumping Spider Leap, Centipede Wave Gait, Open Differential, Ferris Wheel Self-Leveling, Octopus Pipe Organ, Peacock Bicycle, Nautilus Spiral) |
+| `animated-pendulum-wave-reunion-v1` + 19 more | `2026-11-h1` model-capability & clean-room dynamics group (Pendulum Wave, Moiré Drift, Iron Filings, Venus Rose Orbit, Reversing Orrery, Watt Governor, 9-Cylinder Radial Master Rod, Lava Convection, Motion Icons Audit, Physics Bounce Ball, Floorplan Door Swings, 69°N Fjord Aurora, Starry Night Cyclist, Articulated Mech Stand-Up, Isometric Mech Stomps HUD, Lattice Tower Erection, Viennese Piano Action, Knitted Yarn Poisson Tension, Isometric Layered Console, Sailboat Kelvin Wake) |
 | `clock-v1` / `penrose-v1` / `ice-water-v1` (archived) | Spatial geometry & physics commonsense: Clock at 3:45, Penrose Triangle, Floating Ice in Water |
 | `four-stroke-engine-v1` + 6 more (archived) | Frontier engineering: Four-Stroke Engine, Möbius Strip, Cart-Pole, Isometric Cyber-Cube, Synthwave Drive, Cyber HUD, Black Hole Lensing |
 | `jwst-deployment-v1` + 6 more (archived) | Frontier visual science: Quantum Double-Slit, Ferrofluid Spikes, JWST Deployment, Tokamak Plasma, 2nm GAA Nanosheet, CRISPR-Cas9, Pulsar Jet |
@@ -159,6 +162,7 @@ Candidate-set prompts shuffle and draw one candidate per rotation period (`day` 
 ## Dashboard & Visual Exports
 
 - **24-Hour Timeline & Folder Tiles**: Each row represents `cli · model` (with pass-rate tree beneath). Each cell is a 2×2 folder tile showing `low`, `medium`, `high`, and `max` efforts at fixed corners. Active calls (`running` / `queued`) from `progress.json` populate the 2×2 tiles live during execution, and `GET /api/events` (`runs-revision`) drives in-place `GET /api/dashboard` updates when `run.json` or `*.judge.json` changes without full-page reloads.
+- **In-Place Run & Attempt Retry**: Paired owners can retry a single failed attempt (`↻ Retry` on `error` / `timeout` / `no-svg` cards), all failed efforts for a model cell (`↻ Retry Failed (N)` in the `ModelModal` header), or all failed/incomplete calls in a finished or cancelled round from the `RunStatus` panel—reusing the round's locked prompts, candidate bindings, and `harnessGuard` while streaming live `running` / `queued` states in place.
 - **Language Switcher (`EN` / `中文`)**: Toggle UI, prompt metadata, judge rubrics, and exported images between English and Simplified Chinese at any time.
 - **Comparison Modal & Full Viewer (`/view/<runId>/<svgFile>`)**: Side-by-side effort and upstream profile comparison, collapsible Ground Truth & Evaluation Criteria, raw sandboxed SVG link, and Judge Drawer with 8-frame contact sheets.
 - **Export (PNG / SVG / GIF)**: Export the full 24h landscape timeline, transposed portrait timeline, or per-model comparison cards (including animated GIFs that preserve per-element animation phase).

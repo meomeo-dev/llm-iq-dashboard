@@ -103,3 +103,31 @@
 .judge-tag.judge-interrupted {
   color: var(--warn);
 }
+
+.card-retry-btn {
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.card-retry-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.card-retry-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card-retry-btn.is-error {
+  border-color: var(--err);
+  color: var(--err);
+}

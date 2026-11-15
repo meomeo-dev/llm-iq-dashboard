@@ -1,0 +1,71 @@
+你是一个专门负责前沿 AI 模型能力追踪与视觉/多模态评测基准挖掘的资深研究专家。
+本项目为知名开源大模型评测基准平台（MIT 许可，致力于使用纯内联 SVG 动画对大模型进行高难度盲测）。
+
+【当前日期与目标时间窗口】
+当前时间为 2026-11-14。
+重点回顾时间窗口：2026-11（2026 年 11 月 1 日至 2026 年 11 月 14 日，及 10 月底直接延续至 11 月的发布与热议）。
+
+【核心调研问题（两大主线，必须均充分覆盖）】
+主线一：2026 年 11 月「Claude Fable 5.2」与「Google Gemini carbon」（含可能的官方正式命名、代号、预览版或社区称呼）有哪些最新动态与新能力？
+- 请核实它们在 2026 年 11 月的发布/上线/泄露/预览状态（官网公告、模型卡、API/平台代号、社区确认事实或辟谣边界）；
+- 总结它们在代码工程、前端 UI/设计、SVG 矢量与动画生成、空间几何推理、物理动力学、多模态/视觉理解、长程代理与工具调用等方面的【已核实新能力】与【典型翻车短板】；
+- 若某一代号在检索中未见确凿官方发布或属于社区误传/别名/更早或更晚代号，必须如实标明证据边界，严禁脑补或编造能力。
+
+主线二：2026 年 11 月 X (Twitter) 及相关技术社区有哪些爆款测试题目？
+- 收集社区拿来实测 Claude Fable 5.2、Google Gemini carbon（以及同期 GPT / Grok / Qwen 等模型）的病毒式测试题：
+  1) 通用热议测试题（不限形式：SVG、HTML/WebGL/Shader、前端复刻、物理/流体/几何谜题、多模态或空间推理题），说明原题面与各模型实测表现；
+  2) 并从中按照本仓库标准，筛选/提炼 5 ~ 10 道最适合改造为「纯内联动态 SVG（0 `<script>`）」盲测题的候选。
+
+【极其严格的检索硬性纪律】
+你必须使用内置的 `web_search` 与 `web_fetch` 工具（切勿调用外部 MCP search_tool），
+自主执行【不少于 50 轮连续深度联网检索与推文深挖】！
+坚决禁止只检索 2~3 次就草草总结。你必须：
+1. 全面检索 X (Twitter / x.com) 平台上的技术推文、引用推文（Quote Tweets）、高赞讨论串（Threads）；
+2. 交叉验证 Anthropic / Google DeepMind 官方博客、Hacker News、Reddit (r/ClaudeAI, r/LocalLLaMA, r/MachineLearning, r/Singularity, r/Bard) 以及 GitHub 上的相关复现讨论；
+3. 重点检索关键词方向（按实际发现动态深挖扩展至 >= 50 轮）：
+   - "Claude Fable 5.2", "Fable 5.2", "Claude Fable", "Anthropic Fable" November 2026
+   - "Gemini carbon", "Google Gemini carbon", "Gemini Carbon" November 2026
+   - x.com "Fable 5.2" SVG OR benchmark OR test OR prompt OR coding
+   - x.com "Gemini carbon" SVG OR benchmark OR test OR prompt OR coding
+   - "SVG benchmark" "November 2026" OR "Nov 2026", "LLM SVG animation" 2026
+   - "pelican riding a bicycle" November 2026 Fable OR Gemini carbon
+   - "isometric SVG", "amodal completion SVG", "physics SVG", "clock SVG", "spatial reasoning" November 2026
+   - "prompt challenge" "November 2026" Claude OR Gemini
+   - Hacker News / Reddit 2026-11 discussions on Fable 5.2 and Gemini carbon evals
+
+【绝对排除红线（针对 SVG 候选题目库）】
+1. 绝对不要包含任何以真实人物为主体的题目（如政要、商业领袖、公众人物真实面孔），一票否决淘汰！
+2. 排除纯概念炒作但无具体可复现 Prompt 题面的水帖（主线一的能力总结需标注来源，主线二的候选题目必须有可核验出处）；
+3. 排除本库已收录的既有题目（严禁重复）：
+   - 经典/已收录：经典鹈鹕车、升级版鹈鹕车、动态鹈鹕车、四大名著、城市地标微缩景观；
+   - 2026-09 已收录：等轴测初代个人电脑、橙屏 CRT 台式机、十秒无缝机柜、相机爆炸图再组装、人手关节屈伸屈曲、鱼跃水入云（非模态遮挡）、海岛微风与宝箱包含、树下读书的人（复合遮挡）、火星网袜犰狳步态、环尾狐猴骑电动滑板车正视图；
+   - 2026-10 已收录：简森步行机构 (Jansen walker)、跳蛛四足交替起跳、蜈蚣行波步态、开放差速器过弯、摩天轮吊厢自水平、章鱼操作管风琴、孔雀骑车尾屏、鹦鹉螺对数螺线；
+   - 排除低难度基础几何（如无动态的平面五角星、单色静态色块等）。
+4. 严禁编造推文链接、作者 Handle、时间戳、互动数据或测试结果；无法打开原文的请明确说明检索快照与证据边界。
+
+【输出交付规范】
+请输出结构清晰的 Markdown 报告，必须包含以下四大部分：
+
+### 第一部分：2026 年 11 月 Claude Fable 5.2 新能力与实测表现
+- 发布/代号/版本状态核实（含来源 URL、发布时间）
+- 核心新能力清单（分维度：SVG/视觉动画、前端/UI、代码/Agent、推理/空间几何等）
+- 已知翻车点与社区评价
+
+### 第二部分：2026 年 11 月 Google Gemini carbon 新能力与实测表现
+- 发布/代号/版本状态核实（含来源 URL、发布时间）
+- 核心新能力清单（分维度：SVG/视觉动画、前端/UI、多模态、推理/空间几何等）
+- 已知翻车点与社区评价
+
+### 第三部分：2026 年 11 月 X 平台热议测试题目汇总（通用爆款 + 5~10 道 SVG 候选题）
+- 先简述本月 X 上针对 Fable 5.2 / Gemini carbon 传播最广的综合测试题清单（含原帖 Handle、URL、日期、热度、原题摘要、模型表现对比）；
+- 再给出精选的 5 ~ 10 道适合纳入本仓库的【纯内联动态 SVG 评测候选题】，每道必须包含：
+  1. 题目暂定名称（中英文）与建议规范 ID（格式：`animated-<subject>-<action>-v1`）
+  2. 原始推文来源：推文作者 Handle、发布时间、推文原文链接 URL、互动传播热度
+  3. 走红背景与社区讨论焦点（各模型在此题上的真实表现与翻车点）
+  4. 核心考点与鉴别维度（非与既有 2026-09/2026-10 重复）
+  5. 建议重构的提示词正文草案（必须为纯内联 SVG 动画，0 `<script>`，无外部工具/商标/真人依赖）
+  6. 客观真值与判读准则草案（Pass / Partial / Fail，要求首尾闭合 MAE ≡ 0 且动态帧差 max MAE >= 0.015）
+
+### 第四部分：50+ 轮联网检索完整轨迹与证据边界清单
+- 按顺序列出你执行的 >= 50 轮 `web_search` 与 `web_fetch` 完整查询词/URL 轨迹；
+- 明确列出检索过程中遇到拦截、无结果或证据不足的边界说明。

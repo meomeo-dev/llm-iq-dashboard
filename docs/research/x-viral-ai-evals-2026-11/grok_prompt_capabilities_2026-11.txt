@@ -1,0 +1,54 @@
+你是一个专注于前沿 AI 模型能力评测与 X (Twitter) 提示词逆向/收集的高级研究专家。
+当前时间为 2026-11-14。目标目录：`docs/research/x-viral-ai-evals-2026-11/`。
+
+【严格执行约束（务必遵守）】
+1. **禁止任何 Git 操作**：严禁执行 `git add`、`git commit`、`git push`、`git checkout` 或修改 `src/`、`test/`、`docs/research/x-viral-ai-evals-2026-11/grok_raw_report_2026-11.md`。你只被允许新建并写入一个文件：`docs/research/x-viral-ai-evals-2026-11/x_model_capability_prompts_2026-11.md`。
+2. **禁止编造**：所有推文 URL、Handle、赞数、模型输出表现、以及【提示词原文】必须严格源自本次 `web_search` / `web_fetch` 真实返回。若仅检索到部分原文或摘要，必须逐条标明 `【原文全文】`、`【原文片段（缺省部分已标出）】` 或 `【仅见效果描述，未检索到原文】`，严禁脑补补全原文！
+3. **联网检索硬性纪律**：使用内置 `web_search`（及尝试 `web_fetch`，若遇 SSRF 拦截如实记录）执行 **不少于 55 轮连续深度检索**，重点深挖 X 平台推文回复串、作者放出的 GitHub Gist / Repo / 博客附图里的**真实测试提示词（Prompts）**。
+
+【任务目标】
+在已有 `grok_raw_report_2026-11.md` 基础上，专门针对 **Claude Fable 5.2** 与 **Google Gemini 4 Carbon** 在 2026 年 11 月（及 10 月底预览延续至今）表现出的**新能力与短板**，系统检索并整理 **X 上实际用来测试这些能力的提示词（Prompts）**。
+
+请围绕以下 5 个能力维度深挖 X 上的具体 Prompt 原文与实测对照：
+
+### 维度 1：SVG、CSS/HTML 动效、算术排版与「盲写/过思考」能力提示词
+重点检索并尽量还原以下及同类 X/博客实测提示词：
+- Karo Zieminski（`productwithattitude.com` 2026-11-09）测 Claude Fable 5.2 的 7 张设计/动效测试题提示词原文（网格、圆弧文字、图标、挤压拉伸、spacing chart 间距图、动态字、条形图）
+- `@simonw`（Simon Willison）2026-11-09 / 11-10 测试 Fable 5.2 五档 effort（尤其 `xhigh` vs `max` 耗尽 128K 思考不出图）与 Gemini 4 Carbon 三档思考的提示词与参数
+- `@kimmonismus` 2026-11-10 ORRERY（单一控件驱动齿轮与折叠花瓣正反转）的 13 条 brief/prompt 细节及跟帖提示词
+- `@kevin_t_ngo` 2026-11-12/13 测试 Fable 5.2「画得不像 SVG、用 JS 生成复杂艺术」的原提示词（`status/2121303379196662115` 等）
+- `@MiaAI_lab` 2026-11-09 批量生成 76 个单文件 HTML/物理模拟的 master prompt 与单题 `.txt` 原文（如 GitHub `MiaAI-Lab/Claude-Fable-5.2-HTML-Files`）
+- X 上其他 11 月测试 Fable 5.2 / Gemini 4 Carbon 的纯 SVG 或动态 CSS 挑战帖（含 `r/ClaudeAI` `1xs0dct` 等讨论过的过思考翻车 Prompt）
+
+### 维度 2：空间拓扑、3D 场景、CAD/建筑平面重建与门轴/几何幻觉提示词
+重点检索：
+- `@simonw` Yonkers 机甲踩纽约 OSM Three.js 提示词（含拼写错误鲁棒性测试，对比 Fable 5.2 vs Gemini 4 Carbon 空间映射差异）
+- Gemini 4 Carbon 官方及社区演示背后的提示词（Pelican Quest `/swarm`、埃菲尔铁塔施工 3D、Platform 37 工程图重建、1780 钢琴击弦机、110 根针织纤维应力）
+- AI Fire 2026-11-12 等独立评测测出 Carbon「房间连通对但门开向画反、走廊几何错误」与 Fable 5.2「帆船水面材质/英雄射击可玩性」的具体测试 Prompt
+- `@thebuggeddev` 2026-11-10 Analyse Spectrale（92 零件巴黎物理实验柜 + 60 FPS 瓦特指示器）提示词
+- `@AI_Andrew` Glassy Jenga（染色玻璃积木与声学倒塌）提示词
+- `@olezhavich` / `@danieldwalton` RADIAL NINE（九缸星形发动机主副连杆与隔缸发火序）原提示词与四模型对比
+
+### 维度 3：长程代理（Long-Horizon）、多子代理协同与全自动单文件工程提示词
+重点检索：
+- `@felixrieseberg` 2026-11-09 Saltline 8 小时单文件港口 FPS 提示词（`status/2119925633564463609` 及相关 thread）
+- `@MichaelGannotti` 2026-11-09 北极光单文件 HTML（Tromsø Canvas+WebGL）提示词
+- `@ebbyamir` 2026-11-10 Starry Nightrider 提示词（仅用于展示能力测试手法，标明因其含历史人物不能入 SVG 题库）
+- X 上开发者晒出的 Claude Fable 5.2（`Claude Code 2.1.321+` / agent swarm）与 Gemini 4 Carbon（Antigravity `/swarm` / 多日工程修复）长程任务 Prompt 模板与工作流写法（如自我验证循环、先写间距图再微调）
+
+### 维度 4：多模态读图理解（Chartography / BenchCAD）与编码/推理边界测试提示词
+重点检索：
+- X 上用复杂仪表盘、机械工程图、电路图/PCB、UI 截图让 Fable 5.2 / Gemini 4 Carbon「看图复建（Look-and-rebuild）」的实测 Prompt
+- 专门抓两个模型短板的对抗性 Prompt（例如：Fable 5.2 盲写无视觉反馈、安全分类器误路由、Snorkel 退化类型；Gemini 4 Carbon 无搜索引用幻觉测试、慢超时边界、空间几何反例）
+
+### 维度 5：网络安全（Fairwind / SEC-bench / 漏洞验证）与高难度物理/数学提示词（若有公开 X Prompt）
+- 检索 X 上在合法合规前提下公开分享的 Gemini 4 Carbon 代码审计/补丁生成 Prompt（如 Go/HTMX/Tailwind 一次性落地与安全审计）、以及 Fable 5.2 科学/物理/Lean 证明类公开测试 Prompt。
+
+【输出文件结构要求】
+将最终完整报告写入 `docs/research/x-viral-ai-evals-2026-11/x_model_capability_prompts_2026-11.md`，包含：
+1. **检索汇总与能力-Prompt 映射总表**（按能力维度索引 X 上的测试提示词、目标模型、出处与原文完整度）
+2. **Claude Fable 5.2 专项：X 上能力实测提示词全录**（按能力分节：长程编码 / SVG与动效算术 / 视觉CAD理解 / 过思考与盲写翻车探针；每条含 Handle、URL、日期、热度快照、原文/片段、实测结果对比）
+3. **Google Gemini 4 Carbon 专项：X 上能力实测提示词全录**（按能力分节：空间拓扑与3D重建 / 多智能体`/swarm`编排 / 代码审计与工作流 / 门轴空间错误与引用幻觉探针）
+4. **双模型同题对比实测汇总**（哪些提示词同时跑了 Fable 5.2 与 Gemini 4 Carbon，各自得分/失误具体在哪）
+5. **可转化为 `llm_iq_dashboard` 评测用例的提示词工程化启示**（例如如何把 X 上的测试手法转成可量化的纯内联 SVG 合同、哪些提示词因需工具/脚本/真人而不适合入库）
+6. **55+ 轮 `web_search` 完整检索轨迹与证据边界**（明确列出哪些原帖未打开、哪些 Prompt 仅恢复出片段或要点）

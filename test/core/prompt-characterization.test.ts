@@ -23,8 +23,8 @@ import {
   type PromptSpec,
 } from "@/core/prompt";
 
-test("resolvePrompt: 全量 31 道内置题目均能被正向解析且属性完备", () => {
-  assert.equal(BUILTIN_PROMPTS.length, 31);
+test("resolvePrompt: 全量 51 道内置题目均能被正向解析且属性完备", () => {
+  assert.equal(BUILTIN_PROMPTS.length, 51);
   for (const builtin of BUILTIN_PROMPTS) {
     const resolved = resolvePrompt(builtin.id);
     assert.equal(resolved.id, builtin.id);

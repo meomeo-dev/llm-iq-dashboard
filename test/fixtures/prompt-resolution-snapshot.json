@@ -11630,6 +11630,546 @@
         "evaluationCriteria": "先按静态版判据评结构、比例与颜色，再看动态：只动环境段里现实中会动的陈设、循环平滑无跳变、旋转与摇摆绕物件自身轴点、主体不动、不为动画添加任何物件或光效、无 JavaScript、XML 合规。",
         "referenceSource": "docs/research/landmarks/selection-rules.md"
       }
+    },
+    {
+      "id": "animated-pendulum-wave-reunion-v1",
+      "spec": {
+        "id": "animated-pendulum-wave-reunion-v1",
+        "label": "十五摆归相 (Animated Pendulum Wave Reunion)",
+        "template": "Generate one self-contained animated SVG of a pendulum wave. No text, no brand, no audio, no script.\n\nTechnical contract: SMIL or inline CSS only. 0 <script>. viewBox=\"0 0 900 360\". Any <style> goes in CDATA. Well-formed XML.\n\nNine pendulums, index i = 0..8, pivots at x = 90 + i * 90, y = 70. Each rod length may differ, but the swing angle is the scored quantity. Released together from +16 degrees.\n\nClosed loop T = 6s. Pendulum i completes exactly n_i = 4 + i full oscillations in 6s. Angle in degrees, clockwise positive, zero is straight down:\n\ntheta_i(t) = 16 * cos(2 * pi * n_i * t / 6)\n\nSample this formula at t = 0, 0.25, 0.5, ..., 6.0. At the sample instants the rendered angle must match the formula within 1.5 degrees. Between samples use the formula, not a sine keyword and not an ease-in-out that changes the zeros.\n\nAt t = 0 and t = 6 every pendulum is at +16 degrees and the pixels match. At t = 3, pendulums with odd n_i are at -16 degrees and pendulums with even n_i are at +16 degrees. Rods are separate groups so each angle can be measured. Bobs do not pass through the support bar.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/MiaAI_lab/status/2119930229661503893",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "9 摆可公度周期同相归零、theta_i(t)=16*cos(2*pi*(4+i)*t/6) 解析相位与 t=3s 奇偶反相",
+          "groundTruth": "9 根摆锤索引 i=0..8，支点 (90+i*90, 70)，在 T=6s 内分别完成 n_i=4+i 次完整振荡，瞬时摆角 theta_i(t)=16*cos(2*pi*n_i*t/6)（顺时针为正，0 度竖直向下）；t=0 与 t=6 全员归相至 +16 度且像素 MAE === 0；t=3 时奇数 n_i 在 -16 度、偶数 n_i 在 +16 度；0.25s 采样点角误差 <= 1.5 度；摆杆独立分组且摆锤不穿模横梁；周期内 max(MAE) >= 0.015；0 <script>。",
+          "evaluationCriteria": "Pass: 9 摆独立成组且支点精确，t=0 与 t=6 归相且 MAE === 0，t=3 奇偶反相成立，每 0.25s 采样摆角误差 <= 1.5 度（未用破坏零点的 ease-in-out），摆锤不穿横梁，max(MAE) >= 0.015 且 0 <script>；Partial: 摆数与闭环正确但归相时刻错位、振幅不足或 t=3 奇偶反相不严格；Fail: 静态无动画（max(MAE) < 0.015）、全摆同周期无行波、缓动毁坏过零点、含 <script> 或 XML 语法错误。",
+          "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+        }
+      },
+      "standard": {
+        "coreKey": "9 摆可公度周期同相归零、theta_i(t)=16*cos(2*pi*(4+i)*t/6) 解析相位与 t=3s 奇偶反相",
+        "groundTruth": "9 根摆锤索引 i=0..8，支点 (90+i*90, 70)，在 T=6s 内分别完成 n_i=4+i 次完整振荡，瞬时摆角 theta_i(t)=16*cos(2*pi*n_i*t/6)（顺时针为正，0 度竖直向下）；t=0 与 t=6 全员归相至 +16 度且像素 MAE === 0；t=3 时奇数 n_i 在 -16 度、偶数 n_i 在 +16 度；0.25s 采样点角误差 <= 1.5 度；摆杆独立分组且摆锤不穿模横梁；周期内 max(MAE) >= 0.015；0 <script>。",
+        "evaluationCriteria": "Pass: 9 摆独立成组且支点精确，t=0 与 t=6 归相且 MAE === 0，t=3 奇偶反相成立，每 0.25s 采样摆角误差 <= 1.5 度（未用破坏零点的 ease-in-out），摆锤不穿横梁，max(MAE) >= 0.015 且 0 <script>；Partial: 摆数与闭环正确但归相时刻错位、振幅不足或 t=3 奇偶反相不严格；Fail: 静态无动画（max(MAE) < 0.015）、全摆同周期无行波、缓动毁坏过零点、含 <script> 或 XML 语法错误。",
+        "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+      }
+    },
+    {
+      "id": "animated-moire-ring-drift-v1",
+      "spec": {
+        "id": "animated-moire-ring-drift-v1",
+        "label": "同心环莫尔漂移 (Animated Concentric-Ring Moire Drift)",
+        "template": "Generate one self-contained animated SVG of a moiré interference disk. Black and white only. No text, no script.\nTechnical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 640 640\". CDATA around any <style>.\nTwo groups, each 48 concentric circles, center (320,320), radii 12, 20, 28, ... px (8 px pitch), stroke 1.5, no fill. Group A is fixed. Group B rotates about (320,320).\nLoop T = 8s, angles linear in each half:\nt = 0 and t = 8: group B rotation = 0 degrees, pixels match.\nt = 4: group B rotation = +8 degrees exactly.\nThe return half is the same motion reversed. Do not rotate group A. Do not fade the strokes in and out. The only moving parameter is group B's angle.\nThe moiré must stay visible as hyperbolic light and dark bands. Optional feBlend mode=\"difference\" is allowed. It must not be required for the angle test: group B remains a measurable transform.\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/MiaAI_lab/status/2119930229661503893",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "双组 48 层同心圆环、8 px 等距步长、+8° 线性往返相对旋转与双曲莫尔拍频",
+          "groundTruth": "两组各 48 个同心圆环围绕 (320,320) 绘制，半径 12, 20, 28, ... px（步长 8 px），线宽 1.5、无填充、纯黑白；组 A 固定，组 B 在 8s 周期内由 0° 线性转至 t=4s 的 +8° 再线性返归 t=8s 的 0°；允许可选 feBlend difference 但组 B 必须保留可测变换；双曲莫尔干涉条纹清晰可见；首尾闭合 MAE === 0 且 max(MAE) >= 0.015；0 <script> 与零外部资源。",
+          "evaluationCriteria": "Pass: 两组各 48 环与 8 px 间距准确，纯黑白无填充，组 A 固定且组 B 在 t=4s 达 +8° 并线性往返，双曲莫尔条纹清晰，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 存在双层莫尔干涉但峰值角非 +8°、环数或间距偏差，或两组同转导致相对角不可测；Fail: 仅单层旋转、用透明度闪烁伪装干涉、静止图像（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。",
+          "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+        }
+      },
+      "standard": {
+        "coreKey": "双组 48 层同心圆环、8 px 等距步长、+8° 线性往返相对旋转与双曲莫尔拍频",
+        "groundTruth": "两组各 48 个同心圆环围绕 (320,320) 绘制，半径 12, 20, 28, ... px（步长 8 px），线宽 1.5、无填充、纯黑白；组 A 固定，组 B 在 8s 周期内由 0° 线性转至 t=4s 的 +8° 再线性返归 t=8s 的 0°；允许可选 feBlend difference 但组 B 必须保留可测变换；双曲莫尔干涉条纹清晰可见；首尾闭合 MAE === 0 且 max(MAE) >= 0.015；0 <script> 与零外部资源。",
+        "evaluationCriteria": "Pass: 两组各 48 环与 8 px 间距准确，纯黑白无填充，组 A 固定且组 B 在 t=4s 达 +8° 并线性往返，双曲莫尔条纹清晰，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 存在双层莫尔干涉但峰值角非 +8°、环数或间距偏差，或两组同转导致相对角不可测；Fail: 仅单层旋转、用透明度闪烁伪装干涉、静止图像（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。",
+        "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+      }
+    },
+    {
+      "id": "animated-iron-filings-align-v1",
+      "spec": {
+        "id": "animated-iron-filings-align-v1",
+        "label": "铁屑指向移动磁极 (Animated Iron Filings Magnetic Alignment)",
+        "template": "Generate one self-contained animated SVG of iron filings on a sheet, with one round magnet moving underneath. No text, no script, no hands. Technical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 640 400\". CDATA around any <style>. 24 filings, a 6 by 4 grid, centers at x = 80 + c * 96, y = 70 + r * 80, c = 0..5, r = 0..3. Each filing is a 28 px line in its own group, pivoted at its center. The magnet center moves on x(t) = 320 + 160 * sin(2 * pi * t / 8), y(t) = 200 with T = 8s. At t = 0 and t = 8 the magnet is at (320,200) and every pixel matches. At every instant each filing's angle is atan2(y_magnet - y_filing, x_magnet - x_filing) measured from the +x axis. Tolerance at t = 0, 2, 4, 6, 8 is 2 degrees. Filings do not translate. Only the magnet translates, and only the filings rotate. Output only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/MiaAI_lab/status/2119930229661503893",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "6x4 网格 24 根铁屑原地定轴旋转、atan2 向心角度追踪与 T=8s 横向简谐磁极闭环",
+          "groundTruth": "viewBox 为 0 0 640 400；24 根长 28 px 铁屑位于 x=80+96c、y=70+80r（c=0..5, r=0..3）且全周期不平移；圆磁极按 x(t)=320+160*sin(2*pi*t/8)、y(t)=200 往复运动；在 t=0,2,4,6,8s 时各铁屑转角符合 atan2(y_magnet-y_filing, x_magnet-x_filing) 误差 <= 2°；首尾帧闭合 MAE === 0 且 max(MAE) >= 0.015；严格 0 <script>。",
+          "evaluationCriteria": "Pass: 24 根铁屑按 6x4 网格分布且仅绕各自中心旋转不平移，磁极简谐运动与 5 个采样时刻朝向误差均 <= 2°，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 磁极在移动但铁屑转角与磁极脱节、仅少数旋转或采样误差 > 2°；Fail: 铁屑随磁铁平移、随机抖动、含 <script>、静态死图（max(MAE) < 0.015）或 XML 语法错误。",
+          "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+        }
+      },
+      "standard": {
+        "coreKey": "6x4 网格 24 根铁屑原地定轴旋转、atan2 向心角度追踪与 T=8s 横向简谐磁极闭环",
+        "groundTruth": "viewBox 为 0 0 640 400；24 根长 28 px 铁屑位于 x=80+96c、y=70+80r（c=0..5, r=0..3）且全周期不平移；圆磁极按 x(t)=320+160*sin(2*pi*t/8)、y(t)=200 往复运动；在 t=0,2,4,6,8s 时各铁屑转角符合 atan2(y_magnet-y_filing, x_magnet-x_filing) 误差 <= 2°；首尾帧闭合 MAE === 0 且 max(MAE) >= 0.015；严格 0 <script>。",
+        "evaluationCriteria": "Pass: 24 根铁屑按 6x4 网格分布且仅绕各自中心旋转不平移，磁极简谐运动与 5 个采样时刻朝向误差均 <= 2°，首尾闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 磁极在移动但铁屑转角与磁极脱节、仅少数旋转或采样误差 > 2°；Fail: 铁屑随磁铁平移、随机抖动、含 <script>、静态死图（max(MAE) < 0.015）或 XML 语法错误。",
+        "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+      }
+    },
+    {
+      "id": "animated-venus-rose-trace-v1",
+      "spec": {
+        "id": "animated-venus-rose-trace-v1",
+        "label": "金星五瓣相对轨道 (Animated Venus Five-Petal Relative Orbit)",
+        "template": "Generate one self-contained animated SVG of the geocentric relative orbit of Venus under an exact 13:8 period ratio. No labels, no planets as illustrations, no script.\nTechnical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 640 640\". CDATA around any <style>.\nEarth is fixed at (320,320). Use circular coplanar orbits and an exact ratio, so the curve closes:\nE(t) = (cos(2*pi*t/16), sin(2*pi*t/16))\nV(t) = 0.723 * (cos(13*2*pi*t/16), sin(13*2*pi*t/16))\nR(t) = V(t) - E(t)\nScreen point = (320,320) + 150 * R(t)\nt runs from 0 to 16 seconds, standing for 8 years.\nA pen of radius 3 follows that point. A polyline or path stroke reveals the curve as the pen moves, using stroke-dashoffset only. At t = 0 and t = 16 the pen is at the same coordinate, the stroke state matches, and pixel MAE is 0.\nThe finished curve has exactly five inner loops. The five closest approaches of the pen to Earth are 72 degrees apart around (320,320), tolerance 2 degrees. Do not draw a logarithmic spiral. Do not add a sixth petal.\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/MiaAI_lab/status/2119930229661503893",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "13:8 轨道共振地心矢量差、五内环拓扑与 72° 等分近地点、笔尖与 stroke-dashoffset 同步闭环",
+          "groundTruth": "在 viewBox=\"0 0 640 640\" 中固定地球于 (320,320)，按 R(t)=V(t)-E(t) 映射 (320,320)+150*R(t) 在 T=16s 内封闭绘出恰好 5 个内环；5 次近地点绕中心间距 72°±2°；半径 3 笔尖随动并用 stroke-dashoffset 揭露轨迹；t=0 与 t=16 像素 MAE === 0 且周期内 max(MAE) >= 0.015；0 <script>。",
+          "evaluationCriteria": "Pass: 恰好 5 个内环，5 次近地点间距 72°±2°，笔尖与 stroke-dashoffset 同步，t=0 与 t=16 闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 瓣数或近地点角距偏差超 ±2°，或笔尖与描边轻微脱节；Fail: 对数螺线/椭圆/六瓣误绘、静态无笔尖运动（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。",
+          "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+        }
+      },
+      "standard": {
+        "coreKey": "13:8 轨道共振地心矢量差、五内环拓扑与 72° 等分近地点、笔尖与 stroke-dashoffset 同步闭环",
+        "groundTruth": "在 viewBox=\"0 0 640 640\" 中固定地球于 (320,320)，按 R(t)=V(t)-E(t) 映射 (320,320)+150*R(t) 在 T=16s 内封闭绘出恰好 5 个内环；5 次近地点绕中心间距 72°±2°；半径 3 笔尖随动并用 stroke-dashoffset 揭露轨迹；t=0 与 t=16 像素 MAE === 0 且周期内 max(MAE) >= 0.015；0 <script>。",
+        "evaluationCriteria": "Pass: 恰好 5 个内环，5 次近地点间距 72°±2°，笔尖与 stroke-dashoffset 同步，t=0 与 t=16 闭合 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 瓣数或近地点角距偏差超 ±2°，或笔尖与描边轻微脱节；Fail: 对数螺线/椭圆/六瓣误绘、静态无笔尖运动（max(MAE) < 0.015）、含 <script> 或 XML 语法错误。",
+        "referenceSource": "https://x.com/MiaAI_lab/status/2119930229661503893"
+      }
+    },
+    {
+      "id": "animated-orrery-single-crank-v1",
+      "spec": {
+        "id": "animated-orrery-single-crank-v1",
+        "label": "单摇把正反转太阳系仪 (Animated Single-Crank Reversing Orrery)",
+        "template": "Generate one self-contained animated SVG of a tabletop orrery driven by one crank. No planet names, no brand, no script. Technical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 800 480\". CDATA around any <style>. Separate groups for the crank, two gears, three planets, and one petal iris. Loop T = 12s. Crank angle phi, in degrees: phi(t) = 360 * t / 6 for 0 <= t <= 6 phi(t) = 360 * (12 - t) / 6 for 6 < t <= 12 So phi(0) = phi(12) = 0 and phi(6) = 360. The second half is the first half played backward. Pixel MAE at t = 12 equals t = 0. Gear A has 16 teeth and rotates by phi. Gear B has 32 teeth, meshes with A, and therefore rotates by -phi / 2. Three orbit markers on a common center rotate by phi, phi/2, and phi/4. A six-petal iris opens by radius 20 + 40 * abs(sin(phi in radians)) and closes on the return. Teeth must stay meshed: do not let gear B spin independently of the crank. Output only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/kimmonismus/status/2120186125591646250",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "单一摇把角度驱动 16:32 齿轮反向啮合、1:1/2:1/4 行星公转与六瓣光圈开合的双向可逆闭环",
+          "groundTruth": "纯内联动态 SVG（viewBox 0 0 800 480，0 <script>，独立分组含摇把、双齿轮、三行星与六瓣光圈）；T=12s 闭环中 phi(t) 在 0..6s 由 0° 线性增至 360°、在 6..12s 线性反转回 0°；16 齿齿轮 A 转 phi，32 齿齿轮 B 啮合反转 -phi/2；三行星绕共心转 phi、phi/2、phi/4；六瓣光圈半径遵循 20 + 40*abs(sin(phi)) 开合归零；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.020。",
+          "evaluationCriteria": "Pass: 摇把、16/32 齿啮合齿轮、三行星与六瓣光圈分组齐全且保持啮合，t=6s 达 phi=360°、B=-180°，后半周期严格反转回零，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script>；Partial: 机构完整且转动，但缺失反转段、齿数/速比偏差或光圈未联动；Fail: 含 <script> 或事件属性、齿轮脱啮各自无限旋转、静止死图（max(MAE) < 0.020）、出现品牌/行星文字或 XML 错误。",
+          "referenceSource": "https://x.com/kimmonismus/status/2120186125591646250"
+        }
+      },
+      "standard": {
+        "coreKey": "单一摇把角度驱动 16:32 齿轮反向啮合、1:1/2:1/4 行星公转与六瓣光圈开合的双向可逆闭环",
+        "groundTruth": "纯内联动态 SVG（viewBox 0 0 800 480，0 <script>，独立分组含摇把、双齿轮、三行星与六瓣光圈）；T=12s 闭环中 phi(t) 在 0..6s 由 0° 线性增至 360°、在 6..12s 线性反转回 0°；16 齿齿轮 A 转 phi，32 齿齿轮 B 啮合反转 -phi/2；三行星绕共心转 phi、phi/2、phi/4；六瓣光圈半径遵循 20 + 40*abs(sin(phi)) 开合归零；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.020。",
+        "evaluationCriteria": "Pass: 摇把、16/32 齿啮合齿轮、三行星与六瓣光圈分组齐全且保持啮合，t=6s 达 phi=360°、B=-180°，后半周期严格反转回零，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script>；Partial: 机构完整且转动，但缺失反转段、齿数/速比偏差或光圈未联动；Fail: 含 <script> 或事件属性、齿轮脱啮各自无限旋转、静止死图（max(MAE) < 0.020）、出现品牌/行星文字或 XML 错误。",
+        "referenceSource": "https://x.com/kimmonismus/status/2120186125591646250"
+      }
+    },
+    {
+      "id": "animated-watt-governor-flyball-v1",
+      "spec": {
+        "id": "animated-watt-governor-flyball-v1",
+        "label": "瓦特飞球调速器 (Animated Watt Flyball Governor)",
+        "template": "Generate one self-contained animated SVG of a generic Watt flyball governor. Side view. No text, no brand, no steam engine illustration beyond the linkage, no script.\n\nTechnical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 480 640\". CDATA around any <style>.\n\nParts as separate groups: vertical spindle, two flyballs on arms hinged at (240,160), a sliding sleeve, and a valve plug. Arm angle alpha is measured from straight down.\n\nLoop T = 8s, linear in the sine argument:\nalpha(t) = 20 + 25 * sin(pi * t / 8) degrees\nalpha(0) = alpha(8) = 20, alpha(4) = 45. Both balls share alpha and mirror across x = 240. Sleeve height rises 48 px as alpha goes from 20 to 45, and returns. Valve plug moves the opposite way by 36 px. The spindle may spin, but spin does not replace the scored arm angle.\n\nAt t = 8 every part matches t = 0. Balls do not detach. Arms do not change length.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/thebuggeddev/status/2120201759305998343",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "飞球张角 alpha(t)=20+25*sin(pi*t/8) 度镜像展开、滑套上升 48 px 与节流阀塞反向移动 36 px 的三元连杆耦合",
+          "groundTruth": "纯内联动态 SVG（viewBox 0 0 480 640，0 <script>，独立分组含垂直主轴、铰接于 (240,160) 的双飞球臂、滑套及节流阀塞）；T=8s 闭环内两摆臂与竖直向下方向夹角遵循 alpha(t)=20+25*sin(pi*t/8) 度并关于 x=240 镜像（t=0/8 为 20°、t=4 为 45°），臂长恒定且飞球不脱节；滑套随张角增大上移 48 px 并归位，节流阀塞同步反向移动 36 px；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.015。",
+          "evaluationCriteria": "Pass: 四大部件独立成组且臂长恒定无脱节，t=4s 飞球张角达 45°±1.5°、t=0/8s 为 20°±1.5° 并关于 x=240 镜像，滑套上升 48 px 且节流阀塞反向移动 36 px，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 飞球能开合摆动且无脚本，但滑套不跟随、阀塞未反向移动或左右张角不对称；Fail: 含 <script> 或事件属性、只画主轴旋转而飞球张角静止、飞球脱臂或臂长伸缩、静止死图（max(MAE) < 0.015）、出现文字/品牌或 XML 错误。",
+          "referenceSource": "https://x.com/thebuggeddev/status/2120201759305998343"
+        }
+      },
+      "standard": {
+        "coreKey": "飞球张角 alpha(t)=20+25*sin(pi*t/8) 度镜像展开、滑套上升 48 px 与节流阀塞反向移动 36 px 的三元连杆耦合",
+        "groundTruth": "纯内联动态 SVG（viewBox 0 0 480 640，0 <script>，独立分组含垂直主轴、铰接于 (240,160) 的双飞球臂、滑套及节流阀塞）；T=8s 闭环内两摆臂与竖直向下方向夹角遵循 alpha(t)=20+25*sin(pi*t/8) 度并关于 x=240 镜像（t=0/8 为 20°、t=4 为 45°），臂长恒定且飞球不脱节；滑套随张角增大上移 48 px 并归位，节流阀塞同步反向移动 36 px；首尾帧像素 MAE === 0 且周期内 max(MAE) >= 0.015。",
+        "evaluationCriteria": "Pass: 四大部件独立成组且臂长恒定无脱节，t=4s 飞球张角达 45°±1.5°、t=0/8s 为 20°±1.5° 并关于 x=240 镜像，滑套上升 48 px 且节流阀塞反向移动 36 px，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 飞球能开合摆动且无脚本，但滑套不跟随、阀塞未反向移动或左右张角不对称；Fail: 含 <script> 或事件属性、只画主轴旋转而飞球张角静止、飞球脱臂或臂长伸缩、静止死图（max(MAE) < 0.015）、出现文字/品牌或 XML 错误。",
+        "referenceSource": "https://x.com/thebuggeddev/status/2120201759305998343"
+      }
+    },
+    {
+      "id": "animated-radial-master-rod-v1",
+      "spec": {
+        "id": "animated-radial-master-rod-v1",
+        "label": "九缸星形发动机主副连杆 (Animated Nine-Cylinder Radial Master Rod)",
+        "template": "Generate one self-contained animated SVG cutaway of a nine-cylinder radial engine, front view. No title, no brand, no script, no CDN.\n\nTechnical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 640 640\". CDATA around any <style>. Navy background, flat technical colors.\n\nNine cylinders at 0, 40, 80, ..., 320 degrees. Cylinder 1 is at the top. One crank pin. The master rod of cylinder 1 is pinned to that crank pin. The other eight rods are pinned to the master rod's big end, not to the crank pin. Do not animate the eight pistons with the same sine shifted by 40 degrees.\n\nLoop T = 8s = two crank revolutions = 720 degrees of crank, linear. Each cylinder fires once per 720 degrees. Firing order is 1, 3, 5, 7, 9, 2, 4, 6, 8, which is an 80 degree crank step. A firing is a 0.15s flash in that cylinder only. At t = 0 and t = 8 the crank angle is 0 and every rod matches. Piston motion must reverse at the two ends of the stroke, not slide through the head.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/danieldwalton/status/2116649200339599487",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-10",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "1 号主连杆与 8 根副连杆非对称铰接拓扑、非等移相正弦活塞行程及 720 度闭环 1-3-5-7-9-2-4-6-8 隔缸发火序",
+          "groundTruth": "纯内联动态 SVG 前视剖视图（viewBox 0 0 640 640，深蓝底色与平面工程配色，0 <script>，无标题/品牌/CDN）；九缸沿 0, 40, ..., 320 度均布且 1 号缸居中朝上；单曲柄销仅连接 1 号主连杆大端，其余 8 根副连杆分别铰接在主连杆大端耳孔而非曲柄销；各活塞于上下止点平滑换向且不穿出缸盖，不以同相移位正弦敷衍；T=8s 周期对应曲轴线性旋转 720 度（两圈），每 80 度曲柄角按 1-3-5-7-9-2-4-6-8 依次在对应气缸内闪光 0.15s；t=0 与 t=8 曲轴归零且像素 MAE === 0，周期内多连杆总成 max(MAE) >= 0.020。",
+          "evaluationCriteria": "Pass: 九缸 40 度均布且 1 号缸在顶，仅 1 号主连杆接曲柄销、8 根副连杆均接于主连杆大端，活塞不穿缸盖且非简单等幅移相正弦，T=8s 线性完成 720 度双转并按 1-3-5-7-9-2-4-6-8 每 80 度单缸闪光 0.15s，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script> 且无标题/品牌/CDN；Partial: 九缸布局与曲轴旋转成立，但 8 根副连杆误直连曲柄销，或发火序按 1-2-3 连续顺序 / 360 度重复；Fail: 含 <script> 或外部 CDN、九活塞套用同一移相正弦或穿模缸盖、静止无动画（max(MAE) < 0.020）、首尾不闭合或 XML 语法错误。",
+          "referenceSource": "https://x.com/danieldwalton/status/2116649200339599487"
+        }
+      },
+      "standard": {
+        "coreKey": "1 号主连杆与 8 根副连杆非对称铰接拓扑、非等移相正弦活塞行程及 720 度闭环 1-3-5-7-9-2-4-6-8 隔缸发火序",
+        "groundTruth": "纯内联动态 SVG 前视剖视图（viewBox 0 0 640 640，深蓝底色与平面工程配色，0 <script>，无标题/品牌/CDN）；九缸沿 0, 40, ..., 320 度均布且 1 号缸居中朝上；单曲柄销仅连接 1 号主连杆大端，其余 8 根副连杆分别铰接在主连杆大端耳孔而非曲柄销；各活塞于上下止点平滑换向且不穿出缸盖，不以同相移位正弦敷衍；T=8s 周期对应曲轴线性旋转 720 度（两圈），每 80 度曲柄角按 1-3-5-7-9-2-4-6-8 依次在对应气缸内闪光 0.15s；t=0 与 t=8 曲轴归零且像素 MAE === 0，周期内多连杆总成 max(MAE) >= 0.020。",
+        "evaluationCriteria": "Pass: 九缸 40 度均布且 1 号缸在顶，仅 1 号主连杆接曲柄销、8 根副连杆均接于主连杆大端，活塞不穿缸盖且非简单等幅移相正弦，T=8s 线性完成 720 度双转并按 1-3-5-7-9-2-4-6-8 每 80 度单缸闪光 0.15s，首尾帧 MAE === 0 且 max(MAE) >= 0.020，0 <script> 且无标题/品牌/CDN；Partial: 九缸布局与曲轴旋转成立，但 8 根副连杆误直连曲柄销，或发火序按 1-2-3 连续顺序 / 360 度重复；Fail: 含 <script> 或外部 CDN、九活塞套用同一移相正弦或穿模缸盖、静止无动画（max(MAE) < 0.020）、首尾不闭合或 XML 语法错误。",
+        "referenceSource": "https://x.com/danieldwalton/status/2116649200339599487"
+      }
+    },
+    {
+      "id": "animated-lava-blob-convection-v1",
+      "spec": {
+        "id": "animated-lava-blob-convection-v1",
+        "label": "熔蜡对流颈缩与合并 (Animated Lava Blob Convection)",
+        "template": "Generate one self-contained animated SVG of a generic lava lamp. No logo, no text, no glass brand, no script.\n\nTechnical contract: SMIL or inline CSS. 0 <script>. viewBox=\"0 0 360 640\". CDATA around any <style>. One bottle silhouette, liquid, and exactly two wax blobs as separate paths.\n\nLoop T = 10s. Blob A starts as one body at the bottom.\n0.0–3.0s: it rises. Its vertical velocity changes sign only once, at the apex.\n3.0–4.5s: a neck forms. The waist width falls to at most 30% of the body's maximum width, then the path splits into two subpaths.\n4.5–7.0s: the upper piece stays near the top; the lower piece falls.\n7.0–10.0s: the lower piece merges back, and at t = 10 the shape, position, and pixel values match t = 0.\n\nDo not teleport the split. Do not fade one blob out and another in. The waist must be geometrically narrow before the split frame.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/aitrendz_xyz/status/2120148925445521699",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "熔岩灯蜡块浮力上升单次竖向速度反号、分裂前几何颈缩（腰宽 <= 30% 最大宽）与 T=10s 无缝合并闭环",
+          "groundTruth": "纯内联动态 SVG（viewBox 0 0 360 640，SMIL 或 CDATA 内联 CSS，0 <script>，无商标/文字）；含单一瓶身轮廓、液体与两个独立路径蜡块；T=10s 闭环中 Blob A 自底部单体出发，0.0-3.0s 上升且竖向速度仅在顶点反号一次，3.0-4.5s 形成颈缩（腰宽 <= 本体最大宽度的 30%）后再裂分为双子路径，4.5-7.0s 上块滞留高位而下块回落，7.0-10.0s 下块合并复原；t=0 与 t=10s 像素 MAE === 0，周期内 max(MAE) >= 0.015，禁止透明度淡入淡出伪装。",
+          "evaluationCriteria": "Pass: 瓶身、液体与双路径蜡块完整且无品牌文字，0-3s 上升仅一次竖向反号，3-4.5s 分裂前腰宽 <= 30% 最大宽再真实裂分，4.5-7s 上留下降，7-10s 无缝合并使首尾帧 MAE === 0，max(MAE) >= 0.015，0 <script> 且无透明度伪装；Partial: 具升降过程但用透明度切换代替几何颈缩、腰宽 > 30% 或合并后位置/形态漂移；Fail: 双球各自独立上下弹跳、静态死图（max(MAE) < 0.015）、含 <script>/事件处理器或 XML 语法错误。",
+          "referenceSource": "https://x.com/aitrendz_xyz/status/2120148925445521699"
+        }
+      },
+      "standard": {
+        "coreKey": "熔岩灯蜡块浮力上升单次竖向速度反号、分裂前几何颈缩（腰宽 <= 30% 最大宽）与 T=10s 无缝合并闭环",
+        "groundTruth": "纯内联动态 SVG（viewBox 0 0 360 640，SMIL 或 CDATA 内联 CSS，0 <script>，无商标/文字）；含单一瓶身轮廓、液体与两个独立路径蜡块；T=10s 闭环中 Blob A 自底部单体出发，0.0-3.0s 上升且竖向速度仅在顶点反号一次，3.0-4.5s 形成颈缩（腰宽 <= 本体最大宽度的 30%）后再裂分为双子路径，4.5-7.0s 上块滞留高位而下块回落，7.0-10.0s 下块合并复原；t=0 与 t=10s 像素 MAE === 0，周期内 max(MAE) >= 0.015，禁止透明度淡入淡出伪装。",
+        "evaluationCriteria": "Pass: 瓶身、液体与双路径蜡块完整且无品牌文字，0-3s 上升仅一次竖向反号，3-4.5s 分裂前腰宽 <= 30% 最大宽再真实裂分，4.5-7s 上留下降，7-10s 无缝合并使首尾帧 MAE === 0，max(MAE) >= 0.015，0 <script> 且无透明度伪装；Partial: 具升降过程但用透明度切换代替几何颈缩、腰宽 > 30% 或合并后位置/形态漂移；Fail: 双球各自独立上下弹跳、静态死图（max(MAE) < 0.015）、含 <script>/事件处理器或 XML 语法错误。",
+        "referenceSource": "https://x.com/aitrendz_xyz/status/2120148925445521699"
+      }
+    },
+    {
+      "id": "animated-motion-icons-audit-v1",
+      "spec": {
+        "id": "animated-motion-icons-audit-v1",
+        "label": "八枚动效图标与光学网格动画 (Animated Eight Motion Tool Icons & Optical Grid)",
+        "template": "Generate one self-contained animated SVG of an 8-icon motion-design tool set with an optical construction grid. No brand names, no prose audit text, no script, no external assets or fonts.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline CSS <style><![CDATA[...]]></style> @keyframes only. 0 <script>, 0 event handlers. viewBox=\"0 0 800 420\". Well-formed XML.\n\nDraw 8 motion-design icons in strict left-to-right order: play, keyframe, ease, layers, timeline, loop, mask, export.\n\nNon-negotiable icon system rules (in each icon's 24x24 local unit):\n\n- 24 x 24 grid, 3 px safe margin, 18 x 18 live area (x, y in [3, 21]).\n\n- Stroke 1.5, stroke-linecap=\"round\", stroke-linejoin=\"round\", fill=\"none\" (no fills).\n\n- All coordinates on whole or half pixels only (multiples of 0.5).\n\n- Corner radius 2 where corners are rounded; minimal path commands per icon.\n\nLayout:\n\n- Top row: all 8 icons scaled 3x (72 x 72 each), overlaid with a toggleable <g class=\"construction\"> group showing each slot's 24 x 24 grid, 18 x 18 live area box, and 20 px diameter keyline circle centered at (12, 12).\n\n- Bottom row: the same 8 icons in a matching left-to-right row at true 1x size (24 x 24 each).\n\nMotion, 8-second seamless closed loop (T = 8s):\n\n- A crisp active slot highlight (accent frame/ring and stroke highlight) sweeps cleanly through slots 1..8, spending 1 second per icon (0..1s play, 1..2s keyframe, ..., 7..8s export).\n\n- During its 1-second active window, each icon performs a clear synchronized semantic micro-motion in both the 3x and 1x rows: play triangle pulses right; keyframe diamond rotates 45 -> 90 -> 45 deg; ease indicator circle slides along the curve; layers stack shifts vertically; timeline playhead sweeps horizontally; loop arc rotates 360 deg; mask shutter slides; export arrow lifts upward.\n\n- At t = 0s and t = 8s every slot and icon returns identically to the initial rest pose (pixel MAE === 0) with clear visible motion during the cycle (max(MAE) >= 0.015).\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "24x24 网格与半像素对齐的八枚无填充动效图标、construction 光学构造层、3x/1x 双排同构及 8 秒逐槽高亮微动闭环",
+          "groundTruth": "纯内联动态 SVG（viewBox 0 0 800 420，仅 SMIL 或 CDATA 内联 CSS @keyframes，0 <script>，0 事件属性）；按 play、keyframe、ease、layers、timeline、loop、mask、export 顺序绘制 8 枚图标；每枚遵守 24x24 网格、3 px 安全边距（18x18 活区）、stroke-width=1.5、round 线帽与连接、fill=none 无填充、整/半像素坐标与圆角半径 2；上排 3x 含可切换 class='construction' 构造层（网格、18x18 活区、20 px 关键线圆），下排 1x 对齐；T=8s 闭环每 1 秒高亮并驱动对应槽位在 3x/1x 同步执行语义微动效，首尾帧 MAE === 0 且 max(MAE) >= 0.015。",
+          "evaluationCriteria": "Pass: 8 枚图标顺序完整且符合 24x24/3 px 边距/1.5 px 圆头圆角无填充/半像素/圆角半径 2 规范；上排 3x 含可切换 construction 构造层、下排 1x 完整对照；8s 闭环中高亮与语义微动每 1s 依次扫过 1..8 槽位且 3x/1x 同步，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 图标与构造层齐全且闭环可动，但偶有填充、半像素偏移、缺少 1x 行或部分槽位 3x/1x 不同步；Fail: 静态无运动（max(MAE) < 0.015）、含 <script> 或事件属性、缺漏或错序图标、大量实心填充、首尾帧未归零、出现品牌/长段文字或 XML 错误。",
+          "referenceSource": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts"
+        }
+      },
+      "standard": {
+        "coreKey": "24x24 网格与半像素对齐的八枚无填充动效图标、construction 光学构造层、3x/1x 双排同构及 8 秒逐槽高亮微动闭环",
+        "groundTruth": "纯内联动态 SVG（viewBox 0 0 800 420，仅 SMIL 或 CDATA 内联 CSS @keyframes，0 <script>，0 事件属性）；按 play、keyframe、ease、layers、timeline、loop、mask、export 顺序绘制 8 枚图标；每枚遵守 24x24 网格、3 px 安全边距（18x18 活区）、stroke-width=1.5、round 线帽与连接、fill=none 无填充、整/半像素坐标与圆角半径 2；上排 3x 含可切换 class='construction' 构造层（网格、18x18 活区、20 px 关键线圆），下排 1x 对齐；T=8s 闭环每 1 秒高亮并驱动对应槽位在 3x/1x 同步执行语义微动效，首尾帧 MAE === 0 且 max(MAE) >= 0.015。",
+        "evaluationCriteria": "Pass: 8 枚图标顺序完整且符合 24x24/3 px 边距/1.5 px 圆头圆角无填充/半像素/圆角半径 2 规范；上排 3x 含可切换 construction 构造层、下排 1x 完整对照；8s 闭环中高亮与语义微动每 1s 依次扫过 1..8 槽位且 3x/1x 同步，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 图标与构造层齐全且闭环可动，但偶有填充、半像素偏移、缺少 1x 行或部分槽位 3x/1x 不同步；Fail: 静态无运动（max(MAE) < 0.015）、含 <script> 或事件属性、缺漏或错序图标、大量实心填充、首尾帧未归零、出现品牌/长段文字或 XML 错误。",
+        "referenceSource": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts"
+      }
+    },
+    {
+      "id": "animated-physics-bounce-ball-v1",
+      "spec": {
+        "id": "animated-physics-bounce-ball-v1",
+        "label": "物理重量感纯CSS弹跳球 (Animated Physics Squash-and-Stretch Bouncing Ball)",
+        "template": "Generate one self-contained animated SVG (viewBox=\"0 0 360 320\") of a heavy ball bouncing vertically in place. No text, no brand, no prose, no script.\n\nTechnical contract: inline CSS @keyframes wrapped in <style><![CDATA[...]]></style> only (no <script>, no event handlers, no external assets or libraries). Well-formed XML.\n\nGeometry: a horizontal floor datum line at y = 260, a dynamic elliptical contact shadow centered at x = 180 on y = 260, and a 44 px solid circular ball (r = 22) centered at x = 180. The ball drops 150 px vertically from apex (center y = 88) to floor contact (center y = 238, bottom edge y = 260).\n\nSeamless closed loop T = 1.1s: at t = 0 and t = 1.1s the ball is at apex (y = 88, undeformed circle) and pixels match identically (MAE === 0). The ball must feel heavy. Apply squash and stretch ONLY during floor contact: widen 25-30% and flatten 25-30% while preserving approximate 2D cross-sectional area, with zero mid-air distortion during descent or ascent. Anchor transform-origin at the bottom floor contact point (180px 260px) so the squashed ball stays flush on y = 260 without sinking below the floor.\n\nThe contact shadow tightens in width and darkens in opacity on impact, and widens and softens as the ball rises to apex.\n\nEasing discipline: strictly DO NOT use ease, ease-in, ease-out, or ease-in-out keywords anywhere in @keyframes or CSS. Assign explicit physics-derived cubic-bezier(...) curves per descent and rebound segment to model gravitational acceleration and deceleration.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "纯CSS @keyframes 物理重力分段 cubic-bezier(...)、触地面积守恒挤压锚定与阴影反向耦合的 1.1s 弹跳闭环",
+          "groundTruth": "纯内联动态 SVG（viewBox 0 0 360 320，仅使用 <style><![CDATA[...]]></style> 内联 CSS @keyframes，0 <script>）；y=260 水平地面线、居中于 (180,260) 的动态椭圆接触阴影与直径 44 px 实心圆球（r=22，x=180）；球体从最高点 y=88 垂直下落 150 px 至触地点 y=238（下沿贴合 y=260）；T=1.1s 无缝闭环，仅在触地阶段横向加宽 25-30%、纵向压扁 25-30%（近似保持二维截面积），transform-origin 锚定于地面接触点 (180px 260px) 而不穿地，半空中零形变；接触阴影在撞击时收窄变深、在最高点展宽变淡；严格禁用 ease/ease-in/ease-out/ease-in-out 关键字而分段使用物理推导的 cubic-bezier(...)；t=0 与 t=1.1s 像素 MAE === 0 且周期内 max(MAE) >= 0.015。",
+          "evaluationCriteria": "Pass: 几何尺寸与 150 px 落差准确，T=1.1s 闭环，仅触地挤压 25-30% 且底部锚定于 y=260 不穿模、半空无拉伸，阴影触地收窄加深、高点展宽变淡，全程无 ease* 关键字而使用分段 cubic-bezier(...)，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 弹跳闭环与阴影联动成立，但存在轻微半空形变、挤压比例或锚定轻微越界，或仅单段使用 cubic-bezier(...)；Fail: 含 <script> 或事件属性，使用 ease/ease-in/ease-out/ease-in-out 关键字，静止死图（max(MAE) < 0.015），首尾帧不重合（MAE > 0），无挤压或无接触阴影，或含非 SVG 文本/XML 错误。",
+          "referenceSource": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts"
+        }
+      },
+      "standard": {
+        "coreKey": "纯CSS @keyframes 物理重力分段 cubic-bezier(...)、触地面积守恒挤压锚定与阴影反向耦合的 1.1s 弹跳闭环",
+        "groundTruth": "纯内联动态 SVG（viewBox 0 0 360 320，仅使用 <style><![CDATA[...]]></style> 内联 CSS @keyframes，0 <script>）；y=260 水平地面线、居中于 (180,260) 的动态椭圆接触阴影与直径 44 px 实心圆球（r=22，x=180）；球体从最高点 y=88 垂直下落 150 px 至触地点 y=238（下沿贴合 y=260）；T=1.1s 无缝闭环，仅在触地阶段横向加宽 25-30%、纵向压扁 25-30%（近似保持二维截面积），transform-origin 锚定于地面接触点 (180px 260px) 而不穿地，半空中零形变；接触阴影在撞击时收窄变深、在最高点展宽变淡；严格禁用 ease/ease-in/ease-out/ease-in-out 关键字而分段使用物理推导的 cubic-bezier(...)；t=0 与 t=1.1s 像素 MAE === 0 且周期内 max(MAE) >= 0.015。",
+        "evaluationCriteria": "Pass: 几何尺寸与 150 px 落差准确，T=1.1s 闭环，仅触地挤压 25-30% 且底部锚定于 y=260 不穿模、半空无拉伸，阴影触地收窄加深、高点展宽变淡，全程无 ease* 关键字而使用分段 cubic-bezier(...)，首尾帧 MAE === 0 且 max(MAE) >= 0.015，0 <script>；Partial: 弹跳闭环与阴影联动成立，但存在轻微半空形变、挤压比例或锚定轻微越界，或仅单段使用 cubic-bezier(...)；Fail: 含 <script> 或事件属性，使用 ease/ease-in/ease-out/ease-in-out 关键字，静止死图（max(MAE) < 0.015），首尾帧不重合（MAE > 0），无挤压或无接触阴影，或含非 SVG 文本/XML 错误。",
+        "referenceSource": "https://productwithattitude.com/articles/claude-fable-5-2-design-motion-tests-prompts"
+      }
+    },
+    {
+      "id": "animated-floorplan-door-swing-v1",
+      "spec": {
+        "id": "animated-floorplan-door-swing-v1",
+        "label": "中性公寓平面图与门扇开合动效 (Animated Architectural Floorplan & Door Swings)",
+        "template": "Generate one self-contained animated architectural floor plan SVG of a fictional three-room apartment. Top-down 2D view, white blueprint lines on #12161f. No TV show names, no brand, no furniture sprites, no script.\n\nTechnical contract: SMIL <animateTransform> or inline CSS @keyframes only. 0 <script>, viewBox=\"0 0 800 560\". CDATA around any <style>.\n\nLayout geometry:\n- Outer wall rectangle from (80,60) to (720,500), stroke-width 6.\n- A continuous 90 px wide central hallway connects an entry vestibule on the left, a living room on the top-right, a bedroom on the bottom-right, and a bathroom between them. No corridor dead-ends or overlapping walls.\n- Exactly 4 hinged doors placed in door openings (opening width 48 px each):\n  1. Entry door opens inward into the vestibule.\n  2. Living room door opens inward into the living room.\n  3. Bedroom door opens inward into the bedroom, hinge on the side closest to the bedroom corner wall so the leaf never hits the hallway wall.\n  4. Bathroom door opens inward into the bathroom.\n- Draw a dashed quarter-circle swing arc (radius 48 px) for every door.\n\nLoop T = 6s, linear:\nAt t = 0 and t = 6 all 4 doors are closed (0 degrees, flush with wall).\nAt t = 3 all 4 doors are open to exactly 90 degrees inward inside their respective rooms, aligned with their dashed swing arcs and never crossing walls. Return cleanly from 3s to 6s so t = 6 matches t = 0 identically.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "2D 公寓平面连通拓扑、4 扇门内开铰链定点、48 px 虚线 90 度清扫圆弧与零穿墙闭环",
+          "groundTruth": "在 #12161f 深色蓝图与 viewBox=\"0 0 800 560\" 上绘制外墙 (80,60)-(720,500)（线宽 6）及 90 px 连续中央走廊，连通左侧门厅、右上客厅、右下卧室及中间浴室且无死墙或重叠墙；4 处 48 px 门洞各有 1 扇带 48 px 半径四分之一虚线圆弧的门，全部向各自室内开启（卧室门铰链靠卧室角落墙侧避免碰走廊墙）；T=6s 线性闭环：t=0 与 t=6 全闭（0 度齐墙）且像素 MAE === 0，t=3 全开至室内 90 度并与虚线圆弧重合且零穿墙；max(MAE) >= 0.015；0 <script>。",
+          "evaluationCriteria": "Pass: 平面拓扑连通无死墙且外墙/走廊尺寸符合要求，4 扇门均向各自室内侧开启 90 度且铰链位置与 48 px 虚线圆弧一致不穿墙，t=0 与 t=6 全闭 MAE === 0，max(MAE) >= 0.015 且 0 <script>；Partial: 走廊连通正确且有开合闭环，但 1 扇门朝外开、圆弧方向反向或角度显著偏离 90 度；Fail: 门扇穿墙或铰链漂移、门开入走廊堵路、走廊死结或墙体错误、静止图（max(MAE) < 0.015）、含影视剧/品牌/人物元素或含 <script>。",
+          "referenceSource": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests"
+        }
+      },
+      "standard": {
+        "coreKey": "2D 公寓平面连通拓扑、4 扇门内开铰链定点、48 px 虚线 90 度清扫圆弧与零穿墙闭环",
+        "groundTruth": "在 #12161f 深色蓝图与 viewBox=\"0 0 800 560\" 上绘制外墙 (80,60)-(720,500)（线宽 6）及 90 px 连续中央走廊，连通左侧门厅、右上客厅、右下卧室及中间浴室且无死墙或重叠墙；4 处 48 px 门洞各有 1 扇带 48 px 半径四分之一虚线圆弧的门，全部向各自室内开启（卧室门铰链靠卧室角落墙侧避免碰走廊墙）；T=6s 线性闭环：t=0 与 t=6 全闭（0 度齐墙）且像素 MAE === 0，t=3 全开至室内 90 度并与虚线圆弧重合且零穿墙；max(MAE) >= 0.015；0 <script>。",
+        "evaluationCriteria": "Pass: 平面拓扑连通无死墙且外墙/走廊尺寸符合要求，4 扇门均向各自室内侧开启 90 度且铰链位置与 48 px 虚线圆弧一致不穿墙，t=0 与 t=6 全闭 MAE === 0，max(MAE) >= 0.015 且 0 <script>；Partial: 走廊连通正确且有开合闭环，但 1 扇门朝外开、圆弧方向反向或角度显著偏离 90 度；Fail: 门扇穿墙或铰链漂移、门开入走廊堵路、走廊死结或墙体错误、静止图（max(MAE) < 0.015）、含影视剧/品牌/人物元素或含 <script>。",
+        "referenceSource": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests"
+      }
+    },
+    {
+      "id": "animated-tromso-aurora-fjord-v1",
+      "spec": {
+        "id": "animated-tromso-aurora-fjord-v1",
+        "label": "特罗姆瑟峡湾极光闭环动效 (Animated 69°N Fjord Aurora Curtains)",
+        "template": "Generate one self-contained animated SVG of a 69°N polar fjord night scene with layered aurora borealis curtains and calm water reflections. No text, no brand, no real people, no audio, no script.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline CSS @keyframes inside <style><![CDATA[...]]></style> only. 0 <script>, 0 event handlers, 0 Canvas/WebGL, 0 external assets or fonts. viewBox=\"0 0 800 500\". Well-formed XML.\n\nScene layers and coordinates:\n\n1. Polar night sky: vertical dark gradient from #070b14 at zenith to #0d1829 near horizon y = 330, with a crisp sub-pixel starfield across the upper sky using staggered subtle twinkle phase offsets.\n\n2. Static fjord terrain: jagged snow-capped polar mountain silhouettes flanking the left and right edges, converging at horizon y = 330 to frame a central fjord channel, plus 3 to 5 tiny static warm amber (#fbbf24) cabin or harbor windows anchored just above y = 330. Mountains, horizon, and shore lights must remain strictly static (0 drift).\n\n3. Aurora curtains: at least 3 layered luminous aurora borealis curtains—emerald (#34f5a3), cyan (#38bdf8), and an upper violet-magenta (#a855f7) veil—built with vertical ray striations and soft SVG gradient masks whose undulating wave ribbons, horizontal drift, and opacity breathe smoothly.\n\n4. Fjord water reflection: calm dark water below y = 330 displaying vertically mirrored, horizontally rippled green-cyan aurora reflections and dark shoreline reflections.\n\nClosed loop T = 8s: every animation must use an 8s period (or integer divisor such as 4s/8s) with periodic phase so t = 0s and t = 8s are pixel-identical (MAE === 0), while mid-cycle motion produces clear curtain undulation and shimmer (max(MAE) >= 0.015).\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/MichaelGannotti/status/2119922137011982652",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "三层以上极光射线帷幕、y=330 静止峡湾山体与镜像水波倒影及 T=8s 无缝闭环",
+          "groundTruth": "viewBox=\"0 0 800 500\" 纯内联声明式 SVG；极夜天幕由 #070b14 渐变至 #0d1829 并带错相微星；左右积雪峡湾山体收敛于 y=330 水平线且零漂移，岸线正上方有 3-5 个静止暖琥珀 #fbbf24 窗灯；至少 3 层极光帷幕（翠绿 #34f5a3、青色 #38bdf8、高空紫红 #a855f7）具备纵向射线纹理与渐变遮罩；y=330 以下峡湾水面呈垂直镜像且带横向涟漪的绿青极光及岸线倒影；闭环周期 T=8s，t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。",
+          "evaluationCriteria": "Pass: 0 <script> 且 XML 合法，满足 800x500 构图、错相星空、静止积雪峡湾山体与 3-5 处静止 #fbbf24 岸灯，至少 3 层带纵向射线纹理的 #34f5a3/#38bdf8/#a855f7 极光帷幕与 y=330 以下镜像涟漪倒影，t=0s 与 t=8s MAE === 0 且 max(MAE) >= 0.015；Partial: 具备峡湾构图与极光闭环但不足 3 层、缺纵向射线或倒影涟漪，或首尾存在轻微接缝；Fail: 静态无波动（max(MAE) < 0.015）、山体岸灯漂移、无水面反射、含 <script>/Canvas/WebGL/外链/品牌或真实人物，或 XML 语法错误。",
+          "referenceSource": "https://x.com/MichaelGannotti/status/2119922137011982652"
+        }
+      },
+      "standard": {
+        "coreKey": "三层以上极光射线帷幕、y=330 静止峡湾山体与镜像水波倒影及 T=8s 无缝闭环",
+        "groundTruth": "viewBox=\"0 0 800 500\" 纯内联声明式 SVG；极夜天幕由 #070b14 渐变至 #0d1829 并带错相微星；左右积雪峡湾山体收敛于 y=330 水平线且零漂移，岸线正上方有 3-5 个静止暖琥珀 #fbbf24 窗灯；至少 3 层极光帷幕（翠绿 #34f5a3、青色 #38bdf8、高空紫红 #a855f7）具备纵向射线纹理与渐变遮罩；y=330 以下峡湾水面呈垂直镜像且带横向涟漪的绿青极光及岸线倒影；闭环周期 T=8s，t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。",
+        "evaluationCriteria": "Pass: 0 <script> 且 XML 合法，满足 800x500 构图、错相星空、静止积雪峡湾山体与 3-5 处静止 #fbbf24 岸灯，至少 3 层带纵向射线纹理的 #34f5a3/#38bdf8/#a855f7 极光帷幕与 y=330 以下镜像涟漪倒影，t=0s 与 t=8s MAE === 0 且 max(MAE) >= 0.015；Partial: 具备峡湾构图与极光闭环但不足 3 层、缺纵向射线或倒影涟漪，或首尾存在轻微接缝；Fail: 静态无波动（max(MAE) < 0.015）、山体岸灯漂移、无水面反射、含 <script>/Canvas/WebGL/外链/品牌或真实人物，或 XML 语法错误。",
+        "referenceSource": "https://x.com/MichaelGannotti/status/2119922137011982652"
+      }
+    },
+    {
+      "id": "animated-starry-night-cyclist-v1",
+      "spec": {
+        "id": "animated-starry-night-cyclist-v1",
+        "label": "星夜漩涡山地骑行动效 (Animated Swirling Starry Night Cyclist)",
+        "template": "Generate one self-contained animated SVG of a poetic night-cycling scene under a swirling post-impressionist cobalt and indigo brushstroke sky. No text, no brand, no real person names, no audio, no script.\n\nTechnical contract: Pure inline animated SVG with viewBox=\"0 0 800 500\", SMIL (<animate>, <animateTransform>) or inline CSS @keyframes inside <style><![CDATA[...]]></style>. Strictly 0 <script>, 0 event handlers, and 0 external assets, scripts, Three.js, Canvas, or WebGL. Well-formed XML.\n\nScene composition:\n- Sky: Deep cobalt and indigo night sky filled with layered dashed and arc brushstroke bands forming at least two interlocking concentric vortex spirals, plus a golden haloed crescent moon and radiating haloed stars.\n- Foreground & valley: A dark flame-shaped cypress silhouette rising on the left foreground, rolling dark-indigo ridge hills, a quiet valley village with warm lit windows and a slender steeple, and a winding ridge path across the mid-foreground.\n- Cyclist: An anonymous silhouetted night cyclist riding a spoked road bicycle cleanly seated along the ridge road crown (0 wheel floating above or sinking below the road surface).\n\nKinematics and seamless T = 6s closed loop:\n1. Both front and rear spoked wheels rotate forward cleanly around their exact hub centers by an exact integer multiple of 360 degrees over 6s with linear timing.\n2. The crankset, pedal arms, and the rider's articulated thigh and shin linkages pump in phase with the crank circle without disconnecting from the hubs, bottom bracket, or saddle.\n3. The interlocking sky vortex spirals rotate continuously by an exact integer multiple of 360 degrees over 6s, while the golden moon and star halos pulse gently and the cypress flame tips sway smoothly in a calm breeze.\n4. Identical visual state at t = 0s and t = 6s (pixel MAE === 0) with clear motion amplitude inside the loop (max(MAE) >= 0.015).\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/ebbyamir/status/2120284261089673376",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "纯内联声明式 SVG 夜空漩涡笔触、前景柏树山谷村落构图、自行车定轴旋转与骑手下肢曲柄同相联动及 6s 无缝闭环",
+          "groundTruth": "在 viewBox=\"0 0 800 500\" 中以纯 SMIL 或 CDATA 内联 CSS 实现 T=6s 无脚本动画（0 <script>，0 外部资源，无任何真实人物或商标名称）：天空含至少 2 组同心交织的钴蓝/靛青虚线弧段漩涡并绕各自圆心线性旋转 360*N 度，金色弯月与群星光晕柔和呼吸脉动；左侧前景火焰状柏树剪影尖端随微风往返摆动；山谷村落尖塔与暖光窗格、连绵山脊路面层次分明；匿名剪影骑手与前后带辐条车轮紧贴山脊路面冠顶（不悬空、不穿模），前后轮绕各自精确轮毂圆心同步正向旋转 360*N 度，牙盘曲柄与骑手大腿/小腿铰接连杆严格同相耦合；t=0s 与 t=6s 像素 MAE === 0，且周期内 max(MAE) >= 0.015。",
+          "evaluationCriteria": "Pass: 满足纯内联声明式 SVG 规范（0 <script>，0 外部依赖，零真实人物/商标），具备双组及以上旋转漩涡天穹、脉动弯月星晕、摆动柏树、山谷村落与尖塔，自行车稳固贴合路面冠顶，双轮定轴旋转且曲柄-下肢同相联动不断连，t=0s 与 t=6s 像素 MAE === 0 且 max(MAE) >= 0.015；Partial: 造型与闭环基本成立，但存在车轮微偏心、下肢与踏板相位轻微脱节、轮胎轻度悬空或个别背景层首尾轻微跳变；Fail: 静态无明显动画（max(MAE) < 0.015）、含 <script> 或外部框架、出现真实人物姓名或商标文本、XML 语法错误或闭环破裂。",
+          "referenceSource": "https://x.com/ebbyamir/status/2120284261089673376"
+        }
+      },
+      "standard": {
+        "coreKey": "纯内联声明式 SVG 夜空漩涡笔触、前景柏树山谷村落构图、自行车定轴旋转与骑手下肢曲柄同相联动及 6s 无缝闭环",
+        "groundTruth": "在 viewBox=\"0 0 800 500\" 中以纯 SMIL 或 CDATA 内联 CSS 实现 T=6s 无脚本动画（0 <script>，0 外部资源，无任何真实人物或商标名称）：天空含至少 2 组同心交织的钴蓝/靛青虚线弧段漩涡并绕各自圆心线性旋转 360*N 度，金色弯月与群星光晕柔和呼吸脉动；左侧前景火焰状柏树剪影尖端随微风往返摆动；山谷村落尖塔与暖光窗格、连绵山脊路面层次分明；匿名剪影骑手与前后带辐条车轮紧贴山脊路面冠顶（不悬空、不穿模），前后轮绕各自精确轮毂圆心同步正向旋转 360*N 度，牙盘曲柄与骑手大腿/小腿铰接连杆严格同相耦合；t=0s 与 t=6s 像素 MAE === 0，且周期内 max(MAE) >= 0.015。",
+        "evaluationCriteria": "Pass: 满足纯内联声明式 SVG 规范（0 <script>，0 外部依赖，零真实人物/商标），具备双组及以上旋转漩涡天穹、脉动弯月星晕、摆动柏树、山谷村落与尖塔，自行车稳固贴合路面冠顶，双轮定轴旋转且曲柄-下肢同相联动不断连，t=0s 与 t=6s 像素 MAE === 0 且 max(MAE) >= 0.015；Partial: 造型与闭环基本成立，但存在车轮微偏心、下肢与踏板相位轻微脱节、轮胎轻度悬空或个别背景层首尾轻微跳变；Fail: 静态无明显动画（max(MAE) < 0.015）、含 <script> 或外部框架、出现真实人物姓名或商标文本、XML 语法错误或闭环破裂。",
+        "referenceSource": "https://x.com/ebbyamir/status/2120284261089673376"
+      }
+    },
+    {
+      "id": "animated-mech-nyc-atomos-typo-v1",
+      "spec": {
+        "id": "animated-mech-nyc-atomos-typo-v1",
+        "label": "北郊机甲起立与港湾步态SVG (Animated Articulated Mech Stand-Up & Harbor Gait)",
+        "template": "Generate one self-contained animated SVG of a giant bipedal sci-fi mech rising and marching across a stylized metropolitan harbor map. No external assets, no map tile requests, no WebGL, no audio, no script.\n\nTechnical contract: Pure inline SVG with SMIL (<animate>, <animateTransform>) or CSS @keyframes inside <style><![CDATA[...]]></style>. Strictly 0 <script> tags and 0 event handlers. viewBox=\"0 0 800 540\". Well-formed XML.\n\nSelf-contained vector harbor geography (oblique top-down / orthographic elevation backdrop):\n\n- Deep blue Hudson and East River channels separating four vector land districts: north mainland bank labeled \"Yonkers\" centered near (180, 140), elongated central island spine labeled \"Manhattan\", and east shore districts labeled \"Queens\" and \"Brooklyn\".\n\n- Include minimalist vector suspension bridge spans across the channels and extruded architectural skyline blocks on the island spine and shore districts.\n\nArticulated giant bipedal mech (foreground/midground, grouped cleanly by joint):\n\n- Distinct hierarchical groups for pelvis, torso with glowing cyan chest core, head visor, left/right multi-segment arms (shoulder, elbow, wrist), and left/right multi-segment legs (hip, knee, ankle, armored feet).\n\n- Display a crisp fictional reactor HUD badge labeled \"ATOMOS-CORE\" and a vertical height/posture HUD gauge (\"0m\" to \"120m\") whose indicator bar rises and lowers in exact phase with the mech.\n\nClosed kinematic loop T = 8s (t=0s and t=8s pixel-identical, MAE === 0, peak motion max(MAE) >= 0.020):\n\n- t=0s: crouch-ready stance anchored on the north Yonkers bank, HUD bar at 0m.\n\n- t=0s to t=2.5s: knees extend, pelvis lifts, torso straightens to towering upright stance (HUD bar climbs to 120m), cyan chest reactor pulses and dorsal stabilizer vents flare.\n\n- t=2.5s to t=5.5s: alternating left-right heavy-footed harbor march cadence (coordinated hip/knee bend, firm ankle foot-plant, counter-rotating torso and arm swing balance).\n\n- t=5.5s to t=8s: smoothly reverses back into the exact t=0s crouch-ready stance and 0m HUD level so t=8s matches t=0s with zero jump.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://simonwillison.net/2026/Nov/10/yonkers-rises/",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "自包含港湾岛屿矢量拓扑、多关节双足机甲起立-踏步闭环运动学与 ATOMOS-CORE 高度 HUD 同相联动",
+          "groundTruth": "viewBox='0 0 800 540' 纯内联声明式动态 SVG（0 <script>、0 外部地图/脚本请求）；斜俯视港湾矢量地图包含北岸 Yonkers（(180,140) 附近）、中央岛脊 Manhattan、东岸 Queens 与 Brooklyn、深蓝双河道、悬索桥与挤出建筑体块；多连杆机甲独立分层（躯干+青色核心、头镜、双臂肩/肘/腕、骨盆、双腿髋/膝/踝/装甲足）；含 ATOMOS-CORE 标识与 0m-120m 高度 HUD 柱；T=8s 闭环完成蹲伏起立、核心脉动/喷口点火、左右交替踏步并平滑回蹲，t=0 与 t=8 首尾像素 MAE === 0，周期内 max(MAE) >= 0.020。",
+          "evaluationCriteria": "Pass: 港湾四区与双河道桥跨建筑完整且纯矢量自包含，机甲四肢与躯干按关节分层清晰，HUD 含 ATOMOS-CORE 与 0m-120m 同相高度条，T=8s 完整演绎蹲伏-起立-交替重步-回蹲且首尾 MAE === 0、max(MAE) >= 0.020、0 <script>；Partial: 场景与机甲大致成立且有循环动画，但关节未分节耦合、HUD 不同相或首尾轻微跳变；Fail: 静态（max(MAE) < 0.020）、含 <script> 或外部资源请求、首尾不闭合或 XML 无效。",
+          "referenceSource": "https://simonwillison.net/2026/Nov/10/yonkers-rises/"
+        }
+      },
+      "standard": {
+        "coreKey": "自包含港湾岛屿矢量拓扑、多关节双足机甲起立-踏步闭环运动学与 ATOMOS-CORE 高度 HUD 同相联动",
+        "groundTruth": "viewBox='0 0 800 540' 纯内联声明式动态 SVG（0 <script>、0 外部地图/脚本请求）；斜俯视港湾矢量地图包含北岸 Yonkers（(180,140) 附近）、中央岛脊 Manhattan、东岸 Queens 与 Brooklyn、深蓝双河道、悬索桥与挤出建筑体块；多连杆机甲独立分层（躯干+青色核心、头镜、双臂肩/肘/腕、骨盆、双腿髋/膝/踝/装甲足）；含 ATOMOS-CORE 标识与 0m-120m 高度 HUD 柱；T=8s 闭环完成蹲伏起立、核心脉动/喷口点火、左右交替踏步并平滑回蹲，t=0 与 t=8 首尾像素 MAE === 0，周期内 max(MAE) >= 0.020。",
+        "evaluationCriteria": "Pass: 港湾四区与双河道桥跨建筑完整且纯矢量自包含，机甲四肢与躯干按关节分层清晰，HUD 含 ATOMOS-CORE 与 0m-120m 同相高度条，T=8s 完整演绎蹲伏-起立-交替重步-回蹲且首尾 MAE === 0、max(MAE) >= 0.020、0 <script>；Partial: 场景与机甲大致成立且有循环动画，但关节未分节耦合、HUD 不同相或首尾轻微跳变；Fail: 静态（max(MAE) < 0.020）、含 <script> 或外部资源请求、首尾不闭合或 XML 无效。",
+        "referenceSource": "https://simonwillison.net/2026/Nov/10/yonkers-rises/"
+      }
+    },
+    {
+      "id": "animated-mech-nyc-stomps-hud-v1",
+      "spec": {
+        "id": "animated-mech-nyc-stomps-hud-v1",
+        "label": "等轴测网格机甲踩踏与冲击波HUD (Animated Isometric Mech Stomp Traversal & Shockwave HUD)",
+        "template": "Generate one self-contained animated SVG of an isometric heavy mech stomping across a steel-arch bridge into a street-grid intersection with a telemetry HUD. No external APIs, no OSM tiles, no Three.js, no WebGL, no Canvas, no audio, no brands, no real people, no script, and no inline event handlers.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline CSS only. 0 <script>. viewBox=\"0 0 840 520\". Any <style> goes in CDATA. Well-formed XML. Only concise HUD telemetry text (\"STRIDE CADENCE\", \"L-FOOT\", \"R-FOOT\", \"A\"-\"D\") is allowed.\n\n1. 30-degree Isometric Borough-Bridge Street Grid: render crisp isometric avenue blocks (sectors A-D), stepped prism towers 20-75 px tall, an isometric river channel, and a steel-arch suspension bridge with cables spanning from the north shore into the midtown intersection grid using pure SVG polygons and paths.\n\n2. Heavy Articulated Mech Patrol (Closed Loop T = 6s): render an articulated bipedal mech striding across the bridge apron into the intersection and returning smoothly along a forward-back or figure-eight patrol loop. Pixel states at t = 0s and t = 6s must be identical (MAE === 0), with clear motion amplitude inside the loop (max(MAE) >= 0.020). Left foot plants firmly at t = 1.5s and right foot plants firmly at t = 4.5s, with synchronized hip/knee/ankle leg articulation and torso bob.\n\n3. Concentric Shockwave Rings & Structural Sway: on each planted footfall (t = 1.5s and t = 4.5s), emit 2 concentric dashed or solid elliptical shockwave rings aligned to the 30-degree isometric ground plane that expand from the planted foot and fade to opacity 0 before loop wrap, paired with subtle 1-2 px elastic recoil on adjacent bridge cables and towers.\n\n4. Vector Telemetry HUD Panel: dock a dark-slate corner bezel (opacity <= 0.92, zero occlusion of the intersection stomp zone) displaying \"STRIDE CADENCE\", an animated dual-bar step impact meter (\"L-FOOT\" peaking at t = 1.5s, \"R-FOOT\" peaking at t = 4.5s), and an active sector dot tracking the mech inside a mini isometric radar inset purely via SMIL or CSS.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://simonwillison.net/2026/Nov/10/llm-gemini/",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "30度等轴测街区桥梁、T=6s双足机甲踩踏闭环、等轴测椭圆冲击波与同步遥测HUD",
+          "groundTruth": "viewBox='0 0 840 520'纯内联动态SVG且0<script>与零外链；30度等轴测街区含A-D分区街块、20-75px阶梯棱柱楼宇、河道与钢拱悬索桥；双足关节机甲在T=6s闭环内沿桥面往返或8字巡逻至十字路口，t=0s与t=6s像素完全一致（MAE === 0），周期内max(MAE) >= 0.020；左足t=1.5s、右足t=4.5s落地各触发2道贴合等轴测地面的同心椭圆冲击波并淡出，邻近桥索与塔楼伴随1-2px弹性回弹；角落暗石板HUD（opacity <= 0.92）无遮挡显示STRIDE CADENCE、同步峰值L-FOOT/R-FOOT冲击条及迷你雷达追踪光点。",
+          "evaluationCriteria": "Pass: 30度等轴测街区与悬索桥结构清晰，机甲T=6s闭环巡逻且t=0s/6s MAE === 0、max(MAE) >= 0.020，t=1.5s与t=4.5s落足各触发2道等轴测椭圆冲击波及1-2px桥索/塔楼回弹，非遮挡HUD双柱与雷达点相位同步且0 <script>；Partial: 街区与闭环运动成立，但冲击波呈正圆、桥梁无回弹或HUD未同步脚步相位；Fail: 静态图（max(MAE) < 0.020）、首尾跳变、无关节硬平移、HUD遮挡主区、含<script>/外链资源或XML无效。",
+          "referenceSource": "https://simonwillison.net/2026/Nov/10/llm-gemini/"
+        }
+      },
+      "standard": {
+        "coreKey": "30度等轴测街区桥梁、T=6s双足机甲踩踏闭环、等轴测椭圆冲击波与同步遥测HUD",
+        "groundTruth": "viewBox='0 0 840 520'纯内联动态SVG且0<script>与零外链；30度等轴测街区含A-D分区街块、20-75px阶梯棱柱楼宇、河道与钢拱悬索桥；双足关节机甲在T=6s闭环内沿桥面往返或8字巡逻至十字路口，t=0s与t=6s像素完全一致（MAE === 0），周期内max(MAE) >= 0.020；左足t=1.5s、右足t=4.5s落地各触发2道贴合等轴测地面的同心椭圆冲击波并淡出，邻近桥索与塔楼伴随1-2px弹性回弹；角落暗石板HUD（opacity <= 0.92）无遮挡显示STRIDE CADENCE、同步峰值L-FOOT/R-FOOT冲击条及迷你雷达追踪光点。",
+        "evaluationCriteria": "Pass: 30度等轴测街区与悬索桥结构清晰，机甲T=6s闭环巡逻且t=0s/6s MAE === 0、max(MAE) >= 0.020，t=1.5s与t=4.5s落足各触发2道等轴测椭圆冲击波及1-2px桥索/塔楼回弹，非遮挡HUD双柱与雷达点相位同步且0 <script>；Partial: 街区与闭环运动成立，但冲击波呈正圆、桥梁无回弹或HUD未同步脚步相位；Fail: 静态图（max(MAE) < 0.020）、首尾跳变、无关节硬平移、HUD遮挡主区、含<script>/外链资源或XML无效。",
+        "referenceSource": "https://simonwillison.net/2026/Nov/10/llm-gemini/"
+      }
+    },
+    {
+      "id": "animated-lattice-tower-erection-v1",
+      "spec": {
+        "id": "animated-lattice-tower-erection-v1",
+        "label": "铆接铁桁架塔吊装施工动效 (Animated Riveted Lattice Tower Staged Erection)",
+        "template": "Generate one self-contained animated SVG depicting the staged erection of a parabolic tapered riveted lattice iron tower. No real landmark names, no brand, no real people, no external assets, no audio, no script.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline CSS @keyframes only. 0 <script>, 0 event handlers. viewBox=\"0 0 800 560\". Any <style> goes inside <![CDATA[...]]>. Well-formed XML.\n\nVisual style: Engineering twilight blueprint aesthetic on a deep navy background (#0e1522). Crisp oblique/isometric vector ironwork using amber-steel and bronze-slate trusses paired with cool cyan blueprint plumb lines and a dashed target silhouette.\n\nFixed base & rig: Centered on baseline (400, 495), draw a fixed ground baseplate with 4 symmetric splayed stone foundation piers and a climbing mast crane positioned beside the central axis. Every truss diagonal must meet its corner chord node cleanly with zero floating detached members.\n\nFour parabolic tapered lattice stages:\n1. Stage 1: 4 inclined leg pylons joined by an arched lower truss bridge and Level-1 observation deck.\n2. Stage 2: Tapered mid-shaft converging legs and Level-2 gallery deck.\n3. Stage 3: Slender upper shaft lattice panels.\n4. Stage 4: Crown gallery and tapered lattice spire mast with top beacon.\n\nAnimation sequence (closed loop T = 8s):\n- At t = 0s (and t = 8s): Only the stone foundation piers, ready crane boom, faint cyan dashed blueprint target outline, and 0% elevation bar are visible; pixels at t = 0s and t = 8s must match identically (MAE === 0).\n- 0.5s to 6.0s: The crane boom rotates and tracks upward while Stages 1 through 4 sequentially hoist into exact pinned alignment (Level 1 -> Level 2 -> Upper Shaft -> Spire), with brief rivet-weld spark flashes at seam joints and a phase-synchronized vertical elevation marker bar advancing from 0% to 100%.\n- 6.0s to 6.8s: Hold the completed illuminated tower with steady top beacon.\n- 6.8s to 8.0s: Cleanly dissolve the lifted ironwork back down to the initial dashed blueprint state at t = 0s.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "四阶段抛物线收分铆接桁架塔分段吊装、斜腹杆节点全闭合、塔吊追踪与接缝火花及 T=8s 闭环复原",
+          "groundTruth": "纯内联声明式 SVG（viewBox=\"0 0 800 560\"，#0e1522 深蓝图底，琥珀钢/青铜灰桁架配冷青铅垂线与虚线轮廓），基线 (400, 495) 设四座对称石墩基座与中轴旁爬升塔吊；四段抛物线收分结构（含下层拱桥与一层平台、中段收敛柱与二层廊台、上段细桁架、顶冠平台与尖塔信标）斜腹杆均准确交汇角柱节点无浮空断杆；T=8s 闭环内 t=0s 仅见基座、待命吊臂与蓝图虚线，0.5s-6.0s 吊臂追踪伴随 Level 1 -> Level 2 -> Upper Shaft -> Spire 顺序吊装、接缝闪烁及 0%-100% 高程条同步推进，6.0s-6.8s 稳态保持，6.8s-8.0s 溶解复位；t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.020，0 <script>。",
+          "evaluationCriteria": "Pass: #0e1522 蓝图配色、四石墩基座与塔吊齐全，四段抛物线收分桁架斜杆节点全闭合无悬空，0.5s-6.0s 四段按序就位且与吊臂追踪、焊点闪烁、0%-100% 高程条严格同步，6.0s-6.8s 保持并在 6.8s-8.0s 复原至 t=0s 虚线态（MAE === 0），周期内 max(MAE) >= 0.020 且 0 <script>，无真实地标商标或人物；Partial: 四段结构与 8s 闭环基本成立，但局部斜杆未闭节点、吊臂或高程条未联动或缺少焊点闪烁；Fail: 静态无动效（max(MAE) < 0.020）、首尾帧不一致（MAE > 0）、四段无序同时出现、含 <script>/外部资产/真实地标商标或 XML 错误。",
+          "referenceSource": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/"
+        }
+      },
+      "standard": {
+        "coreKey": "四阶段抛物线收分铆接桁架塔分段吊装、斜腹杆节点全闭合、塔吊追踪与接缝火花及 T=8s 闭环复原",
+        "groundTruth": "纯内联声明式 SVG（viewBox=\"0 0 800 560\"，#0e1522 深蓝图底，琥珀钢/青铜灰桁架配冷青铅垂线与虚线轮廓），基线 (400, 495) 设四座对称石墩基座与中轴旁爬升塔吊；四段抛物线收分结构（含下层拱桥与一层平台、中段收敛柱与二层廊台、上段细桁架、顶冠平台与尖塔信标）斜腹杆均准确交汇角柱节点无浮空断杆；T=8s 闭环内 t=0s 仅见基座、待命吊臂与蓝图虚线，0.5s-6.0s 吊臂追踪伴随 Level 1 -> Level 2 -> Upper Shaft -> Spire 顺序吊装、接缝闪烁及 0%-100% 高程条同步推进，6.0s-6.8s 稳态保持，6.8s-8.0s 溶解复位；t=0s 与 t=8s 像素 MAE === 0，周期内 max(MAE) >= 0.020，0 <script>。",
+        "evaluationCriteria": "Pass: #0e1522 蓝图配色、四石墩基座与塔吊齐全，四段抛物线收分桁架斜杆节点全闭合无悬空，0.5s-6.0s 四段按序就位且与吊臂追踪、焊点闪烁、0%-100% 高程条严格同步，6.0s-6.8s 保持并在 6.8s-8.0s 复原至 t=0s 虚线态（MAE === 0），周期内 max(MAE) >= 0.020 且 0 <script>，无真实地标商标或人物；Partial: 四段结构与 8s 闭环基本成立，但局部斜杆未闭节点、吊臂或高程条未联动或缺少焊点闪烁；Fail: 静态无动效（max(MAE) < 0.020）、首尾帧不一致（MAE > 0）、四段无序同时出现、含 <script>/外部资产/真实地标商标或 XML 错误。",
+        "referenceSource": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/"
+      }
+    },
+    {
+      "id": "animated-viennese-piano-action-v1",
+      "spec": {
+        "id": "animated-viennese-piano-action-v1",
+        "label": "18世纪维也纳拨弦式钢琴击弦机剖面动效 (Animated 18th-Century Viennese Piano Action Cutaway)",
+        "template": "Generate one self-contained animated 2D mechanical cutaway SVG of an 18th-century Viennese Prellmechanik grand piano single-key escapement action. No maker name, no brand, no audio, no script.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline <style><![CDATA[...]]></style> CSS @keyframes only. Strictly 0 <script> and 0 event handlers. viewBox=\"0 0 820 460\". Well-formed XML.\n\nVisual style: warm mechanical schematic on dark slate #11161d, brass #d97706, pearwood/maple tones #e5b887 and #b45309, tensioned steel treble string #e2e8f0, crisp exploded pivot pins, and dashed arc guides.\n\nAuthentic Viennese Prellmechanik topology:\n\n1. Fixed keybed and balance-rail fulcrum pin supporting a horizontal key lever (front key head on the left, key tail extending right).\n\n2. Brass/wood fork bracket (Kapsel) mounted directly onto the rear section of the key lever, carrying a backward-facing pivoted hammer shank whose tapered felt-tipped hammer head points forward/left above the balance rail (NOT mounted on a separate hammer rail).\n\n3. Fixed rear escapement rail and spring-loaded escapement hopper/beak (Auslosezunge) positioned so its upper ledge engages the rear hammer tail (Schnabel) until key elevation trips the beak backward.\n\n4. Overhead damper arm with felt pad resting on a fixed horizontal steel string strung cleanly between a left pin block and a right bridge pin, plus a backcheck lip catching hammer rebound.\n\nClosed kinematic loop T = 4s (t = 0s and t = 4s pixel-identical):\n\n- 0.0s-0.7s: front key depresses smoothly downward about the balance pin (~5-7 deg); key tail and fork rise, pushing the hammer tail under the escapement beak so the hammer head swings rapidly upward toward the string while the damper lifts cleanly off the string.\n\n- 0.7s-1.0s: hammer crown strikes the string cleanly at t ~= 0.85s with a brief impact ring; escapement beak snaps free so the hammer rebounds slightly below the string even while the key remains momentarily held down (escapement check phase, zero clipping through the string).\n\n- 1.0s-1.8s: horizontal string oscillates in a clear fundamental standing-wave envelope anchored at both bridge endpoints, decaying smoothly.\n\n- 1.8s-4.0s: front key rises back to rest, spring beak resets under the hammer butt, and damper settles cleanly onto the stationary string so t = 4.0s matches t = 0.0s identically.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "18世纪维也纳 Prellmechanik 键载音叉托架拓扑、弹簧擒纵喙脱开回落、零穿模击弦与 T=4s 闭环驻波",
+          "groundTruth": "viewBox=\"0 0 820 460\" 纯内联动态 SVG：键尾直接固定音叉托架（Kapsel）而非独立槌档，朝左前方指出的锥形毡槌柄枢接于音叉上；后部固定擒纵档带弹簧擒纵喙（Auslosezunge）啮合槌尾喙（Schnabel）；顶部制音臂压在左右端锚定的水平钢弦上，辅以托木接槌唇。T=4s 闭环：0-0.7s 键前下压 5-7 度带动槌头上甩与制音抬起；0.7-1.0s 约 0.85s 击弦且擒纵喙脱开使槌头在键仍按住时微幅回落至弦下（零穿模）；1.0-1.8s 琴弦两端固定作基频驻波衰减；1.8-4.0s 复位至 t=0s 完全一致（MAE === 0），周期内 max(MAE) >= 0.015；0 <script>；不含任何制琴师或品牌名称。",
+          "evaluationCriteria": "Pass: 严格符合键载音叉与朝左槌头等维也纳 Prellmechanik 拓扑，0.85s 击弦无穿模且具擒纵脱开回落阶段，琴弦两端锚定驻波衰减，t=0s 与 t=4s 像素 MAE === 0 且 max(MAE) >= 0.015，0 <script> 且无制琴师/品牌词汇；Partial: 闭环与连杆可动但错用独立槌档、缺少擒纵回落或琴弦未锚定两端；Fail: 静态（max(MAE) < 0.015）、槌头穿弦、拓扑严重缺失、含 <script> 或出现品牌/人名。",
+          "referenceSource": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/"
+        }
+      },
+      "standard": {
+        "coreKey": "18世纪维也纳 Prellmechanik 键载音叉托架拓扑、弹簧擒纵喙脱开回落、零穿模击弦与 T=4s 闭环驻波",
+        "groundTruth": "viewBox=\"0 0 820 460\" 纯内联动态 SVG：键尾直接固定音叉托架（Kapsel）而非独立槌档，朝左前方指出的锥形毡槌柄枢接于音叉上；后部固定擒纵档带弹簧擒纵喙（Auslosezunge）啮合槌尾喙（Schnabel）；顶部制音臂压在左右端锚定的水平钢弦上，辅以托木接槌唇。T=4s 闭环：0-0.7s 键前下压 5-7 度带动槌头上甩与制音抬起；0.7-1.0s 约 0.85s 击弦且擒纵喙脱开使槌头在键仍按住时微幅回落至弦下（零穿模）；1.0-1.8s 琴弦两端固定作基频驻波衰减；1.8-4.0s 复位至 t=0s 完全一致（MAE === 0），周期内 max(MAE) >= 0.015；0 <script>；不含任何制琴师或品牌名称。",
+        "evaluationCriteria": "Pass: 严格符合键载音叉与朝左槌头等维也纳 Prellmechanik 拓扑，0.85s 击弦无穿模且具擒纵脱开回落阶段，琴弦两端锚定驻波衰减，t=0s 与 t=4s 像素 MAE === 0 且 max(MAE) >= 0.015，0 <script> 且无制琴师/品牌词汇；Partial: 闭环与连杆可动但错用独立槌档、缺少擒纵回落或琴弦未锚定两端；Fail: 静态（max(MAE) < 0.015）、槌头穿弦、拓扑严重缺失、含 <script> 或出现品牌/人名。",
+        "referenceSource": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-4-carbon-now-available/"
+      }
+    },
+    {
+      "id": "animated-knitted-yarn-tension-v1",
+      "spec": {
+        "id": "animated-knitted-yarn-tension-v1",
+        "label": "针织线圈单轴拉伸与泊松收缩动效 (Animated Knitted Yarn Loop Tension & Poisson Narrowing)",
+        "template": "Generate one self-contained animated SVG of a knitted yarn lattice under cyclic uniaxial tension. No external assets, no external fonts, no brand names, no audio, no script.\n\nTechnical contract: pure inline SVG with viewBox=\"0 0 760 540\" on dark laboratory background #0d131c. SMIL (<animate>, <animateTransform>) or inline CSS @keyframes inside <style><![CDATA[...]]></style> only. 0 <script>, 0 event handlers. Well-formed XML.\n\nGeometry and yarn topology:\n\n- Render a 4-column by 4-row (16 unit loops, plus clean entry and exit yarn tails anchored into top and bottom clamp bars) interlocking weft jersey-knit yarn lattice.\n\n- Use thick cylindrical yarn strands (stroke-width 8 to 10, stroke-linecap=\"round\") with explicit over-under crossing gaps or #0d131c background casing strokes so every loop alternates clearly over its neighbor's head arc and behind its adjacent course leg (zero flat uncrossed overlaps).\n\n- Render a fixed bottom grip rail with 2 horizontal anchor pins and a moving top grip bar with upward tensile force vector arrows labeled F.\n\n- Include a crisp side strain and transverse narrowing meter with an animated EPSILON_Y bar and width ruler ticks.\n\nClosed tensile cycle T = 6s (infinite repeat, identical pixels at t = 0s and t = 6s):\n\n- 0.0s -> 3.0s (uniaxial loading): top grip bar moves steadily upward by ~28% vertical gauge extension; every knit row elongates vertically (loop legs straighten upward) while middle rows and inner columns exhibit smooth Poisson transverse necking toward the vertical centerline without breaking loop interlock continuity. High-stress contact crown arcs shift smoothly from relaxed slate-cyan #38bdf8 through amber #f59e0b to peak orange-red #ef4444, while the EPSILON_Y bar and width meter track the deformation.\n\n- 3.0s -> 6.0s (elastic unloading): top grip bar, loop curvatures, transverse width, stress colors, and strain/width meters smoothly relax back to the exact t = 0s geometry.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/Google/status/2120279087314837642",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "4x4 交织平针线圈上下穿插拓扑、单轴 28% 拉伸下的泊松横向颈缩与高应力弧色移闭环",
+          "groundTruth": "viewBox='0 0 760 540'、深色背景 #0d131c、0 <script>；4 列 x 4 行共 16 个交织纬编平针线圈及接入上下夹条的纱尾，粗圆柱纱线（stroke-width 8~10）在交叉点具备显式上下穿插套壳/断口（严禁扁平直接叠压）；底部固定夹轨含 2 枚水平锚钉，顶部活动夹条带向上拉力矢量箭头 F；侧边配备实时联动的 EPSILON_Y 应变柱与横向宽幅标尺；T=6s 闭环中 0->3s 顶部夹条上移约 28%、线圈腿拉直且中部列发生连续泊松横向内收（不破坏咬合连续性），接触冠弧颜色由 #38bdf8 经 #f59e0b 过渡至 #ef4444；3->6s 弹性回弹至 t=0 完全一致（MAE === 0），周期内 max(MAE) >= 0.020。",
+          "evaluationCriteria": "Pass: 4x4 交织线圈上下穿插清晰、固定底轨 2 锚钉与活动顶条拉力箭头 F 完整、0->3s 约 28% 纵向拉伸伴随显著泊松横向颈缩与冠弧 #38bdf8->#f59e0b->#ef4444 应力变色、侧边 EPSILON_Y 与宽幅标尺同步联动、t=0 与 t=6 像素 MAE === 0、max(MAE) >= 0.020 且 0 <script>；Partial: 线圈数量与 6s 闭环大致正确，但仅均匀缩放缺乏泊松颈缩、交叉穿插不清、无应力变色或仪表不同步；Fail: 静态无动画（max(MAE) < 0.020）、线圈非交织或撕裂断链、首尾帧不重合、含 <script> 或 XML 语法错误。",
+          "referenceSource": "https://x.com/Google/status/2120279087314837642"
+        }
+      },
+      "standard": {
+        "coreKey": "4x4 交织平针线圈上下穿插拓扑、单轴 28% 拉伸下的泊松横向颈缩与高应力弧色移闭环",
+        "groundTruth": "viewBox='0 0 760 540'、深色背景 #0d131c、0 <script>；4 列 x 4 行共 16 个交织纬编平针线圈及接入上下夹条的纱尾，粗圆柱纱线（stroke-width 8~10）在交叉点具备显式上下穿插套壳/断口（严禁扁平直接叠压）；底部固定夹轨含 2 枚水平锚钉，顶部活动夹条带向上拉力矢量箭头 F；侧边配备实时联动的 EPSILON_Y 应变柱与横向宽幅标尺；T=6s 闭环中 0->3s 顶部夹条上移约 28%、线圈腿拉直且中部列发生连续泊松横向内收（不破坏咬合连续性），接触冠弧颜色由 #38bdf8 经 #f59e0b 过渡至 #ef4444；3->6s 弹性回弹至 t=0 完全一致（MAE === 0），周期内 max(MAE) >= 0.020。",
+        "evaluationCriteria": "Pass: 4x4 交织线圈上下穿插清晰、固定底轨 2 锚钉与活动顶条拉力箭头 F 完整、0->3s 约 28% 纵向拉伸伴随显著泊松横向颈缩与冠弧 #38bdf8->#f59e0b->#ef4444 应力变色、侧边 EPSILON_Y 与宽幅标尺同步联动、t=0 与 t=6 像素 MAE === 0、max(MAE) >= 0.020 且 0 <script>；Partial: 线圈数量与 6s 闭环大致正确，但仅均匀缩放缺乏泊松颈缩、交叉穿插不清、无应力变色或仪表不同步；Fail: 静态无动画（max(MAE) < 0.020）、线圈非交织或撕裂断链、首尾帧不重合、含 <script> 或 XML 语法错误。",
+        "referenceSource": "https://x.com/Google/status/2120279087314837642"
+      }
+    },
+    {
+      "id": "animated-iso-layered-console-v1",
+      "spec": {
+        "id": "animated-iso-layered-console-v1",
+        "label": "等轴测分层音频遥测调音台动效 (Animated Isometric Layered Audio-Telemetry Console)",
+        "template": "Generate one self-contained animated SVG of an isometric layered modular field-audio and signal-telemetry mixing console on a studio dark slate background (#0f141e). No text, no brand logos, no external assets, no audio, no script.\n\nTechnical contract: SMIL (<animate>, <animateTransform>) or inline CSS @keyframes only. 0 <script>, 0 event handlers. viewBox=\"0 0 800 540\". Any <style> goes inside CDATA. Well-formed XML.\n\nIsometric geometry: strict 30-degree isometric projection (2:1 / cos 30 deg axis grid) with consistent 3-value surface shading (top-lit light, left mid-tone, right dark shadow) and clean vertical corner alignment pins.\n\nAssemble three distinct vector elevation sublayers along the vertical stack axis:\n1. Lower layer: chamfered brushed-aluminum chassis base with side heatsink fins.\n2. Middle layer: modular control deck featuring 5 recessed fader tracks aligned strictly along the 30-degree isometric axis, circular rotary encoder dials projected in isometric ellipses, and tactile glowing pad buttons.\n3. Upper layer: angled translucent glass telemetry visor hood enclosing a multi-bar LED meter array and dual-VU spectrum traces.\n\nClosed kinematic loop T = 6s (states at t = 0s and t = 6s must be pixel-identical, MAE === 0, with clear in-loop motion max(MAE) >= 0.015):\n- 0.0s to 1.2s: The three layers start cleanly separated along the vertical stack axis with dotted cyan alignment drop-lines visible, then glide smoothly down and dock flush together with zero inter-layer edge misalignment.\n- 1.2s to 4.6s: While docked, 5 motorized fader caps glide smoothly up and down strictly inside their 30-degree isometric channel rails in staggered phases, rotary encoder indicator arcs sweep cleanly inside their dial ellipses, multi-bar LED meters pulse, and dual spectrum/VU traces animate cleanly inside the glass visor without clipping panel bezels.\n- 4.6s to 6.0s: The three layers cleanly undock and rise back along the vertical alignment pins to their exact initial exploded elevation (t = 6s matches t = 0s).\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://x.com/BreejeAnadkat/status/2120115744168091921",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "严格 30 度等轴测三层调音台爆炸对接闭环、斜轴五通道推子分相联动与玻璃罩内裁切频谱遥测",
+          "groundTruth": "800x540 深灰蓝底（#0f141e）纯内联 SVG 呈现三层模块化野战音频遥测调音台：底层倒角铝制机身与散热鳍片、中层沿 30 度等轴测轴线排列的 5 条凹槽推子轨道与椭圆投影旋钮及发光按键、顶层斜置半透明玻璃双 VU 频谱遮光罩；全图严格遵循 30 度等轴测（2:1/cos30 网格）与顶亮/左中/右暗三阶受光；T=6s 闭环中 0.0-1.2s 沿青色虚线定位销平稳降落齐平对接，1.2-4.6s 五路推子严格沿 30 度斜轨分相往复、旋钮弧线在椭圆内旋转、LED 与双 VU 频谱在玻璃罩边界内脉冲扫掠且不越界，4.6-6.0s 沿导向销精准升回初始分离位置；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。",
+          "evaluationCriteria": "Pass: 严格 30 度等轴测与三阶明暗一致，三层硬件结构齐全且对接零错位，5 路推子严格沿 30 度斜轴分相滑动、旋钮/LED/频谱在各自轮廓与玻璃罩内裁切不溢出，t=0 与 t=6 完全重合（MAE === 0），max(MAE) >= 0.015，0 <script> 且无品牌或外部依赖；Partial: 三层形态与 6s 闭环成立，但推子略偏斜轴、对接有轻微错缝或频谱轻度溢出边框；Fail: 静态无运动（max(MAE) < 0.015）、透视非等轴测或错位严重、首尾帧未对齐（MAE > 0）、含 <script> 或 XML 语法错误。",
+          "referenceSource": "https://x.com/BreejeAnadkat/status/2120115744168091921"
+        }
+      },
+      "standard": {
+        "coreKey": "严格 30 度等轴测三层调音台爆炸对接闭环、斜轴五通道推子分相联动与玻璃罩内裁切频谱遥测",
+        "groundTruth": "800x540 深灰蓝底（#0f141e）纯内联 SVG 呈现三层模块化野战音频遥测调音台：底层倒角铝制机身与散热鳍片、中层沿 30 度等轴测轴线排列的 5 条凹槽推子轨道与椭圆投影旋钮及发光按键、顶层斜置半透明玻璃双 VU 频谱遮光罩；全图严格遵循 30 度等轴测（2:1/cos30 网格）与顶亮/左中/右暗三阶受光；T=6s 闭环中 0.0-1.2s 沿青色虚线定位销平稳降落齐平对接，1.2-4.6s 五路推子严格沿 30 度斜轨分相往复、旋钮弧线在椭圆内旋转、LED 与双 VU 频谱在玻璃罩边界内脉冲扫掠且不越界，4.6-6.0s 沿导向销精准升回初始分离位置；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.015，0 <script>。",
+        "evaluationCriteria": "Pass: 严格 30 度等轴测与三阶明暗一致，三层硬件结构齐全且对接零错位，5 路推子严格沿 30 度斜轴分相滑动、旋钮/LED/频谱在各自轮廓与玻璃罩内裁切不溢出，t=0 与 t=6 完全重合（MAE === 0），max(MAE) >= 0.015，0 <script> 且无品牌或外部依赖；Partial: 三层形态与 6s 闭环成立，但推子略偏斜轴、对接有轻微错缝或频谱轻度溢出边框；Fail: 静态无运动（max(MAE) < 0.015）、透视非等轴测或错位严重、首尾帧未对齐（MAE > 0）、含 <script> 或 XML 语法错误。",
+        "referenceSource": "https://x.com/BreejeAnadkat/status/2120115744168091921"
+      }
+    },
+    {
+      "id": "animated-sailboat-wake-waves-v1",
+      "spec": {
+        "id": "animated-sailboat-wake-waves-v1",
+        "label": "帆船乘浪俯仰与开尔文尾迹动效 (Animated Sailing Sloop, Wave Heave & Kelvin Wake)",
+        "template": "Generate one self-contained animated SVG of a sailing sloop riding ocean waves at golden hour with a Kelvin V-wake. No text, no brand, no audio, no script, no event handlers, no external assets.\n\nTechnical contract: Pure inline SVG with SMIL (<animate>, <animateTransform>) or CSS @keyframes inside <style><![CDATA[...]]></style> only. 0 <script>. viewBox=\"0 0 820 500\". Well-formed XML. Closed loop T = 6s: the frame at t = 6s must be pixel-identical to t = 0s (MAE === 0), with clear continuous motion inside the loop (max(MAE) >= 0.018).\n\nScene and hydrodynamics:\n\n1. Atmosphere & Horizon: A twilight/golden-hour marine sky linearGradient fading smoothly into a deep sea horizon line at y = 265.\n\n2. Tiled Periodic Trochoidal Wave Trains: At least 3 depth-layered ocean wave bands from y = 265 down to y = 500. Each wave band must be drawn as a periodic repeating profile that translates horizontally by an exact integer number of wave periods over T = 6s (or an integer divisor of 6s) so t = 6s overlays t = 0s with zero phase seam. Accent foreground wave facets with animated broken sunlit reflection shimmer dashes (#fde68a and #38bdf8).\n\n3. Coupled Sailing Sloop: A single-masted Bermuda sloop in 3/4 oblique view with an angled hull, tapered mast, horizontal boom, taut forestay and backstay, and convex wind-billowed mainsail and triangular jib with subtle internal batten lines. Group the entire boat so it executes smooth vertical heave and +/-4 deg pitch around a transform-origin at the mid-hull waterline, phase-locked to the passing wave crest so the hull waterline never floats in mid-air above wave troughs and all sails stay attached to the mast, boom, and stays.\n\n4. Kelvin V-Wake & Bow Spray: Feathered translucent white-cyan foam wake chevron ribbons trailing diagonally aft from the stern across the water surface, plus subtle bow spray, expanding and fading periodically in strict sync with the T = 6s cycle.\n\nOutput only the <svg>.",
+        "variables": [],
+        "candidates": [],
+        "source": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests",
+        "verified": true,
+        "immutable": true,
+        "originDate": "2026-11",
+        "registeredAt": "2026-11-14",
+        "standard": {
+          "coreKey": "y=265 暮色海天渐变地平线、>=3 层整数周期次摆线海浪无缝平铺、水线耦合升沉与 +/-4 度波峰锁相俯仰及 T=6s 开尔文 V 形尾迹闭环",
+          "groundTruth": "纯内联动态 SVG（viewBox=\"0 0 820 500\"），0 <script> 与零外部资源；y=265 海天渐变地平线下方含 >=3 层整数周期平移的次摆线海浪带及 #fde68a/#38bdf8 碎波高光；3/4 斜视角百慕大帆船含船体、渐细桅杆、横桁、前后支索与带帆骨线的鼓风主帆/前帆，整船围绕水线中点做与波峰锁相的垂直升沉与 +/-4 度俯仰，船底不悬空且帆索不脱节；船尾斜后方展开随 T=6s 同步脉动消退的半透明白青色开尔文 V 形尾迹与船首浪花；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.018。",
+          "evaluationCriteria": "Pass: 满足 y=265 地平线、>=3 层无缝平铺海浪带与碎波高光、帆船索具完整连结且水线锁相升沉与 +/-4 度俯仰不悬空、开尔文 V 形尾迹同步舒展消退、t=0s 与 t=6s 首尾帧 MAE === 0、max(MAE) >= 0.018 且 0 <script>；Partial: 造型与闭环基本成立但海浪平铺接缝跳变、船体水线偶有浮空、缺少波峰锁相或尾迹无明显周期性扩展；Fail: 静态无运动（max(MAE) < 0.018）、首尾帧严重错位、帆船部件脱节、含 <script>/外部资产或 XML 无效。",
+          "referenceSource": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests"
+        }
+      },
+      "standard": {
+        "coreKey": "y=265 暮色海天渐变地平线、>=3 层整数周期次摆线海浪无缝平铺、水线耦合升沉与 +/-4 度波峰锁相俯仰及 T=6s 开尔文 V 形尾迹闭环",
+        "groundTruth": "纯内联动态 SVG（viewBox=\"0 0 820 500\"），0 <script> 与零外部资源；y=265 海天渐变地平线下方含 >=3 层整数周期平移的次摆线海浪带及 #fde68a/#38bdf8 碎波高光；3/4 斜视角百慕大帆船含船体、渐细桅杆、横桁、前后支索与带帆骨线的鼓风主帆/前帆，整船围绕水线中点做与波峰锁相的垂直升沉与 +/-4 度俯仰，船底不悬空且帆索不脱节；船尾斜后方展开随 T=6s 同步脉动消退的半透明白青色开尔文 V 形尾迹与船首浪花；t=0s 与 t=6s 像素 MAE === 0，周期内 max(MAE) >= 0.018。",
+        "evaluationCriteria": "Pass: 满足 y=265 地平线、>=3 层无缝平铺海浪带与碎波高光、帆船索具完整连结且水线锁相升沉与 +/-4 度俯仰不悬空、开尔文 V 形尾迹同步舒展消退、t=0s 与 t=6s 首尾帧 MAE === 0、max(MAE) >= 0.018 且 0 <script>；Partial: 造型与闭环基本成立但海浪平铺接缝跳变、船体水线偶有浮空、缺少波峰锁相或尾迹无明显周期性扩展；Fail: 静态无运动（max(MAE) < 0.018）、首尾帧严重错位、帆船部件脱节、含 <script>/外部资产或 XML 无效。",
+        "referenceSource": "https://www.aifire.co/p/gemini-4-carbon-takes-on-coding-3d-and-agent-swarm-tests"
+      }
     }
   ],
   "frontier": [

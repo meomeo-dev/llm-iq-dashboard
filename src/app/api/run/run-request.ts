@@ -10,6 +10,20 @@ import type { RunSelection } from "@/core/run-selection";
 export function parseRunRequestBody(text: string): RunSelection | null {
   if (text.trim() === "") return null;
   const body = JSON.parse(text) as Partial<RunSelection>;
+  if (typeof body.retryRunId === "string" && body.retryRunId.trim() !== "") {
+    if (body.targetIds !== undefined && !isStringArray(body.targetIds)) {
+      throw new Error("targetIds 须为 string[]");
+    }
+    if (body.promptIds !== undefined && !isStringArray(body.promptIds)) {
+      throw new Error("promptIds 须为 string[]");
+    }
+    return {
+      retryRunId: body.retryRunId.trim(),
+      targetIds: body.targetIds ?? [],
+      promptIds: body.promptIds ?? [],
+      ...(typeof body.includeNoSvg === "boolean" ? { includeNoSvg: body.includeNoSvg } : {}),
+    };
+  }
   if (!isStringArray(body.targetIds) || !isStringArray(body.promptIds)) {
     throw new Error("请求体须为 { targetIds: string[], promptIds: string[] }");
   }

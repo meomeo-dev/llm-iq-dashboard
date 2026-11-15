@@ -231,6 +231,49 @@ function harnessGuardOf(config: AppConfig, runId: string, log: Logger): string |
   return config.run.harnessGuard.text;
 }
 
+export interface PreparedLanesInput {
+  runId: string;
+  startedAt: Date;
+  prompts: RenderedPrompt[];
+  harnessGuard: string | null;
+  lanes: LaneItem[][];
+  slots: (Attempt | undefined)[];
+  budget: BudgetGate | null;
+  config: AppConfig;
+  options: ExecuteOptions;
+  log: Logger;
+  saveInitialSnapshot?: boolean;
+}
+
+export async function runPreparedLanes(input: PreparedLanesInput): Promise<RunRecord> {
+  const { runId, startedAt, prompts, harnessGuard, lanes, slots, budget, config, options, log } = input;
+  const state: RunState = {};
+  const snapshot = (inProgress: boolean): RunRecord =>
+    createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state, harnessGuard);
+  if (input.saveInitialSnapshot) await saveRun(snapshot(true));
+
+  const { writer, progress } = await initRunProgressTracking(
+    runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
+  );
+  const profiles = await prepareProfileLaunches(config, lanes, log);
+  const blockers: CallBlockers = { ...(await preflight(lanes, log)), profile: profiles.blockers };
+  const leakGuard = await setupLeakGuard(runId, config, log);
+  const cancel = setupCancelWatch(runId, log, progress, state);
+
+  try {
+    const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
+    const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
+    const judge = createAttemptJudge(config.judge.enabled, log);
+    const round = { runId, signal: cancel.signal, leakGuard, judge, harnessGuard, profileLaunches: profiles.launches };
+    await executeLanes(lanes, limits, round, hooks);
+  } finally {
+    cancel.stop();
+    await closeJudgeBrowser();
+  }
+
+  return await finishRunRecord(snapshot, progress, writer, runId, config, state.cancelledAt !== undefined, log);
+}
+
 export async function executeRun(config: AppConfig, options: ExecuteOptions): Promise<RunRecord> {
   const log = options.log ?? (() => {});
   const initialAt = new Date();
@@ -250,32 +293,10 @@ export async function executeRun(config: AppConfig, options: ExecuteOptions): Pr
     );
 
     const slots = new Array<Attempt | undefined>(jobs.length);
-    const state: RunState = {};
     const harnessGuard = harnessGuardOf(config, runId, log);
-    const snapshot = (inProgress: boolean): RunRecord =>
-      createRunSnapshot(runId, prompts, startedAt, options.trigger, inProgress, slots, state, harnessGuard);
-
-    const { writer, progress } = await initRunProgressTracking(
-      runId, options.trigger, startedAt, config.run.concurrency, lanes, log, options.onStarted,
-    );
-
-    const profiles = await prepareProfileLaunches(config, lanes, log);
-    const blockers: CallBlockers = { ...(await preflight(lanes, log)), profile: profiles.blockers };
-    const leakGuard = await setupLeakGuard(runId, config, log);
-    const cancel = setupCancelWatch(runId, log, progress, state);
-
-    try {
-      const hooks = buildLaneHooks(runId, blockers, budget, slots, progress, writer, state, snapshot, log);
-      const limits = { profiles: config.run.profileConcurrency, lanesPerProfile: config.run.concurrency };
-      const judge = createAttemptJudge(config.judge.enabled, log);
-      const round = { runId, signal: cancel.signal, leakGuard, judge, harnessGuard, profileLaunches: profiles.launches };
-      await executeLanes(lanes, limits, round, hooks);
-    } finally {
-      cancel.stop();
-      await closeJudgeBrowser();
-    }
-
-    return await finishRunRecord(snapshot, progress, writer, runId, config, state.cancelledAt !== undefined, log);
+    return await runPreparedLanes({
+      runId, startedAt, prompts, harnessGuard, lanes, slots, budget, config, options, log,
+    });
   } finally {
     await lock.release();
   }

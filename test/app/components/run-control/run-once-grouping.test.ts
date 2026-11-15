@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { BENCHMARK_2026_11_H1_IDS } from "@/core/prompt/bank/benchmarks/2026-11-h1/ids";
 import {
   classifyPrompt,
   groupByModel,
@@ -47,6 +48,13 @@ describe("run-once-grouping", () => {
       ];
       for (const id of ids) {
         assert.equal(classifyPrompt({ id, label: id, defaultSelected: false }), "2026-10");
+      }
+    });
+
+    test("2026-11-h1 分组分类", () => {
+      assert.equal(BENCHMARK_2026_11_H1_IDS.length, 20);
+      for (const id of BENCHMARK_2026_11_H1_IDS) {
+        assert.equal(classifyPrompt({ id, label: id, defaultSelected: false }), "2026-11-h1");
       }
     });
 
@@ -130,6 +138,29 @@ describe("run-once-grouping", () => {
       ]);
       assert.equal(names.indexOf("2026-10"), names.indexOf("2026-09") + 1);
       assert.equal(names.indexOf("自定义提示词"), names.indexOf("2026-10") + 1);
+    });
+
+    test("全部分组顺序严格保证 2026-11-h1 紧随 2026-10 之后并排在自定义提示词之前", () => {
+      const allPrompts: PromptOption[] = [
+        { id: "custom-abc", label: "自定义", defaultSelected: false },
+        { id: "animated-pendulum-wave-reunion-v1", label: "十五摆归相", defaultSelected: false },
+        { id: "animated-jansen-walker-v1", label: "简森步行机构", defaultSelected: false },
+        { id: "animated-iso-vintage-pc-v1", label: "复古PC", defaultSelected: false },
+        { id: "landmarks-v1", label: "地标", defaultSelected: false },
+        { id: "classic-v1", label: "经典", defaultSelected: false },
+      ];
+      const groups = groupPrompts(allPrompts);
+      const names = groups.map((g) => g.name);
+      assert.deepEqual(names, [
+        "经典基准",
+        "世界地标（微缩景观）",
+        "2026-09",
+        "2026-10",
+        "2026-11-h1",
+        "自定义提示词",
+      ]);
+      assert.equal(names.indexOf("2026-11-h1"), names.indexOf("2026-10") + 1);
+      assert.equal(names.indexOf("自定义提示词"), names.indexOf("2026-11-h1") + 1);
     });
 
     test("空输入返回空数组", () => {

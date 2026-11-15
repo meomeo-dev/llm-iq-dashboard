@@ -216,6 +216,18 @@ describe("prompts-page-model: catalog construction, filtering, stats & verbatim 
     assert.equal(octStatsGroup.count, 8);
     assert.equal(octStatsGroup.label, "2026-10");
 
+    const novH1Group = filterPromptCatalog(items, {
+      ...DEFAULT_PROMPT_FILTER,
+      groupKey: "2026-11-h1",
+    });
+    assert.equal(novH1Group.length, 20);
+    assert.ok(novH1Group.every((item) => item.groupKey === "2026-11-h1"));
+
+    const novH1StatsGroup = activeStats.groups.find((g) => g.key === "2026-11-h1");
+    assert.ok(novH1StatsGroup);
+    assert.equal(novH1StatsGroup.count, 20);
+    assert.equal(novH1StatsGroup.label, "2026-11-h1");
+
     const candidateQuery = filterPromptCatalog(items, {
       ...DEFAULT_PROMPT_FILTER,
       query: "shuihu-007 倒拔垂杨柳",

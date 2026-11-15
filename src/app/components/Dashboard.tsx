@@ -57,7 +57,7 @@ export function Dashboard(props: DashboardProps) {
   }
 
   return (
-    <ProfilesProvider value={{ profiles: synced.profiles, owner: props.owner }}>
+    <ProfilesProvider value={{ profiles: synced.profiles, owner: props.owner && !state.readonly }}>
       <div className="workspace">
         <DashboardToolbar
           owner={props.owner}

@@ -51,13 +51,44 @@ export function mergeLiveProgress({
     syntheticCards.push(...syntheticCardsForRun(run, existingKeys, promptLabels));
   }
 
+  const mergedExisting = overlayActiveLiveStates(cards, activeRuns);
   if (syntheticCards.length === 0) {
-    return { cards: [...cards], runStarts: nextStarts.sort((a, b) => b.localeCompare(a)) };
+    return { cards: mergedExisting, runStarts: nextStarts.sort((a, b) => b.localeCompare(a)) };
   }
   return {
-    cards: [...syntheticCards, ...cards].sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+    cards: [...syntheticCards, ...mergedExisting].sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
     runStarts: nextStarts.sort((a, b) => b.localeCompare(a)),
   };
+}
+
+function overlayActiveLiveStates(
+  cards: readonly DashboardCard[],
+  activeRuns: readonly ProgressView[],
+): DashboardCard[] {
+  const activeCalls = new Map<string, { state: "queued" | "running"; activeSince: number }>();
+  const activeRunIds = new Set<string>();
+  for (const run of activeRuns) {
+    activeRunIds.add(run.runId);
+    for (const lane of run.lanes) {
+      for (const call of lane.calls) {
+        if (call.state === "queued" || call.state === "running") {
+          const activeSince = Date.parse(call.startedAt ?? run.updatedAt);
+          activeCalls.set(callLookupKey(run.runId, call.targetId, call.promptId), {
+            state: call.state,
+            activeSince,
+          });
+        }
+      }
+    }
+  }
+  return cards.map((card) => {
+    const active = activeCalls.get(callLookupKey(card.runId, card.targetId, card.promptId));
+    if (active !== undefined && card.status !== "ok" && Date.parse(card.finishedAt) < active.activeSince) {
+      return { ...card, runInProgress: true, liveState: active.state };
+    }
+    if (activeRunIds.has(card.runId) && !card.runInProgress) return { ...card, runInProgress: true };
+    return card;
+  });
 }
 
 function syntheticCardsForRun(

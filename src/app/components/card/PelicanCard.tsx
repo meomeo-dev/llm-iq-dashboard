@@ -9,7 +9,8 @@ import { useProfiles } from "../profile/profiles-context";
 import { pendingJudgeState } from "../run-status/run-phase";
 import { JudgeStatusBadge } from "../standard/JudgeStatusBadge";
 import { formatZonedDateTime } from "../timeline/zoned-time";
-import { LazySvgFrame } from "./LazySvgFrame";
+import { ArtFrame, FailureFrame, LiveFrame, RedactedFrame } from "./CardFrames";
+import { CardRetryButton } from "./CardRetryButton";
 import {
   costTitle,
   formatBindingBadge,
@@ -18,7 +19,6 @@ import {
   formatDuration,
   judgeCostBrief,
   judgeCostLine,
-  localizeCardError,
   rawSvgHref,
   statusText,
   viewHref,
@@ -108,6 +108,7 @@ function CardFooter({
         {card.judge != null && (
           <JudgeTag card={card} judge={card.judge} judgeCost={card.judgeCost ?? null} locale={locale} />
         )}
+        <CardRetryButton card={card} isLive={isLive} locale={locale} />
         {href !== null && (
           <a
             className="card-open"
@@ -237,56 +238,5 @@ function EffortBadge({ card, locale }: { card: DashboardCard; locale: Locale }) 
     >
       effort: {folded ? `${card.effort} → ${card.appliedEffort}` : card.effort}
     </span>
-  );
-}
-
-function ArtFrame({ card, art, locale }: { card: DashboardCard; art: string; locale: Locale }) {
-  const href = viewHref(card);
-  const frame = <LazySvgFrame href={art} className="card-frame" />;
-  if (href === null) return frame;
-  return (
-    <a
-      className="card-frame-link"
-      href={href}
-      target="_blank"
-      rel="noopener"
-      title={locale === "en" ? "Open full artwork view" : "单独查看大图"}
-    >
-      {frame}
-    </a>
-  );
-}
-
-function FailureFrame({ card, locale }: { card: DashboardCard; locale: Locale }) {
-  const statusLabel = statusText(card.status, locale);
-  const reason = localizeCardError(card.error, card.status, locale) ?? statusLabel;
-  return (
-    <div className={`frame card-frame frame-failed failed-${card.status}`} title={reason}>
-      <span className="failure-status">{statusLabel}</span>
-      <p>{reason}</p>
-    </div>
-  );
-}
-
-function RedactedFrame({ card, locale }: { card: DashboardCard; locale: Locale }) {
-  const fallback = locale === "en" ? "Redacted (Unpublished)" : "已脱敏，未发布";
-  const reason = localizeCardError(card.error, card.status, locale) ?? fallback;
-  return (
-    <div className="frame card-frame frame-redacted" title={reason}>
-      <span className="redacted-status">{fallback}</span>
-      <p>{reason}</p>
-    </div>
-  );
-}
-
-function LiveFrame({ liveState, locale }: { liveState: "queued" | "running"; locale: Locale }) {
-  const isEn = locale === "en";
-  const label =
-    liveState === "running" ? (isEn ? "Generating SVG…" : "模型生成中…") : isEn ? "Queued in lane…" : "道内排队等待…";
-  return (
-    <div className={`frame card-frame frame-live live-${liveState}`}>
-      <span className="live-status">{liveState === "running" ? (isEn ? "Running" : "执行中") : isEn ? "Queued" : "排队中"}</span>
-      <p>{label}</p>
-    </div>
   );
 }

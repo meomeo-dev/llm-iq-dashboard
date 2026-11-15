@@ -5,6 +5,7 @@
  * 绝不修改 PromptSpec.template 或 PromptCandidate.text。
  */
 
+import { BENCHMARK_2026_11_H1_IDS } from "@/core/prompt/bank/benchmarks/2026-11-h1/ids";
 import { rubricFor, type RubricSpec } from "@/core/judge/schema";
 import {
   ARCHIVED_PROMPTS,
@@ -190,6 +191,8 @@ const ARCHIVED_ID_SET: ReadonlySet<string> = new Set(ARCHIVED_PROMPTS.map((p) =>
 const ANIMATION_RE =
   /<animate(?:Transform|Motion)?\b|@keyframes\b|\bSMIL\b|\banimated\s+SVG\b/i;
 
+const NOVEMBER_2026_H1_IDS: ReadonlySet<string> = new Set(BENCHMARK_2026_11_H1_IDS);
+
 export function classifyPromptGroupKey(id: string, isCustom: boolean): string {
   if (isCustom) return "自定义提示词";
   if (CLASSIC_IDS.has(id)) return "经典基准";
@@ -204,6 +207,7 @@ export function classifyPromptGroupKey(id: string, isCustom: boolean): string {
   if (id.startsWith("landmarks-")) return "世界地标（微缩景观）";
   if (SEPTEMBER_2026_IDS.has(id)) return "2026-09";
   if (OCTOBER_2026_IDS.has(id)) return "2026-10";
+  if (NOVEMBER_2026_H1_IDS.has(id)) return "2026-11-h1";
   if (id.startsWith("fe-")) return "2026 前沿工程评测 (FE-1 ~ FE-8)";
   if (id.startsWith("vfx-")) return "2026 前沿视觉特效 (VFX)";
   if (MICRO_PHYSICS_IDS.has(id)) return "微观物理与前沿探索";

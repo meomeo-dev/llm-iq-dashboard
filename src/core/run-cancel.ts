@@ -7,7 +7,7 @@
  * 请求文件只写不删，兼作本轮被人停下的记录。
  */
 
-import { access } from "node:fs/promises";
+import { access, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { runDir } from "./paths";
 import { writeJsonPathAtomic } from "./store";
@@ -92,4 +92,9 @@ export function watchCancelAt(
 /** 执行方调用：开始定期检查这一轮有没有收到停止请求 */
 export function watchCancel(runId: string, intervalMs: number = CANCEL_CHECK_MS): CancelWatch {
   return watchCancelAt(join(runDir(runId), CANCEL_FILE), intervalMs);
+}
+
+/** 原地重跑曾经被取消的轮次前，清除上一次遗留的 cancel.json */
+export async function clearCancel(runId: string): Promise<void> {
+  await unlink(join(runDir(runId), CANCEL_FILE)).catch(() => undefined);
 }

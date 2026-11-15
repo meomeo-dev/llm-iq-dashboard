@@ -17,6 +17,8 @@ import { loadConfig, type AppConfig } from "../core/config";
 import { loadCostHistory } from "../core/cost-history";
 import { configPath, runDir } from "../core/paths";
 import { resolvePrompt } from "../core/prompt";
+import type { RunSelection } from "../core/run-selection";
+import { executeRunRetry, planRunRetry } from "../core/run/retry";
 import { executeRun, type ExecuteOptions } from "../core/runner";
 import { CLI_KINDS, EFFORT_LEVELS, type CliKind, type EffortLevel, type RunRecord } from "../core/types";
 import { usageAndCost } from "../pricing/attempt-cost";
@@ -49,6 +51,8 @@ const VALID_RUN_ONCE_FLAGS: readonly string[] = [
   "--candidates",
   "--target",
   "--targets",
+  "--retry",
+  "--include-no-svg",
   "--dry-run",
   "--yes",
   "-y",
@@ -67,6 +71,8 @@ export interface ParsedRunOnceArgs {
   promptIds?: string[];
   candidates?: string[];
   targetIds?: string[];
+  retryRunId?: string;
+  includeNoSvg?: boolean;
   dryRun: boolean;
   yes: boolean;
 }
@@ -77,6 +83,7 @@ export interface RunOnceCliDeps {
   loadCostHistory?: () => Promise<CostHistory>;
   findActiveWork?: () => Promise<ActiveWorkItem | null>;
   executeRun?: (config: AppConfig, options?: ExecuteOptions) => Promise<RunRecord>;
+  executeRunRetry?: (config: AppConfig, selection: RunSelection, options: ExecuteOptions) => Promise<RunRecord>;
   writeLine?: (line: string) => void;
   writeError?: (line: string) => void;
 }
@@ -146,6 +153,9 @@ function applyRunOnceValueFlag(
     case "--target":
       parsed.targetIds = normalizeMultiValueFlag(parsed.targetIds, value, rawFlag);
       break;
+    case "--retry":
+      parsed.retryRunId = value.trim();
+      break;
     default:
       throw new Error(formatCliError(rawFlag, VALID_RUN_ONCE_FLAGS, "pnpm run:once -- --help"));
   }
@@ -160,6 +170,10 @@ export function parseRunOnceArgs(argv: readonly string[]): ParsedRunOnceArgs {
     const token = tokens[i]!;
     if (token === "--dry-run") {
       parsed.dryRun = true;
+      continue;
+    }
+    if (token === "--include-no-svg") {
+      parsed.includeNoSvg = true;
       continue;
     }
     if (canonicalizeFlag(token) === "--yes") {
@@ -236,6 +250,8 @@ export function formatRunOnceHelp(): string {
     "  --candidate <id,...>    锁定套题候选（支持 <candidateId>、<promptId>:<candidateId> 或 <promptId>=<candidateId>）",
     "",
     "动作与全局选项:",
+    "  --retry <runId>         对指定轮次原地重跑失败项（error/timeout）或补跑未完成项，复用原轮题目与候选项",
+    "  --include-no-svg        搭配 --retry 使用，将 status=no-svg 的调用也纳入原地重跑",
     "  --dry-run               仅预演解析后的目标、题目与预计费用，不发起真实 CLI 调用",
     "  -y, --yes               兼容自动化脚本确认参数（run:once 默认免交互直接运行）",
     "  -c, --config <path>     覆盖配置文件路径（同 PELICAN_CONFIG）",
@@ -324,6 +340,39 @@ function printPreRunSummary(
   writeLine(`预计调用：${forecast.calls} 次，预计费用 ≈ ${usd(forecast.usd)}${unpricedNote}`);
 }
 
+async function runRetryFromCli(
+  args: ParsedRunOnceArgs,
+  rawConfig: AppConfig,
+  path: string,
+  deps: RunOnceCliDeps,
+  writeLine: (line: string) => void,
+  writeError: (line: string) => void,
+): Promise<void> {
+  const selection: RunSelection = {
+    retryRunId: args.retryRunId,
+    targetIds: args.targetIds ?? [],
+    promptIds: args.promptIds ?? [],
+    ...(args.includeNoSvg ? { includeNoSvg: true } : {}),
+  };
+  const planned = await planRunRetry(rawConfig, selection, { log: writeLine });
+  const history = await (deps.loadCostHistory ? deps.loadCostHistory() : loadCostHistory());
+  const retryTargetIds = planned.jobs.map((job) => job.target.id);
+  const forecast = forecastRound(retryTargetIds, 1, history.expected);
+  writeLine(`配置：${path}`);
+  writeLine(`原地重跑轮次：${planned.runId}（保留 ${planned.keptAttempts.length} 次已完成调用，待重跑 ${planned.jobs.length} 次调用）`);
+  writeLine(`待重跑项：${planned.jobs.map((job) => `${job.target.id}@${job.prompt.promptId}`).join(", ")}`);
+  writeLine(`预计调用：${planned.jobs.length} 次，预计费用 ≈ ${usd(forecast.usd)}`);
+  if (args.dryRun) {
+    writeLine("[dry-run] 仅预演原地重跑计划与预计费用，未发起模型调用。");
+    return;
+  }
+  const active = await (deps.findActiveWork ? deps.findActiveWork() : findActiveWork());
+  if (active !== null) throw new Error(describeActiveWorkConflict(active));
+  const retryExec = deps.executeRunRetry ?? executeRunRetry;
+  const record = await retryExec(rawConfig, selection, { trigger: "manual", log: writeLine });
+  await printPostRunSummary(record, writeLine, writeError);
+}
+
 export async function runPelicanOnceCli(
   argv: readonly string[] = process.argv.slice(2),
   deps: RunOnceCliDeps = {},
@@ -338,6 +387,10 @@ export async function runPelicanOnceCli(
   const args = parseRunOnceArgs(argv);
   const path = configPath();
   const rawConfig = await (deps.loadConfig ? deps.loadConfig() : loadConfig(path));
+  if (args.retryRunId) {
+    await runRetryFromCli(args, rawConfig, path, deps, writeLine, writeError);
+    return;
+  }
   const baseConfig = applyTargetIdFilter(rawConfig, args.targetIds);
   const catalog = await (deps.loadCapabilityCatalog ? deps.loadCapabilityCatalog() : readCachedCatalog());
 

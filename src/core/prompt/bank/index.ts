@@ -28,6 +28,7 @@ import {
   ANIMATED_PEACOCK_BICYCLE_PROMPT,
   ANIMATED_NAUTILUS_SPIRAL_PROMPT,
 } from "./benchmarks/2026-10";
+import { PROMPTS_2026_11_H1 } from "./benchmarks/2026-11-h1";
 import { CLOCK_PROMPT, ICE_WATER_PROMPT, PENROSE_PROMPT } from "./engineering/foundations";
 import {
   FOUR_STROKE_ENGINE_PROMPT,
@@ -72,6 +73,8 @@ import {
 export * from "./benchmarks/pelican";
 export * from "./benchmarks/2026-09";
 export * from "./benchmarks/2026-10";
+export * from "./benchmarks/2026-11-h1";
+export { BENCHMARK_2026_11_H1_IDS } from "./benchmarks/2026-11-h1/ids";
 export * from "./engineering/foundations";
 export * from "./engineering/single";
 export * from "./engineering/frontier-visual";
@@ -100,6 +103,7 @@ export const BUILTIN_PROMPTS: readonly PromptSpec[] = [
   ANIMATED_OCTOPUS_ORGAN_PROMPT,
   ANIMATED_PEACOCK_BICYCLE_PROMPT,
   ANIMATED_NAUTILUS_SPIRAL_PROMPT,
+  ...PROMPTS_2026_11_H1,
   SHUIHU_PROMPT,
   SHUIHU_ANIM_PROMPT,
   XIYOU_PROMPT,

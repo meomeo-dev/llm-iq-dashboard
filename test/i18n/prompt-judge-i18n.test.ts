@@ -19,7 +19,7 @@ const CJK_RE = /[\u4e00-\u9fff]/;
 
 describe("prompt and judge metadata i18n (M2-03)", () => {
   it("localizes all builtin prompts, candidates, and 140 frontier specs into English and Chinese without mutating templates", () => {
-    assert.equal(BUILTIN_PROMPTS.length, 31);
+    assert.equal(BUILTIN_PROMPTS.length, 51);
     let candidateCount = 0;
 
     for (const spec of BUILTIN_PROMPTS) {
@@ -152,6 +152,8 @@ describe("prompt and judge metadata i18n (M2-03)", () => {
     assert.equal(localizePromptGroupLabel("2026-09", "zh-CN"), "2026-09");
     assert.equal(localizePromptGroupLabel("2026-10", "en"), "2026-10");
     assert.equal(localizePromptGroupLabel("2026-10", "zh-CN"), "2026-10");
+    assert.equal(localizePromptGroupLabel("2026-11-h1", "en"), "2026-11-h1");
+    assert.equal(localizePromptGroupLabel("2026-11-h1", "zh-CN"), "2026-11-h1");
   });
 
   it("localizes G1-G5 gates, C1-C9 criteria, deterministic evidence/reasons, detail subjects, and verdict labels", () => {

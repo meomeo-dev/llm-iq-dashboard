@@ -34,6 +34,7 @@ const GROUP_LABELS_EN: Readonly<Record<string, string>> = {
   "物理与工程": "Physics & Engineering",
   "2026-09": "2026-09",
   "2026-10": "2026-10",
+  "2026-11-h1": "2026-11-h1",
   "自定义提示词": "Custom Prompts",
   "其他": "Other",
 };
