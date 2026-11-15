@@ -154,8 +154,8 @@
 - **Desktop（宽屏桌面）**：`@media (max-width: 1200px)` / `@media (min-width: 1201px)`
 
 ### 2.3 业务几何常量与导出配色契约保护（不可破坏边界）
-1. **11 个主看板业务几何常量保持不变**：原 `src/app/globals.css:25-41` 中的 `--badge-height`、`--card-header-height`、`--card-footer-height`、`--lane-label-width`、`--axis-height`、`--head-height`、`--cell-width`、`--cell-height`、`--tile-size`、`--folder-padding`、`--folder-gap` 与 [`track-layout.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/timeline/track-layout.ts#L8-L18)、[`timeline-svg.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/export/timeline-svg.ts#L40-L50)、[`timeline-portrait-svg.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/export/timeline-portrait-svg.ts#L31-L32)、[`result-set-svg.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/export/result-set-svg.ts#L70-L71) 存在跨语言像素镜像关系，继续保留在 `globals.css` 且**严禁改名或改值**。
-2. **`readPalette()` 11 个基础颜色变量契约**：[`export-image.ts:65-81`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/export/export-image.ts#L65-L81) 在运行时通过 `getComputedStyle(document.documentElement)` 读取 `--bg`、`--surface`、`--surface-hi`、`--border`、`--text`、`--text-dim`、`--text-faint`、`--accent`、`--ok`、`--warn`、`--err`，其在 `tokens.css` 中的变量名与色值保持 100% 兼容。
+1. **11 个主看板业务几何常量保持不变**：原 `src/app/globals.css:25-41` 中的 `--badge-height`、`--card-header-height`、`--card-footer-height`、`--lane-label-width`、`--axis-height`、`--head-height`、`--cell-width`、`--cell-height`、`--tile-size`、`--folder-padding`、`--folder-gap` 与 [`track-layout.ts`](../../../src/app/components/timeline/track-layout.ts#L8-L18)、[`timeline-svg.ts`](../../../src/app/components/export/timeline-svg.ts#L40-L50)、[`timeline-portrait-svg.ts`](../../../src/app/components/export/timeline-portrait-svg.ts#L31-L32)、[`result-set-svg.ts`](../../../src/app/components/export/result-set-svg.ts#L70-L71) 存在跨语言像素镜像关系，继续保留在 `globals.css` 且**严禁改名或改值**。
+2. **`readPalette()` 11 个基础颜色变量契约**：[`export-image.ts:65-81`](../../../src/app/components/export/export-image.ts#L65-L81) 在运行时通过 `getComputedStyle(document.documentElement)` 读取 `--bg`、`--surface`、`--surface-hi`、`--border`、`--text`、`--text-dim`、`--text-faint`、`--accent`、`--ok`、`--warn`、`--err`，其在 `tokens.css` 中的变量名与色值保持 100% 兼容。
 3. **主看板 `.folder` 同心圆角几何关系保护**：主看板 216×216 `.folder` 外圆角保持 `44px`（内槽 `.folder-slot` 保持 `18px`，内边距 `16px`，与 `timeline-svg.ts:301,315` 的 `rx="44"` / `rx="18"` 严格一致，定义为 `--folder-radius: 44px`、`--folder-slot-radius: 18px`），而 `--radius-xl: 24px` 专供 `.fp-folder` 使用。
 
 ---
@@ -273,7 +273,7 @@ flowchart TD
   1. **组件树解耦 + 渐进式 SSR-Safe Portal**：
      - 首先在组件树层面将 `RunOnceProfileModal` 移出带 `transform: translate(-50%, -50%)` 的 `.run-once-panel`（作为 `Menu` 内与 `.menu-panel` 并列的兄弟节点渲染），无需依赖 Portal 即可根治 `position: fixed` 包含块陷阱且天然兼容 `root.current.contains`；
      - `Modal` 提供 `portal?: boolean`（默认 `false` 原位渲染，100% 兼容本仓库 15 个使用 Node.js `renderToStaticMarkup` 的无 DOM 单元测试）；当显式设置 `portal={true}` 时，SSR 与 `renderToStaticMarkup` 阶段仍原位输出完整 DOM 树以保障静态快照测试断言，仅在客户端 `useEffect` 挂载后调用 `createPortal(..., document.body)`。
-  2. **全局浮层栈（`useOverlayStack`）与 `useMenuDismiss` 协同**：按下 `Escape` 键时仅触发栈顶浮层的 `onClose` 并停止传播；同时导出 `hasActiveOverlay()` 接入 [`use-menu-dismiss.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/menu/use-menu-dismiss.ts#L13-L20)，当存在活动浮层时父级 `Menu` 自动忽略外部 `pointerdown` 与 `Escape`，彻底淘汰业务代码中脆弱的 `choosingRef` 锁。
+  2. **全局浮层栈（`useOverlayStack`）与 `useMenuDismiss` 协同**：按下 `Escape` 键时仅触发栈顶浮层的 `onClose` 并停止传播；同时导出 `hasActiveOverlay()` 接入 [`use-menu-dismiss.ts`](../../../src/app/components/menu/use-menu-dismiss.ts#L13-L20)，当存在活动浮层时父级 `Menu` 自动忽略外部 `pointerdown` 与 `Escape`，彻底淘汰业务代码中脆弱的 `choosingRef` 锁。
   3. **统一无障碍与插槽**：统一接入 `role="dialog" aria-modal="true"`、`document.body` 滚动锁定、焦点恢复、`subHeader`（供 `ModelModal` 固定黄金标准抽屉）、`footer`（供确认弹窗底部按钮栏）与右上角标准 `32×32px` 关闭按钮。
 - **组件接口**：
   ```tsx
@@ -315,10 +315,10 @@ flowchart TD
 
 | 领域组件 | 当前问题与重复位置 | 重构动作 |
 | :--- | :--- | :--- |
-| **`StandardCriteriaPanel`** | [`ModelStandardPanel.tsx`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/model-modal/ModelStandardPanel.tsx) 与 [`ArtViewerFoot.tsx:64-100`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/view/ArtViewerFoot.tsx#L64-L100) 重复实现黄金标准 G1–G5 双栏详情；`model-modal-standard.css:113-132` 与 `viewer-drawers.css:107-126` 逐字复制了 20 行 `.standard-tag` CSS | 提取共享组件 `src/app/components/standard/StandardCriteriaPanel.tsx`，弹窗与 `/view` 页共用同一份组件与样式 |
-| **`JudgeStatusBadge`** | [`PelicanCard.tsx:143-163`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/card/PelicanCard.tsx#L143-L163)（`.judge-tag`）与 [`JudgeDrawer.tsx:33-45`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/view/JudgeDrawer.tsx#L33-L45)（`.judge-pill`）对同一 `CardJudgeView` 各写一套 | 基于 `StatusPill` 封装唯一的 `JudgeStatusBadge` |
+| **`StandardCriteriaPanel`** | [`ModelStandardPanel.tsx`](../../../src/app/components/model-modal/ModelStandardPanel.tsx) 与 [`ArtViewerFoot.tsx:64-100`](../../../src/app/view/ArtViewerFoot.tsx#L64-L100) 重复实现黄金标准 G1–G5 双栏详情；`model-modal-standard.css:113-132` 与 `viewer-drawers.css:107-126` 逐字复制了 20 行 `.standard-tag` CSS | 提取共享组件 `src/app/components/standard/StandardCriteriaPanel.tsx`，弹窗与 `/view` 页共用同一份组件与样式 |
+| **`JudgeStatusBadge`** | [`PelicanCard.tsx:143-163`](../../../src/app/components/card/PelicanCard.tsx#L143-L163)（`.judge-tag`）与 [`JudgeDrawer.tsx:33-45`](../../../src/app/view/JudgeDrawer.tsx#L33-L45)（`.judge-pill`）对同一 `CardJudgeView` 各写一套 | 基于 `StatusPill` 封装唯一的 `JudgeStatusBadge` |
 | **`ProfileName` & `ProfileInfoCard`** | `profile.css:42` 的 `.profile-card`（`position: fixed` 浮层）与 `config-profiles.css:37` 的 `.profile-card`（静态卡片）重名冲突；`ProfileNameProps.cards` 强耦合 `DashboardCard[]`；`fingerprint-check-store.ts` 100% 复制了 `run-selection-store.ts` 的 `readStoredProfiles` | 1. 将浮层外框改为 `.profile-popover-card`（保留内部 `.profile-card-gone` 兼容单测）；<br>2. 将 `cards` 改为可选 `cards?: readonly DashboardCard[]`（默认 `[]`）；<br>3. 将 Profile 选择持久化提取为共享的 `src/app/components/profile/profile-selection-store.ts` |
-| **`RunOnceHeadBar` & `run-once-profiles.ts`** | [`FingerprintCheckPanel.tsx:199-209`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/fingerprint/FingerprintCheckPanel.tsx#L199-L209) 仅因右列标题为「探针」而非「题目」复制了 11 行头部 JSX；`fingerprint-check-model.ts` 克隆了 `run-once-profiles.ts` 的 5 个纯函数 | 1. 为 `RunOnceHeadBar` 增加可选 `secondColumnTitle?: string`；<br>2. 从 `run-once-profiles.ts` 导出共享的 `supportsProfiles`、`shorten`、`profileChoices`、`startMode` |
+| **`RunOnceHeadBar` & `run-once-profiles.ts`** | [`FingerprintCheckPanel.tsx:199-209`](../../../src/app/fingerprint/FingerprintCheckPanel.tsx#L199-L209) 仅因右列标题为「探针」而非「题目」复制了 11 行头部 JSX；`fingerprint-check-model.ts` 克隆了 `run-once-profiles.ts` 的 5 个纯函数 | 1. 为 `RunOnceHeadBar` 增加可选 `secondColumnTitle?: string`；<br>2. 从 `run-once-profiles.ts` 导出共享的 `supportsProfiles`、`shorten`、`profileChoices`、`startMode` |
 | **`TimelineAxis` / `Calendar` / `useScrollAnchor`** | `FingerprintCheckTimeline.tsx` 100% 复制了 `RunGrid.tsx` 的 `useScrollAnchor` 和 `use-dashboard-time.ts` 的 `useNow`，并用 `new Array<DashboardCard>(n)` 构造稀疏数组欺骗 `Calendar` | 1. 为 `Moment` 增加可选 `totalCount?: number`（向后兼容 `cards.length`）；<br>2. 从 `src/app/components/timeline/` 导出共享的 `useScrollAnchor` 与 `useNowTick` |
 | **`Menu`（下拉菜单）** | `menu-rows.css` 与 `menu-panels.css` 硬编码了 `.zone-id`、`.export-panel`、`.filter-panel`、`.day-panel` 等首页业务选择器；且在 `641px–768px` 存在遮罩与面板断点不一致 | 1. `menu-base.css` 只保留纯下拉容器样式，业务面板样式迁回 `toolbar/`；<br>2. 遮罩与面板的移动端 Modal 切换断点统一对齐到 `640px` |
 
@@ -346,18 +346,18 @@ flowchart TD
    - 统一「发起渠道核验」与「基准样本矩阵」两个 Tab 的主面板容器圆角与标题字阶；
    - `FingerprintCheckTile.tsx:149` 的 `.status-legend-item` 修正为 `.legend-item`，清理未定义的 `.verdict-*` 类与 `.fp-form-grid` 死规则；
    - `FingerprintCheckTimeline.tsx:247,255` 补齐 `.row-pass-head` 与 `.row-pass-pct` 间距样式；
-   - 删除未消费的死状态与冗余 Props（同步更新 [`test/core/model-fingerprint/ui-model.test.ts:402,421-433`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/test/core/model-fingerprint/ui-model.test.ts#L402-L433)）。
+   - 删除未消费的死状态与冗余 Props（同步更新 [`test/core/model-fingerprint/ui-model.test.ts:402,421-433`](../../../test/core/model-fingerprint/ui-model.test.ts#L402-L433)）。
 
 ### 4.2 `/config`、`/view`、`/pair` 跨页缺陷同步修复
 1. **`/pair` 页面样式补齐与只读契约保持**：
    - 替换 `pair.css:9,28` 与 `config-actions.css:75` 中未定义的 `--line`、`--danger` 为 `var(--border)`、`var(--err)`；
    - 输入框与按钮接入 `.ui-input`、`ui/Button` 与 `ui/ButtonLink`，修复 `<a className="button">` 幽灵类，消除深色背景下的白底输入框与系统灰按钮；
-   - **保持只读展台模式下 `/pair` 调用 `notFound()` 返回 HTTP 404 不变**（严格遵守 [`scripts/showcase-smoke/assertions.ts:110`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/scripts/showcase-smoke/assertions.ts#L110) 的冒烟测试契约）。
+   - **保持只读展台模式下 `/pair` 调用 `notFound()` 返回 HTTP 404 不变**（严格遵守 [`scripts/showcase-smoke/assertions.ts:110`](../../../scripts/showcase-smoke/assertions.ts#L110) 的冒烟测试契约）。
 2. **`/config` 页面作用域收敛与布局对齐**：
    - 将 `config-base.css:51-122` 的顶层裸标签样式彻底迁移至 `.ui-label` / `.ui-input` / `.ui-select` / `.ui-textarea` / `.ui-btn` / `.ui-check-row` 类名下（**严禁写成 `.config button` 或 `.config label` 后代裸标签选择器**），并将 `config-actions.css` 的 `.actions` 重命名为 `.config-actions-bar`（消除对 `pair.css` `.actions` 的污染）；
    - 将 `config/page.tsx:98-99` 的 `<DataRepoPanel />` 与 `<DevicePanel />` 纳入 `.config`（`max-width: 1100px`）容器内，消除右侧 `228px` 错位；修正 `≤ 900px` 下 `ConfigSideNav` 压在 `PageHeader` 上方的 DOM 顺序；精简 `ConfigSectionShell.tsx` 中的 8 个零逻辑透传包装函数；
    - 重构 `ModelFingerprintSection.tsx`：新建 `src/app/config/config-fingerprint.css` 清零 18 处内联样式，消除 `samplesPerProbe` 与 `samplesByProbe` 的失效冲突，并保留 `#matrix`、`#profiles` 锚点及底部模型列表（兼容 `ui-model.test.ts:326-328`）；
-   - 清零主看板与配置页其余 6 处静态内联样式（[`page.tsx:60`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/page.tsx#L60)、[`RunStatus.tsx:181`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/run-status/RunStatus.tsx#L181)、[`TimeoutForm.tsx:137`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/config/TimeoutForm.tsx#L137)、[`ReferenceSourceDisplay.tsx:38,61,68`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/ReferenceSourceDisplay.tsx#L38-L68)）。
+   - 清零主看板与配置页其余 6 处静态内联样式（[`page.tsx:60`](../../../src/app/page.tsx#L60)、[`RunStatus.tsx:181`](../../../src/app/components/run-status/RunStatus.tsx#L181)、[`TimeoutForm.tsx:137`](../../../src/app/config/TimeoutForm.tsx#L137)、[`ReferenceSourceDisplay.tsx:38,61,68`](../../../src/app/components/ReferenceSourceDisplay.tsx#L38-L68)）。
 3. **`/view` 页面导航与抽屉高度修复**：
    - 顶栏接入 `PageHeader` 补齐返回看板 `/` 链接与 `.viewer-actions` 垂直居中；
    - 为 `.viewer-foot` 设置 `max-height: 55vh; overflow-y: auto`，防止展开底部 `JudgeDrawer` 时将上方画布 `.viewer-stage` 挤压至 `0px`。
@@ -373,17 +373,17 @@ flowchart TD
 - **React 组件组织规则**：严禁新建 `*-Sections.tsx` 或 `*-Shell.tsx` 堆放无关联组件；当组件行数接近阈值时，通过**抽离纯函数 `*-model.ts` + 调用 `src/app/components/ui/` 原语**保持组件精简。
 
 ### 4.4 客户端状态韧性、异步错误处理与只读边界修复
-1. **统一 `localStorage` 安全读写**：封装 `safeLocalStorageGet` / `safeLocalStorageSet`（内置 `try/catch`），修复 [`use-stored-time-zone.ts:16,20`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/toolbar/use-stored-time-zone.ts#L16-L20) 在无痕/禁用存储下抛 `DOMException` 崩溃的问题。
+1. **统一 `localStorage` 安全读写**：封装 `safeLocalStorageGet` / `safeLocalStorageSet`（内置 `try/catch`），修复 [`use-stored-time-zone.ts:16,20`](../../../src/app/components/toolbar/use-stored-time-zone.ts#L16-L20) 在无痕/禁用存储下抛 `DOMException` 崩溃的问题。
 2. **修复未绑定关闭回调与未捕获网络异常**：
-   - 在 [`DataRepoPanel.tsx:191`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/config/DataRepoPanel.tsx#L191) 绑定 `useDataRepoActions` 导出的 `dismissResult` 与 `dismissError`；
-   - 在 [`use-device-panel.ts:12-15`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/config/use-device-panel.ts#L12-L15) 为 `fetch("/api/session")` 补齐 `!res.ok` 与 `.catch()` 处理，防止异常时 `loading` 永久卡死在 `true`。
+   - 在 [`DataRepoPanel.tsx:191`](../../../src/app/config/DataRepoPanel.tsx#L191) 绑定 `useDataRepoActions` 导出的 `dismissResult` 与 `dismissError`；
+   - 在 [`use-device-panel.ts:12-15`](../../../src/app/config/use-device-panel.ts#L12-L15) 为 `fetch("/api/session")` 补齐 `!res.ok` 与 `.catch()` 处理，防止异常时 `loading` 永久卡死在 `true`。
 3. **补齐本地只读模式守卫与防连点锁**：
-   - 将 [`ToolbarCenter.tsx:47`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/toolbar/ToolbarCenter.tsx#L47) 的 `!remote` 改为 `!remote && !readonly`，防止本地只读模式（`PELICAN_READONLY=1`）渲染 `AutoRunToggle` 并建立无意义的 `/api/events` SSE 连接；
-   - 修复 [`use-run-once-state.ts:130-136`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/app/components/run-control/use-run-once-state.ts#L130-L136) 在发起成功后 `500ms` 延迟关闭面板期间提前将 `busy` 置为 `false` 导致的连点重复触发漏洞。
+   - 将 [`ToolbarCenter.tsx:47`](../../../src/app/components/toolbar/ToolbarCenter.tsx#L47) 的 `!remote` 改为 `!remote && !readonly`，防止本地只读模式（`PELICAN_READONLY=1`）渲染 `AutoRunToggle` 并建立无意义的 `/api/events` SSE 连接；
+   - 修复 [`use-run-once-state.ts:130-136`](../../../src/app/components/run-control/use-run-once-state.ts#L130-L136) 在发起成功后 `500ms` 延迟关闭面板期间提前将 `busy` 置为 `false` 导致的连点重复触发漏洞。
 
 ### 4.5 `docs/ui/` 设计文档同步收口
-- 基于正式落地的 `src/app/tokens.css` 与 `src/app/components/ui/` 生成 [`docs/ui/dashboard/design-system.md`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/README.md)，在已废弃的 [`dial-design-brief.md`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/dashboard/dial-design-brief.md) 顶部标注 `Status: Superseded`；
-- 全面更新 [`docs/ui/UX_STATE_MAP.md`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/UX_STATE_MAP.md)（对齐 `640px/900px/1200px` 断点、补齐 `/fingerprint` 路由与 6 个浮层状态、修正 `scripts/diagnostics/ux_state_crawler.py` 路径），并清理 [`docs/ui/ux_coverage_report.json`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/ux_coverage_report.json) 中的本机私有路径。
+- 基于正式落地的 `src/app/tokens.css` 与 `src/app/components/ui/` 生成 [`docs/ui/dashboard/design-system.md`](../../ui/README.md)，在已废弃的 [`dial-design-brief.md`](../../ui/dashboard/dial-design-brief.md) 顶部标注 `Status: Superseded`；
+- 全面更新 [`docs/ui/UX_STATE_MAP.md`](../../ui/UX_STATE_MAP.md)（对齐 `640px/900px/1200px` 断点、补齐 `/fingerprint` 路由与 6 个浮层状态、修正 `scripts/diagnostics/ux_state_crawler.py` 路径），并清理 [`docs/ui/ux_coverage_report.json`](../../ui/ux_coverage_report.json) 中的本机私有路径。
 
 ---
 

@@ -31,7 +31,7 @@
 | `docs/ui/README.md` | 仅 9 行的索引表 | 全表仅登记了 1 行（指向 `dashboard/dial-design-brief.md`），主看板时间线、模态窗、配置中心 `/config`、作品查看器 `/view`、设备配对 `/pair`、模型指纹 `/fingerprint` 的设计 Brief 全部空白。 |
 | `docs/ui/dashboard/dial-design-brief.md` | 已废弃的“24 小时圆形表盘（玫瑰图）”局部草案 | 1. **方案未采用**：文档第 4 行自述“表盘方案未采用，首页现为时间线布局”。<br>2. **Token 表严重漂移**：第 80-87 行记录的色值与 `src/app/globals.css:4-11` 现行值全部对不上：<br>　- `--bg`：文档写 `#0f1115` vs 代码 `#0b0f17`<br>　- `--surface`：文档写 `#171a21` vs 代码 `#10161f`<br>　- `--surface-hi`：文档写 `#1e222b` vs 代码 `#182030`<br>　- `--border`：文档写 `#2a2f3a` vs 代码 `#232d3d`<br>　- `--accent`：文档写 `#6ea8fe` vs 代码 `#4f8df7` |
 | `docs/ui/UX_STATE_MAP.md` | 页面路由与浮层防溢出状态矩阵 | 仅关注路由流转与移动端视口不横向溢出，**无任何色彩、字阶、间距、圆角、组件样式契约**，且多处断言与真实 CSS 直接冲突（详下表）。 |
-| `docs/ui/ux_coverage_report.json` | 2026-09-26 跑出的视口宽度检测快照 | 1. 第 269-273 行 `STATE_PAIR_PAGE` 在 `mobile_iphone16` 下状态为 `"FAIL"`（`error_feedback_visible=False`）。<br>2. 所有截图路径均指向开发者本机私有缓存目录 `/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-...`，仓库内不可复现。 |
+| `docs/ui/ux_coverage_report.json` | 2026-09-26 跑出的视口宽度检测快照 | 1. 第 269-273 行 `STATE_PAIR_PAGE` 在 `mobile_iphone16` 下状态为 `"FAIL"`（`error_feedback_visible=False`）。<br>2. 所有截图路径均指向开发者本机私有缓存目录 `~/.gemini/antigravity-cli/brain/0d231da9-...`，仓库内不可复现。 |
 
 #### `docs/ui/UX_STATE_MAP.md` 与真实 CSS 代码的 5 处直接背离
 

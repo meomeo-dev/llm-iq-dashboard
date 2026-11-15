@@ -1,7 +1,7 @@
 # CLI 方案审查报告 01：命令拓扑、参数正交性与业界 CLI 规范（clig.dev / POSIX / gh）
 
-> **审查对象**：[`docs/review/cli/CLI_UX_UNIFICATION_PLAN.md`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/docs/review/cli/CLI_UX_UNIFICATION_PLAN.md)
-> **关联代码**：[`package.json`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/package.json)、[`src/bin/model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts)、[`src/bin/run-once.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/run-once.ts)、[`src/bin/sync-data.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/sync-data.ts)、[`src/bin/pair.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/pair.ts)、[`scripts/judge-backfill.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/scripts/judge-backfill.ts)、[`src/core/run-selection.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/core/run-selection.ts)
+> **审查对象**：[`docs/review/cli/CLI_UX_UNIFICATION_PLAN.md`](./CLI_UX_UNIFICATION_PLAN.md)
+> **关联代码**：[`package.json`](../../../package.json)、[`src/bin/model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts)、[`src/bin/run-once.ts`](../../../src/bin/run-once.ts)、[`src/bin/sync-data.ts`](../../../src/bin/sync-data.ts)、[`src/bin/pair.ts`](../../../src/bin/pair.ts)、[`scripts/judge-backfill.ts`](../../../scripts/judge-backfill.ts)、[`src/core/run-selection.ts`](../../../src/core/run-selection.ts)
 > **参考标准**：[Command Line Interface Guidelines (clig.dev)](https://clig.dev/)、POSIX.1-2017 Utility Conventions (Guideline 1–14)、GitHub CLI (`gh`) / Heroku Oclif / Stripe CLI 规范、Node.js 22 `node:util` `parseArgs` 规范、pnpm 10/11 `@pnpm/parse-cli-args` 源码机制。
 
 ---
@@ -19,9 +19,9 @@
 | 编号 | 发现问题 | 规范依据（clig.dev / gh / oclif） | 修订建议 |
 | :--- | :--- | :--- | :--- |
 | **H-1** | **顶层子命令词性混杂（动词 vs 名词）**：<br>`run`、`judge`、`sync`、`preflight`、`onboard` 是**动词**；`fingerprint` 是带二级动词的**资源名词**；但 `pricing` 与 `prompts` 是**纯名词**却无二级动词，直接隐式执行 `pricing:sync` 与 `validate:prompts`。用户看到 `pelican prompts` 无法直觉判断是“列出题目”还是“校验题目”。 | `clig.dev` *Subcommands*：同层级命令应保持可预测的动词/名词语义，避免歧义。 | 1. 将 `pricing` 与 `prompts` 支持显式二级动词（默认兼容省略）：<br>   - `pelican pricing [sync]`（同时兼容 `pelican pricing:sync`）<br>   - `pelican prompts [validate\|check]`（同时兼容 `pelican validate:prompts`）<br>2. 在 `pelican` 主分发器中**原样兼容所有既有 `package.json` 冒号脚本名**（如 `pnpm pelican run:once`、`pnpm pelican sync:data`、`pnpm pelican judge:backfill`、`pnpm pelican fingerprint:check`），消除用户记忆切换成本。 |
-| **H-2** | **`pair` 命令使用开关切换动作（`--list` / `--revoke` / `--revoke-all`）**：<br>[`src/bin/pair.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/pair.ts#L12-L25) 采用 POSIX 早期 `gpg` 风格的动作型 flag，且与 `fingerprint <subcmd>` 的子命令心智不一致。 | `clig.dev` *Subcommands* & `gh auth`：对同一资源的查询与写操作（`open` / `list` / `revoke`）优先使用子命令而非互斥动作开关。 | 在保留 `pnpm pair --list` / `--revoke <id>` / `--revoke-all` 100% 向后兼容的前提下，同时支持子命令形式：`pnpm [pelican] pair [open \| list \| revoke <id> \| revoke-all]`。 |
-| **H-3** | **缺失无参引导与 `help [subcmd]` 子命令**：<br>当前 [`parseFingerprintCliArgs`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts#L112-L117) 在用户裸敲 `pnpm fingerprint` 时直接报错 `未知或缺失子命令：` 并以 Exit Code `1` 退出；§3.1 亦未定义 `pnpm pelican`（无参）与 `pnpm pelican help <cmd>` 的行为。 | `clig.dev` *Help*：<br>1. 需要子命令的程序在无参调用时应打印简明帮助；<br>2. 类 `git` 多子命令工具必须同时支持 `myapp help <subcmd>`、`myapp <subcmd> --help`、`-h`。 | 1. 裸敲 `pnpm pelican` 或 `pnpm fingerprint`（无任何参数）时，输出简明命令树与常用示例（退出码 `0`）；<br>2. 支持 `pnpm pelican help [cmd]` 与 `pnpm fingerprint help [subcmd]`，等价于对应命令的 `--help`。 |
-| **H-4** | **`src/bin/model-fingerprint.ts` 已触及 500 行门禁上限**：<br>[`src/bin/model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts) 当前已达 **501 行**，而 [`config/code-length-policy.yaml`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/config/code-length-policy.yaml#L4-L11) 强制要求 `.ts` 文件 ≤ 500 行、函数 ≤ 50 行。直接在原文件追加 `--help`、`--effort` 将触发 `pnpm check:length` 失败。 | 仓库质量门禁 [`config/code-length-policy.yaml`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/config/code-length-policy.yaml) | 方案 §4 必须明确模块拆分计划：将共享解析器抽至 `src/bin/cli-args.ts`，并将模型指纹 CLI 的参数解析/帮助文案拆至 `src/bin/model-fingerprint-args.ts`（或按子命令拆分子模块），确保所有 `.ts` 文件严格 ≤ 500 行、函数 ≤ 50 行。 |
+| **H-2** | **`pair` 命令使用开关切换动作（`--list` / `--revoke` / `--revoke-all`）**：<br>[`src/bin/pair.ts`](../../../src/bin/pair.ts#L12-L25) 采用 POSIX 早期 `gpg` 风格的动作型 flag，且与 `fingerprint <subcmd>` 的子命令心智不一致。 | `clig.dev` *Subcommands* & `gh auth`：对同一资源的查询与写操作（`open` / `list` / `revoke`）优先使用子命令而非互斥动作开关。 | 在保留 `pnpm pair --list` / `--revoke <id>` / `--revoke-all` 100% 向后兼容的前提下，同时支持子命令形式：`pnpm [pelican] pair [open \| list \| revoke <id> \| revoke-all]`。 |
+| **H-3** | **缺失无参引导与 `help [subcmd]` 子命令**：<br>当前 [`parseFingerprintCliArgs`](../../../src/bin/model-fingerprint.ts#L112-L117) 在用户裸敲 `pnpm fingerprint` 时直接报错 `未知或缺失子命令：` 并以 Exit Code `1` 退出；§3.1 亦未定义 `pnpm pelican`（无参）与 `pnpm pelican help <cmd>` 的行为。 | `clig.dev` *Help*：<br>1. 需要子命令的程序在无参调用时应打印简明帮助；<br>2. 类 `git` 多子命令工具必须同时支持 `myapp help <subcmd>`、`myapp <subcmd> --help`、`-h`。 | 1. 裸敲 `pnpm pelican` 或 `pnpm fingerprint`（无任何参数）时，输出简明命令树与常用示例（退出码 `0`）；<br>2. 支持 `pnpm pelican help [cmd]` 与 `pnpm fingerprint help [subcmd]`，等价于对应命令的 `--help`。 |
+| **H-4** | **`src/bin/model-fingerprint.ts` 已触及 500 行门禁上限**：<br>[`src/bin/model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts) 当前已达 **501 行**，而 [`config/code-length-policy.yaml`](../../../config/code-length-policy.yaml#L4-L11) 强制要求 `.ts` 文件 ≤ 500 行、函数 ≤ 50 行。直接在原文件追加 `--help`、`--effort` 将触发 `pnpm check:length` 失败。 | 仓库质量门禁 [`config/code-length-policy.yaml`](../../../config/code-length-policy.yaml) | 方案 §4 必须明确模块拆分计划：将共享解析器抽至 `src/bin/cli-args.ts`，并将模型指纹 CLI 的参数解析/帮助文案拆至 `src/bin/model-fingerprint-args.ts`（或按子命令拆分子模块），确保所有 `.ts` 文件严格 ≤ 500 行、函数 ≤ 50 行。 |
 
 ---
 
@@ -63,7 +63,7 @@
      → `process.argv.slice(2)` 为 `["run", "--", "--cli", "agy", "--help"]`（`"--"` 在 **`argv[1]`**）
   4. `pnpm pelican fp check -- --cli agy --help`
      → `process.argv.slice(2)` 为 `["fp", "check", "--", "--cli", "agy", "--help"]`（`"--"` 在 **`argv[2]`**）
-- **防坑要求**：方案 §4.1 的 `stripPnpmSeparator(argv)` **绝对不能只剥离 `argv[0] === "--"`**，必须对整个 `argv` 过滤掉 `"--"`（`argv.filter((arg) => arg !== "--")`，与现有 [`src/bin/model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts#L113) 及 [`scripts/issue-lib.mjs`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/scripts/issue-lib.mjs#L192) 保持一致），并在帮助文档中统一展示免 `--` 的现代简写（如 `pnpm pelican run --cli agy`、`pnpm fingerprint check --cli agy`），同时底层 100% 兼容带 `--` 的调用。
+- **防坑要求**：方案 §4.1 的 `stripPnpmSeparator(argv)` **绝对不能只剥离 `argv[0] === "--"`**，必须对整个 `argv` 过滤掉 `"--"`（`argv.filter((arg) => arg !== "--")`，与现有 [`src/bin/model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts#L113) 及 [`scripts/issue-lib.mjs`](../../../scripts/issue-lib.mjs#L192) 保持一致），并在帮助文档中统一展示免 `--` 的现代简写（如 `pnpm pelican run --cli agy`、`pnpm fingerprint check --cli agy`），同时底层 100% 兼容带 `--` 的调用。
 
 ---
 
@@ -77,16 +77,16 @@
    - 方案 §3.2 中，`--cli`、`--model`、`--effort`、`--profile`、`--prompt`、`--run` 均以**单数**作为主参数名；唯独探针选择以**复数** `--probes` 作为主参数名（`--probe` 为别名）。
    - 同时，`--model`、`--effort`、`--profile`、`--run`、`--candidate` 未提供复数别名（当用户输入 `--models a,b` 或 `--runs id1,id2` 时会报错）。
 2. **多值传参方式不统一**：
-   - [`src/bin/model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts#L176-L186) 的 `--probes`、`--exclude`、`--include` 仅支持逗号分隔 `a,b`，若用户按 POSIX / `gh` 习惯重复传参 `--probe uuid --probe seed`，后者会直接覆盖前者！
-   - 反之，[`src/bin/sync-data.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/sync-data.ts#L66-L70) 的 `--run` 仅支持重复传参 `--run id1 --run id2`，不支持逗号分隔 `--run id1,id2`！
+   - [`src/bin/model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts#L176-L186) 的 `--probes`、`--exclude`、`--include` 仅支持逗号分隔 `a,b`，若用户按 POSIX / `gh` 习惯重复传参 `--probe uuid --probe seed`，后者会直接覆盖前者！
+   - 反之，[`src/bin/sync-data.ts`](../../../src/bin/sync-data.ts#L66-L70) 的 `--run` 仅支持重复传参 `--run id1 --run id2`，不支持逗号分隔 `--run id1,id2`！
 3. **短参数 `-d` 严重污染与误触风险（高危）**：
    - 方案 §3.2 将 `-d <path>` 作为 `--data-dir <path>` 的全局短参数。
    - 对照 `clig.dev` 标准短参数表：`-d` 在业界通用代表 `--debug`；而在本项目中，用户极易将 `-d` 误认为 `--dry-run` 或 `--declared`！
    - 一旦用户输入 `pnpm pelican run -d --cli agy`（本意为 `--dry-run`），或 `pnpm fingerprint check -d gemini-3.8-flash`（本意为 `--declared`），`-d` 会把 `--cli` 或模型名静默设为 `PELICAN_DATA_DIR` 环境变量并继续真机执行！
 4. **文件参数与过滤参数在子命令间不对称**：
-   - `fingerprint export` 与 `fingerprint import`：[`model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts#L156-L190) 中 `import` 支持位置参数 `<bundlePath>` 或 `--file` / `--out`，而 `export` 只支持 `--out` / `--file`、不支持位置参数 `[bundlePath]` 也不支持 `clig.dev` 标准 `-o, --output <path>`。
-   - `run` 缺少 `--target <targetId,...>`：Web 端 [`RunSelection`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/core/run-selection.ts#L21-L30) 以 `targetIds` 为核心，CLI 端除支持四元组 `--cli` / `--model` / `--effort` / `--profile` 外，也应支持直接按 `--target` / `--targets` 指定目标 ID。
-   - `judge`（[`scripts/judge-backfill.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/scripts/judge-backfill.ts)）僅有 `--only <text>` 子串匹配，缺少与 `sync` / `run` 对齐的 `--run <runId>` 及 `--cli` / `--model` / `--effort` / `--prompt` 精确筛选。
+   - `fingerprint export` 与 `fingerprint import`：[`model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts#L156-L190) 中 `import` 支持位置参数 `<bundlePath>` 或 `--file` / `--out`，而 `export` 只支持 `--out` / `--file`、不支持位置参数 `[bundlePath]` 也不支持 `clig.dev` 标准 `-o, --output <path>`。
+   - `run` 缺少 `--target <targetId,...>`：Web 端 [`RunSelection`](../../../src/core/run-selection.ts#L21-L30) 以 `targetIds` 为核心，CLI 端除支持四元组 `--cli` / `--model` / `--effort` / `--profile` 外，也应支持直接按 `--target` / `--targets` 指定目标 ID。
+   - `judge`（[`scripts/judge-backfill.ts`](../../../scripts/judge-backfill.ts)）僅有 `--only <text>` 子串匹配，缺少与 `sync` / `run` 对齐的 `--run <runId>` 及 `--cli` / `--model` / `--effort` / `--prompt` 精确筛选。
 
 ### 2.2 正交参数词典修订规范（Recommended Orthogonal Specification）
 
@@ -106,7 +106,7 @@
 | **轮次 ID** | `--run` | `--runs` | `--run r1,r2` / `--run r1 --run r2` |
 | **样本排除/包含** | `--exclude` / `--include` | — | `--exclude req1,req2` / `--exclude req1 --exclude req2` |
 
-> **向后兼容注意**：[`test/core/model-fingerprint/collect-and-cli.test.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/test/core/model-fingerprint/collect-and-cli.test.ts#L336) 断言了 `--reset` 的报错文本 `/--reset 必须同时显式指定 --cli <cli>、--model <model> 与 --probes <probe,\.\.\.>/`。因此解析层应同时接受 `--probe` 与 `--probes`，且该条特定校验错误文案需保留 `--probes <probe,...>` 字样以确保既有测试 100% 通过。
+> **向后兼容注意**：[`test/core/model-fingerprint/collect-and-cli.test.ts`](../../../test/core/model-fingerprint/collect-and-cli.test.ts#L336) 断言了 `--reset` 的报错文本 `/--reset 必须同时显式指定 --cli <cli>、--model <model> 与 --probes <probe,\.\.\.>/`。因此解析层应同时接受 `--probe` 与 `--probes`，且该条特定校验错误文案需保留 `--probes <probe,...>` 字样以确保既有测试 100% 通过。
 
 #### 规则 2：语义角色别名冲突校验与位置参数对称化
 1. **`--model` vs `--declared`**：当用户同时传入 `--model` 与 `--declared` 且值不一致时，必须显式报错 `不能同时指定不一致的 --model 与 --declared`，不可静默覆盖。
@@ -137,7 +137,7 @@
 | :--- | :--- | :--- | :--- |
 | **P-1** | `["--", "--cli", "agy", "--dry-run"]`<br>（由 `pnpm run:once -- --cli agy --dry-run` 产生） | 将 `"--"` 视为 POSIX 选项终止符，后续全部落入 `positionals: ["--cli", "agy", "--dry-run"]`，`values.dryRun` 为 `undefined`！ | 若命令允许位置参数（如 `rescore`、`import`、`onboard` 或带子命令的入口），`--dry-run` 与 `--help` 会被静默吞进 `positionals`！ |
 | **P-2** | `["--cli", "--help"]` 或 `["--cli", "-h"]` 或 `["--bad-flag", "--help"]` | 抛出 `ERR_PARSE_ARGS_INVALID_OPTION_VALUE: Option '--cli' argument is ambiguous` 或 `ERR_PARSE_ARGS_UNKNOWN_OPTION`，**拒绝打印帮助**（Exit Code `1`）。 | 违反 `clig.dev` 铁律（*"you should be able to add `-h` to the end of anything and it should show help"*）及方案 §2.3 目标。 |
-| **P-3** | `["--count", "-1"]` | 抛出英文异常 `ERR_PARSE_ARGS_INVALID_OPTION_VALUE: Option '--count' argument is ambiguous`（将 `-1` 误判为短选项 `-1`）。 | 原有 [`model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts#L178-L180) 能识别 `-1` 并抛出清晰的中文领域错误 `--count 必须为非负整数，收到：-1`。 |
+| **P-3** | `["--count", "-1"]` | 抛出英文异常 `ERR_PARSE_ARGS_INVALID_OPTION_VALUE: Option '--count' argument is ambiguous`（将 `-1` 误判为短选项 `-1`）。 | 原有 [`model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts#L178-L180) 能识别 `-1` 并抛出清晰的中文领域错误 `--count 必须为非负整数，收到：-1`。 |
 | **P-4** | `["--cli="]` 或 `["--model", "   "]` | `parseArgs` 正常通过并返回 `values.cli = ""` 或 `"   "`。 | 必须配合后置 `requireNonEmptyTrimmed` 拦截空字符串。 |
 | **P-5** | 长参数别名（`--probe` / `--probes`）与中文报错契约 | 1. `options` 不支持多长名指向同一属性；<br>2. 未知选项抛英文 `Unknown option '--foo'`。 | 仓库全套 CLI 与单测均约定中文错误消息（如 `未知选项：--foo`、`参数 --cli 缺少取值`）。 |
 
@@ -183,7 +183,7 @@ export interface CliFlagSpec {
   3. 帮助文档示例统一采用不带 `--` 的简洁写法（如 `pnpm pelican run --cli agy`、`pnpm fingerprint check --cli agy`）。
 - [ ] **[MF-4] 统一多值参数的单复数双通与「逗号 + 重复传参」三合一归一化**：在方案 §3.2 与 §4.1 中，将 `--probe` / `--probes`、`--prompt` / `--prompts`、`--model` / `--models` / `--declared`、`--effort` / `--efforts`、`--profile` / `--profiles`、`--target` / `--targets`、`--run` / `--runs`、`--candidate` / `--candidates` 全部设为单复数互通，且统一支持 `--probe a,b` 与 `--probe a --probe b` 混用去重（同时保留 `--reset` 报错文案中的 `--probes <probe,...>` 以兼容既有测试）。
 - [ ] **[MF-5] 规避 `node:util` `parseArgs` 的 5 个严格模式陷阱**：在方案 §4.1 中明确 `--help` / `-h` 必须在参数值消费前以最高优先级短路返回（确保 `pnpm pelican run --cli --help` 也能正常展示帮助而非报 `missing value`），并正确处理 `--count -1` 与 `--flag=` 空串校验。
-- [ ] **[MF-6] 制定满足 `config/code-length-policy.yaml`（≤500 行/文件、≤50 行/函数）的模块拆分方案**：[`src/bin/model-fingerprint.ts`](file:///Users/luojin/git/git-my-code/llm_iq_dashboard/src/bin/model-fingerprint.ts) 已达 501 行，方案 §4 必须明确将其拆分为 `src/bin/cli-args.ts`（通用解析与帮助渲染）+ `src/bin/model-fingerprint-args.ts`（指纹参数与帮助定义）+ `src/bin/model-fingerprint.ts`（命令执行编排）。
+- [ ] **[MF-6] 制定满足 `config/code-length-policy.yaml`（≤500 行/文件、≤50 行/函数）的模块拆分方案**：[`src/bin/model-fingerprint.ts`](../../../src/bin/model-fingerprint.ts) 已达 501 行，方案 §4 必须明确将其拆分为 `src/bin/cli-args.ts`（通用解析与帮助渲染）+ `src/bin/model-fingerprint-args.ts`（指纹参数与帮助定义）+ `src/bin/model-fingerprint.ts`（命令执行编排）。
 
 ### Should-Fix（体验与一致性增强建议）
 

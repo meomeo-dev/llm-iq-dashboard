@@ -8,80 +8,99 @@
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Microsoft Corporation.
 
 ### npm:@types/react
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Microsoft Corporation.
 
 ### npm:@types/react-dom
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Microsoft Corporation.
 
 ### npm:better-sse
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) 2025 Matthew W.
 
 ### npm:chokidar
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) 2012 Paul Miller, Elan Shanker
 
 ### npm:croner
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) 2015-2021 Hexagon
 
 ### npm:jsdom
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) 2010 Elijah Insua
+
+### npm:lefthook
+
+- 许可证：MIT
+- 使用位置：package.json
+- 原始声明：Copyright (c) 2019 Evil Martians
+
+### npm:modern-gif
+
+- 许可证：MIT
+- 使用位置：package.json
+- 原始声明：Copyright (c) SukkaW
 
 ### npm:next
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) 2025 Vercel, Inc.
+
+### npm:playwright-core
+
+- 许可证：Apache-2.0
+- 使用位置：package.json
+- Apache-2.0：若来源分发了 NOTICE 文件，须随本项目一并提供其内容。
+- 原始声明：Copyright (c) Microsoft Corporation.
 
 ### npm:react
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Meta Platforms, Inc. and affiliates.
 
 ### npm:react-dom
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Meta Platforms, Inc. and affiliates.
 
 ### npm:tsx
 
 - 许可证：MIT
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Hiroki Osame
 
 ### npm:typescript
 
 - 许可证：Apache-2.0
 - 使用位置：package.json
 - Apache-2.0：若来源分发了 NOTICE 文件，须随本项目一并提供其内容。
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright (c) Microsoft Corporation.
 
 ### npm:yaml
 
 - 许可证：ISC
 - 使用位置：package.json
-- 原始声明：未在引入台账中记录，请从来源补全版权与许可声明全文。
+- 原始声明：Copyright Eemeli Aro
 
 <!-- ip-compliance:end -->
 
@@ -96,7 +115,10 @@
 | better-sse | 0.16.1 | MIT | Copyright (c) 2025 Matthew W. |
 | chokidar | 5.0.0 | MIT | Copyright (c) 2012 Paul Miller, Elan Shanker |
 | croner | 9.1.0 | MIT | Copyright (c) 2015-2021 Hexagon |
+| modern-gif | 2.1.0 | MIT | Copyright (c) SukkaW |
+| playwright-core | 1.63.0 | Apache-2.0 | Copyright (c) Microsoft Corporation. |
 | yaml | 2.9.1 | ISC | Copyright Eemeli Aro |
+| lefthook | 2.1.16 | MIT | Copyright (c) 2019 Evil Martians |
 | tsx | 4.23.15 | MIT | Copyright (c) Hiroki Osame |
 | typescript | 5.9.3 | Apache-2.0 | Copyright (c) Microsoft Corporation. |
 | jsdom | 29.1.1 | MIT | Copyright (c) 2010 Elijah Insua |

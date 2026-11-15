@@ -5,6 +5,8 @@
 
 ## [未发布]
 
+## [0.9.0] - 2026-11-15
+
 ### 新增
 
 - 新增 `2026-11-h1` 动态评测题组（20 道纯内联动态 SVG 单题：`animated-pendulum-wave-reunion-v1`
@@ -243,7 +245,8 @@
 - 成本：从 CLI 转录解析用量，按公开价格目录折算 API 等价成本；支持每轮与每日预算上限。
 - Docker 部署：单容器运行看板与调度器，三家 CLI 在容器首次启动时安装到独立卷，登录态持久化。
 
-[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.8.0...HEAD
+[未发布]: https://github.com/meomeo-dev/llm-iq-dashboard/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.9.0
 [0.8.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.8.0
 [0.7.0]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.7.0
 [0.6.2]: https://github.com/meomeo-dev/llm-iq-dashboard/releases/tag/v0.6.2

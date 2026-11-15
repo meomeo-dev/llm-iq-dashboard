@@ -6,8 +6,8 @@ from playwright.sync_api import sync_playwright
 
 BASE_URL = "http://127.0.0.1:3001"
 COOKIE_VALUE = os.environ["PELICAN_REVIEW_COOKIE"]
-ARTIFACT_DIR = "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee"
-REPORT_PATH = "/Users/luojin/git/git-my-code/llm_iq_dashboard/docs/ui/ux_coverage_report.json"
+ARTIFACT_DIR = os.environ.get("PELICAN_ARTIFACT_DIR", "/tmp/pelican-diagnostics")
+REPORT_PATH = "docs/ui/ux_coverage_report.json"
 
 VIEWPORTS = [
     {"id": "mobile_iphone16", "name": "iPhone 16 / 15", "width": 393, "height": 852, "dpr": 3, "mobile": True, "touch": True},

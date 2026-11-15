@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档记录当前项目演进过程中的**动态工作记忆**（上下文背景、已落地的核心变更、关键架构决策、踩坑教训、当前运行状态及下一步待办路线）。  
 > 静态架构与编码规范请参考 [`AGENTS.md`](./AGENTS.md)。每次新会话开始时，请优先通读本文档以快速恢复现场工作记忆。  
-> **更新日期**：2026-11-14
+> **更新日期**：2026-11-15（版本 `v0.9.0`）
 
 ---
 
@@ -15,7 +15,7 @@
   - **公开数据仓（[`meomeo-dev/llm-iq-data`](https://github.com/meomeo-dev/llm-iq-data)，本地 `../llm-iq-data`）**：仅存放脱敏后的评测成果（`run.json`、`*.svg`、`index.json`）。
 - **核心铁律 / 防御红线**：
   1. **代码与数据严格分离**：`data/`（含 `data/runs/` 与 `data/model-fingerprint/`）严禁入库；`data/model-fingerprint/` 绝不同步至公开数据仓。
-  2. **配额与发布红线**：`pnpm run:once`、`pnpm pelican run --retry <runId>`（不带 `--dry-run`）、`pnpm fingerprint fill/check`（不带 `--dry-run`）与 `--ai-only` 评审会真实调用 CLI 消耗配额；向数据仓 `--push`（主仓请先区分 `local-git-my-code` 与公开 `origin`）须经人工确认。
+  2. **配额与发布红线**：`pnpm run:once`、`pnpm pelican run --retry <runId>`（不带 `--dry-run`）、`pnpm fingerprint fill/check`（不带 `--dry-run`）与 `--ai-only` 评审会真实调用 CLI 消耗配额；向数据仓 `--push` 或向公开远端推送须经人工确认。
   3. **代码长度与 UI 卫生红线**：严格执行 [`config/code-length-policy.yaml`](./config/code-length-policy.yaml)（TS 模块 $\le 500$ 行、TSX 组件 $\le 300$ 行、CSS $\le 300$ 行、函数 $\le 50$ 行）与 [`scripts/check-ui-hygiene.ts`](./scripts/check-ui-hygiene.ts)（Token 化色彩/字号、标准断点、目录级类名唯一所有权）。
   4. **四大名著补全主观作业铁律**：补全四大名著全章节题目时，**严禁使用脚本批量生成题面或标准**；每一回必须先派子代理联网搜索 5–10 轮考证原著情节与阶段衣冠细节，再主观撰写提示词，随后派子代理到 `/tmp` 临时目录实测生图，若不通过则继续优化（每题最多优化 3 轮取最优版）。
 
@@ -115,4 +115,4 @@ pnpm dashboard:prod         # 生产看板 http://127.0.0.1:3000（按已提交 
 
 - [x] 本次提交完成 `2026-11-h1` 题组、同轮次原地重跑及全部文档同步（`README.md`、`README.zh-CN.md`、`CHANGELOG.md`、`AGENTS.md`、`handoff.md`）。
 - [x] 所有质量门与测试全绿（`pnpm lint`、`pnpm check:ui`、`pnpm check:length`、`pnpm check:secrets`、`pnpm validate:prompts`、`pnpm test` 179 suites / 1,079 tests）。
-- [x] 遵守代码行数红线、UI 卫生检查、两仓分离与安全推送策略（仅推送本地私仓 `local-git-my-code`，未未经许可推送公开 `origin`）。
+- [x] 遵守代码行数红线、UI 卫生检查、两仓分离与公开仓库脱敏规范（全部相对路径化，无本机路径或远端别名泄露）。

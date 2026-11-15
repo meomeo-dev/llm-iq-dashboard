@@ -238,8 +238,8 @@ DEVICE_MATRIX = [
 ]
 
 BASE_URL = "http://127.0.0.1:3001"
-COOKIE_VALUE = "2b11c782a345e661.ggrThIM6GPu9lFGNtc91KGJHJttoj2LGp8bIRuNTNmU"
-ARTIFACT_DIR = "/Users/luojin/.gemini/antigravity-cli/brain/0d231da9-b48f-4c6f-907a-2c0f782595ee"
+COOKIE_VALUE = os.environ.get("PELICAN_REVIEW_COOKIE", "")
+ARTIFACT_DIR = os.environ.get("PELICAN_ARTIFACT_DIR", "/tmp/pelican-diagnostics")
 
 def run_tests():
     print(f"Starting E2E Multi-Device Tests across {len(DEVICE_MATRIX)} devices...")
